@@ -28,7 +28,7 @@
       start_with_windows: false,
       auto_screens: true, instagram: '', club: { name: 'CASA', short: 'CAS', primary: '#2F4B7C', secondary: '#1C1A17', crest: '/assets/crest.svg', sport: 'basketball', country: 'PT' },
       photos: { squad: true, lower_third: false },
-      overlay: { bug_position: 'top-left' }, desktop_shortcut: ''
+      overlay: { bug_position: 'top-left' }, credit: true, desktop_shortcut: ''
     },
     groups: [
       { id: 'senior-m', name: 'Sénior Masculino', coach: 'Jorge Matos Lima', fpb_team_id: 64791, fpb_team_name: 'Clube Exemplo · Sénior' },
@@ -171,6 +171,7 @@
         instagram: db.settings.instagram,
         photos: db.settings.photos || { squad: false, lower_third: false },
         overlay: Object.assign({ bug_position: 'top-left', sponsor_corner: true, sponsor_every: 4, back_line: '' }, db.settings.overlay),
+        credit: db.settings.credit !== false,
         at_home: false,
         next: { at_home: true, opponent: { name: 'RIBEIRA', short: 'RBC', crest_url: null, color: '#2E3192', initials: 'RBC' }, full_name: 'Ribeira Basket Clube',
           start: '2026-11-20T21:45:00Z', venue: 'Pav. Municipal do Vale - Clube Exemplo', competition: '2ª Divisão Masculina', round: 'Jornada 7' },

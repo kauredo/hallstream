@@ -103,6 +103,8 @@ type Game struct {
 	Instagram   string        `json:"instagram"`
 	Photos      Photos        `json:"photos"`
 	Overlay     Overlay       `json:"overlay"`
+	// Credit shows the Hallstream mark bottom-right (settings.credit).
+	Credit bool `json:"credit"`
 	// Sport is the club's sport id; SportLabel the word on air ("BASKET").
 	Sport      string `json:"sport"`
 	SportLabel string `json:"sport_label"`

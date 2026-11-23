@@ -66,6 +66,8 @@ type Settings struct {
 	// starts with it. Empty skips the club setup.
 	ClubSearch string  `json:"club_search"`
 	Overlay    Overlay `json:"overlay"`
+	// Credit shows the small Hallstream mark on air; on by default.
+	Credit bool `json:"credit"`
 	// StartWithWindows is whether the Startup folder has the shortcut; only
 	// the server changes it.
 	StartWithWindows bool `json:"start_with_windows"`
@@ -132,6 +134,7 @@ func DefaultSettings() Settings {
 		Club: Club{Name: "CASA", Short: "CAS", Primary: club.DefaultPrimary, Secondary: club.DefaultSecondary,
 			Crest: DefaultCrest, Sport: "basketball", Country: "PT"},
 		Overlay: Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
+		Credit:  true,
 	}
 }
 

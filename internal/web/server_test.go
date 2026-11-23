@@ -473,6 +473,23 @@ func TestSponsorCornerSettings(t *testing.T) {
 	}
 }
 
+func TestCreditSetting(t *testing.T) {
+	s := newServer(t)
+	s.SyncGame()
+	if !s.State.Snapshot().Game.Credit {
+		t.Error("default: credit off in the state")
+	}
+	for _, on := range []bool{false, true} {
+		set := s.Store.Settings()
+		set.Credit = on
+		var got store.Settings
+		call(t, s, "PUT", "/api/settings", set, &got)
+		if got.Credit != on || s.Store.Settings().Credit != on || s.State.Snapshot().Game.Credit != on {
+			t.Errorf("sent %v: reply %v, saved %v, state %v", on, got.Credit, s.Store.Settings().Credit, s.State.Snapshot().Game.Credit)
+		}
+	}
+}
+
 func TestAnotherGameClearsPeriods(t *testing.T) {
 	s := newServer(t)
 	saved := -1

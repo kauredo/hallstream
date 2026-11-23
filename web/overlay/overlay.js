@@ -29,6 +29,8 @@
   const DIM_SCREENS = new Set(['intervalo', 'final']);
   const STRIP_SCREENS = new Set(['abertura', 'plantel', 'intervalo', 'final', 'proximo', 'voltamos']);
   const LT_SCREENS = new Set(['marcador', 'nada']);
+  // The credit shows only where the bottom-right corner is free: the strip and the time-out window fill it elsewhere.
+  const CREDIT_SCREENS = new Set(['marcador', 'apoiantes', 'promo']);
   const SQUAD_MAX = 12;
   const TZ = 'Europe/Lisbon';
 
@@ -126,6 +128,7 @@
   const spcLogo = $('.spc-lg', spc);
   const spcBar = $('.spc-prog b', spc);
   const winners = { home: $('[data-win="home"]'), away: $('[data-win="away"]') };
+  const credit = $('#credit');
 
   // ---------- motion ----------
   // Every entrance runs from a hidden first frame to the element's plain CSS (fill: backwards), so a
@@ -1089,6 +1092,8 @@
     setScreen(screen);
     syncMini(false);
     renderLowerThird(st, screen);
+    // A lower third under a bottom-left bug takes the same corner, so the credit steps aside for it.
+    setClass(credit, 'on', (st.game || {}).credit !== false && CREDIT_SCREENS.has(screen) && !(ltPhase !== 'hidden' && bugKey === 'bottom-left'));
     liveEffects(v);
     cornerTick();
     quiet = false;

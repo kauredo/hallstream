@@ -196,6 +196,7 @@ func (s *Server) SyncGame() {
 		Photos:      state.Photos{Squad: set.Photos.Squad, LowerThird: set.Photos.LowerThird},
 		Overlay: state.Overlay{BugPosition: set.Overlay.BugPosition,
 			SponsorCorner: set.Overlay.SponsorCorner, SponsorEvery: set.Overlay.SponsorEvery, BackLine: set.Overlay.BackLine},
+		Credit: set.Credit,
 	}
 	s.fixMu.Lock()
 	if s.fix.key == fixturesKey(g) {

@@ -1857,7 +1857,9 @@
       '<option value="top-left"' + (bug !== 'bottom-left' ? ' selected' : '') + '>Canto superior esquerdo</option>' +
       '<option value="bottom-left"' + (bug === 'bottom-left' ? ' selected' : '') + '>Canto inferior esquerdo</option></select></label>' +
       '<p class="hint">O rodapé com o nome aparece no outro canto de baixo. Pode mudar durante o jogo, e o marcador desliza para o sítio novo.</p>' +
-      sponsorCornerFields(s.overlay || {}) + '</div>';
+      sponsorCornerFields(s.overlay || {}) +
+      '<label class="switch" style="margin-top:16px"><input type="checkbox" id="dCredit"' + (s.credit !== false ? ' checked' : '') + '><i></i>Mostrar «feito com Hallstream» na transmissão</label>' +
+      '<p class="hint">Ponho o logótipo pequeno do Hallstream no canto de baixo à direita, quando está livre. Ajuda outros clubes a conhecer o programa.</p></div>';
 
     html += '<div class="savebar"><button class="btn primary" data-act="save-settings">Guardar definições</button><span class="msg"></span></div>';
 
@@ -2071,6 +2073,7 @@
     s.overlay = Object.assign({}, s.overlay, { bug_position: $('#dBug').value });
     s.overlay.sponsor_corner = $('#dCorner').checked;
     s.overlay.sponsor_every = Math.min(30, Math.max(1, parseInt($('#dCornerEvery').value, 10) || 4));
+    s.credit = $('#dCredit').checked;
     return s;
   }
 

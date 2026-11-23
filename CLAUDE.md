@@ -5,7 +5,7 @@ Tribuna is an open-source game-day tool for basketball clubs. Volunteers double-
 ## Commands
 
 - `go vet ./...` and `go test ./...` need no network and no secrets. The `TestOverlay…` and `TestPanel…` tests drive headless Chrome and skip when the machine has none.
-- CI vets Windows on amd64 only, and the release also ships a 32-bit exe. Before you finish, run `GOOS=windows GOARCH=386 go build ./...`.
+- CI vets and tests on Linux and macOS, and builds the exe for Linux, macOS and Windows (amd64 and the 32-bit one the release ships). Before you finish, run `GOOS=windows GOARCH=386 go build ./...`.
 - `go run ./cmd/tribuna -demo -nobrowser` plays an invented game with no Bluetooth. The panel is at `http://127.0.0.1:8765/painel` and the overlay at `/overlay`. A second copy only opens the first one's panel and exits.
 - The program keeps its data in `dados/` beside the exe, or in the current folder under `go run`. Demo mode invents the game and still uses the OBS and YouTube logins saved there. For a clean run, `go build -o <scratch folder>/tribuna ./cmd/tribuna` and start that.
 - `./build.sh <version>` is a zsh script. It runs the tests, then builds both Windows exes and the zip into `dist/`. Without `TRIBUNA_UPLOAD_TOKEN` set, the exes never upload game logs.

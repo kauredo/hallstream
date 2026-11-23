@@ -5,12 +5,13 @@ package state
 
 import (
 	"encoding/json"
-	"errors"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 type Box struct {
@@ -470,7 +471,7 @@ func (m *Machine) SetScan(s Scan) {
 // SetScreen switches the screen by hand. An empty name only sets auto.
 func (m *Machine) SetScreen(name string, auto bool) error {
 	if name != "" && !valid(name) {
-		return errors.New("ecrã desconhecido")
+		return i18n.Err("estado.ecra_desconhecido")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()

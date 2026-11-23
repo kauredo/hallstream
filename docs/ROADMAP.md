@@ -23,7 +23,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Streaming | YouTube through a verified OAuth client that ships with the app, or the club's own client. A plain RTMP key for any other platform. |
 | Squads and fixtures | A `Provider` interface: squads typed or imported from CSV for everyone. The Portuguese basketball federation (FPB), through calendariofpb.pt, is opt-in and paced. |
 | Club identity | Name, short name, colours, crest, sponsors and sport, all entered in the first-run wizard. Nothing club-specific in the code. |
-| Language | String catalogs, pt-PT and English first. |
+| Language | One catalog per language, `web/i18n/<lang>.json`: a flat JSON object of dotted keys (`painel.nav.ecras`, `overlay.final.titulo`, `ble.desligado`) to strings, sorted by key, with `{name}` placeholders. `pt.json` (European Portuguese) is the source. A plural is two keys, `….um` and `….outros`, picked in code; there is no plural engine. `settings.lang` (default `pt`) picks the file, and a missing file or key reads `pt`. A test fails on a key missing from `pt.json`, a key nothing uses, an unsorted file, another language with different keys, or Portuguese left in the code. English comes next. |
 | Privacy | Player photos are off by default. Examples and fixtures use invented people. Nothing is sent anywhere unless the club opts in. |
 | Releases | Signed GitHub releases (SignPath for Windows), plus a website and an in-app feedback form that opens GitHub issues. |
 

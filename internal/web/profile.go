@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kauredo/hallstream/internal/club"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -19,25 +20,25 @@ func checkClub(c *store.Club) error {
 	c.Country = strings.ToUpper(strings.TrimSpace(c.Country))
 	switch n := len([]rune(c.Name)); {
 	case n == 0:
-		return userError("Escreva o nome do clube.")
+		return userError(i18n.T("api.clube.escreva_nome"))
 	case n > clubNameMax:
-		return userError("O nome do clube tem de caber em 12 letras.")
+		return userError(i18n.T("api.clube.nome_12"))
 	}
 	if n := len([]rune(c.Short)); n == 0 || n > clubShortMax {
-		return userError("A sigla tem de ter entre 1 e 4 letras.")
+		return userError(i18n.T("api.clube.sigla"))
 	}
 	var ok bool
 	if c.Primary, ok = club.Hex(c.Primary); !ok {
-		return userError("A cor principal tem de ser uma cor como #2F4B7C.")
+		return userError(i18n.T("api.clube.cor_principal"))
 	}
 	if c.Secondary, ok = club.Hex(c.Secondary); !ok {
-		return userError("A cor secundária tem de ser uma cor como #1C1A17.")
+		return userError(i18n.T("api.clube.cor_secundaria"))
 	}
 	if sp, found := club.SportOf(c.Sport); !found || !sp.Active {
-		return userError("Por agora só há basquetebol. As outras modalidades chegam em breve.")
+		return userError(i18n.T("api.clube.so_basquetebol"))
 	}
 	if len(c.Country) != 2 || strings.Trim(c.Country, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") != "" {
-		return userError("Escolha o país do clube.")
+		return userError(i18n.T("api.clube.pais"))
 	}
 	return nil
 }

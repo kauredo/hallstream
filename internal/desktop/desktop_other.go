@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Console is true where the program has a console window for its messages.
@@ -27,7 +29,7 @@ func Ask(msg string) bool {
 // Fatal shows why the program can't start and waits for Enter.
 func Fatal(msg string) {
 	fmt.Println(msg)
-	fmt.Println("Carregue em Enter para fechar.")
+	fmt.Println(i18n.T("app.enter_fecha"))
 	fmt.Scanln()
 }
 

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -40,7 +41,7 @@ func (s *Server) appRoutes() {
 func (s *Server) backup(w http.ResponseWriter, r *http.Request) {
 	// Another site can't read the zip, but could still drop one in Downloads.
 	if site := r.Header.Get("Sec-Fetch-Site"); !isLoopback(r.RemoteAddr) || (site != "" && site != "same-origin" && site != "none") {
-		fail(w, http.StatusForbidden, "A cópia só se guarda no próprio computador.")
+		fail(w, http.StatusForbidden, i18n.T("api.copia_so_no_pc"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/zip")
@@ -90,7 +91,7 @@ func (s *Server) backup(w http.ResponseWriter, r *http.Request) {
 		err = zw.Close()
 	}
 	if err != nil {
-		s.Log("Não consegui guardar a cópia dos dados: " + err.Error())
+		s.Log(i18n.T("log.nao_guardei_copia", "err", err))
 		// The 200 is sent: cutting the connection makes the browser show a
 		// failed download instead of a broken zip.
 		panic(http.ErrAbortHandler)
@@ -109,17 +110,17 @@ func (s *Server) desktopShortcut(w http.ResponseWriter, r *http.Request) {
 	answer, path := "declined", ""
 	if req.Create {
 		if !isLoopback(r.RemoteAddr) {
-			fail(w, http.StatusForbidden, "O atalho só se cria no próprio computador.")
+			fail(w, http.StatusForbidden, i18n.T("api.atalho_so_no_pc"))
 			return
 		}
 		if s.Shortcut == nil {
-			fail(w, http.StatusNotImplemented, "O atalho no ambiente de trabalho só se cria no Windows.")
+			fail(w, http.StatusNotImplemented, i18n.T("api.atalho_so_windows"))
 			return
 		}
 		var err error
 		if path, err = s.Shortcut(); err != nil {
-			s.Log("Não consegui criar o atalho: " + err.Error())
-			fail(w, http.StatusInternalServerError, "Não consegui criar o atalho: "+err.Error())
+			s.Log(i18n.T("api.nao_criei_atalho", "err", err))
+			fail(w, http.StatusInternalServerError, i18n.T("api.nao_criei_atalho", "err", err))
 			return
 		}
 		answer = "created"

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -35,7 +36,7 @@ func (s *Server) addGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		fail(w, http.StatusBadRequest, "Falta o nome do escalão.")
+		fail(w, http.StatusBadRequest, i18n.T("api.falta_nome_escalao"))
 		return
 	}
 	g, err := s.Store.AddGroup(strings.TrimSpace(req.Name))
@@ -177,14 +178,14 @@ func (s *Server) fetchPhotos(gid string, before, after []store.Player, deadline 
 			u, err = s.Store.SaveMedia("pl-"+p.ID+"-"+hex.EncodeToString(sum[:4])+ext, data)
 		}
 		if err != nil {
-			s.Log("Não consegui descarregar a fotografia de " + p.DisplayName + ": " + err.Error())
+			s.Log(i18n.T("log.foto.nao_descarreguei", "jogador", p.DisplayName, "err", err))
 			failed++
 			continue
 		}
 		got[p.ID] = photo{p.PhotoSource, u}
 	}
 	if skipped > 0 {
-		s.Log("As fotografias da FPB estão a demorar demasiado: " + strconv.Itoa(skipped) + " ficam para a próxima atualização.")
+		s.Log(i18n.T("log.foto.a_demorar", "n", skipped))
 		failed += skipped
 	}
 	if len(got) == 0 {
@@ -206,7 +207,7 @@ func (s *Server) fetchPhotos(gid string, before, after []store.Player, deadline 
 		return nil
 	})
 	if err != nil {
-		s.Log("Não consegui guardar as fotografias: " + err.Error())
+		s.Log(i18n.T("log.foto.nao_guardei", "err", err))
 		failed += len(got)
 	}
 	// Remove every file no player points at: replaced copies, and downloads
@@ -257,7 +258,7 @@ func (s *Server) addPlayer(w http.ResponseWriter, r *http.Request) {
 		p.Number = strings.TrimSpace(*req.Number)
 	}
 	if p.DisplayName == "" {
-		fail(w, http.StatusBadRequest, "Falta o nome do jogador.")
+		fail(w, http.StatusBadRequest, i18n.T("api.falta_nome_jogador"))
 		return
 	}
 	_, err := s.Store.UpdateGroup(r.PathValue("id"), func(g *store.Group) error {
@@ -277,7 +278,7 @@ func (s *Server) putPlayer(w http.ResponseWriter, r *http.Request) {
 	_, p, okp := s.editPlayer(w, r, func(_ *store.Group, p *store.Player) error {
 		if req.DisplayName != nil {
 			if strings.TrimSpace(*req.DisplayName) == "" {
-				return userError("O nome não pode ficar vazio.")
+				return userError(i18n.T("api.nome_vazio"))
 			}
 			p.DisplayName = strings.TrimSpace(*req.DisplayName)
 		}
@@ -319,7 +320,7 @@ func (s *Server) importPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if g.FPBTeamID == 0 {
-		fail(w, http.StatusBadRequest, "Este escalão ainda não está ligado a uma equipa da FPB.")
+		fail(w, http.StatusBadRequest, i18n.T("api.escalao_sem_fpb"))
 		return
 	}
 	roster, err := s.FPB.Roster(g.FPBTeamID)
@@ -369,7 +370,7 @@ type linkReq struct {
 func linkedElsewhere(g *store.Group, fpbID int64, except string) error {
 	for _, p := range g.Players {
 		if p.ID != except && p.FPBPlayerID != nil && *p.FPBPlayerID == fpbID {
-			return userError("Esse jogador da FPB já está ligado a " + p.DisplayName + ".")
+			return userError(i18n.T("api.jogador_fpb_ja_ligado", "jogador", p.DisplayName))
 		}
 	}
 	return nil
@@ -381,7 +382,7 @@ func (s *Server) linkPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.FPBPlayerID == 0 {
-		fail(w, http.StatusBadRequest, "Falta o jogador da FPB.")
+		fail(w, http.StatusBadRequest, i18n.T("api.falta_jogador_fpb"))
 		return
 	}
 	before, p, okp := s.editPlayer(w, r, func(g *store.Group, p *store.Player) error {
@@ -425,7 +426,7 @@ func (s *Server) playerFromFPB(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.FPBPlayerID == 0 || strings.TrimSpace(req.Name) == "" {
-		fail(w, http.StatusBadRequest, "Falta o jogador da FPB.")
+		fail(w, http.StatusBadRequest, i18n.T("api.falta_jogador_fpb"))
 		return
 	}
 	id, name := req.FPBPlayerID, strings.TrimSpace(req.Name)
@@ -461,13 +462,13 @@ func upload(w http.ResponseWriter, r *http.Request) (data []byte, ext string, ok
 	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	f, h, err := r.FormFile("file")
 	if err != nil {
-		fail(w, http.StatusBadRequest, "Falta o ficheiro (até 10 MB).")
+		fail(w, http.StatusBadRequest, i18n.T("api.falta_ficheiro"))
 		return nil, "", false
 	}
 	defer f.Close()
 	data, err = io.ReadAll(f)
 	if err != nil {
-		fail(w, http.StatusBadRequest, "Não consegui ler o ficheiro.")
+		fail(w, http.StatusBadRequest, i18n.T("api.nao_li_ficheiro"))
 		return nil, "", false
 	}
 	ext = strings.ToLower(filepath.Ext(h.Filename))
@@ -477,7 +478,7 @@ func upload(w http.ResponseWriter, r *http.Request) (data []byte, ext string, ok
 	if !imageExts[ext] {
 		ct := h.Header.Get("Content-Type")
 		if !strings.HasPrefix(ct, "image/") {
-			fail(w, http.StatusBadRequest, "O ficheiro tem de ser uma imagem (PNG, JPG ou SVG).")
+			fail(w, http.StatusBadRequest, i18n.T("api.ficheiro_imagem"))
 			return nil, "", false
 		}
 		ext = fpb.ImageExt(ct, "")
@@ -518,7 +519,7 @@ func (s *Server) orderSponsors(w http.ResponseWriter, r *http.Request) {
 	}
 	g, err := s.Store.UpdateGroup(r.PathValue("id"), func(g *store.Group) error {
 		if len(req) != len(g.Sponsors) {
-			return userError("A lista tem de ter todos os patrocinadores.")
+			return userError(i18n.T("api.patrocinadores_todos"))
 		}
 		byID := map[string]store.Sponsor{}
 		for _, sp := range g.Sponsors {
@@ -529,7 +530,7 @@ func (s *Server) orderSponsors(w http.ResponseWriter, r *http.Request) {
 		for _, e := range req {
 			sp, found := byID[e.ID]
 			if !found {
-				return userError("Patrocinador desconhecido: " + e.ID)
+				return userError(i18n.T("api.patrocinador_desconhecido", "id", e.ID))
 			}
 			delete(byID, e.ID)
 			sp.Principal = e.Principal && !principal // only one principal
@@ -567,7 +568,7 @@ func (s *Server) deleteSponsor(w http.ResponseWriter, r *http.Request) {
 func teamID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		fail(w, http.StatusBadRequest, "Equipa inválida.")
+		fail(w, http.StatusBadRequest, i18n.T("api.equipa_invalida"))
 		return 0, false
 	}
 	return id, true
@@ -575,14 +576,14 @@ func teamID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 
 func fpbFail(w http.ResponseWriter, err error) {
 	if errors.Is(err, fpb.ErrNotFound) {
-		fail(w, http.StatusNotFound, "A FPB não tem esta equipa, ou o calendário ainda não tem esta função.")
+		fail(w, http.StatusNotFound, i18n.T("api.fpb.sem_equipa"))
 		return
 	}
 	if errors.Is(err, fpb.ErrBusy) {
-		fail(w, http.StatusTooManyRequests, "A FPB está a receber demasiados pedidos. Tente outra vez daqui a um minuto.")
+		fail(w, http.StatusTooManyRequests, i18n.T("api.fpb.ocupada"))
 		return
 	}
-	fail(w, http.StatusBadGateway, "Não consegui falar com a FPB: "+err.Error())
+	fail(w, http.StatusBadGateway, i18n.T("api.fpb.sem_ligacao", "err", err))
 }
 
 func (s *Server) proxy(w http.ResponseWriter, path string) {

@@ -1,7 +1,6 @@
 package web
 
 import (
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
@@ -37,11 +37,11 @@ func readSqueeze(css string) (squeezeTokens, error) {
 	ms := cssMs.FindStringSubmatch(css)
 	bz := cssBezier.FindStringSubmatch(css)
 	if len(px) != 4 || ms == nil || bz == nil {
-		return t, errors.New("o overlay.css não tem --win-x/y/w/h, --t-squeeze e --ease-in-out")
+		return t, i18n.Err("log.camara.css_sem_janela")
 	}
 	var b [4]float64
 	if n, _ := fmt.Sscanf(bz[1], "%g,%g,%g,%g", &b[0], &b[1], &b[2], &b[3]); n != 4 {
-		return t, errors.New("o --ease-in-out do overlay.css não se lê")
+		return t, i18n.Err("log.camara.css_sem_ease")
 	}
 	d, _ := strconv.ParseFloat(ms[1], 64)
 	t.win = obsws.Rect{X: px["win-x"], Y: px["win-y"], W: px["win-w"], H: px["win-h"]}
@@ -68,7 +68,7 @@ func (s *Server) newCamera() {
 		},
 		Save: func(f obsws.Full) {
 			if _, err := s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.CameraFull = &f }); err != nil {
-				s.Log("Não consegui guardar a posição da câmara: " + err.Error())
+				s.Log(i18n.T("log.camara.nao_guardei_posicao", "err", err))
 			}
 		},
 		Show: func(full, win *obsws.Rect) {
@@ -97,7 +97,7 @@ func (s *Server) followCamera() error {
 // refits it when the tablet's picture changes size. It never returns.
 func (s *Server) RunCamera() {
 	if s.camErr != nil {
-		s.Log("Câmara: " + s.camErr.Error())
+		s.Log(i18n.T("log.camara.erro", "err", s.camErr))
 		return
 	}
 	ch, _ := s.State.Subscribe()
@@ -139,7 +139,7 @@ func (s *Server) cameraRoutes() {
 		}
 		res := map[string]any{"ok": true, "fit": rep, "warning": ""}
 		if rep.CanvasWidth != 1920 || rep.CanvasHeight != 1080 {
-			res["warning"] = fmt.Sprintf("A resolução base do OBS é %.0fx%.0f. Para o marcador encaixar, mude-a para 1920x1080 em Definições > Vídeo.", rep.CanvasWidth, rep.CanvasHeight)
+			res["warning"] = i18n.T("api.camara.resolucao_base", "resolucao", fmt.Sprintf("%.0fx%.0f", rep.CanvasWidth, rep.CanvasHeight))
 		}
 		reply(w, res)
 	})

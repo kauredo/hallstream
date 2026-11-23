@@ -75,14 +75,14 @@
   for (const el of $$('[data-b]')) (binds[el.dataset.b] ||= []).push(el);
 
   const tiles = $$('[data-tile]');
-  for (const t of tiles) {
+  for (const tx of tiles) {
     const img = document.createElement('img');
     img.alt = '';
-    img.addEventListener('error', () => { t.classList.remove('has-img'); t.classList.add('no-img'); });
-    img.addEventListener('load', () => { t.classList.add('has-img'); t.classList.remove('no-img'); });
+    img.addEventListener('error', () => { tx.classList.remove('has-img'); tx.classList.add('no-img'); });
+    img.addEventListener('load', () => { tx.classList.add('has-img'); tx.classList.remove('no-img'); });
     const ini = document.createElement('b');
     ini.className = 'ini';
-    t.append(img, ini);
+    tx.append(img, ini);
   }
 
   const plantel = $('#s-plantel');
@@ -179,8 +179,8 @@
     let raf = 0, timer = 0;
     const t0 = performance.now() + delay;
     const done = () => { cancelAnimationFrame(raf); clearTimeout(timer); for (const el of els) el.textContent = el._v; };
-    const tick = (t) => {
-      const k = Math.min(1, Math.max(0, (t - t0) / T.count));
+    const tick = (tx) => {
+      const k = Math.min(1, Math.max(0, (tx - t0) / T.count));
       if (k >= 1) return done();
       const e = 1 - Math.pow(1 - k, 3);
       for (const el of els) el.textContent = String(Math.round((+el._v || 0) * e));
@@ -307,7 +307,7 @@
         b = squeeze(true) * 0.8;
       } else {
         // The camera does not move: the background comes in from the left and the top, then fills the right and bottom edges.
-        const L = (l, t) => poly([[0, 0], [1920, 0], [1920, t], [l, t], [l, 1080], [0, 1080]]);
+        const L = (l, tx) => poly([[0, 0], [1920, 0], [1920, tx], [l, tx], [l, 1080], [0, 1080]]);
         p($('.to-frame', s), [
           { clipPath: L(0, 0), easing: E.out },
           { clipPath: L(WIN.x, WIN.y), easing: E.inOut, offset: 0.6 },
@@ -424,22 +424,22 @@
   }
 
   // ---------- formatting ----------
-  const fmtTime = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
-  const fmtWeekday = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', timeZone: TZ });
-  const fmtDay = new Intl.DateTimeFormat('pt-PT', { day: 'numeric', timeZone: TZ });
-  const fmtMonth = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: TZ });
+  const fmtTime = new Intl.DateTimeFormat(t('data.locale'), { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
+  const fmtWeekday = new Intl.DateTimeFormat(t('data.locale'), { weekday: 'long', timeZone: TZ });
+  const fmtDay = new Intl.DateTimeFormat(t('data.locale'), { day: 'numeric', timeZone: TZ });
+  const fmtMonth = new Intl.DateTimeFormat(t('data.locale'), { month: 'short', timeZone: TZ });
   const plain = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
 
   function dateLine(d) {
     const wd = fmtWeekday.format(d);
     const month = fmtMonth.format(d).replace('.', '');
-    return wd.charAt(0).toUpperCase() + wd.slice(1) + ', ' + fmtDay.format(d) + ' ' + month;
+    return t('overlay.data_linha', { dia_semana: wd.charAt(0).toUpperCase() + wd.slice(1), dia: fmtDay.format(d), mes: month });
   }
   function countdown(ms) {
     const mins = Math.ceil(ms / 60000);
-    if (mins < 60) return `Começa dentro de ${mins} min`;
+    if (mins < 60) return t('overlay.abertura.comeca_min', { min: mins });
     const h = Math.floor(mins / 60), m = mins % 60;
-    return m ? `Começa dentro de ${h} h ${m} min` : `Começa dentro de ${h} h`;
+    return m ? t('overlay.abertura.comeca_h_min', { h: h, min: m }) : t('overlay.abertura.comeca_h', { h: h });
   }
   function periodNum(p) {
     const n = parseInt(p, 10);
@@ -465,15 +465,15 @@
     v.awayName = away.name || live.away_name || '';
     v.homeShort = home.short || '';
     v.awayShort = away.short || '';
-    v.sport = game.sport_label || 'BASKET';
+    v.sport = game.sport_label || t('overlay.desporto_omissao');
     v.homeScore = live.home ?? 0;
     v.awayScore = live.away ?? 0;
     v.clock = live.clock || '';
     v.shot = live.shot ?? '';
     v.homeFouls = live.home_fouls ?? 0;
     v.awayFouls = live.away_fouls ?? 0;
-    v.periodShort = pn == null ? (live.period || '') : pn <= 4 ? `${pn}º PER.` : pn === 5 ? 'PROL.' : `PROL. ${pn - 4}`;
-    v.periodLong = pn == null ? (live.period || '') : pn <= 4 ? `${pn}º PERÍODO` : pn === 5 ? 'PROLONGAMENTO' : `${pn - 4}º PROLONG.`;
+    v.periodShort = pn == null ? (live.period || '') : pn <= 4 ? t('overlay.periodo.curto', { n: pn }) : pn === 5 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - 4 });
+    v.periodLong = pn == null ? (live.period || '') : pn <= 4 ? t('overlay.periodo.longo', { n: pn }) : pn === 5 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - 4 });
     v.compRound = joinDot(game.competition, game.round);
     v.venue = game.venue || '';
     const coach = splitName((game.group && game.group.coach) || '');
@@ -499,7 +499,7 @@
     v.next = next;
     v.nextName = next ? (next.opponent && next.opponent.name) || '' : '';
     v.nextFull = next && plain(next.full_name) !== plain(v.nextName) ? next.full_name : '';
-    v.nextWhere = next ? (next.at_home ? 'EM CASA' : 'FORA') : '';
+    v.nextWhere = next ? (next.at_home ? t('overlay.proximo.em_casa') : t('overlay.proximo.fora')) : '';
     v.nextWeekday = nsOK ? fmtWeekday.format(ns).replace(/-feira$/, '').toUpperCase() : '';
     v.nextDay = nsOK ? (fmtDay.format(ns) + ' ' + fmtMonth.format(ns).replace('.', '')).toUpperCase() : '';
     v.nextTime = nsOK ? fmtTime.format(ns) : '';
@@ -511,7 +511,7 @@
 
     const periods = Array.isArray(st.periods) ? st.periods : [];
     const lastDone = periods.length ? periods[periods.length - 1].period : 2;
-    v.halfLine = `${lastDone + 1}º período a seguir`;
+    v.halfLine = t('overlay.intervalo.a_seguir', { n: lastDone + 1 });
     v.periods = periods;
     v.home = home;
     v.away = away;
@@ -574,19 +574,19 @@
       };
       cell('hd', '');
       for (const p of periods) {
-        if (p.period <= 4) cell('hd', `${p.period}º`);
-        else cell('hd ot', p.period === 5 ? 'PROL.' : `PROL. ${p.period - 4}`);
+        if (p.period <= 4) cell('hd', t('overlay.periodos.n', { n: p.period }));
+        else cell('hd ot', p.period === 5 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - 4 }));
       }
-      cell('hd tot', 'TOTAL');
-      for (const [t, o] of [['home', 'away'], ['away', 'home']]) {
+      cell('hd tot', t('overlay.periodos.total'));
+      for (const [tx, o] of [['home', 'away'], ['away', 'home']]) {
         const name = cell('tn', '');
         name.dataset.fit = '26';
-        setText(name, v[t + 'Name']);
+        setText(name, v[tx + 'Name']);
         for (const p of periods) {
-          const pts = p[t + '_points'] ?? 0;
+          const pts = p[tx + '_points'] ?? 0;
           cell(pts < (p[o + '_points'] ?? 0) ? 'lo' : '', pts);
         }
-        cell('tot', v[t + 'Score']);
+        cell('tot', v[tx + 'Score']);
       }
     }
   }
@@ -673,7 +673,7 @@
       big: com ? [l.first_name, l.last_name].filter(Boolean).join(' ') : l.last_name,
       small: l.first_name,
       num: l.number,
-      label: l.label || 'Comentário',
+      label: l.label || t('overlay.rodape.comentario'),
     };
     c.who = JSON.stringify([c.com, c.big, c.small, c.num, c.label]);
     c.key = c.who + c.photo;
@@ -802,11 +802,11 @@
       spcBar.style.transform = 'scaleX(0.62)';
       return setClass(spc, 'on', true);
     }
-    const t = performance.now();
-    if (cornerUntil && (t >= cornerUntil || !cornerAllowed())) cornerHide();
+    const tx = performance.now();
+    if (cornerUntil && (tx >= cornerUntil || !cornerAllowed())) cornerHide();
     const o = (state && state.game && state.game.overlay) || {};
     const every = Math.min(30, Math.max(1, +o.sponsor_every || 4)) * 60000;
-    const turn = Math.floor((t - cornerT0) / every);
+    const turn = Math.floor((tx - cornerT0) / every);
     if (turn === cornerTurn) return;
     cornerTurn = turn;
     if (turn > 0 && !cornerUntil && cornerAllowed()) cornerShow(cornerList[cornerNext++ % cornerList.length]);
@@ -826,7 +826,7 @@
   let prClip = null, prKey = '', prSeq = -1, miniClip = null, miniKey = '', miniPlaying = false;
 
   const shortLink = (u) => String(u || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
-  const mmss = (t) => { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  const mmss = (tx) => { tx = Math.max(0, Math.ceil(tx)); return Math.floor(tx / 60) + ':' + String(tx % 60).padStart(2, '0'); };
   // Shrink a block's font until it fits in `lines` lines and no word sticks out.
   function fitLines(el, base, lines) {
     let size = base;
@@ -993,15 +993,15 @@
     if (!was || quiet || !ANIM) return;
     if (shownScreen !== 'marcador' && shownScreen !== 'desconto') return;
     const scr = screens[shownScreen];
-    for (const t of ['home', 'away']) {
+    for (const tx of ['home', 'away']) {
       // Up to 3 is a basket. A correction downwards, or a jump of more than 3 (a resync), just changes.
-      const d = cur[t] - was[t];
+      const d = cur[tx] - was[tx];
       if (d >= 1 && d <= 3) {
-        for (const el of $$(`[data-b="${t}Score"]`, scr)) rollScore(el, String(was[t]));
-        if (shownScreen === 'marcador') showPop(t, d);
+        for (const el of $$(`[data-b="${tx}Score"]`, scr)) rollScore(el, String(was[tx]));
+        if (shownScreen === 'marcador') showPop(tx, d);
       }
-      if (cur[t + 'F'] > was[t + 'F']) {
-        for (const p of $$(`[data-pips="${t}"]`, scr)) for (let k = was[t + 'F']; k < cur[t + 'F']; k++) popPip(p.children[k]);
+      if (cur[tx + 'F'] > was[tx + 'F']) {
+        for (const p of $$(`[data-pips="${tx}"]`, scr)) for (let k = was[tx + 'F']; k < cur[tx + 'F']; k++) popPip(p.children[k]);
       }
     }
     if (cur.per !== was.per) {
@@ -1058,18 +1058,18 @@
     }
     setClass(root, 'off', lost || (st.box && st.box.connected === false));
 
-    for (const t of tiles) {
-      const k = t.dataset.tile;
-      renderTile(t, k === 'home' ? { ...v.home, name: v.homeName } : k === 'next' ? (v.next && v.next.opponent) || {} : { ...v.away, name: v.awayName });
+    for (const tx of tiles) {
+      const k = tx.dataset.tile;
+      renderTile(tx, k === 'home' ? { ...v.home, name: v.homeName } : k === 'next' ? (v.next && v.next.opponent) || {} : { ...v.away, name: v.awayName });
     }
 
     const hf = +v.homeFouls || 0, af = +v.awayFouls || 0;
     renderPips('home', hf);
     renderPips('away', af);
     // FIBA: from the 5th team foul of the period the other side shoots free throws.
-    for (const [t, n] of [['home', hf], ['away', af]]) {
-      setClass(bonusCells[t], 'bonus', n >= 5);
-      setClass(bugRows[t], 'bonus', n >= 5);
+    for (const [tx, n] of [['home', hf], ['away', af]]) {
+      setClass(bonusCells[tx], 'bonus', n >= 5);
+      setClass(bugRows[tx], 'bonus', n >= 5);
     }
 
     const shotEl = binds.shot[0];

@@ -12,6 +12,8 @@ import (
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 const exeName = "obs64.exe"
@@ -71,7 +73,7 @@ func Path() (string, error) {
 			return p, nil
 		}
 	}
-	return "", errors.New("não encontrei o OBS neste computador. Instale-o a partir de obsproject.com")
+	return "", i18n.Err("obs.nao_instalado")
 }
 
 // start runs OBS in the tray. OBS finds its own files from the folder it
@@ -86,7 +88,7 @@ func start() error {
 	cmd := exec.Command(exe, "--minimize-to-tray", "--disable-shutdown-check")
 	cmd.Dir = filepath.Dir(exe)
 	if err := cmd.Start(); err != nil {
-		return errors.New("não consegui abrir o OBS: " + err.Error())
+		return i18n.Err("obs.nao_abri", "err", err)
 	}
 	go cmd.Wait()
 	return nil
@@ -127,7 +129,7 @@ func closeOBS(force bool) error {
 		return nil
 	}
 	if !force {
-		return errors.New("o OBS não fechou")
+		return i18n.Err("obs.nao_fechou")
 	}
 	return windows.TerminateProcess(h, 1)
 }

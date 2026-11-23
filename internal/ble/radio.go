@@ -1,11 +1,12 @@
 package ble
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	"tinygo.org/x/bluetooth"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 var (
@@ -44,7 +45,7 @@ func (t adapter) Connect(address string) (Link, error) {
 	var addr bluetooth.Address
 	addr.Set(address)
 	if !strings.EqualFold(addr.String(), address) {
-		return nil, errors.New("endereço inválido: " + address)
+		return nil, i18n.Err("ble.endereco_invalido", "endereco", address)
 	}
 	device, err := t.a.Connect(addr, bluetooth.ConnectionParams{})
 	if err != nil {

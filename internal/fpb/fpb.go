@@ -21,12 +21,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
-var ErrNotFound = errors.New("a FPB não tem estes dados (equipa desconhecida, ou o calendário ainda não tem esta função)")
+var ErrNotFound error = i18n.Key("fpb.sem_dados")
 
 // ErrBusy is the calendar answering 429, or a request held back so it does not.
-var ErrBusy = errors.New("a FPB está a receber demasiados pedidos")
+var ErrBusy error = i18n.Key("fpb.ocupada")
 
 // The calendar answers 429 past 30 API requests a minute from one address:
 // apiBurst at once and then one every Client.Every stays under that, and a
@@ -80,16 +82,16 @@ func New(baseURL func() string, cacheDir, version string) *Client {
 	c.HTTP = &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
 		base, err := url.Parse(c.BaseURL())
 		if err != nil || r.URL.Host != base.Host {
-			return fmt.Errorf("a FPB redirecionou para fora do calendário: %s", r.URL.Redacted())
+			return i18n.Err("fpb.redirecionou_fora", "url", r.URL.Redacted())
 		}
 		if len(via) >= 5 {
-			return errors.New("demasiados redireccionamentos")
+			return i18n.Err("fpb.redirecionamentos")
 		}
 		return nil
 	}}
 	c.photoHTTP = &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {
-			return errors.New("demasiados redireccionamentos")
+			return i18n.Err("fpb.redirecionamentos")
 		}
 		return c.photoAllowed(r.URL)
 	}}
@@ -177,7 +179,7 @@ func (c *Client) fetch(u string) (*http.Response, error) {
 }
 
 // ErrUploadHost refuses to send the token anywhere but UploadHost over https.
-var ErrUploadHost = errors.New("o endereço da FPB em Definições não é o calendariofpb.pt, por isso não envio")
+var ErrUploadHost error = i18n.Key("fpb.envio_fora")
 
 // uploadAllowed is https on UploadHost or one of its subdomains.
 func (c *Client) uploadAllowed(u *url.URL) bool {
@@ -206,7 +208,7 @@ func (c *Client) Post(p, token, contentType string, body []byte) (int, []byte, e
 				return ErrUploadHost
 			}
 			if len(via) >= 5 {
-				return errors.New("demasiados redireccionamentos")
+				return i18n.Err("fpb.redirecionamentos")
 			}
 			return nil
 		}}
@@ -246,7 +248,7 @@ func (c *Client) Get(p string) ([]byte, error) {
 		case rerr != nil:
 			err = rerr
 		case resp.StatusCode == http.StatusOK && !json.Valid(body):
-			err = errors.New("resposta da FPB inesperada")
+			err = i18n.Err("fpb.resposta_inesperada")
 		case resp.StatusCode == http.StatusOK:
 			c.set(true, false, time.Now())
 			os.WriteFile(file+".tmp", body, 0o644)
@@ -258,7 +260,7 @@ func (c *Client) Get(p string) ([]byte, error) {
 		case resp.StatusCode == http.StatusTooManyRequests:
 			err = ErrBusy
 		default:
-			err = fmt.Errorf("a FPB respondeu %d", resp.StatusCode)
+			err = i18n.Err("fpb.respondeu", "codigo", resp.StatusCode)
 		}
 	}
 	// A busy FPB is still there, so the saved copy goes out without "sem ligação".
@@ -273,7 +275,7 @@ func (c *Client) Get(p string) ([]byte, error) {
 		return nil, ErrBusy
 	}
 	if rerr != nil {
-		return nil, fmt.Errorf("sem ligação à FPB e sem dados guardados (%v)", err)
+		return nil, i18n.Err("fpb.sem_ligacao", "err", err)
 	}
 	if st, err := os.Stat(file); err == nil {
 		c.set(busy, busy, st.ModTime())
@@ -355,7 +357,7 @@ func getJSON[T any](c *Client, p string) (T, error) {
 		return v, err
 	}
 	if err := json.Unmarshal(b, &v); err != nil {
-		return v, fmt.Errorf("resposta da FPB inesperada: %v", err)
+		return v, i18n.Err("fpb.resposta_inesperada_erro", "err", err)
 	}
 	return v, nil
 }
@@ -392,7 +394,7 @@ func (c *Client) Roster(teamID int64) (Roster, error) {
 
 // Download fetches a logo (up to 5 MB) and returns it with a file extension.
 func (c *Client) Download(u string) ([]byte, string, error) {
-	return c.image(context.Background(), c.logoHTTP, c.url(u), "o logótipo")
+	return c.image(context.Background(), c.logoHTTP, c.url(u), i18n.T("fpb.o_logotipo"))
 }
 
 // DownloadPhoto fetches a player photo, only from PhotoHosts, redirects
@@ -405,14 +407,14 @@ func (c *Client) DownloadPhoto(ctx context.Context, raw string) ([]byte, string,
 	if err := c.photoAllowed(u); err != nil {
 		return nil, "", err
 	}
-	return c.image(ctx, c.photoHTTP, raw, "a fotografia")
+	return c.image(ctx, c.photoHTTP, raw, i18n.T("fpb.a_fotografia"))
 }
 
 func (c *Client) photoAllowed(u *url.URL) error {
 	if (u.Scheme == "https" || c.AllowHTTP && u.Scheme == "http") && slices.Contains(c.PhotoHosts, u.Host) {
 		return nil
 	}
-	return fmt.Errorf("fotografia fora da FPB: %s", u.Redacted())
+	return i18n.Err("fpb.foto_fora", "url", u.Redacted())
 }
 
 const maxImage = 5 << 20
@@ -429,14 +431,14 @@ func (c *Client) image(ctx context.Context, hc *http.Client, u, what string) ([]
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("%s respondeu %d", what, resp.StatusCode)
+		return nil, "", i18n.Err("fpb.imagem_respondeu", "o_que", what, "codigo", resp.StatusCode)
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxImage+1))
 	if err != nil {
 		return nil, "", err
 	}
 	if len(b) > maxImage {
-		return nil, "", fmt.Errorf("%s tem mais de 5 MB", what)
+		return nil, "", i18n.Err("fpb.mais_5mb", "o_que", what)
 	}
 	return b, ImageExt(resp.Header.Get("Content-Type"), u), nil
 }

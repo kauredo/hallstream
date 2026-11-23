@@ -28,6 +28,7 @@ import (
 	"github.com/kauredo/hallstream/internal/desktop"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/state"
@@ -86,7 +87,7 @@ func panicked(name string, fn func()) (yes bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			yes = true
-			say(fmt.Sprintf("%s: erro inesperado (%v). Tento outra vez daqui a pouco.\n%s", name, r, debug.Stack()))
+			say(i18n.T("log.erro_inesperado_repete", "tarefa", name, "erro", r) + "\n" + string(debug.Stack()))
 		}
 	}()
 	fn()
@@ -124,14 +125,14 @@ func (w *writer) state(s map[string]string) {
 }
 
 func main() {
-	demo := flag.Bool("demo", false, "jogo inventado, sem Bluetooth")
-	noBrowser := flag.Bool("nobrowser", false, "não abrir o painel no browser")
+	demo := flag.Bool("demo", false, i18n.T("app.flag.demo"))
+	noBrowser := flag.Bool("nobrowser", false, i18n.T("app.flag.nobrowser"))
 	flag.Parse()
 
 	// A second double-click opens the panel of the one already running.
 	for p := web.FirstPort; p <= web.LastPort; p++ {
 		if web.Ours(fmt.Sprintf("127.0.0.1:%d", p)) {
-			say(fmt.Sprintf("O Hallstream já está aberto (porta %d): abro o painel.", p))
+			say(i18n.T("log.ja_aberto", "porta", p))
 			openBrowser(fmt.Sprintf("http://127.0.0.1:%d/painel", p))
 			return
 		}
@@ -139,7 +140,7 @@ func main() {
 
 	dir := store.DataDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		fatal("Não consegui criar a pasta " + dir + ": " + err.Error())
+		fatal(i18n.T("log.nao_criei_pasta", "pasta", dir, "err", err))
 	}
 	logFile, err := applog.Open(filepath.Join(dir, "marcador.log"), 1<<20)
 	switch {
@@ -152,22 +153,23 @@ func main() {
 	}
 	say("Hallstream " + version)
 	if err != nil {
-		say("Não consegui criar o marcador.log: " + err.Error())
+		say(i18n.T("log.nao_criei_marcador_log", "err", err))
 	}
 
 	st, err := store.Open(dir)
 	if err != nil {
-		fatal("Não consegui abrir a pasta " + dir + ": " + err.Error())
+		fatal(i18n.T("log.nao_abri_pasta", "pasta", dir, "err", err))
 	}
 	w, err := newWriter(dir)
 	if err != nil {
-		fatal("Não consegui criar o raw.log em " + dir + ": " + err.Error())
+		fatal(i18n.T("log.nao_criei_raw_log", "pasta", dir, "err", err))
 	}
 	set := st.Settings()
+	i18n.SetLang(set.Lang)
 
 	tl, err := gamelog.OpenTimeline(filepath.Join(dir, "timeline.jsonl"))
 	if err != nil {
-		say("Não consegui criar o timeline.jsonl: " + err.Error())
+		say(i18n.T("log.nao_criei_timeline", "err", err))
 	}
 
 	m := state.New(time.Now)
@@ -190,14 +192,14 @@ func main() {
 			Saved:     func() string { return st.Settings().BoxAddress },
 			Save: func(addr string) {
 				if err := st.SetBoxAddress(addr); err != nil {
-					say("Não consegui guardar o endereço da caixa: " + err.Error())
+					say(i18n.T("log.nao_guardei_endereco_caixa", "err", err))
 				}
 			},
 		})
 		if f, err := os.OpenFile(filepath.Join(dir, "bluetooth.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
 			reader.DevLog = f
 		} else {
-			say("Não consegui criar o bluetooth.log: " + err.Error())
+			say(i18n.T("log.nao_criei_bluetooth_log", "err", err))
 		}
 	}
 
@@ -223,51 +225,49 @@ func main() {
 	// shortcut, and a moved program needs it pointing at the new exe.
 	if set.StartWithWindows && desktop.Autostart != nil {
 		if err := desktop.Autostart(true); err != nil {
-			say("Não consegui pôr o Marcador a abrir com o Windows: " + err.Error())
+			say(i18n.T("log.nao_pus_arranque", "err", err))
 		}
 	}
-	safely("Câmara", srv.RunCamera)
+	safely(i18n.T("log.tarefa.camara"), srv.RunCamera)
 	safely("OBS", srv.RunOBS)
 	safely("YouTube", srv.RunYouTube)
-	safely("Próximo jogo", srv.WatchNext)
-	safely("Envio dos registos", srv.RunUploads)
-	safely("Atualização da FPB", func() {
+	safely(i18n.T("log.tarefa.proximo"), srv.WatchNext)
+	safely(i18n.T("log.tarefa.envios"), srv.RunUploads)
+	safely(i18n.T("log.tarefa.fpb"), func() {
 		srv.FirstRun(*demo)
 		srv.Daily(*demo)
 	})
 	l, port, err := web.Listen(set.PhoneAccess)
 	if err != nil {
-		fatal("Não consegui abrir o servidor: " + err.Error())
+		fatal(i18n.T("log.nao_abri_servidor", "err", err))
 	}
 	srv.Port = port
 	go func() {
 		hs := &http.Server{Handler: srv, ReadHeaderTimeout: 10 * time.Second}
 		if err := hs.Serve(l); err != nil {
-			fatal("O servidor parou: " + err.Error())
+			fatal(i18n.T("log.servidor_parou", "err", err))
 		}
 	}()
 
 	panel := fmt.Sprintf("http://127.0.0.1:%d/painel", port)
 	overlay := fmt.Sprintf("http://127.0.0.1:%d/overlay", port)
-	say("Painel: " + panel)
-	say("Overlay: " + overlay + " (Browser Source no OBS, 1920x1080)")
+	say(i18n.T("log.painel", "url", panel))
+	say(i18n.T("log.overlay", "url", overlay))
 	if set.PhoneAccess {
 		if ip := web.LanIP(); ip != "" {
-			say(fmt.Sprintf("Telemóvel: http://%s:%d/painel (pede o PIN)", ip, port))
+			say(i18n.T("log.telemovel", "url", fmt.Sprintf("http://%s:%d/painel", ip, port)))
 		}
 	}
-	say("Dados em: " + dir)
+	say(i18n.T("log.dados_em", "pasta", dir))
 	if port != web.FirstPort {
-		go desktop.Warn(fmt.Sprintf("A porta %d está ocupada por outro programa, por isso o Hallstream abriu na porta %d.\n\n"+
-			"No OBS, mude o endereço da fonte do marcador para %s, ou feche o outro programa e volte a abrir o Hallstream.",
-			web.FirstPort, port, overlay))
+		go desktop.Warn(i18n.T("log.porta_ocupada_aviso", "pedida", web.FirstPort, "porta", port, "overlay", overlay))
 	}
 	if !*noBrowser {
 		openBrowser(panel)
 	}
 
 	if *demo {
-		say("MODO DEMO: dados inventados, sem ligação à caixa.")
+		say(i18n.T("log.modo_demo"))
 		m.SetDemo(true)
 	} else {
 		go func() {
@@ -296,14 +296,14 @@ func main() {
 			if !srv.Streaming() {
 				return true
 			}
-			msg := "A transmissão está no ar. Se sair, o grafismo desaparece da transmissão.\n\nSair na mesma?"
+			msg := i18n.T("app.sair.no_ar")
 			if st.Settings().OBS.CloseOnExit {
-				msg = "A transmissão está no ar. Se sair, o OBS fecha e a transmissão termina.\n\nSair na mesma?"
+				msg = i18n.T("app.sair.no_ar_fecha_obs")
 			}
 			return desktop.Ask(msg)
 		},
 		Quit: func() {
-			say("A fechar o programa.")
+			say(i18n.T("log.a_fechar"))
 			srv.Camera.Stop()
 			srv.CloseOBS()
 			if reader != nil {
@@ -327,13 +327,13 @@ func main() {
 func trayStatus(s state.State) string {
 	switch {
 	case s.Demo:
-		return "Modo demonstração"
+		return i18n.T("app.bandeja.demo")
 	case s.Box.Connected:
-		return "Caixa: ligada"
+		return i18n.T("app.bandeja.ligada")
 	case s.Box.Scan.Bluetooth == "off" || s.Box.Scan.Bluetooth == "unavailable":
-		return "Caixa: Bluetooth desligado"
+		return i18n.T("app.bandeja.bluetooth_desligado")
 	default:
-		return "Caixa: à procura"
+		return i18n.T("app.bandeja.a_procura")
 	}
 }
 
@@ -342,13 +342,13 @@ func trayStatus(s state.State) string {
 func restorePeriods(st *store.Store, m *state.Machine) {
 	var ps []state.Period
 	if err := st.LoadPeriods(&ps); err != nil {
-		say("Não consegui ler os períodos guardados: " + err.Error())
+		say(i18n.T("log.nao_li_periodos", "err", err))
 		ps = nil
 	}
 	m.RestorePeriods(ps)
 	m.SavePeriods = func(ps []state.Period) {
 		if err := st.SavePeriods(ps); err != nil {
-			say("Não consegui guardar os períodos: " + err.Error())
+			say(i18n.T("log.nao_guardei_periodos", "err", err))
 		}
 	}
 }
@@ -377,7 +377,7 @@ func saveHistory(st *store.Store, s state.State) {
 		"final":    final,
 	})
 	if err != nil {
-		say("Não consegui guardar o histórico do jogo: " + err.Error())
+		say(i18n.T("log.nao_guardei_historico", "err", err))
 	}
 }
 
@@ -392,7 +392,7 @@ func openBrowser(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	if err := cmd.Start(); err != nil {
-		say("Não consegui abrir o browser (" + err.Error() + "). Abra o painel em " + url)
+		say(i18n.T("log.nao_abri_browser", "err", err, "url", url))
 		return
 	}
 	go cmd.Wait()

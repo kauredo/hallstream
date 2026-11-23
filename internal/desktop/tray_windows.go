@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	"fyne.io/systray"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Run shows the icon and blocks until "Sair" (or Windows logging off) has
@@ -15,13 +17,13 @@ func (t Tray) Run() {
 		systray.SetIcon(t.Icon)
 		systray.SetTooltip(t.Tooltip)
 		systray.SetOnTapped(t.Panel)
-		open := systray.AddMenuItem("Abrir painel", "")
-		cp := systray.AddMenuItem("Copiar endereço do overlay", t.Overlay)
+		open := systray.AddMenuItem(i18n.T("app.bandeja.abrir"), "")
+		cp := systray.AddMenuItem(i18n.T("app.bandeja.copiar"), t.Overlay)
 		systray.AddSeparator()
 		status := systray.AddMenuItem(t.Status(), "")
 		status.Disable()
 		systray.AddSeparator()
-		exit := systray.AddMenuItem("Sair", "Fechar o Hallstream")
+		exit := systray.AddMenuItem(i18n.T("app.bandeja.sair"), i18n.T("app.bandeja.sair_dica"))
 		go func() {
 			last := ""
 			for range t.Changed {
@@ -38,7 +40,7 @@ func (t Tray) Run() {
 					t.Panel()
 				case <-cp.ClickedCh:
 					if err := CopyText(t.Overlay); err != nil {
-						t.Log("Não consegui copiar o endereço: " + err.Error())
+						t.Log(i18n.T("app.bandeja.nao_copiei", "err", err))
 					}
 				case <-exit.ClickedCh:
 					if t.ConfirmQuit != nil && !t.ConfirmQuit() {

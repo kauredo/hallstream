@@ -2,13 +2,13 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -74,7 +74,7 @@ func (s *Server) SyncAll(maxAge time.Duration) {
 			if err != nil {
 				return
 			}
-			s.Log(fmt.Sprintf("Escalões do clube: %d criados, %d jogadores importados.", res.Created, res.ImportedPlayers))
+			s.Log(i18n.T("log.clube.feito", "criados", res.Created, "jogadores", res.ImportedPlayers))
 		}
 		s.newSeason(clubPlan(search, teams))
 	}
@@ -87,16 +87,16 @@ func (s *Server) SyncAll(maxAge time.Duration) {
 			continue
 		}
 		if time.Now().After(deadline) {
-			s.Log("A atualização da FPB demorou demasiado; continuo amanhã.")
+			s.Log(i18n.T("log.fpb.demorou"))
 			break
 		}
 		_, _, err := s.syncGroup(g.ID, deadline)
 		if errors.Is(err, fpb.ErrBusy) {
-			s.Log("A FPB está a receber demasiados pedidos; continuo amanhã.")
+			s.Log(i18n.T("log.fpb.ocupada"))
 			break
 		}
 		if err != nil {
-			s.Log("Não consegui atualizar " + g.Name + " da FPB: " + err.Error())
+			s.Log(i18n.T("log.fpb.nao_atualizei", "escalao", g.Name, "err", err))
 		}
 	}
 	s.SyncGame()
@@ -104,9 +104,9 @@ func (s *Server) SyncAll(maxAge time.Duration) {
 
 // syncInBackground updates one escalão without making the caller wait.
 func (s *Server) syncInBackground(gid string) {
-	s.once("Atualização da FPB", func() {
+	s.once(i18n.T("log.tarefa.fpb"), func() {
 		if _, _, err := s.syncGroup(gid, time.Now().Add(maxRun)); err != nil {
-			s.Log("Não consegui atualizar o escalão da FPB: " + err.Error())
+			s.Log(i18n.T("log.fpb.nao_atualizei_escalao", "err", err))
 		}
 		s.SyncGame()
 	})
@@ -141,7 +141,7 @@ func (s *Server) recordClubTeams(plan []clubTeamPlan) {
 		}
 	}
 	if err := s.Store.SetClubTeams(ids); err != nil {
-		s.Log("Não consegui guardar as definições: " + err.Error())
+		s.Log(i18n.T("log.nao_guardei_definicoes", "err", err))
 	}
 }
 
@@ -162,7 +162,7 @@ func (s *Server) newSeason(plan []clubTeamPlan) {
 	s.recordClubTeams(plan)
 	if now > set.ClubSeason {
 		if err := s.Store.SetClubSeason(now); err != nil {
-			s.Log("Não consegui guardar as definições: " + err.Error())
+			s.Log(i18n.T("log.nao_guardei_definicoes", "err", err))
 		}
 	}
 }
@@ -216,12 +216,12 @@ func (s *Server) moveSeason(plan []clubTeamPlan, clubTeams []int64) {
 		})
 		switch {
 		case err != nil:
-			s.Log("Não consegui guardar " + g.Name + ": " + err.Error())
+			s.Log(i18n.T("log.nao_guardei_escalao", "escalao", g.Name, "err", err))
 		case len(cand) == 1:
 			linked[cand[0].ID] = true
-			s.Log("Época nova: " + g.Name + " passou para a equipa " + teamLabel(cand[0].TeamInfo) + " da FPB.")
+			s.Log(i18n.T("log.fpb.epoca_nova", "escalao", g.Name, "equipa", teamLabel(cand[0].TeamInfo)))
 		case !g.NeedsTeam:
-			s.Log("Época nova: escolha a equipa da FPB de " + g.Name + " no Plantel.")
+			s.Log(i18n.T("log.fpb.epoca_nova_escolha", "escalao", g.Name))
 		}
 	}
 	res := setupResult{}
@@ -244,7 +244,7 @@ func linkTeam(g *store.Group, t fpb.TeamInfo) {
 	g.FPBTeamID, g.FPBTeamName, g.FPBTeamKey, g.NeedsTeam = t.ID, teamLabel(t), escalaoName(t), false
 }
 
-var errTeamChanged = errors.New("o escalão mudou de equipa")
+var errTeamChanged error = i18n.Key("log.fpb.mudou_equipa")
 
 // syncGroup is "Importar da FPB" with every suggestion accepted, for one
 // linked escalão. Returns what changed and how many photos failed.

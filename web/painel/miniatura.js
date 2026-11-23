@@ -11,8 +11,8 @@
     ink: '#070B12', 'ink-rgb': '7,11,18', tint: '#2F4B7C', navy: '#1C1A17' };
   var C = THEME;
   function colours(st) {
-    var t = (st.game && st.game.theme) || {}, c = {};
-    Object.keys(THEME).forEach(function (k) { c[k] = typeof t[k] === 'string' ? t[k] : THEME[k]; });
+    var tx = (st.game && st.game.theme) || {}, c = {};
+    Object.keys(THEME).forEach(function (k) { c[k] = typeof tx[k] === 'string' ? tx[k] : THEME[k]; });
     return c;
   }
   function ink(a) { return 'rgba(' + C['ink-rgb'] + ',' + a + ')'; }
@@ -27,7 +27,7 @@
     ['M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z', 'red']
   ];
 
-  function fmt(o, d) { return new Intl.DateTimeFormat('pt-PT', Object.assign({ timeZone: TZ }, o)).format(d); }
+  function fmt(o, d) { return new Intl.DateTimeFormat(t('data.locale'), Object.assign({ timeZone: TZ }, o)).format(d); }
   function gameDate(st) {
     var d = st.game && st.game.start ? new Date(st.game.start) : null;
     return d && !isNaN(d) ? d : null;
@@ -37,12 +37,12 @@
   }
   function names(st) {
     var g = st.game || {}, live = st.live || {};
-    return { home: (g.home && g.home.name) || live.home_name || 'CASA', away: (g.away && g.away.name) || live.away_name || 'VISITANTE' };
+    return { home: (g.home && g.home.name) || live.home_name || t('painel.miniatura.casa'), away: (g.away && g.away.name) || live.away_name || t('painel.miniatura.visitante') };
   }
   function fileName(st) {
     var n = names(st), d = gameDate(st) || new Date();
     var day = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TZ }).format(d);
-    return 'miniatura-' + (slug(n.home) || 'casa') + '-vs-' + (slug(n.away) || 'visitante') + '-' + day + '.png';
+    return t('painel.miniatura.ficheiro', { casa: slug(n.home) || t('painel.miniatura.ficheiro_casa'), visitante: slug(n.away) || t('painel.miniatura.ficheiro_visitante'), dia: day });
   }
 
   function loadImage(url) {
@@ -138,18 +138,18 @@
   }
 
   function shield(x, cx, team, img, bar, tileBg) {
-    var w = 220, h = 284, l = cx - w / 2, t = 132;
+    var w = 220, h = 284, l = cx - w / 2, tx = 132;
     x.save();
     x.shadowColor = 'rgba(0,0,0,0.5)'; x.shadowBlur = 22; x.shadowOffsetY = 14;
     x.fillStyle = '#FFFFFF'; x.beginPath();
-    x.moveTo(l, t); x.lineTo(l + w, t); x.lineTo(l + w, t + h * 0.66); x.lineTo(cx, t + h); x.lineTo(l, t + h * 0.66); x.closePath(); x.fill();
+    x.moveTo(l, tx); x.lineTo(l + w, tx); x.lineTo(l + w, tx + h * 0.66); x.lineTo(cx, tx + h); x.lineTo(l, tx + h * 0.66); x.closePath(); x.fill();
     x.restore();
-    x.fillStyle = bar; x.fillRect(l, t, w, 10);
-    if (img) return contain(x, img, cx, t + 28 + 106, 172, 212);
+    x.fillStyle = bar; x.fillRect(l, tx, w, 10);
+    if (img) return contain(x, img, cx, tx + 28 + 106, 172, 212);
     // No crest: the initials, as the overlay's tiles do.
-    x.fillStyle = tileBg; x.fillRect(cx - 60, t + 70, 120, 120);
+    x.fillStyle = tileBg; x.fillRect(cx - 60, tx + 70, 120, 120);
     x.textBaseline = 'middle';
-    text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, t + 132, '400 52px ' + DISPLAY, C.navy, 0);
+    text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, tx + 132, '400 52px ' + DISPLAY, C.navy, 0);
     x.textBaseline = 'alphabetic';
   }
 
@@ -176,7 +176,7 @@
     lean(x, W / 2 + 8, 236, 132, 92, C.red);
     lean(x, W / 2, 228, 132, 92, '#FFFFFF');
     x.textBaseline = 'middle';
-    text(x, 'VS', W / 2, 276, '800 64px ' + COND, C['red-text'], 0);
+    text(x, t('overlay.vs'), W / 2, 276, '800 64px ' + COND, C['red-text'], 0);
     x.textBaseline = 'alphabetic';
   }
 
@@ -206,14 +206,14 @@
     var x = c.getContext('2d');
     C = colours(st);
     backdrop(x, img.photo);
-    lockup(x, n.home, g.sport_label || 'BASKET');
+    lockup(x, n.home, g.sport_label || t('overlay.desporto_omissao'));
     plate(x, String((g.group && g.group.name) || '').toUpperCase());
     shield(x, HOME_X, home, img.home, C.red, '#FFFFFF');
     shield(x, AWAY_X, away, img.away, away.color || '#5C6170', GREY);
     vs(x);
     name(x, n.home, HOME_X);
     name(x, n.away, AWAY_X);
-    if (g.at_home === true || g.at_home === false) tag(x, g.at_home ? 'EM CASA' : 'FORA', HOME_X);
+    if (g.at_home === true || g.at_home === false) tag(x, g.at_home ? t('overlay.proximo.em_casa') : t('overlay.proximo.fora'), HOME_X);
     when(x, gameDate(st));
     return c;
   }
@@ -232,7 +232,7 @@
   }
 
   function download(c, st) {
-    return new Promise(function (resolve, reject) { c.toBlob(function (b) { b ? resolve(b) : reject(new Error('PNG vazio')); }, 'image/png'); })
+    return new Promise(function (resolve, reject) { c.toBlob(function (b) { b ? resolve(b) : reject(new Error(t('painel.imagem.vazia'))); }, 'image/png'); })
       .then(function (blob) {
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

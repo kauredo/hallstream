@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -16,6 +14,8 @@ import (
 	"time"
 
 	"golang.org/x/net/websocket"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 type Config struct {
@@ -58,7 +58,7 @@ func dial(cfg Config) (*websocket.Conn, error) {
 	wc.Dialer = &net.Dialer{Timeout: 3 * time.Second}
 	conn, err := websocket.DialConfig(wc)
 	if err != nil {
-		return nil, errors.New("o OBS não responde em " + addr + " (o servidor WebSocket está ligado?)")
+		return nil, i18n.Err("obs.nao_responde", "endereco", addr)
 	}
 	conn.SetDeadline(time.Now().Add(5 * time.Second))
 
@@ -82,7 +82,7 @@ func dial(cfg Config) (*websocket.Conn, error) {
 	}
 	if err := receive(conn, 2, nil); err != nil {
 		conn.Close()
-		return nil, errors.New("o OBS recusou a ligação (palavra-passe errada?)")
+		return nil, i18n.Err("obs.palavra_passe")
 	}
 	return conn, nil
 }
@@ -125,7 +125,7 @@ func Test(cfg Config) error {
 func (c *Client) SetScene(cfg Config, scene string) error {
 	err := c.Request(cfg, "SetCurrentProgramScene", map[string]string{"sceneName": scene}, nil)
 	if re, ok := err.(*RequestError); ok {
-		return fmt.Errorf("o OBS não mudou para a cena %q: %s", scene, re.Comment)
+		return i18n.Err("obs.nao_mudou_cena", "cena", strconv.Quote(scene), "erro", re.Comment)
 	}
 	return err
 }
@@ -138,7 +138,7 @@ type RequestError struct {
 }
 
 func (e *RequestError) Error() string {
-	return fmt.Sprintf("o OBS recusou %s: %s", e.Type, e.Comment)
+	return i18n.T("obs.recusou", "pedido", e.Type, "erro", e.Comment)
 }
 
 // NotFound is the obs-websocket status for a missing scene, source or item.

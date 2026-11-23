@@ -9,6 +9,7 @@ import (
 	_ "time/tzdata" // Windows has no zone database
 
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
@@ -55,7 +56,7 @@ func (s *Server) refreshNextInBackground() {
 	if !s.nextQueued.CompareAndSwap(false, true) {
 		return
 	}
-	s.once("Próximo jogo", func() {
+	s.once(i18n.T("log.tarefa.proximo"), func() {
 		s.nextMu.Lock()
 		defer s.nextMu.Unlock()
 		s.nextQueued.Store(false)
@@ -88,21 +89,21 @@ func (s *Server) refreshNext() {
 
 func (s *Server) findNext(g store.Game, now time.Time) fixtures {
 	if g.GroupID == "" {
-		return fixtures{note: "Escolha primeiro o escalão do jogo."}
+		return fixtures{note: i18n.T("proximo.sem_escalao")}
 	}
 	grp, err := s.Store.Group(g.GroupID)
 	if err != nil || grp.FPBTeamID == 0 {
-		return fixtures{note: "O escalão do jogo não está ligado à FPB."}
+		return fixtures{note: i18n.T("proximo.sem_fpb")}
 	}
 	list, err := s.FPB.NextGames(grp.FPBTeamID)
 	if errors.Is(err, fpb.ErrNotFound) {
-		return fixtures{note: "A FPB não conhece a equipa deste escalão."}
+		return fixtures{note: i18n.T("proximo.equipa_desconhecida")}
 	}
 	if errors.Is(err, fpb.ErrBusy) {
-		return fixtures{note: "A FPB está a receber demasiados pedidos."}
+		return fixtures{note: i18n.T("proximo.fpb_ocupada")}
 	}
 	if err != nil {
-		return fixtures{note: "Sem ligação à FPB."}
+		return fixtures{note: i18n.T("proximo.sem_ligacao")}
 	}
 	start, _ := time.Parse(time.RFC3339, g.Start)
 	cur, next := pickNext(list.Games, g.FPBGameID, start, now)
@@ -112,7 +113,7 @@ func (s *Server) findNext(g store.Game, now time.Time) fixtures {
 		f.atHome = &home
 	}
 	if next < 0 {
-		f.note = "A FPB não tem outro jogo deste escalão nos próximos 14 dias."
+		f.note = i18n.T("proximo.sem_jogo")
 		return f
 	}
 	f.next = s.nextGame(list.Games[next], grp.FPBTeamID)
@@ -193,7 +194,7 @@ func (s *Server) nextGame(x fpb.NextGame, teamID int64) *state.NextGame {
 		n.Start = t.Format(time.RFC3339)
 	}
 	if x.GameWeek != "" {
-		n.Round = "Jornada " + string(x.GameWeek)
+		n.Round = i18n.T("jogo.jornada", "n", string(x.GameWeek))
 	}
 	t := state.Team{Name: opponentName(opp.Name, opp.ShortName), Color: fpb.Neutral}
 	if r := []rune(strings.TrimSpace(opp.ShortName)); len(r) > 0 && len(r) <= 4 {
@@ -229,7 +230,7 @@ func (s *Server) opponentCrest(opp fpb.Team) (string, []byte) {
 	}
 	data, ext, err := s.FPB.Download(logo)
 	if err != nil {
-		s.Log("Não consegui descarregar o logótipo do próximo adversário: " + err.Error())
+		s.Log(i18n.T("log.proximo.nao_descarreguei_logo", "err", err))
 		return "", nil
 	}
 	u, err := s.Store.SaveMedia(base+ext, data)

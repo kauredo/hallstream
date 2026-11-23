@@ -11,6 +11,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Console is false: the exe is built without a console window.
@@ -41,18 +43,18 @@ func Ask(msg string) bool {
 
 // Shortcut puts "Hallstream.lnk" on the user's desktop (the real one, also
 // when OneDrive moved it), pointing at this exe, started in its folder.
-var Shortcut = func() (string, error) { return link(windows.FOLDERID_Desktop, "o ambiente de trabalho") }
+var Shortcut = func() (string, error) { return link(windows.FOLDERID_Desktop, i18n.T("app.ambiente_trabalho")) }
 
 // Autostart puts the same shortcut in the user's Startup folder, so
 // Windows opens the program at sign-in, or takes it out.
 var Autostart = func(on bool) error {
 	if on {
-		_, err := link(windows.FOLDERID_Startup, "a pasta Arranque")
+		_, err := link(windows.FOLDERID_Startup, i18n.T("app.pasta_arranque"))
 		return err
 	}
 	dir, err := windows.KnownFolderPath(windows.FOLDERID_Startup, windows.KF_FLAG_DEFAULT)
 	if err != nil {
-		return errors.New("não encontrei a pasta Arranque: " + err.Error())
+		return i18n.Err("app.nao_encontrei_arranque", "err", err)
 	}
 	if err := os.Remove(filepath.Join(dir, title+".lnk")); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -68,7 +70,7 @@ func link(folder *windows.KNOWNFOLDERID, name string) (string, error) {
 	}
 	dir, err := windows.KnownFolderPath(folder, windows.KF_FLAG_DEFAULT)
 	if err != nil {
-		return "", errors.New("não encontrei " + name + ": " + err.Error())
+		return "", i18n.Err("app.nao_encontrei", "pasta", name, "err", err)
 	}
 	sys, err := windows.GetSystemDirectory()
 	if err != nil {

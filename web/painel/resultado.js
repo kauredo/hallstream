@@ -10,8 +10,8 @@
   var THEME = { red: '#2F4B7C', 'on-red': '#FFFFFF', kit: '#223659', 'on-kit': '#FFFFFF', navy: '#1C1A17' };
   var C = THEME;
   function colours(st) {
-    var t = (st.game && st.game.theme) || {}, c = {};
-    Object.keys(THEME).forEach(function (k) { c[k] = typeof t[k] === 'string' ? t[k] : THEME[k]; });
+    var tx = (st.game && st.game.theme) || {}, c = {};
+    Object.keys(THEME).forEach(function (k) { c[k] = typeof tx[k] === 'string' ? tx[k] : THEME[k]; });
     return c;
   }
   var COND = '"Barlow Condensed", sans-serif', TEXT = 'Barlow, sans-serif', DISPLAY = 'Graduate, serif';
@@ -24,13 +24,13 @@
   function joinDot() {
     return Array.prototype.filter.call(arguments, function (s) { return s != null && String(s).trim() !== ''; }).join(' · ');
   }
-  function periodLabel(n) { return n <= 4 ? n + 'º' : n === 5 ? 'Prol.' : 'Prol. ' + (n - 4); }
+  function periodLabel(n) { return n <= 4 ? t('painel.resultado.periodo', { n: n }) : n === 5 ? t('painel.resultado.prol') : t('painel.resultado.prol_n', { n: n - 4 }); }
 
   // Final = o 4º período (ou um prolongamento) já registado e nenhum período novo a decorrer.
   function heading(st) {
     var ps = st.periods || [], last = ps[ps.length - 1], now = parseInt((st.live || {}).period, 10);
-    if (last && last.period >= 4 && !(now > last.period)) return 'RESULTADO FINAL';
-    return st.screen && st.screen.current === 'intervalo' ? 'AO INTERVALO' : 'EM CURSO';
+    if (last && last.period >= 4 && !(now > last.period)) return t('painel.resultado.final');
+    return st.screen && st.screen.current === 'intervalo' ? t('painel.resultado.intervalo') : t('painel.resultado.em_curso');
   }
 
   function gameDate(st) {
@@ -38,18 +38,18 @@
     return isNaN(d) ? new Date() : d;
   }
   function dateLine(d) {
-    var wd = new Intl.DateTimeFormat('pt-PT', { weekday: 'long', timeZone: TZ }).format(d);
-    var day = new Intl.DateTimeFormat('pt-PT', { day: 'numeric', timeZone: TZ }).format(d);
-    var month = new Intl.DateTimeFormat('pt-PT', { month: 'short', timeZone: TZ }).format(d).replace('.', '');
-    var year = new Intl.DateTimeFormat('pt-PT', { year: 'numeric', timeZone: TZ }).format(d);
-    return wd.charAt(0).toUpperCase() + wd.slice(1) + ', ' + day + ' ' + month + ' ' + year;
+    var wd = new Intl.DateTimeFormat(t('data.locale'), { weekday: 'long', timeZone: TZ }).format(d);
+    var day = new Intl.DateTimeFormat(t('data.locale'), { day: 'numeric', timeZone: TZ }).format(d);
+    var month = new Intl.DateTimeFormat(t('data.locale'), { month: 'short', timeZone: TZ }).format(d).replace('.', '');
+    var year = new Intl.DateTimeFormat(t('data.locale'), { year: 'numeric', timeZone: TZ }).format(d);
+    return t('painel.resultado.data', { dia_semana: wd.charAt(0).toUpperCase() + wd.slice(1), dia: day, mes: month, ano: year });
   }
   function fileName(st) {
     var away = (st.game && st.game.away) || {};
     var day = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TZ }).format(gameDate(st));
-    var who = String(away.short || away.name || (st.live || {}).away_name || 'jogo').normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'jogo';
-    return 'resultado-' + day + '-' + who + '.png';
+    var who = String(away.short || away.name || (st.live || {}).away_name || t('painel.resultado.jogo')).normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || t('painel.resultado.jogo');
+    return t('painel.resultado.ficheiro', { dia: day, adversario: who });
   }
 
   function loadImage(url) {
@@ -102,9 +102,9 @@
     tile(x, team, img, cx, onRed ? '#FFFFFF' : GREY, onRed ? C.red : (team.color || '#5C6170'));
     if (won) {
       x.font = '800 24px ' + COND; x.letterSpacing = '1.5px';
-      var w = x.measureText('VENCEDOR').width + 22;
+      var w = x.measureText(t('painel.resultado.vencedor')).width + 22;
       x.fillStyle = C.navy; x.fillRect(cx - w / 2, 432, w, 34);
-      text(x, 'VENCEDOR', cx + 0.75, 458, x.font, GOLD, 'center', 1.5);
+      text(x, t('painel.resultado.vencedor'), cx + 0.75, 458, x.font, GOLD, 'center', 1.5);
     }
     x.letterSpacing = '0px';
     text(x, name, cx, 540, fit(x, name, 58, DISPLAY, 400, NAME_MAX), onRed ? C['on-red'] : C.navy, 'center');
@@ -144,7 +144,7 @@
     if (!sp) return;
     var sw = 280, sh = 90, sx = W - 64 - sw;
     x.textBaseline = 'middle';
-    text(x, 'COM O APOIO DE', sx - 20, cy + 1, '700 20px ' + COND, MUTED, 'right', 1.5);
+    text(x, t('painel.resultado.apoio'), sx - 20, cy + 1, '700 20px ' + COND, MUTED, 'right', 1.5);
     x.fillStyle = '#FFFFFF'; x.fillRect(sx, cy - sh / 2, sw, sh);
     if (logo) contain(x, logo, sx + sw / 2, cy, sw - 28, sh - 20);
     else { x.letterSpacing = '0px'; text(x, sp.name || '', sx + sw / 2, cy + 1, fit(x, sp.name || '', 30, COND, 700, sw - 28), C.navy, 'center'); }
@@ -154,7 +154,7 @@
   function draw(st, homeImg, awayImg, logo) {
     var g = st.game || {}, live = st.live || {}, home = g.home || {}, away = g.away || {};
     var hs = +live.home || 0, as = +live.away || 0;
-    var head = heading(st), final = head === 'RESULTADO FINAL';
+    var head = heading(st), final = head === t('painel.resultado.final');
     var sp = g.sponsors && g.sponsors.principal;
     var c = document.createElement('canvas');
     c.width = c.height = W;
@@ -194,7 +194,7 @@
 
   function save(st) {
     return render(st).then(function (c) {
-      return new Promise(function (resolve, reject) { c.toBlob(function (b) { b ? resolve(b) : reject(new Error('PNG vazio')); }, 'image/png'); });
+      return new Promise(function (resolve, reject) { c.toBlob(function (b) { b ? resolve(b) : reject(new Error(t('painel.imagem.vazia'))); }, 'image/png'); });
     }).then(function (blob) {
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

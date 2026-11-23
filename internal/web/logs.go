@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
@@ -103,9 +104,9 @@ func (s *Server) logsEnd(rec *ytRecord) {
 	}
 	name := gamelog.BatchName(r.BroadcastID, start)
 	scrub := s.scrubber()
-	s.once("Envio dos registos", func() {
+	s.once(i18n.T("log.tarefa.envios"), func() {
 		if err := s.uploads.Write(name, meta, start, end, scrub); err != nil {
-			s.Log("Não consegui preparar os registos do jogo para enviar: " + err.Error())
+			s.Log(i18n.T("log.envio.nao_preparei", "err", err))
 			return
 		}
 		s.uploads.Send()

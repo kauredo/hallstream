@@ -15,6 +15,7 @@ Hallstream is an open-source game-day tool for basketball clubs. Volunteers doub
 - `docs/CONTRACT.md` is the behaviour contract: the state shape, every endpoint and every rule. Change it in the same commit as the behaviour.
 - Nothing club-specific lives in the code. The club's name, sigla, FPB search name (`settings.club_search`), coaches and sponsors come from the settings and the panel; `web/assets/crest.svg` is a neutral stand-in. Fixtures and tests use invented clubs and people only.
 - The visual system is `docs/design/SYSTEM-R3.md`, amended by `SYSTEM-R4.md` and then `SYSTEM-R8.md`. The later file wins.
+- The control panel's design context and tokens are in `docs/design-system.md`; it wears the Hallstream brand, while the overlay takes each club's colours.
 
 ## Constraints
 

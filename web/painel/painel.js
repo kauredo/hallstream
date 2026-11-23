@@ -321,7 +321,7 @@
     es.onerror = function () { $('#offline').hidden = false; };
   }
 
-  var liveGame = null;
+  var liveGame = null, lastScore = null, lastSide = '';
   function onLive() {
     var st = S.state; if (!st) return;
     var lv = st.live || {}, game = st.game || {};
@@ -331,7 +331,19 @@
     liveGame = gk;
     var hn = (game.home && game.home.short) || lv.home_name || 'Casa';
     var an = (game.away && game.away.short) || lv.away_name || 'Fora';
-    $('#liveScore').innerHTML = esc(hn) + ' ' + esc(lv.home) + '<span>–</span>' + esc(lv.away) + ' ' + esc(an);
+    // The side that scored last has its last digit lit, until the other side scores.
+    var hs = lv.home == null ? '' : String(lv.home), as = lv.away == null ? '' : String(lv.away);
+    if (lastScore && +hs > +lastScore[0]) lastSide = 'home';
+    else if (lastScore && +as > +lastScore[1]) lastSide = 'away';
+    lastScore = [hs, as];
+    function num(v, lit) {
+      return '<span class="n">' + (lit && v ? esc(v.slice(0, -1)) + '<span class="lit">' + esc(v.slice(-1)) + '</span>' : esc(v)) + '</span>';
+    }
+    function sig(name, side) {
+      var c = side && side.color;
+      return '<span class="sig"' + (/^#[0-9a-f]{3,8}$/i.test(c || '') ? ' style="--c:' + c + '"' : '') + '>' + esc(name) + '</span>';
+    }
+    $('#liveScore').innerHTML = sig(hn, game.home) + ' ' + num(hs, lastSide === 'home') + '<span class="sep">–</span>' + num(as, lastSide === 'away') + ' ' + sig(an, game.away);
     $('#liveClock').textContent = (lv.period ? lv.period + 'º · ' : '') + (lv.clock || '');
     var cur = st.screen && st.screen.current;
     var tag = $('#liveScreen');
@@ -359,9 +371,9 @@
       if (nb) nb.setAttribute('aria-selected', t === name ? 'true' : 'false');
     });
     try { localStorage.setItem('painel.tab', name); } catch (e) {}
-    // On a phone the tab row scrolls sideways: keep the open tab in sight.
+    // On a phone the tab row scrolls sideways: keep the open tab in sight, clear of the fade at the right edge.
     var navBtn = $('.nav [data-tab="' + name + '"]'), nav = navBtn && navBtn.parentElement;
-    if (nav) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, navBtn.offsetLeft - 8), navBtn.offsetLeft + navBtn.offsetWidth + 8 - nav.clientWidth);
+    if (nav) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, navBtn.offsetLeft - 8), navBtn.offsetLeft + navBtn.offsetWidth + 56 - nav.clientWidth);
     // The flow reuses the YouTube and OBS ids of Definições: only one is drawn at a time.
     if (name !== 'inicio') $('#inicio').innerHTML = '';
     if (name === 'inicio') { $('#definicoes').innerHTML = ''; openInicio(); }
@@ -616,7 +628,9 @@
     var html = '<div class="ecras-grid"><div>' +
       '<div class="card"><h2>No ecrã agora</h2>' +
       '<div class="screens" id="screens">' + SCREENS.map(function (s) {
-        return '<button class="scr' + (s.id === 'nada' ? ' nada' : '') + '" data-screen="' + s.id + '" aria-pressed="false">' + esc(s.label) + '<small>' + esc(s.hint) + '</small></button>';
+        return '<button class="scr' + (s.id === 'nada' ? ' nada' : '') + '" data-screen="' + s.id + '" aria-pressed="false">' +
+          '<span class="scr-pv" aria-hidden="true"><svg viewBox="0 0 160 90">' + PV_COURT + (PV[s.id] || '') + '</svg></span>' +
+          '<span class="scr-nome">' + esc(s.label) + '</span><small>' + esc(s.hint) + '</small></button>';
       }).join('') + '</div>' +
       '<div class="row" style="margin-top:14px;align-items:center">' +
         '<label class="switch"><input type="checkbox" id="autoScr"><i></i>Automático</label>' +
@@ -708,8 +722,44 @@
     }).join('');
   }
 
+  // What each screen puts on air, drawn small. The classes take the club's colours
+  // from the custom properties paintScreens sets on #screens (painel.css has the fallbacks).
+  var PV_COURT = '<rect class="pv-chao" width="160" height="90"/><path class="pv-linha" d="M80 0V90M0 22H18V68H0M160 22H142V68H160"/><circle class="pv-linha" cx="80" cy="45" r="12"/>';
+  function pvRect(cls, x, y, w, h, rx) {
+    return '<rect class="' + cls + '" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + (rx ? ' rx="' + rx + '"' : '') + '/>';
+  }
+  function pvShield(cls, x, y) { return '<path class="' + cls + '" d="M' + x + ' ' + y + 'h18v12c0 7-9 12-9 12s-9-5-9-12z"/>'; }
+  var PV = {
+    marcador: pvRect('pv-casa', 8, 8, 44, 10) + pvRect('pv-fora', 8, 18, 44, 10) + pvRect('pv-tinta', 52, 8, 18, 20) +
+      pvRect('pv-texto', 12, 11.5, 16, 3) + pvRect('pv-texto', 12, 21.5, 16, 3) + pvRect('pv-texto', 40, 11, 8, 4) + pvRect('pv-texto', 40, 21, 8, 4) +
+      pvRect('pv-papel', 55, 16.5, 12, 3),
+    abertura: pvShield('pv-casa pv-orla', 44, 24) + pvShield('pv-fora pv-orla', 98, 24) + pvRect('pv-papel', 76, 35, 8, 2) + pvRect('pv-papel', 54, 62, 52, 5),
+    plantel: [34, 28, 38, 30, 24].map(function (w, i) {
+      var y = 10 + i * 14;
+      return pvRect('pv-casa', 52, y, 56, 12) + pvRect('pv-texto', 55, y + 4, 6, 4) + pvRect('pv-texto', 66, y + 4.5, w, 3);
+    }).join(''),
+    desconto: pvRect('pv-tinta', 0, 68, 160, 22) + pvRect('pv-casa', 0, 68, 34, 22) + pvRect('pv-texto', 8, 77, 18, 4) +
+      pvRect('pv-papel', 42, 74, 62, 3) + pvRect('pv-papel pv-meio', 42, 80, 40, 3) + pvRect('pv-papel', 132, 76, 20, 6),
+    intervalo: pvRect('pv-papel', 38, 26, 84, 38) + pvRect('pv-casa', 38, 26, 42, 28) + pvRect('pv-fora', 80, 26, 42, 28) +
+      pvRect('pv-texto', 52, 34, 14, 12) + pvRect('pv-texto', 94, 34, 14, 12) + pvRect('pv-tinta', 66, 57, 28, 3),
+    final: pvRect('pv-tinta pv-orla', 38, 26, 84, 38) + pvRect('pv-casa', 42, 30, 36, 22) + pvRect('pv-fora', 82, 30, 36, 22) +
+      pvRect('pv-texto', 53, 35, 14, 12) + pvRect('pv-texto', 93, 35, 14, 12) + pvRect('pv-papel', 70, 56, 20, 3),
+    apoiantes: pvRect('pv-papel', 0, 62, 160, 28) + pvRect('pv-tinta', 10, 68, 30, 16) + pvRect('pv-oco', 46, 68, 30, 16) +
+      pvRect('pv-casa', 82, 68, 30, 16) + pvRect('pv-oco', 118, 68, 30, 16),
+    proximo: pvRect('pv-casa', 22, 30, 44, 26, 13) + pvRect('pv-fora', 94, 30, 44, 26, 13) + pvRect('pv-papel', 68, 30, 24, 12) +
+      pvRect('pv-tinta pv-orla', 68, 44, 24, 12) + pvRect('pv-texto', 36, 41, 16, 4) + pvRect('pv-texto', 108, 41, 16, 4),
+    voltamos: pvRect('pv-papel', 34, 30, 92, 30) + pvRect('pv-tinta', 50, 43, 60, 4)
+  };
+  function paintScreens(el, game) {
+    var t = (game && game.theme) || {};
+    [['--t-casa', (game && game.home && game.home.color) || t.red], ['--t-fora', game && game.away && game.away.color], ['--t-texto', t['on-red']]].forEach(function (p) {
+      if (/^#[0-9a-f]{3,8}$/i.test(p[1] || '')) el.style.setProperty(p[0], p[1]); else el.style.removeProperty(p[0]);
+    });
+  }
+
   function updateScreenButtons() {
     var st = S.state; if (!st || !$('#screens')) return;
+    paintScreens($('#screens'), st.game);
     var cur = st.screen && st.screen.current;
     $all('#screens .scr').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.screen === cur ? 'true' : 'false'); });
     // Próximo jogo only when the program found the next game; else the reason shows on the button.
@@ -734,7 +784,7 @@
     function paint() {
       var left = lt.until ? Math.max(0, Math.ceil((new Date(lt.until).getTime() - Date.now()) / 1000)) : null;
       el.innerHTML = '<div class="onscreen"><b>No ecrã</b><span>' + (lt.number ? '#' + esc(lt.number) + ' ' : '') + esc(lt.first_name) + ' ' + esc(lt.last_name) +
-        (lt.label ? ' · ' + esc(lt.label) : '') + '</span>' + (left !== null ? '<span class="hint" style="color:#fff">' + left + ' s</span>' : '') +
+        (lt.label ? ' · ' + esc(lt.label) : '') + '</span>' + (left !== null ? '<span class="hint">' + left + ' s</span>' : '') +
         '<span style="flex:1"></span><button class="btn small" data-act="lt-hide">Esconder</button></div>';
     }
     paint();

@@ -113,6 +113,41 @@ func TestOverlayRendersEveryFixture(t *testing.T) {
 	}
 }
 
+// The credit shows where the bottom-right corner is free, and only with
+// game.credit on (or missing, from an older program).
+func TestOverlayCredit(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	for name, want := range map[string]bool{
+		"credito-ligado":    true,
+		"credito-desligado": false,
+		"marcador":          true,  // no credit key
+		"rodape-baixo":      false, // the lower third has the corner
+		"rodape-jogador":    true,  // the lower third is bottom-left
+		"nada":              false,
+		"intervalo":         false, // the sponsor strip fills the bottom
+		"desconto":          false,
+		"apoiantes":         true,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&state=/overlay/fixtures/"+name+".json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, `document.documentElement.dataset.screen !== undefined`); err != nil {
+				t.Fatal(err)
+			}
+			on, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector("#credit").classList.contains("on")`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if on != want {
+				t.Errorf("credit shown %v, want %v", on, want)
+			}
+		})
+	}
+}
+
 func TestOverlayDotWhenTheProgramStops(t *testing.T) {
 	tab := chrome(t)
 	s := newServerFiles(t, assets.FS)

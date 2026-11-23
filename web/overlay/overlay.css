@@ -451,6 +451,13 @@ html[data-bug="bottom-left"] .lt.photo { left: 986px; }
 .lt.photo .lt-left { flex-basis: 314px; }
 .lt.photo .lt-photo { display: block; }
 
+/* ---------- Credit: the Hallstream lockup in Soalho, bottom-right in the safe area ----------
+   The SVG's own margin (about 7px at this size) is the padding of the backing, so the letters are 22px. */
+.credit { position: absolute; right: 64px; bottom: 64px; height: 36px; background: rgba(28,26,23,0.5); opacity: 0; transition: opacity var(--t-exit) var(--ease-in); pointer-events: none; }
+.credit img { display: block; height: 36px; width: auto; }
+/* Back after the lower third or the screen before has gone, so the two never cross. */
+.credit.on { opacity: 0.8; transition: opacity var(--t-enter) var(--ease-out) var(--t-long); }
+
 /* ---------- Próximo jogo: the Abertura layout, with the date block and the opponent from game.next ---------- */
 #s-proximo .away .ab-shield .bar { background: var(--next); }
 #s-proximo .ab-sub { max-width: 760px; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }

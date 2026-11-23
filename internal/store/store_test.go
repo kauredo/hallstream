@@ -215,6 +215,25 @@ func TestOldSettingsGetTheSponsorCorner(t *testing.T) {
 	}
 }
 
+func TestCreditIsOnByDefault(t *testing.T) {
+	if !DefaultSettings().Credit {
+		t.Error("new settings: credit off")
+	}
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"auto_screens":false}`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !s.Settings().Credit {
+		t.Error("settings.json without credit: credit off")
+	}
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"credit":false}`), 0o644)
+	if s, err = Open(dir); err != nil || s.Settings().Credit {
+		t.Errorf("credit:false not kept (%v)", err)
+	}
+}
+
 func TestOldSettingsMoveHomeNameToClub(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settings.json")

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Reduzido A, Esquadro</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&amp;family=Barlow+Condensed:wght@500;600;700;800&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.feed{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.band{clip-path:polygon(381px 0, 421px 0, 222.86px 932px, 182.86px 932px)}
+.bandline{clip-path:polygon(381px 0, 387px 0, 188.86px 932px, 182.86px 932px)}
+.u1{clip-path:polygon(0 0, 276.94px 0, 235.27px 196px, 0 196px)}
+.u2{clip-path:polygon(0 0, 230.16px 0, 188.5px 196px, 0 196px)}
+.slot{background:#FFFFFF;box-sizing:border-box;height:96px;min-width:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:18px;color:#8A8F9C}
+.lbl{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;line-height:1;letter-spacing:1.5px;color:rgba(255,255,255,0.72)}
+.pip{width:12px;height:22px}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; background: #181841; font-family: 'Barlow Condensed', sans-serif; color: #FFFFFF">
+
+<div style="position: absolute; left: 416px; top: 64px; width: 1440px; height: 810px; overflow: hidden; background: #2A1C12">
+<img class="feed" src="/_blob/9c2940bf8bca730ed6082a9a6d99b693" alt="Imagem em direto do pavilhão">
+</div>
+
+<div class="band" style="position: absolute; left: 0; top: 0; width: 440px; height: 932px; background: #181841"></div>
+<div class="bandline" style="position: absolute; left: 0; top: 0; width: 440px; height: 932px; background: #FFFFFF"></div>
+
+<div style="position: absolute; left: 64px; top: 64px; width: 284px; font-weight: 800; font-size: 36px; line-height: 1; white-space: nowrap; text-transform: uppercase; color: #D6BD2F">{{reasonTop}}</div>
+
+<div class="u1" style="position: absolute; left: 64px; top: 132px; width: 277px; height: 196px">
+<div style="height: 48px; box-sizing: border-box; padding-left: 14px; background: #BD1522; display: flex; align-items: center; font-family: Graduate, serif; font-size: 28px; white-space: nowrap; overflow: hidden; color: #FFFFFF">CASA</div>
+<div style="display: flex; height: 104px">
+<div style="width: 104px; height: 104px; flex: none; background: #FFFFFF; position: relative; display: flex; align-items: center; justify-content: center">
+<img src="/_blob/594604fee97726efd14dc644fe154a1a" alt="Emblema do Clube Exemplo" style="height: 79px; width: 90px; object-fit: contain">
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: #BD1522"></div>
+</div>
+<div style="flex: 1; height: 104px; box-sizing: border-box; padding-right: 21px; background: #8B2223; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 60px; line-height: 1; font-variant-numeric: tabular-nums; color: #FFFFFF">41</div>
+</div>
+<div style="height: 44px; box-sizing: border-box; border-bottom: 2px solid #BD1522; display: flex; align-items: center; gap: 10px">
+<div class="lbl">FALTAS</div>
+<div style="font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; color: #FFFFFF">2</div>
+<div style="display: flex; gap: 6px">
+<div class="pip" style="background: #FFFFFF"></div>
+<div class="pip" style="background: #FFFFFF"></div>
+<div class="pip" style="background: rgba(255,255,255,0.25)"></div>
+<div class="pip" style="background: rgba(255,255,255,0.25)"></div>
+</div>
+</div>
+</div>
+
+<div class="u2" style="position: absolute; left: 64px; top: 352px; width: 231px; height: 196px">
+<div style="height: 48px; box-sizing: border-box; padding-left: 14px; background: #FFFFFF; display: flex; align-items: center; font-family: Graduate, serif; font-size: 28px; white-space: nowrap; overflow: hidden; color: #181841">VISITANTE</div>
+<div style="display: flex; height: 104px">
+<div style="width: 104px; height: 104px; flex: none; background: #ECEAE6; position: relative; display: flex; align-items: center; justify-content: center">
+<div style="width: 81px; height: 81px; box-sizing: border-box; border: 2px dashed #B9B4AC; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Emblema</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: {{awayColor}}"></div>
+</div>
+<div style="flex: 1; height: 104px; box-sizing: border-box; padding-right: 21px; background: #ECEAE6; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 60px; line-height: 1; font-variant-numeric: tabular-nums; color: #181841">38</div>
+</div>
+<div style="height: 44px; box-sizing: border-box; border-bottom: 2px solid #ECEAE6; display: flex; align-items: center; gap: 10px">
+<div class="lbl">FALTAS</div>
+<div style="font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; color: #D6BD2F">4</div>
+<div style="display: flex; gap: 6px">
+<div class="pip" style="background: #D6BD2F"></div>
+<div class="pip" style="background: #D6BD2F"></div>
+<div class="pip" style="background: #D6BD2F"></div>
+<div class="pip" style="background: #D6BD2F"></div>
+</div>
+</div>
+</div>
+
+<div style="position: absolute; left: 64px; top: 580px; width: 170px">
+<div class="lbl">TEMPO DE JOGO</div>
+<div style="font-weight: 800; font-size: 36px; line-height: 1; margin-top: 12px; white-space: nowrap; color: #FFFFFF">2º PERÍODO</div>
+<div style="font-weight: 800; font-size: 64px; line-height: 1; margin-top: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; color: #FFFFFF">07:45</div>
+</div>
+
+<div style="position: absolute; left: 0; top: 932px; width: 1920px; height: 148px; background: #181841; border-top: 2px solid #BD1522; box-sizing: border-box">
+<div style="position: absolute; left: 64px; right: 64px; top: 0; bottom: 0; display: flex; align-items: center; gap: 20px">
+<div class="lbl" style="width: 220px; flex: none">COM O APOIO DE</div>
+<div class="slot" style="flex: 2 1 0">Logótipo patrocinador</div>
+<div class="slot" style="flex: 1 1 0">Logótipo patrocinador</div>
+<div class="slot" style="flex: 1 1 0">Logótipo patrocinador</div>
+<div class="slot" style="flex: 1 1 0">Logótipo patrocinador</div>
+<div class="slot" style="flex: 1 1 0">Logótipo patrocinador</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"awayColor":{"editor":"color","default":"#8A8F9C","options":["#8A8F9C","#2E6FD8","#1F8A4C","#F2C200","#111111"]},"freeThrows":{"editor":"boolean","default":false},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+const ft = this.props.freeThrows ?? false;
+return {
+awayColor: this.props.awayColor ?? '#8A8F9C',
+reasonTop: ft ? 'Lances livres' : 'Desconto de tempo'
+};
+}
+}
+</script>
+</body>
+</html>

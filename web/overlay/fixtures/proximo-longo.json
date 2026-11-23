@@ -1,0 +1,102 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "CASA",
+    "away_name": "VISITANTE",
+    "home": 0,
+    "away": 0,
+    "clock": "07:45",
+    "period": "2",
+    "home_fouls": 2,
+    "away_fouls": 4,
+    "shot": "14",
+    "sport": "basketball"
+  },
+  "periods": [],
+  "game": {
+    "group": {
+      "id": "senior-m",
+      "name": "Sénior Masculino",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "CASA",
+      "short": "CAS",
+      "crest_url": "/assets/crest.png",
+      "color": "#BD1522",
+      "initials": "CAS"
+    },
+    "away": {
+      "name": "ATLÉTICO VALE",
+      "short": "ATV",
+      "crest_url": "/overlay/fixtures/logos/opp-vale.svg",
+      "color": "#552D85",
+      "initials": "ATV"
+    },
+    "start": "2026-11-14T20:30:00Z",
+    "venue": "Pavilhão do Atlético, Vale Fundo",
+    "competition": "2ª Divisão Masculina",
+    "round": "Jornada 6",
+    "squad": [],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4,
+      "back_line": ""
+    },
+    "at_home": false,
+    "next": {
+      "at_home": false,
+      "opponent": {
+        "name": "SERRA ALTA B",
+        "short": "CDS",
+        "crest_url": null,
+        "color": "#1F6E3A",
+        "initials": "CDS"
+      },
+      "full_name": "Clube Desportivo da Serra Alta Basquetebol",
+      "start": "2026-12-06T11:00:00Z",
+      "venue": "Pavilhão Municipal Professor Doutor Joaquim Serra Alta, Vila Alta",
+      "competition": "Campeonato da 2ª Divisão Masculina",
+      "round": "1ª Fase · Jornada 9"
+    },
+    "next_note": ""
+  },
+  "screen": {
+    "current": "proximo",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": false,
+    "type": "jogador",
+    "number": "7",
+    "first_name": "Nome",
+    "last_name": "Apelido",
+    "label": "",
+    "until": null,
+    "photo_url": ""
+  },
+  "demo": false
+}

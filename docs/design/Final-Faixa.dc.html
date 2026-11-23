@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Final B, Faixa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&amp;family=Barlow+Condensed:wght@500;600;700;800&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cut-home-score{clip-path:polygon(0 0,272px 0,240px 100%,0 100%)}
+.cut-band-white{clip-path:polygon(32px 0,72px 0,40px 100%,0 100%)}
+.cut-band-navy{clip-path:polygon(38px 0,72px 0,40px 100%,6px 100%)}
+.cut-away-score{clip-path:polygon(32px 0,100% 0,100% 100%,0 100%)}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; background: #181841; font-family: 'Barlow Condensed', sans-serif">
+<img class="bg" src="/_blob/9c2940bf8bca730ed6082a9a6d99b693" alt="Pavilhão Municipal do Vale">
+<div style="position: absolute; inset: 0; background: rgba(8,8,16,0.62)"></div>
+
+<div style="position: absolute; left: 684px; top: 305px; width: 552px; height: 100px; box-sizing: border-box; background: #181841; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px">
+<div style="font-weight: 800; font-size: 40px; line-height: 1; letter-spacing: 1.5px; color: #D6BD2F; white-space: nowrap">RESULTADO FINAL</div>
+<div style="font-weight: 600; font-size: 24px; line-height: 1; letter-spacing: 1px; color: rgba(255,255,255,0.72); white-space: nowrap">[Competição] · Jornada [N]</div>
+</div>
+
+<div style="position: absolute; left: 0; top: 405px; width: 1920px; height: 150px">
+
+<div style="position: absolute; left: 0; top: 0; width: 684px; height: 150px; box-sizing: border-box; padding: 0 26px 0 214px; background: #BD1522; display: flex; align-items: center; justify-content: flex-end">
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px">
+<sc-if value="{{homeWon}}" hint-placeholder-val="{{ true }}">
+<div style="background: #181841; padding: 5px 10px; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: 1.5px; color: #D6BD2F; white-space: nowrap">VENCEDOR</div>
+</sc-if>
+<div style="font-family: Graduate, serif; font-size: 58px; line-height: 1; color: #FFFFFF; white-space: nowrap">CASA</div>
+</div>
+</div>
+<div style="position: absolute; left: 64px; top: 0; width: 150px; height: 150px; background: #FFFFFF">
+<div style="position: absolute; left: 0; top: 0; width: 150px; height: 144px; display: flex; align-items: center; justify-content: center">
+<img src="/_blob/594604fee97726efd14dc644fe154a1a" alt="Emblema do Clube Exemplo" style="height: 114px; width: 110px; object-fit: contain">
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: #BD1522"></div>
+</div>
+<div class="cut-home-score" style="position: absolute; left: 684px; top: 0; width: 272px; height: 150px; background: #8B2223">
+<div style="position: absolute; left: 0; top: 0; width: 240px; height: 150px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 120px; line-height: 1; font-variant-numeric: tabular-nums; color: #FFFFFF">{{home}}</div>
+</div>
+
+<div class="cut-band-white" style="position: absolute; left: 924px; top: 0; width: 72px; height: 150px; background: #FFFFFF"></div>
+<div class="cut-band-navy" style="position: absolute; left: 924px; top: 0; width: 72px; height: 150px; background: #181841"></div>
+
+<div class="cut-away-score" style="position: absolute; left: 964px; top: 0; width: 272px; height: 150px; background: #ECEAE6">
+<div style="position: absolute; left: 32px; top: 0; width: 240px; height: 150px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 120px; line-height: 1; font-variant-numeric: tabular-nums; color: #181841">{{away}}</div>
+</div>
+<div style="position: absolute; left: 1236px; top: 0; width: 684px; height: 150px; box-sizing: border-box; padding: 0 214px 0 26px; background: #FFFFFF; display: flex; align-items: center; justify-content: flex-start">
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px">
+<sc-if value="{{awayWon}}" hint-placeholder-val="{{ false }}">
+<div style="background: #181841; padding: 5px 10px; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: 1.5px; color: #D6BD2F; white-space: nowrap">VENCEDOR</div>
+</sc-if>
+<div style="font-family: Graduate, serif; font-size: 58px; line-height: 1; color: #181841; white-space: nowrap">VISITANTE</div>
+</div>
+</div>
+<div style="position: absolute; left: 1706px; top: 0; width: 150px; height: 150px; background: #ECEAE6">
+<div style="position: absolute; left: 16.5px; top: 13.5px; width: 117px; height: 117px; box-sizing: border-box; border: 2px dashed #B9B4AC; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Emblema</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: {{awayColor}}"></div>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 0; top: 860px; width: 1920px; height: 72px; background: #181841">
+<div style="position: absolute; left: 64px; right: 64px; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 14px; white-space: nowrap">
+<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="0.8"></circle></svg>
+<div style="font-weight: 700; font-size: 26px; line-height: 1; color: #FFFFFF"></div>
+<div style="width: 2px; height: 26px; margin: 0 10px; background: #4A4A66"></div>
+<div style="font-family: Barlow, sans-serif; font-weight: 500; font-size: 24px; line-height: 1; color: rgba(255,255,255,0.72)">Obrigado por estarem connosco</div>
+</div>
+</div>
+
+<div style="position: absolute; left: 0; top: 932px; width: 1920px; height: 148px; background: #181841">
+<div style="position: absolute; left: 0; top: 0; width: 1920px; height: 2px; background: #BD1522"></div>
+<div style="position: absolute; left: 64px; width: 1792px; top: 2px; bottom: 0; display: flex; align-items: center; gap: 20px">
+<div style="width: 220px; flex-shrink: 0; font-weight: 700; font-size: 22px; line-height: 1.2; letter-spacing: 1.5px; color: rgba(255,255,255,0.72)">COM O APOIO DE</div>
+<div style="width: calc((1552px - 80px) / 3); height: 96px; flex-shrink: 0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: calc((1552px - 80px) / 6); height: 96px; flex-shrink: 0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: calc((1552px - 80px) / 6); height: 96px; flex-shrink: 0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: calc((1552px - 80px) / 6); height: 96px; flex-shrink: 0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: calc((1552px - 80px) / 6); height: 96px; flex-shrink: 0; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"awayColor":{"editor":"color","default":"#8A8F9C","options":["#8A8F9C","#2E6FD8","#1F8A4C","#111111"]},"casaPerde":{"editor":"boolean","default":false},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+const lost = this.props.casaPerde ?? false;
+return {
+awayColor: this.props.awayColor ?? '#8A8F9C',
+home: lost ? '76' : '82',
+away: lost ? '82' : '76',
+homeWon: !lost,
+awayWon: lost
+};
+}
+}
+</script>
+</body>
+</html>

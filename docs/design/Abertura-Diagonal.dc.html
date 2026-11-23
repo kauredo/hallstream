@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Abertura A, Diagonal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&amp;family=Barlow+Condensed:wght@500;600;700;800&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+/* Master band, 12deg from vertical, shift = 0.2126 x 932 = 198.14px; centre at x 960, y 466 */
+.hh{clip-path:polygon(0 0,1033.07px 0,867.24px 780px,0 780px)}
+.hl{clip-path:polygon(1033.07px 0,1039.07px 0,840.93px 932px,834.93px 932px)}
+.hb{clip-path:polygon(1039.07px 0,1079.07px 0,880.93px 932px,840.93px 932px)}
+.hv{clip-path:polygon(1079.07px 0,1920px 0,1920px 780px,913.24px 780px)}
+/* Shield plate 250x340, one silhouette for both teams, no rim */
+.sh{clip-path:polygon(0 0,100% 0,100% 64%,50% 100%,0 64%)}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; background: #181841; font-family: 'Barlow Condensed', sans-serif">
+
+<!-- Halves (y 0-780) and the master band (y 0-932, down to the rail) -->
+<div class="hh" style="position: absolute; left: 0; top: 0; width: 1920px; height: 780px; background: #BD1522"></div>
+<div class="hv" style="position: absolute; left: 0; top: 0; width: 1920px; height: 780px; background: #FFFFFF"></div>
+<div class="hl" style="position: absolute; left: 0; top: 0; width: 1920px; height: 932px; background: #FFFFFF"></div>
+<div class="hb" style="position: absolute; left: 0; top: 0; width: 1920px; height: 932px; background: #181841"></div>
+
+<!-- Home: centred at x 496 (optical centre of the red half, band left edge ~952 at mid-height) -->
+<div style="position: absolute; left: 96px; top: 136px; width: 800px; display: flex; flex-direction: column; align-items: center">
+<div style="position: relative; width: 250px; height: 340px">
+<div class="sh" style="position: absolute; left: 0; top: 0; width: 250px; height: 340px; background: #FFFFFF"></div>
+<img src="/_blob/594604fee97726efd14dc644fe154a1a" alt="Emblema do Clube Exemplo" style="position: absolute; left: 0; top: 26px; width: 250px; height: 272px; object-fit: contain">
+</div>
+<div style="margin-top: 40px; font-family: Graduate, serif; font-size: 104px; line-height: 1; letter-spacing: 1px; color: #FFFFFF; white-space: nowrap">CASA</div>
+<div style="margin-top: 16px; font-weight: 700; font-size: 26px; line-height: 1; letter-spacing: 1.5px; color: rgba(255,255,255,0.85); white-space: nowrap">BASQUETEBOL DESDE 1929</div>
+</div>
+
+<!-- Visitor: centred at x 1440 (optical centre of the white half, band right edge ~998 at mid-height, 64px right margin) -->
+<div style="position: absolute; left: 1040px; top: 136px; width: 800px; display: flex; flex-direction: column; align-items: center">
+<div style="position: relative; width: 250px; height: 340px">
+<div class="sh" style="position: absolute; left: 0; top: 0; width: 250px; height: 340px; background: #ECEAE6"></div>
+<svg width="250" height="340" viewBox="0 0 250 340" style="position: absolute; left: 0; top: 0"><polygon points="20,20 230,20 230,200.8 125,303.6 20,200.8" fill="none" stroke="#B9B4AC" stroke-width="2" stroke-dasharray="8 6"></polygon></svg>
+<div style="position: absolute; left: 0; top: 20px; width: 250px; height: 260px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; letter-spacing: 1px; color: #8A8F9C">Emblema</div>
+</div>
+<div style="margin-top: 40px; font-family: Graduate, serif; font-size: 104px; line-height: 1; letter-spacing: 1px; color: #181841; white-space: nowrap">VISITANTE</div>
+</div>
+
+<!-- VS plate on the band, centred on the band centre line at y 568 (x 938.3), bottom edge at the names' baseline; skewed to the band's 12deg, text counter-skewed upright -->
+<div style="position: absolute; left: 888.3px; top: 536px; width: 100px; height: 64px; background: #181841; transform: skewX(-12deg); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 44px; line-height: 1; color: #FFFFFF"><div style="transform: skewX(12deg)">VS</div></div>
+
+<!-- Information line (navy field, y 780-932), split by the band's white line -->
+<div style="position: absolute; left: 64px; top: 780px; width: 740px; height: 152px; display: flex; align-items: center">
+<div style="display: flex; align-items: baseline; gap: 24px; white-space: nowrap">
+<div style="font-weight: 700; font-size: 30px; letter-spacing: 1.5px; color: #D6BD2F">O JOGO COMEÇA ÀS</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-weight: 800; font-size: 88px; line-height: 1; color: #FFFFFF; font-variant-numeric: tabular-nums">[18:00]</div>
+<div style="font-weight: 700; font-size: 32px; line-height: 1; letter-spacing: 1px; color: #FFFFFF; font-variant-numeric: tabular-nums">[Sábado, 15 nov]</div>
+</div>
+</div>
+</div>
+
+<div style="position: absolute; left: 940px; top: 780px; width: 916px; height: 152px; display: flex; flex-direction: column; justify-content: center; gap: 10px; white-space: nowrap">
+<div style="font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: 1px; color: #FFFFFF; font-variant-numeric: tabular-nums">[Competição] · Jornada [N]</div>
+<div style="font-family: Barlow, sans-serif; font-weight: 500; font-size: 28px; line-height: 1.2; color: rgba(255,255,255,0.72)">Pavilhão Municipal do Vale</div>
+</div>
+
+<!-- Sponsor rail: label 64-284, slots 304-1856 (principal 2w + 4w + 4 x 20px gaps, w = 245.333px) -->
+<div style="position: absolute; left: 0; top: 932px; width: 1920px; height: 148px; background: #181841">
+<div style="position: absolute; left: 0; top: 0; width: 1920px; height: 2px; background: #BD1522"></div>
+<div style="position: absolute; left: 64px; top: 0; width: 1792px; height: 148px; display: flex; align-items: center; gap: 20px">
+<div style="width: 220px; flex: none; font-weight: 700; font-size: 22px; letter-spacing: 1.5px; color: rgba(255,255,255,0.72); white-space: nowrap">COM O APOIO DE</div>
+<div style="width: 490.667px; flex: none; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: 245.333px; flex: none; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: 245.333px; flex: none; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: 245.333px; flex: none; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+<div style="width: 245.333px; flex: none; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; color: #8A8F9C">Logótipo patrocinador</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

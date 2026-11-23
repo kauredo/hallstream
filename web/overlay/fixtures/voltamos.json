@@ -1,0 +1,103 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "CASA",
+    "away_name": "VISITANTE",
+    "home": 41,
+    "away": 38,
+    "clock": "06:42",
+    "period": "3",
+    "home_fouls": 3,
+    "away_fouls": 2,
+    "shot": "14",
+    "sport": "basketball"
+  },
+  "periods": [
+    {
+      "period": 1,
+      "home": 22,
+      "away": 19,
+      "home_points": 22,
+      "away_points": 19
+    },
+    {
+      "period": 2,
+      "home": 37,
+      "away": 33,
+      "home_points": 15,
+      "away_points": 14
+    }
+  ],
+  "game": {
+    "group": {
+      "id": "senior-m",
+      "name": "Sénior Masculino",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "CASA",
+      "short": "CAS",
+      "crest_url": "/assets/crest.png",
+      "color": "#BD1522",
+      "initials": "CAS"
+    },
+    "away": {
+      "name": "ATLÉTICO VALE",
+      "short": "ATV",
+      "crest_url": "/overlay/fixtures/logos/opp-vale.svg",
+      "color": "#552D85",
+      "initials": "ATV"
+    },
+    "start": "2026-11-14T20:30:00Z",
+    "venue": "Pavilhão do Atlético, Vale Fundo",
+    "competition": "2ª Divisão Masculina",
+    "round": "Jornada 6",
+    "squad": [],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4,
+      "back_line": "A imagem regressa dentro de momentos"
+    },
+    "at_home": false,
+    "next": null,
+    "next_note": ""
+  },
+  "screen": {
+    "current": "voltamos",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": false,
+    "type": "jogador",
+    "number": "7",
+    "first_name": "Nome",
+    "last_name": "Apelido",
+    "label": "",
+    "until": null,
+    "photo_url": ""
+  },
+  "demo": false
+}

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Tribuna app icon: a white shield with a basketball on a red rounded square. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C8182A"/><stop offset="1" stop-color="#A3111D"/></linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <g transform="translate(128 128) scale(0.24) translate(-265 -415)">
+    <path d="M16 40H514V180A874 874 0 0 1 265 790A874 874 0 0 1 16 180Z" fill="#fff"/>
+    <g fill="none" stroke="#BD1522" stroke-width="30" stroke-linecap="round">
+      <circle cx="265" cy="330" r="165"/>
+      <path d="M265 165V495M100 330H430"/>
+      <path d="M148 213C200 265 200 395 148 447M382 213C330 265 330 395 382 447"/>
+    </g>
+  </g>
+</svg>

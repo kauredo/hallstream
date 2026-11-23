@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 530 805" role="img" aria-label="Emblema do clube">
+  <!-- Neutral stand-in crest. Replace with the club's own. -->
+  <path d="M16 16H514V180A874 874 0 0 1 265 789A874 874 0 0 1 16 180Z" fill="#2B2F3A" stroke="#FFFFFF" stroke-width="24" stroke-linejoin="round"/>
+  <path d="M70 70H460V200A780 780 0 0 1 265 700A780 780 0 0 1 70 200Z" fill="#BD1522"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round">
+    <circle cx="265" cy="330" r="150"/>
+    <path d="M265 180V480M115 330H415"/>
+    <path d="M158 224C205 272 205 388 158 436M372 224C325 272 325 388 372 436"/>
+  </g>
+</svg>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel · Tribuna</title>
+<link rel="icon" href="/assets/icon/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/icon/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icon/apple-touch-icon.png">
+<link rel="manifest" href="/painel/manifest.webmanifest">
+<meta name="theme-color" content="#BD1522">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/painel/painel.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><img src="/assets/crest.png" alt=""><b>Tribuna</b></div>
+  <div class="live" id="live" aria-live="off">
+    <span class="score" id="liveScore">– <span>:</span> –</span>
+    <span class="clock" id="liveClock"></span>
+    <span class="onair" id="liveScreen" hidden></span>
+    <span class="onair air" id="liveAir" hidden></span>
+  </div>
+</header>
+<div class="banner" id="offline" hidden>Sem ligação ao programa. A tentar de novo…</div>
+
+<div class="shell">
+  <nav class="nav" role="tablist" aria-label="Secções">
+    <button role="tab" data-tab="jogo"><span class="num">1</span>Jogo</button>
+    <button role="tab" data-tab="ecras"><span class="num">2</span>Ecrãs</button>
+    <button role="tab" data-tab="plantel"><span class="num">3</span>Plantel</button>
+    <button role="tab" data-tab="patrocinadores"><span class="num">4</span>Patrocinadores</button>
+    <button role="tab" data-tab="promo"><span class="num">5</span>Promo</button>
+    <button role="tab" data-tab="transmissoes"><span class="num">6</span>Transmissões</button>
+    <button role="tab" data-tab="definicoes"><span class="num">7</span>Definições</button>
+    <button role="tab" data-tab="caixa"><span class="num">8</span>Caixa</button>
+    <button role="tab" data-tab="ajuda"><span class="num">9</span>Ajuda</button>
+  </nav>
+
+  <main>
+    <div class="ask" id="shortcutAsk" hidden>
+      <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">
+      <p class="txt"><b>Criar atalho no ambiente de trabalho?</b><span class="hint">Para abrir o Tribuna sem ir à pasta do programa.</span></p>
+      <div class="row"><button class="btn primary" type="button" data-act="sc-yes">Criar</button><button class="btn" type="button" data-act="sc-no">Agora não</button><span class="msg" role="status"></span></div>
+    </div>
+
+    <section class="tab" id="tab-jogo" role="tabpanel" hidden>
+      <h1>Jogo <button class="help-btn" type="button" data-help="ajuda-dia" aria-label="Ajuda sobre o separador Jogo">?</button></h1>
+      <p class="lead">Escolha o escalão e o adversário de hoje.</p>
+      <div id="jogo"></div>
+    </section>
+
+    <section class="tab" id="tab-ecras" role="tabpanel" hidden>
+      <h1>Ecrãs <button class="help-btn" type="button" data-help="ajuda-ecras" aria-label="Ajuda sobre o separador Ecrãs">?</button></h1>
+      <p class="lead">O que aparece na transmissão agora.</p>
+      <div class="ask" id="setupAsk" hidden>
+        <p class="txt"><b>Falta a configuração inicial</b><span class="hint">Cinco passos para deixar prontos a caixa, o OBS e o YouTube. Faz-se uma vez, neste computador.</span></p>
+        <div class="row"><button class="btn primary" type="button" data-act="setup-go">Começar</button><button class="btn" type="button" data-act="setup-later">Agora não</button><span class="msg" role="status"></span></div>
+      </div>
+      <div class="card stream" id="streamBar" hidden></div>
+      <div class="card yt-card" id="ytCard" role="status" hidden></div>
+      <div class="chips" id="chips"></div>
+      <div id="ecras"></div>
+    </section>
+
+    <section class="tab" id="tab-plantel" role="tabpanel" hidden>
+      <h1>Plantel</h1>
+      <p class="lead">Jogadores e treinador de cada escalão.</p>
+      <div id="plantel"></div>
+    </section>
+
+    <section class="tab" id="tab-patrocinadores" role="tabpanel" hidden>
+      <h1>Patrocinadores</h1>
+      <p class="lead">Logótipos da faixa branca e do ecrã Apoiantes. Primeiro o principal, depois os do escalão e por fim os de "Geral", que aparecem em todos os escalões.</p>
+      <div id="patrocinadores"></div>
+    </section>
+
+    <section class="tab" id="tab-promo" role="tabpanel" hidden>
+      <h1>Promo <button class="help-btn" type="button" data-help="ajuda-som" aria-label="Ajuda sobre o separador Promo">?</button></h1>
+      <p class="lead">Vídeos do clube para mostrar no intervalo ou num desconto de tempo.</p>
+      <div id="promo"></div>
+    </section>
+
+    <section class="tab" id="tab-transmissoes" role="tabpanel" hidden>
+      <h1>Transmissões <button class="help-btn" type="button" data-help="ajuda-youtube" aria-label="Ajuda sobre o YouTube">?</button></h1>
+      <p class="lead">Os diretos do canal, do mais recente para o mais antigo. Copie o link para mandar aos jogadores.</p>
+      <div id="transmissoes"></div>
+    </section>
+
+    <section class="tab" id="tab-definicoes" role="tabpanel" hidden>
+      <h1>Definições <button class="help-btn" type="button" data-help="ajuda-problemas" aria-label="Ajuda sobre as Definições">?</button></h1>
+      <p class="lead">Normalmente só se mexe aqui uma vez.</p>
+      <div id="definicoes"></div>
+    </section>
+
+    <section class="tab" id="tab-caixa" role="tabpanel" hidden>
+      <h1>Caixa <button class="help-btn" type="button" data-help="ajuda-caixa" aria-label="Ajuda sobre a Caixa">?</button></h1>
+      <p class="lead">Ligação Bluetooth à Stream Box do marcador.</p>
+      <div id="caixa"></div>
+    </section>
+
+    <section class="tab" id="tab-inicio" role="tabpanel" hidden>
+      <h1>Configuração inicial</h1>
+      <p class="lead">Faz-se uma vez, no computador do clube. Pode parar a meio, que o painel lembra-se de onde ficou.</p>
+      <div id="inicio"></div>
+    </section>
+
+    <!-- Same steps as LEIA-ME.txt, kept in step by hand. -->
+    <section class="tab" id="tab-ajuda" role="tabpanel" hidden>
+      <h1>Ajuda</h1>
+      <p class="lead">O LEIA-ME.txt, na pasta do programa, explica tudo com mais pormenor.</p>
+      <div id="ajuda">
+        <div class="card help" id="ajuda-dia">
+          <h2>No dia do jogo</h2>
+          <span class="label">Antes de começar</span>
+          <ol class="steps">
+            <li>Feche a app SL Live Stream nos telemóveis e tablets. A caixa só aceita uma ligação.</li>
+            <li>Ligue a consola do marcador e o PC, e abra o DroidCam no tablet. Abra o Tribuna pelo atalho, se não abriu com o Windows. O OBS abre sozinho.</li>
+            <li>No topo de <a href="#ecras" data-goto="ecras">Ecrãs</a>, espere pela <b>Caixa Ligado</b> e pelo <b>OBS Pronto</b>, a verde. Se aparecer <b>Reparar</b>, carregue nele.</li>
+            <li>Em <a href="#jogo" data-goto="jogo">Jogo</a>, escolha o escalão e o jogo da FPB, e marque quem joga hoje.</li>
+            <li>Quando Ecrãs disser <b>Pronto para transmitir</b>, carregue em <b>Iniciar transmissão</b>. Se faltar alguma coisa, a lista por baixo diz o quê. Com o YouTube ligado, o Tribuna cria o direto com o título e a miniatura. Sem ele, carregue antes em <b>Miniatura YouTube</b> e ponha a imagem no YouTube Studio. Para experimentar sem público, <b>Transmissão de teste</b> faz um direto privado, que só a conta do canal vê no YouTube Studio.</li>
+          </ol>
+          <span class="label" id="ajuda-ecras">Na transmissão (Ecrãs)</span>
+          <ol class="steps" start="6">
+            <li><b>Abertura</b>, depois <b>Plantel</b>, e <b>Marcador</b> quando a bola subir.</li>
+            <li>Deixe <b>Automático</b> ligado. O intervalo e o final aparecem sozinhos.</li>
+            <li>Num desconto de tempo, carregue em <b>Desconto de tempo</b> e, no recomeço, em <b>Marcador</b>.</li>
+            <li>Numa pausa técnica, carregue em <b>Voltamos já</b> e, quando tudo voltar, em <b>Marcador</b>.</li>
+            <li>No intervalo ou no fim, <b>Próximo jogo</b> mostra o jogo seguinte. Se estiver cinzento, o botão diz porquê. A FPB só dá os jogos dos próximos 14 dias.</li>
+          </ol>
+          <span class="label">No fim</span>
+          <ol class="steps" start="11">
+            <li><b>Guardar imagem do resultado</b> faz a imagem para o Instagram.</li>
+            <li>Em Ecrãs, carregue em <b>Terminar transmissão</b>. Com o YouTube ligado, o vídeo fica não listado ao fim de um minuto ou dois, e aparece o link com <b>Copiar</b> e <b>Partilhar no WhatsApp</b>.</li>
+            <li>Para fechar o programa, botão direito no ícone ao pé do relógio e <b>Sair</b>.</li>
+          </ol>
+          <p class="hint">Os pontos por período do último jogo só se apagam com outro jogo, escalão ou data. Num segundo jogo manual no mesmo dia, carregue em <b>Novo jogo</b>, no fim do separador Jogo.</p>
+        </div>
+
+        <div class="card help" id="ajuda-inicio">
+          <h2>Primeira vez</h2>
+          <p>Abra a <a href="#inicio" data-goto="inicio">Configuração inicial</a>, no computador do clube. São cinco passos: clube e caixa, OBS, YouTube, canal do YouTube e um ensaio.</p>
+          <p class="hint">Antes, instale o OBS 31 ou mais recente, e o DroidCam no PC e no tablet. Câmara nova mais tarde? Escolha-a em Definições &gt; Câmara e carregue em Configurar OBS.</p>
+        </div>
+
+        <div class="card help" id="ajuda-pc-novo">
+          <h2>Passar para outro computador</h2>
+          <ol class="steps">
+            <li>No computador antigo, em <a href="#definicoes" data-goto="definicoes">Definições</a> &gt; Cópia de segurança, carregue em <b>Guardar cópia</b> e leve o ficheiro .zip numa pen.</li>
+            <li>No computador novo, instale o OBS 31 ou mais recente e o DroidCam. Descomprima o Tribuna para <code>C:\Tribuna</code>.</li>
+            <li>Com o Tribuna fechado, descomprima a cópia: botão direito no .zip, <b>Extrair tudo</b>, e escreva <code>C:\Tribuna</code> como destino. Confirme que fica <code>C:\Tribuna\dados</code>, com tudo o que tinha, a ligação ao YouTube incluída.</li>
+            <li>Abra o Tribuna. Em Definições, carregue em <b>Configurar OBS</b> e em <b>Criar atalho no ambiente de trabalho</b>. Se <b>Abrir com o Windows</b> estava ligado, continua.</li>
+            <li>Ligue a consola do marcador e espere pela <b>Caixa Ligado</b>. Se não ligar, veja <b>A caixa não liga</b>, mais abaixo.</li>
+          </ol>
+          <p class="hint">Se o computador antigo avariou, use a última cópia que guardou. Sem cópia, faça a <a href="#inicio" data-goto="inicio">Configuração inicial</a> outra vez: os jogadores e as fotografias voltam da FPB, mas os logótipos dos patrocinadores e os vídeos têm de ser carregados de novo.</p>
+        </div>
+
+        <div class="card help" id="ajuda-youtube">
+          <h2>Ligar o YouTube (uma vez)</h2>
+          <ol class="steps">
+            <li>Noutro computador, com qualquer conta Google, crie o cliente OAuth na Google Cloud. O guia está em <code>YouTube\LIGAR-YOUTUBE.txt</code>, na pasta do programa. Traga o ID e o segredo para o PC do clube.</li>
+            <li>No PC do clube, abra a <a href="#inicio" data-goto="inicio">Configuração inicial</a>, passo YouTube. Cole os dois e carregue em <b>Ligar ao YouTube</b>.</li>
+            <li>Entre com a conta que gere o canal do clube e escolha o canal do clube. Ao aviso de app não verificada, carregue em <b>Advanced</b> e em <b>Go to Tribuna</b>.</li>
+          </ol>
+          <p class="hint">Os diretos ficam em <a href="#transmissoes" data-goto="transmissoes">Transmissões</a>. A miniatura própria só funciona com o canal verificado (youtube.com/verify). Sem isso, o direto começa na mesma.</p>
+        </div>
+
+        <div class="card help" id="ajuda-problemas">
+          <h2>Algo não está bem</h2>
+          <ul class="faq">
+            <li id="ajuda-caixa"><b>A caixa não liga</b>
+              <p>Feche a app SL Live Stream no telemóvel e no tablet. Depois carregue em <b>Experimentar</b> no aparelho marcado <b>Provável</b>.</p>
+              <a href="#caixa" data-goto="caixa">Abrir Caixa</a></li>
+            <li id="ajuda-obs"><b>Os grafismos não aparecem no OBS</b>
+              <p>Carregue em <b>Reparar</b>, no topo de Ecrãs, ou em <b>Configurar OBS</b>, em Definições. Corrige o endereço e a porta da fonte, e põe-na por cima da câmara.</p>
+              <a href="#definicoes" data-goto="definicoes">Abrir Definições</a></li>
+            <li id="ajuda-som"><b>O vídeo promo não tem som</b>
+              <p>Carregue em <b>Configurar OBS</b>, que liga o som da fonte do grafismo. Confirme também que o vídeo tem <b>Som</b> ligado.</p>
+              <a href="#promo" data-goto="promo">Abrir Promo</a></li>
+            <li id="ajuda-camara"><b>A câmara está torta ou com o tamanho errado</b>
+              <p>Em Controlo do OBS, carregue em <b>Ajustar câmara</b>.</p>
+              <a href="#definicoes" data-goto="definicoes">Abrir Definições</a></li>
+            <li id="ajuda-telemovel"><b>O painel não abre no telemóvel</b>
+              <p>Use o endereço de Definições &gt; Telemóvel, com o IP do PC. O telemóvel tem de estar na mesma rede Wi-Fi.</p>
+              <a href="#definicoes" data-goto="definicoes">Abrir Definições</a></li>
+            <li id="ajuda-numero"><b>Um número do marcador está errado</b>
+              <p>Envie o ficheiro <code>dados\raw.log</code>, com tudo o que a caixa enviou.</p></li>
+            <li id="ajuda-outro"><b>Outro problema</b>
+              <p>Envie o ficheiro <code>dados\marcador.log</code>, onde o programa escreve o que vai fazendo.</p></li>
+          </ul>
+        </div>
+
+        <div class="card help" id="ajuda-ficheiros">
+          <h2>Onde estão os ficheiros</h2>
+          <div id="ajudaDir"><p class="hint">Na pasta <code>dados</code>, ao lado do programa.</p></div>
+          <ul class="files">
+            <li><code>marcador.log</code> o que o programa vai fazendo</li>
+            <li><code>raw.log</code> tudo o que a caixa enviou</li>
+            <li><code>bluetooth.log</code> os aparelhos Bluetooth que o programa viu</li>
+            <li><code>promo</code> os vídeos do separador Promo</li>
+          </ul>
+          <p class="hint">Para abrir a pasta, cole o caminho na barra do Explorador de Ficheiros. Para uma cópia de segurança, carregue em <b>Guardar cópia</b> em <a href="#definicoes" data-goto="definicoes">Definições</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle"></h2>
+    <div id="modalBody"></div>
+    <div class="row">
+      <button class="btn" id="modalNo" type="button">Cancelar</button>
+      <button class="btn primary" id="modalYes" type="button">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="pin" hidden>
+  <form class="box" id="pinForm" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+    <h2 id="pinTitle">PIN do painel</h2>
+    <p class="hint">Escreva o PIN de 4 algarismos que está nas Definições do computador do clube.</p>
+    <input class="pin-input" id="pinValue" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" aria-label="PIN">
+    <p class="msg err" id="pinMsg"></p>
+    <div class="row"><button class="btn primary" type="submit">Entrar</button></div>
+  </form>
+</div>
+
+<script src="/painel/mock.js"></script>
+<script src="/painel/resultado.js"></script>
+<script src="/painel/miniatura.js"></script>
+<script src="/painel/painel.js"></script>
+</body>
+</html>

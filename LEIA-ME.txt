@@ -1,0 +1,264 @@
+Tribuna para OBS
+
+O programa lê a consola do marcador pela SL Stream Box, por Bluetooth,
+guarda os plantéis e os patrocinadores de cada escalão, e mostra os
+grafismos no OBS numa só fonte de navegador.
+
+Precisa de Windows 10 ou mais recente, com Bluetooth. Use o
+"Tribuna.exe". O "Tribuna (32-bit).exe" é só para Windows de
+32 bits.
+
+O programa não abre nenhuma janela. Fica um ícone vermelho com o escudo
+ao pé do relógio do Windows. Se não o vir, carregue na seta ^ ao lado dos
+ícones.
+- Carregue no ícone para abrir o painel.
+- Com o botão direito há "Copiar endereço do overlay", o estado da caixa
+  e "Sair", que fecha o programa.
+- Abrir o programa quando ele já está aberto só abre o painel.
+- O separador Ajuda do painel tem os passos do dia do jogo e o que fazer
+  quando algo falha.
+- O programa também escreve cada valor em ficheiros de texto
+  (dados\score\*.txt), para quem os usa no OBS.
+
+
+PRIMEIRA VEZ (EM CASA)
+
+1. Descomprima tudo para C:\Tribuna e não mude a pasta de sítio. O
+   programa guarda tudo na pasta "dados", lá dentro. Para fazer uma cópia
+   de segurança, carregue em "Guardar cópia" em Definições (ver "CÓPIA DE
+   SEGURANÇA E OUTRO COMPUTADOR").
+2. Abra o "Tribuna.exe". O painel abre sozinho no browser.
+   - Se aparecer "O Windows protegeu o seu PC", carregue em "Mais
+     informações" e depois em "Executar mesmo assim".
+   - O painel pergunta se quer um atalho no ambiente de trabalho.
+     Carregue em "Criar". Também há um botão em Definições.
+3. Instale o OBS (versão 31 ou mais recente) e o DroidCam no PC e no
+   tablet, e feche o OBS.
+4. No separador Ecrãs aparece "Falta a configuração inicial". Carregue
+   em "Começar". São cinco passos, um de cada vez: clube e caixa, OBS
+   ("Configurar OBS"), YouTube, canal do YouTube e um ensaio. Pode parar
+   a meio, que o painel lembra-se de onde ficou. Também está em Definições >
+   Configuração inicial.
+   - Para o passo YouTube, traga o ID e o segredo do cliente OAuth, feitos
+     antes com o guia YouTube\LIGAR-YOUTUBE.txt (ver "DIRETOS NO
+     YOUTUBE"). Sem eles, carregue em "Saltar por agora" e ligue a conta
+     do YouTube no próprio OBS, em Definições > Transmissão.
+   - Para o PC abrir tudo sozinho, ligue "Abrir com o Windows" em
+     Definições > Neste computador.
+   - Câmara nova? Escolha-a em Definições > Câmara e carregue em
+     Configurar OBS. A antiga fica escondida no OBS.
+   - Em Definições > Clube, escreva o nome da casa, a sigla e o "Nome do
+     clube na FPB", tal como aparece no calendário da FPB. Com esse nome,
+     o programa cria os escalões do clube e traz da FPB os jogadores e as
+     fotografias. Se não acontecer sozinho, carregue em "Importar equipas
+     do clube" no Plantel. Confira-os e acrescente o que falta, como os
+     treinadores.
+5. Separador Patrocinadores: carregue os logótipos de cada escalão e
+   marque o principal, se houver. Os que estão em "Geral" aparecem em
+   todos os escalões. A faixa dos ecrãs mostra-os por esta ordem.
+6. Para treinar sem a caixa: Definições > Modo demonstração.
+7. O marcador fica no canto superior esquerdo. Para o pôr em baixo:
+   Definições > Grafismo > Posição do marcador.
+
+
+NO DIA DO JOGO
+
+Antes de começar
+1. Ponha o tablet no tripé, ligado à corrente e virado para o campo, e
+   abra o DroidCam.
+2. Feche a app SL Live Stream em todos os telemóveis e tablets. A caixa
+   só aceita uma ligação de cada vez.
+3. Ligue a consola do marcador e o PC. O Tribuna abre sozinho (ou pelo
+   atalho) e abre o OBS.
+4. No separador Ecrãs, espere pela caixa "Ligado" e pelo OBS "Pronto", a
+   verde. Se aparecer "Reparar", carregue nele. Se a caixa não ligar,
+   veja o separador Caixa.
+5. Separador Jogo: escolha o escalão e o jogo da FPB. O adversário, o
+   emblema, a hora e o pavilhão preenchem-se sozinhos. Marque quem joga
+   hoje.
+   - Os pontos de cada período do último jogo só se apagam quando
+     escolher outro jogo, outro escalão ou outra data. Num segundo jogo
+     manual no mesmo dia, ou depois de testar a consola, carregue em
+     "Novo jogo", em baixo no separador Jogo.
+6. Só sem o YouTube ligado no Tribuna: no separador Ecrãs, carregue em
+   "Miniatura YouTube" e depois em "Descarregar". No YouTube Studio,
+   ponha a imagem como miniatura do vídeo do direto.
+7. Separador Ecrãs: quando disser "Pronto para transmitir", carregue em
+   "Iniciar transmissão". Se faltar alguma coisa, a lista por baixo diz
+   o quê. O direto só
+   começa quando carregar. Com o YouTube ligado, o Tribuna cria o
+   direto com o título do jogo e a miniatura, e mostra o link.
+   Para experimentar antes, "Transmissão de teste" faz um direto
+   privado: só a conta do canal o vê, no YouTube Studio. Fica privado
+   no fim.
+
+Na transmissão (separador Ecrãs)
+8.  Antes do jogo: "Abertura", depois "Plantel" para apresentar a equipa,
+    e "Marcador" quando a bola subir.
+9.  Deixe "Automático" ligado. O intervalo e o resultado final aparecem
+    sozinhos.
+10. Num desconto de tempo, carregue em "Desconto de tempo" e, quando o
+    jogo recomeçar, em "Marcador".
+11. Para mostrar um jogador, carregue no nome dele.
+12. "Apoiantes" mostra os patrocinadores em grande, por exemplo antes do
+    jogo ou no intervalo.
+13. Numa pausa técnica, carregue em "Voltamos já" e, quando tudo voltar,
+    em "Marcador". Para pôr uma frase por baixo, escreva-a em "Frase do
+    Voltamos já" e carregue em "Guardar frase".
+14. No intervalo ou no fim, "Próximo jogo" mostra o jogo seguinte do
+    escalão. A FPB só dá os jogos dos próximos 14 dias. Sem jogo nesse
+    prazo, o botão fica cinzento e diz porquê.
+
+Com o Marcador no ar, um patrocinador aparece 10 segundos no canto de
+cima à direita, de 4 em 4 minutos, pela ordem da faixa. Para o desligar
+ou mudar os minutos, vá a Definições > Grafismo.
+
+No fim
+15. "Guardar imagem do resultado" faz a imagem para o Instagram.
+16. Em Ecrãs, carregue em "Terminar transmissão" e confirme. Com o
+    YouTube ligado, um ou dois minutos depois o vídeo fica não listado e
+    aparece o link, com "Copiar" e "Partilhar no WhatsApp", para mandar
+    aos jogadores.
+17. Para fechar o programa, carregue com o botão direito no ícone ao pé
+    do relógio e escolha "Sair". Se a transmissão ainda estiver no ar, o
+    programa pergunta antes de fechar.
+
+
+VÍDEOS DO CLUBE (PROMO)
+
+No separador Promo carregue vídeos MP4 até 200 MB, por exemplo a
+publicidade da loja feita no telemóvel.
+- Para cada vídeo escreva a etiqueta, o título e uma linha. Pode juntar um
+  link com código QR.
+- Escolha se tem som, o volume e o que acontece no fim: voltar ao ecrã
+  anterior ou repetir.
+- "Mostrar promo" põe o vídeo no ar em ecrã inteiro. "Parar e voltar"
+  tira-o.
+- Um vídeo na vertical também pode passar pequeno ao lado da câmara no
+  desconto de tempo ("Mostrar pequeno no desconto de tempo").
+Os vídeos ficam na pasta dados\promo.
+
+
+PLANTÉIS SEMPRE EM DIA
+
+Uma vez por dia, e quando escolhe o jogo, o programa vai à FPB buscar os
+jogadores novos, os números e as fotografias de cada escalão.
+- Não apaga ninguém, e o que escreveu à mão fica como está.
+- O Plantel mostra quando foi a última vez e o que mudou.
+- Na época nova, a FPB cria equipas novas e o programa passa cada escalão
+  para a equipa certa. Quem já não está na equipa sai dos jogos e fica em
+  "Já não estão na equipa". Se o programa não souber qual é a equipa
+  nova, o Plantel pede-lhe que a escolha.
+
+
+SE O PROGRAMA NÃO ENCONTRA A CAIXA
+
+Abra o separador Caixa no painel.
+- Se aparecer "Bluetooth desligado", carregue em "Abrir definições de
+  Bluetooth" e ligue-o.
+- A lista mostra os aparelhos Bluetooth por perto, o sinal mais forte
+  primeiro. A caixa costuma vir marcada como "Provável". Se não vier,
+  ponha o PC ao lado da caixa e experimente os de sinal mais forte.
+- Carregue em "Experimentar". Se for a caixa, o programa liga-se e
+  guarda-a para a próxima vez. Se não for, diz que não é a caixa e pode
+  experimentar outro.
+- Se nada resultar, envie o ficheiro dados\bluetooth.log, que guarda tudo
+  o que o programa viu.
+
+
+DESCONTO DE TEMPO COM O OBS
+
+Depois de "Configurar OBS", no desconto de tempo a imagem da câmara
+encolhe para a janela do grafismo e volta depois, na mesma cena.
+- Em Definições > Câmara fica a câmara usada. "Automática" escolhe o
+  DroidCam, se houver.
+- "Ajustar câmara" volta a pô-la em ecrã inteiro.
+- Se o OBS estiver noutro computador, ligue-o à mão em Definições >
+  Controlo do OBS > Ligação ao OBS feita à mão.
+
+Se o tablet rodar ou o DroidCam mudar de resolução, o programa volta a
+ajustar a câmara sozinho. Com "Imagem inteira", um tablet ao alto fica
+com margens dos lados, e no desconto essas margens ficam azuis.
+
+Se já usa uma cena "Desconto" no OBS, pode continuar com ela. Escreva o
+nome em Definições > Controlo do OBS > Modo antigo, e o programa troca de
+cena como antes.
+
+
+CÓPIA DE SEGURANÇA E OUTRO COMPUTADOR
+
+Em Definições > Cópia de segurança, "Guardar cópia" descarrega um ficheiro
+.zip com a pasta "dados": escalões, jogadores, fotografias, patrocinadores,
+vídeos, definições e a ligação ao YouTube. Só funciona no próprio PC.
+Guarde uma cópia depois de mudar alguma coisa, numa pen ou numa pasta só
+do clube. Não a envie por email nem por WhatsApp: com ela, qualquer pessoa
+transmite no canal do clube.
+
+Para passar para outro computador:
+1. No computador antigo, carregue em "Guardar cópia" e leve o .zip numa
+   pen.
+2. No computador novo, instale o OBS 31 ou mais recente e o DroidCam.
+   Descomprima o Tribuna para C:\Tribuna.
+3. Com o Tribuna fechado, descomprima a cópia: botão direito no .zip,
+   "Extrair tudo", e escreva C:\Tribuna como destino. Confirme que fica
+   C:\Tribuna\dados, com tudo o que tinha.
+4. Abra o Tribuna. Em Definições, carregue em "Configurar OBS" e em
+   "Criar atalho no ambiente de trabalho". Se "Abrir com o Windows" estava
+   ligado, continua.
+5. Ligue a consola do marcador e espere pela "Caixa Ligado". Se não ligar,
+   veja "SE O PROGRAMA NÃO ENCONTRA A CAIXA".
+
+Se o computador antigo avariou, use a última cópia que guardou. Sem cópia,
+faça a Configuração inicial outra vez: os jogadores e as fotografias voltam
+da FPB, mas os logótipos dos patrocinadores e os vídeos têm de ser
+carregados de novo.
+
+
+SE ALGO CORRER MAL
+
+- A caixa não liga: confirme que a app SL Live Stream está fechada no
+  telemóvel e no tablet, e veja o separador Caixa.
+- O OBS não está "Pronto", ou os grafismos não aparecem: carregue em
+  "Reparar" no separador Ecrãs, ou em "Configurar OBS" em Definições.
+- O OBS não liga: se perguntar pelo modo de segurança, escolha o modo
+  normal. No modo de segurança o OBS desliga o servidor WebSocket.
+- "Configure a conta do YouTube no OBS": no OBS, Definições >
+  Transmissão, ligue a conta do YouTube.
+- Um vídeo promo não tem som: carregue em "Configurar OBS", que liga o
+  som da fonte do grafismo.
+- A câmara está torta: Definições > Controlo do OBS > "Ajustar câmara".
+- O painel não abre no telemóvel: use o endereço que aparece em
+  Definições > Telemóvel, com o telemóvel na mesma rede Wi-Fi.
+- Um número aparece errado: envie o ficheiro dados\raw.log.
+- Aviso de que a porta 8765 está ocupada por outro programa: o marcador
+  abriu noutra porta. Carregue em "Reparar" ou em "Configurar OBS", que
+  muda o endereço no OBS, ou feche o outro programa e volte a abrir o
+  Tribuna.
+- Qualquer outro problema: envie o ficheiro dados\marcador.log, onde o
+  programa escreve o que vai fazendo.
+
+No fim de cada transmissão, o programa envia os registos desse jogo para
+o servidor do clube. Não vai com eles nada de pessoal: nem nomes, nem
+palavras-passe, nem o PIN.
+
+
+DIRETOS NO YOUTUBE
+
+Com acesso ao canal do clube, o Tribuna cria sozinho o direto público
+de cada jogo, com o título e a miniatura, e no fim torna o vídeo não
+listado. O guia YouTube\LIGAR-YOUTUBE.txt tem duas partes.
+Na primeira, em qualquer computador e com qualquer conta Google,
+cria-se o cliente OAuth na Google Cloud, com a app em "In production".
+Em "Testing", o login caduca todas as semanas.
+Na segunda, no PC do clube, colam-se o ID e o segredo na Configuração
+inicial e entra-se com a conta que gere o canal do clube.
+- O separador Transmissões lista os diretos do canal, os do Tribuna e
+  os feitos fora dele, com filtros por escalão e por época. Cada um tem
+  "Copiar", "Abrir" e, se ainda estiver público, "Tornar não listado".
+- A miniatura própria só funciona com o canal verificado
+  (youtube.com/verify). Sem isso o direto começa na mesma.
+- Se o painel disser que a ligação ao YouTube expirou, vá a Definições >
+  YouTube e carregue em "Ligar ao YouTube" outra vez.
+- O login fica na pasta dados, no ficheiro youtube.json. Não o mande a
+  ninguém. "Desligar" cancela o acesso no Google e apaga-o.
+

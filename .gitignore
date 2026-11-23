@@ -1,0 +1,6 @@
+dados/
+dist/
+*.exe
+.DS_Store
+.ship/
+*.syso

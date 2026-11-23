@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Tribuna · Overlay</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/overlay/overlay.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Dry brush: ragged edges from displacement, bristle streaks from stretched noise used as alpha. -->
+    <filter id="dry" x="-8%" y="-60%" width="116%" height="220%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.11" numOctaves="3" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="46" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.0025 0.16" numOctaves="2" seed="11" result="s"/>
+      <feColorMatrix in="s" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -1.55" result="m"/>
+      <feComposite in="d" in2="m" operator="in"/>
+    </filter>
+    <!-- One quiet group of red strokes for the top-right corner of full screens. -->
+    <g id="brush-strokes" transform="rotate(180 960 540) translate(-130 1100) rotate(-61)">
+      <g filter="url(#dry)">
+        <path d="M0,16 C41.6,-30 260,-16 520,-7 L490,30.4 C312,62 78,47 40,39 Z" fill="#E3202C"/>
+        <path d="M50,77 C81.4,59 246,66 442,68.7 L412,82.2 C285.2,95 108.8,87.5 90,85.3 Z" fill="#FF3B47"/>
+        <path d="M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z" fill="#E3202C"/>
+      </g>
+    </g>
+  </defs>
+</svg>
+<div id="stage">
+<div id="cam"></div>
+
+<!-- Full-screen backdrop, shared by abertura, plantel, apoiantes, intervalo and final -->
+<div class="bg" id="bg">
+  <div class="atmo"><div class="ph"></div><div class="tint"></div><div class="ph dim"></div><div class="vig"></div></div>
+  <svg class="brush" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#brush-strokes"/></svg>
+</div>
+
+<!-- Marcador: the score bug, top-left or bottom-left (settings.overlay.bug_position) -->
+<section class="screen" id="s-marcador" data-screen="marcador">
+  <div class="sb-pos">
+  <div class="sb">
+    <div class="sb-edge">
+      <div class="sb-fill"><i class="n"></i><i class="w"></i><i class="g"></i></div>
+      <div class="sb-white"></div>
+      <div class="sb-red"></div>
+    </div>
+    <div class="sb-teams">
+      <div class="sb-head"><span><span data-b="homeShort"></span> · BASKET</span><span class="sb-dot" title="Sem ligação ao marcador"></span></div>
+      <div class="sb-row home">
+        <div class="tile" data-tile="home" data-strip></div>
+        <div class="nm" data-b="homeName" data-fit="24" data-fit-min="16" data-alt="homeShort"></div>
+        <div class="sc"><span data-b="homeScore"></span></div>
+      </div>
+      <div class="sb-row away">
+        <div class="tile" data-tile="away" data-strip></div>
+        <div class="nm" data-b="awayName" data-fit="24" data-fit-min="16" data-alt="awayShort"></div>
+        <div class="sc"><span data-b="awayScore"></span></div>
+      </div>
+    </div>
+    <div class="sb-stats">
+      <div class="sb-gap"></div>
+      <div class="sb-fouls">
+        <div class="sb-lbl">FALTAS</div>
+        <div class="sb-f" data-bonus="home"><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus">BÓNUS</span></div>
+        <div class="sb-f sep" data-bonus="away"><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus">BÓNUS</span></div>
+      </div>
+      <div class="sb-div"></div>
+      <div class="sb-time">
+        <div class="sb-per" data-b="periodShort"></div>
+        <div class="sb-tbox">
+          <div class="sb-clock" data-b="clock"></div>
+          <div class="sb-shot"><span>24s</span><b data-b="shot" data-hotshot></b></div>
+        </div>
+      </div>
+    </div>
+    <!-- The points just scored, over the home score or under the away one -->
+    <div class="pop home" data-pop="home"><div><span></span></div></div>
+    <div class="pop away" data-pop="away"><div><span></span></div></div>
+  </div>
+  </div>
+  <!-- Sponsor corner: one sponsor at a time, top-right, never on the bug -->
+  <div class="spc" id="spc"><div class="spc-pl"></div><i class="spc-slab"></i><div class="spc-lg"></div><i class="spc-prog"><b></b></i></div>
+</section>
+
+<!-- Abertura -->
+<section class="screen full" id="s-abertura" data-screen="abertura">
+  <svg class="ab-slash" viewBox="0 0 1920 930" aria-hidden="true">
+    <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
+    <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
+  </svg>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="ab-kick"><div><span>TRANSMISSÃO PRESTES A COMEÇAR</span></div></div>
+  <div class="ab-team home">
+    <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
+    <div class="ab-name" data-b="homeName" data-fit="100"></div>
+    <div class="ab-sub">BASQUETEBOL DESDE 1929</div>
+  </div>
+  <div class="ab-team away">
+    <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="away"></div></div>
+    <div class="ab-name" data-b="awayName" data-fit="100"></div>
+    <div class="ab-sub">VISITANTE</div>
+  </div>
+  <div class="ab-vs"><b>VS</b></div>
+  <div class="ab-info">
+    <div class="ab-when"><div class="ab-lbl">O JOGO<br>COMEÇA ÀS</div><div class="ab-time" data-b="startTime"></div></div>
+    <div class="ab-sep"></div>
+    <div class="ab-meta">
+      <div class="ab-comp" data-b="compRound"></div>
+      <div class="ab-venue" data-b="venue"></div>
+      <div class="ab-date" data-b="startLine"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Plantel: photo cards, or number cards with photos off -->
+<section class="screen full" id="s-plantel" data-screen="plantel">
+  <div class="pl-head">
+    <div class="tile pl-crest" data-tile="home"></div>
+    <div class="t"><small><span data-b="homeName"></span> · <em>BASKET</em></small><b>PLANTEL<span data-b="groupName"></span></b></div>
+  </div>
+  <div class="pl-grid">
+    <div class="coach">
+      <div class="ci"><div class="tile" data-tile="home"></div></div>
+      <div class="ct"><span>TREINADOR</span><small data-b="coachFirst"></small><b data-b="coachLast" data-fit="52"></b></div>
+    </div>
+  </div>
+</section>
+
+<!-- Desconto de tempo: the camera shows through the hole, the background around it -->
+<section class="screen" id="s-desconto" data-screen="desconto">
+  <div class="to-frame">
+    <div class="to-bg">
+      <div class="atmo"><div class="ph"></div><div class="tint"></div><div class="vig"></div></div>
+      <svg class="brush" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#brush-strokes"/></svg>
+    </div>
+    <div class="to-hole"></div>
+  </div>
+  <div class="to-head"><div class="tile" data-tile="home"></div><div class="to-title">DESCONTO<span>DE TEMPO</span></div></div>
+  <div class="to-u u1 home">
+    <div class="to-nm" data-b="homeName" data-fit="28" data-fit-mini="24"></div>
+    <div class="to-mid"><div class="tile" data-tile="home" data-strip></div><div class="to-sc"><span data-b="homeScore"></span></div></div>
+    <div class="to-f"><span class="lbl">FALTAS</span><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span></div>
+  </div>
+  <div class="to-u u2 away">
+    <div class="to-nm" data-b="awayName" data-fit="28" data-fit-mini="24"></div>
+    <div class="to-mid"><div class="tile" data-tile="away" data-strip></div><div class="to-sc"><span data-b="awayScore"></span></div></div>
+    <div class="to-f"><span class="lbl">FALTAS</span><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span></div>
+  </div>
+  <div class="to-time">
+    <div class="lbl">TEMPO DE JOGO</div>
+    <div class="to-per" data-b="periodLong" data-fit="36" data-fit-mini="26"></div>
+    <div class="to-clock" data-b="clock"></div>
+  </div>
+  <div class="spons to-strip" data-spons></div>
+  <!-- A vertical club video in the left column, when the panel picks one for time-outs -->
+  <div class="to-mini"><div class="pr-frame"><video playsinline muted preload="auto"></video></div><i class="pr-prog"><b></b></i><div class="to-mtag" data-pr="kicker"></div></div>
+</section>
+
+<!-- Apoiantes: every sponsor of this game, large -->
+<section class="screen full" id="s-apoiantes" data-screen="apoiantes">
+  <div class="tile ap-crest" data-tile="home"></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="ap-title">
+    <div class="t1">NOSSOS</div>
+    <div class="t2">APOIANTES</div>
+    <div class="rules"><i></i><span>JUNTOS PELO CLUBE</span><i></i></div>
+  </div>
+  <div class="spons ap-strip" data-spons></div>
+</section>
+
+<!-- Promo: a club video. Vertical: phone frame and a text column. Horizontal: a large frame and a caption. -->
+<section class="screen full" id="s-promo" data-screen="promo">
+  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em>BASKET</em></span></div>
+  <div class="pr-vid"><div class="pr-frame"><video playsinline muted preload="auto"></video></div></div>
+  <i class="pr-prog pr-bar"><b></b></i>
+  <div class="pr-left">FALTAM <b data-pr="left"></b></div>
+  <div class="pr-txt">
+    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em>BASKET</em></span></div>
+    <div class="pr-kick"><span data-pr="kicker"></span></div>
+    <div class="pr-head" data-pr="headline"></div>
+    <div class="pr-line" data-pr="line"></div>
+    <div class="pr-qr"><img alt=""><div>APONTE A CÂMARA<b data-pr="short"></b></div></div>
+  </div>
+</section>
+
+<!-- Intervalo -->
+<section class="screen full" id="s-intervalo" data-screen="intervalo">
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="hd-tab iv-tab"><div class="hd-word">INTERVALO</div><div class="hd-sub" data-b="halfLine"></div></div>
+  <div class="blk iv-block">
+    <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
+    <div class="blk-rows">
+      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
+      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
+    </div>
+  </div>
+  <div class="ptab iv-pt" data-periods></div>
+</section>
+
+<!-- Resultado final -->
+<section class="screen full" id="s-final" data-screen="final">
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="hd-tab fn-tab"><div class="hd-word">RESULTADO FINAL</div><div class="hd-sub" data-b="compRound"></div></div>
+  <div class="blk fn-block">
+    <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
+    <div class="blk-rows">
+      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><span class="win" data-win="home">VENCEDOR</span><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
+      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><span class="win" data-win="away">VENCEDOR</span><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
+    </div>
+  </div>
+  <div class="ptab fn-pt" data-periods></div>
+  <div class="fn-thanks"><div class="rules"><i></i><span>OBRIGADO AOS NOSSOS APOIANTES</span><i></i></div></div>
+</section>
+
+<!-- Próximo jogo: the club's game after this one (game.next) -->
+<section class="screen full" id="s-proximo" data-screen="proximo">
+  <svg class="ab-slash" viewBox="0 0 1920 930" aria-hidden="true">
+    <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
+    <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
+  </svg>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="ab-kick"><div><span>PRÓXIMO JOGO</span></div></div>
+  <div class="ab-team home">
+    <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
+    <div class="ab-name" data-b="homeName" data-fit="100"></div>
+    <div class="px-where" data-b="nextWhere"></div>
+  </div>
+  <div class="ab-team away">
+    <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="next"></div></div>
+    <div class="ab-name" data-b="nextName" data-fit="100"></div>
+    <div class="ab-sub" data-b="nextFull"></div>
+  </div>
+  <div class="ab-vs"><b>VS</b></div>
+  <div class="ab-info">
+    <div class="ab-when"><div class="px-day"><small data-b="nextWeekday"></small><span data-b="nextDay"></span></div><div class="ab-time" data-b="nextTime"></div></div>
+    <div class="ab-sep"></div>
+    <div class="ab-meta">
+      <div class="ab-comp" data-b="nextComp"></div>
+      <div class="ab-venue" data-b="nextVenue"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Voltamos já: holding screen for a technical break -->
+<section class="screen full" id="s-voltamos" data-screen="voltamos">
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="vj-crest"><i class="vj-halo"></i><div class="tile" data-tile="home"></div></div>
+  <div class="vj-title">VOLTAMOS <span>JÁ</span></div>
+  <div class="vj-sub"><div class="rules"><i></i><span data-b="backLine" data-fit="30"></span><i></i></div></div>
+  <div class="vj-score"><div>
+    <div class="tile" data-tile="home"></div><div class="n hn" data-b="homeName"></div><div class="s hs" data-b="homeScore"></div>
+    <div class="pd"><small data-b="periodLong"></small><b data-b="clock"></b></div>
+    <div class="s as" data-b="awayScore"></div><div class="n an" data-b="awayName"></div><div class="tile" data-tile="away"></div>
+  </div></div>
+</section>
+
+<!-- Sponsor strip: shared by abertura, plantel, intervalo, final, proximo and voltamos -->
+<div class="spons strip" id="strip" data-spons></div>
+
+<!-- Lower third: bottom-left under a top-left bug, bottom-right under a bottom-left one -->
+<div class="lt" id="lt">
+  <div class="lt-tab"><div class="lt-tc tile" data-tile="home"></div><div class="lt-team" data-b="homeName"></div></div>
+  <div class="lt-body">
+    <div class="lt-left">
+      <div class="lt-tile"></div>
+      <div class="lt-band"></div>
+      <div class="lt-photo"><img alt=""></div>
+      <div class="lt-num" data-lt="number"></div>
+      <div class="lt-crest"><div class="tile" data-tile="home"></div></div>
+    </div>
+    <div class="lt-text">
+      <div class="lt-small" data-lt="small"></div>
+      <div class="lt-big" data-lt="big"></div>
+      <div class="lt-label" data-lt="label"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script src="/overlay/overlay.js"></script>
+</body>
+</html>

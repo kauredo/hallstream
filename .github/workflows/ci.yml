@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: GOOS=windows go vet ./...
+      # The overlay tests skip on a machine with no Chrome. The runner image
+      # has one: this fails the job if that stops being true.
+      - run: google-chrome --version
+      - run: go test ./...

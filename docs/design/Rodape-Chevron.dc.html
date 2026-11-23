@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Rodapé A, Chevron</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&amp;family=Barlow+Condensed:wght@500;600;700;800&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile{clip-path:polygon(0 0,177.2px 0,150px 100%,0 100%)}
+.band{clip-path:polygon(183.2px 0,203.2px 0,176px 100%,156px 100%)}
+.nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; background: #2A1C12; font-family: 'Barlow Condensed', sans-serif">
+<img class="bg" src="/_blob/9c2940bf8bca730ed6082a9a6d99b693" alt="Pavilhão Municipal do Vale">
+
+<div style="position: absolute; left: 1096px; top: 840px; width: 760px; height: 176px; display: flex; flex-direction: column; align-items: flex-start; filter: drop-shadow(0 8px 22px rgba(0,0,0,0.4))">
+
+<div style="height: 48px; display: flex; align-items: center; gap: 12px; background: #181841; padding: 0 22px 0 4px; box-sizing: border-box">
+<sc-if value="{{jogador}}" hint-placeholder-val="{{ true }}">
+<div style="width: 40px; height: 40px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+<img src="/_blob/594604fee97726efd14dc644fe154a1a" alt="Emblema do clube" style="width: 32px; height: 34px; object-fit: contain">
+</div>
+</sc-if>
+<div style="font-family: Graduate, serif; font-size: 24px; line-height: 1; letter-spacing: 1px; color: #FFFFFF">CASA</div>
+</div>
+
+<div style="display: flex; width: 760px; height: 128px; background: #FFFFFF">
+<div style="position: relative; flex: 0 0 204px; height: 128px">
+<div class="tile" style="position: absolute; inset: 0; background: #BD1522"></div>
+<div class="band" style="position: absolute; inset: 0; background: #181841"></div>
+<sc-if value="{{jogador}}" hint-placeholder-val="{{ true }}">
+<div style="position: absolute; left: 0; top: 0; width: 158px; height: 128px; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 800; font-size: 104px; line-height: 1; font-variant-numeric: tabular-nums">7</div>
+</sc-if>
+<sc-if value="{{comentador}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; top: 0; width: 158px; height: 128px; display: flex; align-items: center; justify-content: center">
+<div style="width: 96px; height: 96px; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+<img src="/_blob/594604fee97726efd14dc644fe154a1a" alt="Emblema do clube" style="height: 73px; width: 48px; object-fit: contain">
+</div>
+</div>
+</sc-if>
+</div>
+
+<div style="flex: 0 0 556px; box-sizing: border-box; width: 556px; height: 128px; padding: 0 32px 0 24px; display: flex; flex-direction: column; justify-content: center; gap: 10px">
+<div class="nm" style="width: 500px; font-weight: 800; font-size: 48px; line-height: 1; color: #181841; text-transform: uppercase; letter-spacing: 0.5px">Nome Apelido</div>
+<sc-if value="{{jogador}}" hint-placeholder-val="{{ true }}">
+<div style="font-weight: 700; font-size: 24px; line-height: 1; letter-spacing: 1.5px; color: #4A4A66">EXTREMO</div>
+</sc-if>
+<sc-if value="{{comentador}}" hint-placeholder-val="{{ false }}">
+<div style="font-weight: 700; font-size: 24px; line-height: 1; letter-spacing: 1.5px; color: #4A4A66; text-transform: uppercase">Comentário</div>
+</sc-if>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tipo":{"editor":"enum","options":["jogador","comentador"],"default":"jogador"},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+const c = (this.props.tipo ?? "jogador") === "comentador";
+return { jogador: !c, comentador: c };
+}
+}
+</script>
+</body>
+</html>

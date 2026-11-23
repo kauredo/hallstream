@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/obsws"
 )
 
@@ -43,8 +44,7 @@ type Settings struct {
 	OBS         OBS    `json:"obs"`
 	AutoScreens bool   `json:"auto_screens"`
 	Instagram   string `json:"instagram"`
-	HomeName    string `json:"home_name"`
-	HomeShort   string `json:"home_short"`
+	Club        Club   `json:"club"`
 	Photos      Photos `json:"photos"`
 	// DesktopShortcut is the answer to the first-run shortcut question: ""
 	// (not asked yet), "created" or "declined". Only the server changes it.
@@ -72,6 +72,23 @@ type Settings struct {
 	// FirstSetup is the panel's "Primeira configuração"; only /api/setup changes it.
 	FirstSetup FirstSetup `json:"first_setup"`
 }
+
+// Club is the club's profile: what the overlay shows for the home side and
+// the colours it is drawn in.
+type Club struct {
+	Name      string `json:"name"`      // up to 12 characters
+	Short     string `json:"short"`     // the sigla, up to 4
+	Primary   string `json:"primary"`   // "#RRGGBB"
+	Secondary string `json:"secondary"` // "#RRGGBB"
+	// Crest is the crest's URL: a /media upload, or DefaultCrest. Only
+	// /api/club/crest changes it.
+	Crest   string `json:"crest"`
+	Sport   string `json:"sport"`   // an id from club.Sports
+	Country string `json:"country"` // ISO 3166 alpha-2, "PT"
+}
+
+// DefaultCrest is the neutral stand-in shield.
+const DefaultCrest = "/assets/crest.svg"
 
 // FirstSetup remembers the guided first-run steps.
 type FirstSetup struct {
@@ -112,9 +129,9 @@ func DefaultSettings() Settings {
 		OBS: OBS{Host: "127.0.0.1", Port: 4455,
 			GameScene: "Jogo", CameraFit: "contain"},
 		AutoScreens: true,
-		HomeName:    "CASA",
-		HomeShort:   "CAS",
-		Overlay:     Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
+		Club: Club{Name: "CASA", Short: "CAS", Primary: club.DefaultPrimary, Secondary: club.DefaultSecondary,
+			Crest: DefaultCrest, Sport: "basketball", Country: "PT"},
+		Overlay: Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
 	}
 }
 
@@ -239,6 +256,9 @@ func Open(dir string) (*Store, error) {
 		if err := json.Unmarshal(b, v); err != nil {
 			return nil, errors.New(name + " está estragado: " + err.Error())
 		}
+		if name == "settings.json" {
+			oldHome(b, &s.settings)
+		}
 	}
 	// Uploads cut short by a closed program leave temp files behind.
 	left, _ := filepath.Glob(filepath.Join(dir, "promo", ".up-*"))
@@ -249,6 +269,25 @@ func Open(dir string) (*Store, error) {
 		s.groups = append(s.groups, Group{ID: Shared, Name: "Todos os escalões"})
 	}
 	return s, nil
+}
+
+// oldHome moves home_name and home_short, from a settings.json written before
+// the club profile, into the club. The next save drops the old keys.
+func oldHome(b []byte, set *Settings) {
+	var old struct {
+		Club      *json.RawMessage `json:"club"`
+		HomeName  *string          `json:"home_name"`
+		HomeShort *string          `json:"home_short"`
+	}
+	if json.Unmarshal(b, &old) != nil || old.Club != nil {
+		return
+	}
+	if old.HomeName != nil {
+		set.Club.Name = *old.HomeName
+	}
+	if old.HomeShort != nil {
+		set.Club.Short = *old.HomeShort
+	}
 }
 
 // WriteFile writes atomically: a temp file next to it, then rename.

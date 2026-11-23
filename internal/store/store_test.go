@@ -1,10 +1,13 @@
 package store
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/kauredo/hallstream/internal/club"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -209,5 +212,47 @@ func TestOldSettingsGetTheSponsorCorner(t *testing.T) {
 	}
 	if o := s.Settings().Overlay; o != (Overlay{BugPosition: "bottom-left", SponsorCorner: true, SponsorEvery: 4}) {
 		t.Errorf("overlay %+v", o)
+	}
+}
+
+func TestOldSettingsMoveHomeNameToClub(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	os.WriteFile(path, []byte(`{"home_name":"VALE","home_short":"VAL","instagram":"@vale"}`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := DefaultSettings().Club
+	want.Name, want.Short = "VALE", "VAL"
+	if c := s.Settings().Club; c != want {
+		t.Errorf("club %+v, want %+v", c, want)
+	}
+	if err := s.SaveSettings(s.Settings()); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(path)
+	var saved map[string]any
+	json.Unmarshal(b, &saved)
+	if _, old := saved["home_name"]; old || saved["club"] == nil {
+		t.Errorf("saved settings still hold home_name or lack club: %s", b)
+	}
+
+	// A file that already has the club keeps it, whatever home_name says.
+	os.WriteFile(path, []byte(`{"home_name":"VELHO","club":{"name":"NOVO","short":"NOV"}}`), 0o644)
+	s, err = Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := s.Settings().Club; c.Name != "NOVO" || c.Short != "NOV" || c.Primary != want.Primary || c.Sport != "basketball" {
+		t.Errorf("club %+v", c)
+	}
+}
+
+func TestDefaultClub(t *testing.T) {
+	c := DefaultSettings().Club
+	if c != (Club{Name: "CASA", Short: "CAS", Primary: club.DefaultPrimary, Secondary: club.DefaultSecondary,
+		Crest: DefaultCrest, Sport: "basketball", Country: "PT"}) {
+		t.Errorf("default club %+v", c)
 	}
 }

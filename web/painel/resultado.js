@@ -1,10 +1,19 @@
 /* Imagem do resultado (1080x1080 PNG) para as redes sociais, desenhada num <canvas>.
-   Segue o ecrã Final do overlay: casa a vermelho, visitante a branco, a diagonal do equipamento entre os dois.
+   Segue o ecrã Final do overlay: casa na cor do clube, visitante a branco, a diagonal do equipamento entre os dois.
    Só usa imagens do mesmo servidor (/media, /assets), para o canvas poder ser exportado. */
 (function () {
   'use strict';
   var W = 1080;
-  var RED = '#BD1522', KIT = '#8B2223', NAVY = '#181841', GOLD = '#D6BD2F', GREY = '#ECEAE6', MUTED = 'rgba(255,255,255,0.72)';
+  var GOLD = '#D6BD2F', GREY = '#ECEAE6', MUTED = 'rgba(255,255,255,0.72)';
+  // The club's colours come from state.game.theme (club.Theme in Go), as on the overlay; these
+  // defaults are the default club's, the same as overlay.css. draw() sets C before drawing.
+  var THEME = { red: '#2F4B7C', 'on-red': '#FFFFFF', kit: '#223659', 'on-kit': '#FFFFFF', navy: '#1C1A17' };
+  var C = THEME;
+  function colours(st) {
+    var t = (st.game && st.game.theme) || {}, c = {};
+    Object.keys(THEME).forEach(function (k) { c[k] = typeof t[k] === 'string' ? t[k] : THEME[k]; });
+    return c;
+  }
   var COND = '"Barlow Condensed", sans-serif', TEXT = 'Barlow, sans-serif', DISPLAY = 'Graduate, serif';
   var TZ = 'Europe/Lisbon';
   var TAN12 = Math.tan(12 * Math.PI / 180);
@@ -85,23 +94,23 @@
     if (img) contain(x, img, cx, y + (s - 6) / 2, 110, 114);
     else {
       x.textBaseline = 'middle';
-      text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, y + (s - 6) / 2 + 3, '800 52px ' + COND, NAVY, 'center', 0.5);
+      text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, y + (s - 6) / 2 + 3, '800 52px ' + COND, C.navy, 'center', 0.5);
       x.textBaseline = 'alphabetic';
     }
   }
   function side(x, team, name, img, score, cx, won, onRed) {
-    tile(x, team, img, cx, onRed ? '#FFFFFF' : GREY, onRed ? RED : (team.color || '#5C6170'));
+    tile(x, team, img, cx, onRed ? '#FFFFFF' : GREY, onRed ? C.red : (team.color || '#5C6170'));
     if (won) {
       x.font = '800 24px ' + COND; x.letterSpacing = '1.5px';
       var w = x.measureText('VENCEDOR').width + 22;
-      x.fillStyle = NAVY; x.fillRect(cx - w / 2, 432, w, 34);
+      x.fillStyle = C.navy; x.fillRect(cx - w / 2, 432, w, 34);
       text(x, 'VENCEDOR', cx + 0.75, 458, x.font, GOLD, 'center', 1.5);
     }
     x.letterSpacing = '0px';
-    text(x, name, cx, 540, fit(x, name, 58, DISPLAY, 400, NAME_MAX), onRed ? '#FFFFFF' : NAVY, 'center');
+    text(x, name, cx, 540, fit(x, name, 58, DISPLAY, 400, NAME_MAX), onRed ? C['on-red'] : C.navy, 'center');
     x.font = '800 220px ' + COND;
     var m = x.measureText(String(score));
-    text(x, String(score), cx, (M + B) / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2, x.font, '#FFFFFF', 'center');
+    text(x, String(score), cx, (M + B) / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2, x.font, onRed ? C['on-kit'] : '#FFFFFF', 'center');
   }
 
   function periodsLine(x, periods, y) {
@@ -119,7 +128,7 @@
   }
 
   function footer(x, handle, sp, logo) {
-    x.fillStyle = RED; x.fillRect(0, 958, W, 2);
+    x.fillStyle = C.red; x.fillRect(0, 958, W, 2);
     var cy = 1020;
     var igX = 64;
     if (handle) {
@@ -138,7 +147,7 @@
     text(x, 'COM O APOIO DE', sx - 20, cy + 1, '700 20px ' + COND, MUTED, 'right', 1.5);
     x.fillStyle = '#FFFFFF'; x.fillRect(sx, cy - sh / 2, sw, sh);
     if (logo) contain(x, logo, sx + sw / 2, cy, sw - 28, sh - 20);
-    else { x.letterSpacing = '0px'; text(x, sp.name || '', sx + sw / 2, cy + 1, fit(x, sp.name || '', 30, COND, 700, sw - 28), NAVY, 'center'); }
+    else { x.letterSpacing = '0px'; text(x, sp.name || '', sx + sw / 2, cy + 1, fit(x, sp.name || '', 30, COND, 700, sw - 28), C.navy, 'center'); }
     x.textBaseline = 'alphabetic';
   }
 
@@ -150,17 +159,18 @@
     var c = document.createElement('canvas');
     c.width = c.height = W;
     var x = c.getContext('2d');
+    C = colours(st);
 
-    x.fillStyle = NAVY; x.fillRect(0, 0, W, W);
+    x.fillStyle = C.navy; x.fillRect(0, 0, W, W);
     text(x, head, W / 2, 124, '800 92px ' + COND, GOLD, 'center', 3);
     var sub = joinDot(g.competition, g.round);
     if (sub) text(x, sub, W / 2, 184, fit(x, sub, 34, COND, 600, 960), MUTED, 'center', 1);
 
     // Casa à esquerda, visitante à direita; a faixa branca e azul a 12° faz a costura, como no equipamento.
-    x.fillStyle = RED; x.fillRect(0, T, W, M - T);
-    x.fillStyle = KIT; x.fillRect(0, M, W, B - M);
+    x.fillStyle = C.red; x.fillRect(0, T, W, M - T);
+    x.fillStyle = C.kit; x.fillRect(0, M, W, B - M);
     rightOf(x, 0, T, B, '#FFFFFF');
-    rightOf(x, 8, T, B, NAVY);
+    rightOf(x, 8, T, B, C.navy);
     rightOf(x, 52, T, M, '#FFFFFF');
     rightOf(x, 52, M, B, away.color || '#5C6170');
 

@@ -1,19 +1,30 @@
 /* Miniatura do YouTube (1280x720 PNG) do jogo escolhido, desenhada num <canvas>.
-   Segue a maqueta: pavilhão a vermelho escuro, escalão numa placa, os dois emblemas, os nomes e a data.
+   Segue a maqueta: pavilhão na cor do clube, escalão numa placa, os dois emblemas, os nomes e a data.
    Sem patrocinadores. Um emblema que falhe (ou que sujasse o canvas) dá lugar às iniciais. */
 (function () {
   'use strict';
   var W = 1280, H = 720;
-  var RED = '#BD1522', RED_HI = '#FF4752', BLOOD = '#5A0A12', INK = '#14060A', NAVY = '#181841', GREY = '#ECEAE6';
+  var GREY = '#ECEAE6';
+  // The club's colours come from state.game.theme (club.Theme in Go), as on the overlay; these
+  // defaults are the default club's, the same as overlay.css. draw() sets C before drawing.
+  var THEME = { red: '#2F4B7C', 'on-red': '#FFFFFF', 'red-hi': '#6688C5', 'red-text': '#2F4B7C', blood: '#152238',
+    ink: '#070B12', 'ink-rgb': '7,11,18', tint: '#2F4B7C', navy: '#1C1A17' };
+  var C = THEME;
+  function colours(st) {
+    var t = (st.game && st.game.theme) || {}, c = {};
+    Object.keys(THEME).forEach(function (k) { c[k] = typeof t[k] === 'string' ? t[k] : THEME[k]; });
+    return c;
+  }
+  function ink(a) { return 'rgba(' + C['ink-rgb'] + ',' + a + ')'; }
   var COND = '"Barlow Condensed", sans-serif', DISPLAY = 'Graduate, serif';
   var TZ = 'Europe/Lisbon';
   var SKEW = Math.tan(12 * Math.PI / 180);
   var HOME_X = 300, AWAY_X = 980;
-  // The brush group of the overlay (web/overlay/index.html), in its 1920x1080 space.
+  // The brush group of the overlay (web/overlay/index.html), in its 1920x1080 space, with its theme colour.
   var BRUSH = [
-    ['M0,16 C41.6,-30 260,-16 520,-7 L490,30.4 C312,62 78,47 40,39 Z', '#E3202C'],
-    ['M50,77 C81.4,59 246,66 442,68.7 L412,82.2 C285.2,95 108.8,87.5 90,85.3 Z', '#FF3B47'],
-    ['M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z', '#E3202C']
+    ['M0,16 C41.6,-30 260,-16 520,-7 L490,30.4 C312,62 78,47 40,39 Z', 'red'],
+    ['M50,77 C81.4,59 246,66 442,68.7 L412,82.2 C285.2,95 108.8,87.5 90,85.3 Z', 'red-hi'],
+    ['M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z', 'red']
   ];
 
   function fmt(o, d) { return new Intl.DateTimeFormat('pt-PT', Object.assign({ timeZone: TZ }, o)).format(d); }
@@ -71,7 +82,7 @@
   }
 
   function backdrop(x, photo) {
-    x.fillStyle = INK; x.fillRect(0, 0, W, H);
+    x.fillStyle = C.ink; x.fillRect(0, 0, W, H);
     if (photo) {
       var k = Math.max((W + 26) / photo.naturalWidth, (H + 26) / photo.naturalHeight);
       var pw = photo.naturalWidth * k, ph = photo.naturalHeight * k;
@@ -82,15 +93,15 @@
     }
     x.save();
     x.globalCompositeOperation = 'multiply';
-    x.fillStyle = '#B0101C'; x.fillRect(0, 0, W, H);
+    x.fillStyle = C.tint; x.fillRect(0, 0, W, H);
     x.restore();
     var top = x.createLinearGradient(0, 0, 0, H * 0.26);
-    top.addColorStop(0, 'rgba(20,4,8,0.80)'); top.addColorStop(1, 'rgba(20,4,8,0)');
+    top.addColorStop(0, ink(0.8)); top.addColorStop(1, ink(0));
     x.fillStyle = top; x.fillRect(0, 0, W, H);
     x.save();
     x.translate(W / 2, H / 2); x.scale(1, (0.7 * H) / (0.75 * W));
     var v = x.createRadialGradient(0, 0, 0, 0, 0, 0.75 * W);
-    v.addColorStop(0, 'rgba(30,4,9,0.15)'); v.addColorStop(1, 'rgba(18,3,7,0.82)');
+    v.addColorStop(0, ink(0.15)); v.addColorStop(1, ink(0.82));
     x.fillStyle = v; x.fillRect(-W, -W, 2 * W, 2 * W);
     x.restore();
     // One quiet brush group, top right, as on the overlay.
@@ -99,30 +110,30 @@
     x.scale(W / 1920, H / 1080);
     x.translate(960, 540); x.rotate(Math.PI); x.translate(-960, -540);
     x.translate(-130, 1100); x.rotate(-61 * Math.PI / 180);
-    BRUSH.forEach(function (b) { x.fillStyle = b[1]; x.fill(new Path2D(b[0])); });
+    BRUSH.forEach(function (b) { x.fillStyle = C[b[1]]; x.fill(new Path2D(b[0])); });
     x.restore();
   }
 
-  function lockup(x, home) {
+  function lockup(x, home, sport) {
     x.textBaseline = 'alphabetic';
-    var a = home, sep = '  ·  ', b = 'BASKET';
+    var a = home, sep = '  ·  ', b = sport;
     x.font = '600 20px ' + COND; x.letterSpacing = '8px';
     var wa = x.measureText(a + sep).width;
     x.font = '700 20px ' + COND;
     var wb = x.measureText(b).width, left = (W - wa - wb) / 2;
     x.textAlign = 'left';
     x.font = '600 20px ' + COND; x.fillStyle = 'rgba(255,255,255,0.9)'; x.fillText(a + sep, left, 36);
-    x.font = '700 20px ' + COND; x.fillStyle = RED_HI; x.fillText(b, left + wa, 36);
+    x.font = '700 20px ' + COND; x.fillStyle = C['red-hi']; x.fillText(b, left + wa, 36);
   }
 
   function plate(x, label) {
     if (!label) return;
     x.font = '800 40px ' + COND; x.letterSpacing = '4px';
     var w = x.measureText(label).width + 64;
-    lean(x, W / 2 + 6, 58, w, 60, BLOOD);
-    lean(x, W / 2, 52, w, 60, RED);
+    lean(x, W / 2 + 6, 58, w, 60, C.blood);
+    lean(x, W / 2, 52, w, 60, C.red);
     x.textBaseline = 'middle';
-    text(x, label, W / 2 + 2, 84, x.font, '#FFFFFF', 4);
+    text(x, label, W / 2 + 2, 84, x.font, C['on-red'], 4);
     x.textBaseline = 'alphabetic';
   }
 
@@ -138,7 +149,7 @@
     // No crest: the initials, as the overlay's tiles do.
     x.fillStyle = tileBg; x.fillRect(cx - 60, t + 70, 120, 120);
     x.textBaseline = 'middle';
-    text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, t + 132, '400 52px ' + DISPLAY, NAVY, 0);
+    text(x, team.initials || String(team.short || team.name || '').slice(0, 3).toUpperCase(), cx, t + 132, '400 52px ' + DISPLAY, C.navy, 0);
     x.textBaseline = 'alphabetic';
   }
 
@@ -157,15 +168,15 @@
     var w = x.measureText(s).width + 32;
     lean(x, cx, 528, w, 36, '#FFFFFF');
     x.textBaseline = 'middle';
-    text(x, s, cx + 2, 547, x.font, RED, 4);
+    text(x, s, cx + 2, 547, x.font, C['red-text'], 4);
     x.textBaseline = 'alphabetic';
   }
 
   function vs(x) {
-    lean(x, W / 2 + 8, 236, 132, 92, RED);
+    lean(x, W / 2 + 8, 236, 132, 92, C.red);
     lean(x, W / 2, 228, 132, 92, '#FFFFFF');
     x.textBaseline = 'middle';
-    text(x, 'VS', W / 2, 276, '800 64px ' + COND, RED, 0);
+    text(x, 'VS', W / 2, 276, '800 64px ' + COND, C['red-text'], 0);
     x.textBaseline = 'alphabetic';
   }
 
@@ -177,13 +188,13 @@
     x.font = '800 66px ' + COND; x.letterSpacing = '0px';
     var dot = '  ·  ', wd = x.measureText(dot).width;
     var total = parts.reduce(function (sum, p) { return sum + x.measureText(p).width; }, 0) + wd * 2;
-    lean(x, W / 2 + 8, 598, total + 88, 100, RED);
+    lean(x, W / 2 + 8, 598, total + 88, 100, C.red);
     lean(x, W / 2, 590, total + 88, 100, '#FFFFFF');
     x.textBaseline = 'middle'; x.textAlign = 'left';
     var px = (W - total) / 2;
     parts.forEach(function (p, i) {
-      if (i) { x.fillStyle = RED; x.fillText(dot, px, 642); px += wd; }
-      x.fillStyle = INK; x.fillText(p, px, 642); px += x.measureText(p).width;
+      if (i) { x.fillStyle = C['red-text']; x.fillText(dot, px, 642); px += wd; }
+      x.fillStyle = C.ink; x.fillText(p, px, 642); px += x.measureText(p).width;
     });
     x.textBaseline = 'alphabetic';
   }
@@ -193,10 +204,11 @@
     var c = document.createElement('canvas');
     c.width = W; c.height = H;
     var x = c.getContext('2d');
+    C = colours(st);
     backdrop(x, img.photo);
-    lockup(x, n.home);
+    lockup(x, n.home, g.sport_label || 'BASKET');
     plate(x, String((g.group && g.group.name) || '').toUpperCase());
-    shield(x, HOME_X, home, img.home, RED, '#FFFFFF');
+    shield(x, HOME_X, home, img.home, C.red, '#FFFFFF');
     shield(x, AWAY_X, away, img.away, away.color || '#5C6170', GREY);
     vs(x);
     name(x, n.home, HOME_X);

@@ -103,6 +103,12 @@ type Game struct {
 	Instagram   string        `json:"instagram"`
 	Photos      Photos        `json:"photos"`
 	Overlay     Overlay       `json:"overlay"`
+	// Sport is the club's sport id; SportLabel the word on air ("BASKET").
+	Sport      string `json:"sport"`
+	SportLabel string `json:"sport_label"`
+	// Theme is the overlay's colours from the club's, keyed by CSS custom
+	// property name without the dashes (club.Theme).
+	Theme map[string]string `json:"theme"`
 	// AtHome is whether the club plays at home, null when the FPB doesn't say.
 	AtHome *bool `json:"at_home"`
 	// Next is the club's game after this one, for proximo; null with the

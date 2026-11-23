@@ -26,7 +26,7 @@
       obs: { enabled: true, host: '127.0.0.1', port: 4455, password: '', timeout_scene: '', game_scene: 'Jogo', camera_source: '', camera_fit: 'contain', camera_full: null,
         setup_at: '', launch: false, close_on_exit: false },
       start_with_windows: false,
-      auto_screens: true, instagram: '', home_name: 'CASA', home_short: 'CAS',
+      auto_screens: true, instagram: '', club: { name: 'CASA', short: 'CAS', primary: '#2F4B7C', secondary: '#1C1A17', crest: '/assets/crest.svg', sport: 'basketball', country: 'PT' },
       photos: { squad: true, lower_third: false },
       overlay: { bug_position: 'top-left' }, desktop_shortcut: ''
     },
@@ -159,7 +159,8 @@
       periods: [{ period: 1, home: 22, away: 19, home_points: 22, away_points: 19 }],
       game: {
         group: { id: grp.id, name: grp.name, coach: grp.coach },
-        home: { name: db.settings.home_name, short: db.settings.home_short, crest_url: '/assets/crest.png', color: '#BD1522', initials: 'CAS' },
+        home: { name: db.settings.club.name, short: db.settings.club.short, crest_url: db.settings.club.crest, color: db.settings.club.primary, initials: db.settings.club.short },
+        sport: db.settings.club.sport, sport_label: 'BASKET',
         away: { name: g.away.name, short: g.away.short, crest_url: g.away.crest_url || null, color: g.away.color || '#5C6170', initials: g.away.short },
         start: g.start, venue: g.venue, competition: g.competition, round: g.round,
         squad: g.squad.map(function (s) {
@@ -407,6 +408,11 @@
       return reply(200, db.game);
     }
     if (p === '/api/game/opponent-logo') return reply(200, { crest_url: fileUrl(b) });
+    if (p === '/api/club/crest') {
+      db.settings.club.crest = m === 'DELETE' ? '/assets/crest.svg' : fileUrl(b);
+      emit();
+      return reply(200, db.settings.club);
+    }
     if (p === '/api/game/reset') return reply(200, {});
     if (p === '/api/screen') { db.screen = { current: b.screen, auto: !!b.auto, since: new Date().toISOString() }; emit(); return reply(200, db.screen); }
     if (p === '/api/lower-third') {

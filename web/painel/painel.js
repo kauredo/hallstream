@@ -399,10 +399,10 @@
       '<div class="row"><button class="btn primary" type="button" data-act="game-newer">Usar o jogo guardado</button></div></div>';
     html += '<div class="card"><div class="row">' +
       '<label class="field grow"><span>Escalão</span><select id="jGroup">' + (d.group_id ? '' : '<option value="">Escolha…</option>') + opts + '</select></label>' +
-      '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>Escolher jogo da FPB</button>' +
+      (fpbOffered() ? '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>Escolher jogo da FPB</button>' : '') +
       '<button class="btn" data-act="manual">Jogo manual</button>' +
       '</div>';
-    if (g && !g.fpb_team_id) html += '<p class="hint" style="margin-top:10px">Este escalão não está ligado à FPB. Ligue-o em <a href="#plantel" data-goto="plantel">Plantel</a>, ou preencha o jogo à mão.</p>';
+    if (g && !g.fpb_team_id && fpbOffered()) html += '<p class="hint" style="margin-top:10px">Este escalão não está ligado à FPB. Ligue-o em <a href="#plantel" data-goto="plantel">Plantel</a>, ou preencha o jogo à mão.</p>';
     if (S.fpbGamesErr) html += '<p class="alert" style="margin-top:12px">' + esc(S.fpbGamesErr) + '</p>';
     if (S.fpbGames) html += renderFpbGames();
     html += '</div>';
@@ -1187,7 +1187,8 @@
       (S.groups.length ? '<label class="field grow"><span>Escalão</span>' + groupSelect('pGroup', gid) + '</label>' : '<p class="grow">Ainda não há escalões.</p>') +
       '<form class="row" id="pNewGroup"><label class="field"><span>Novo escalão</span><input id="pNewGroupName" placeholder="ex.: Sub 14 Feminino"></label><button class="btn" type="submit">Criar</button><span class="msg"></span></form>' +
       '</div></div>';
-    if (!S.groups.some(function (x) { return x.fpb_team_id; })) {
+    var fpb = fpbOffered();
+    if (fpb && !S.groups.some(function (x) { return x.fpb_team_id; })) {
       var c = S.status && S.status.club_setup, run = c && c.running;
       html += '<div class="card"><h2>Equipas do clube</h2><p class="hint">Cria um escalão para cada equipa do clube na FPB, com os jogadores e as fotografias. Pode demorar um minuto.</p>' +
         '<div class="row" style="margin-top:12px"><button class="btn dark" data-act="club-setup"' + (run ? ' disabled' : '') + '>Importar equipas do clube</button>' +
@@ -1202,27 +1203,30 @@
       '<div class="row"><button class="btn primary" data-act="save-group">Guardar</button><span class="msg"></span><span style="flex:1"></span>' +
       '<button class="btn quiet" data-act="del-group">Apagar escalão</button></div></div></div>';
 
-    html += '<div class="card"><h2>FPB</h2>';
-    if (g.fpb_team_id) {
-      html += '<p><span class="badge">FPB</span> Ligado a <b>' + esc(g.fpb_team_name || ('equipa ' + g.fpb_team_id)) + '</b></p>' +
-        (g.needs_team ? '<p class="warn" style="margin:8px 0">A FPB tem uma época nova: escolha a equipa deste escalão.</p>' : '') +
-        (g.last_sync ? '<p class="hint" style="margin:8px 0">Atualizado da FPB ' + esc(since(g.last_sync)) + ': ' + esc(syncSummary(g.last_changes)) + '.</p>' : '') +
-        '<div class="row"><button class="btn dark" data-act="import">Importar da FPB</button><span class="msg"></span>' +
-        '<button class="btn quiet" data-act="fpb-change">' + (g.needs_team ? 'Escolher equipa' : 'Mudar equipa') + '</button></div>' +
-        '<p class="hint" style="margin-top:8px">Traz os jogadores que a FPB conhece. Os nomes e números que escreveu aqui não mudam.</p>';
-    }
-    if (!g.fpb_team_id || S.fpbTeams) {
-      html += (g.fpb_team_id ? '<hr style="border:0;border-top:1px solid var(--line-soft);margin:16px 0">' : '<p class="hint">Ligue este escalão à equipa da FPB para trazer jogos e jogadores. Só é preciso uma vez.</p>') +
-        '<form class="row" id="pFpbSearch"><label class="field grow"><span>Procurar equipa na FPB</span><input type="search" id="pFpbName" value="Casa"></label>' +
-        '<button class="btn dark" type="submit">Procurar</button><span class="msg"></span></form>';
-      if (S.fpbTeams) {
-        html += '<div class="stack" style="margin-top:12px">' + (S.fpbTeams.length ? S.fpbTeams.map(function (t, i) {
-          return '<button class="team-pick" data-act="fpb-pick" data-i="' + i + '"><span><b>' + esc(t.name) + '</b><br><small>' +
-            esc([t.age, genderLabel(t.gender), t.squad_label].filter(Boolean).join(' · ')) + '</small></span><span class="btn small dark" aria-hidden="true">Escolher</span></button>';
-        }).join('') : '<p class="hint">Nenhuma equipa com esse nome.</p>') + '</div>';
+    if (fpb) {
+      html += '<div class="card"><h2>FPB</h2>';
+      if (g.fpb_team_id) {
+        html += '<p><span class="badge">FPB</span> Ligado a <b>' + esc(g.fpb_team_name || ('equipa ' + g.fpb_team_id)) + '</b></p>' +
+          (g.needs_team ? '<p class="warn" style="margin:8px 0">A FPB tem uma época nova: escolha a equipa deste escalão.</p>' : '') +
+          (g.last_sync ? '<p class="hint" style="margin:8px 0">Atualizado da FPB ' + esc(since(g.last_sync)) + ': ' + esc(syncSummary(g.last_changes)) + '.</p>' : '') +
+          '<div class="row"><button class="btn dark" data-act="import">Importar da FPB</button><span class="msg"></span>' +
+          '<button class="btn quiet" data-act="fpb-change">' + (g.needs_team ? 'Escolher equipa' : 'Mudar equipa') + '</button></div>' +
+          '<p class="hint" style="margin-top:8px">Traz os jogadores que a FPB conhece. Os nomes e números que escreveu aqui não mudam.</p>';
       }
+      if (!g.fpb_team_id || S.fpbTeams) {
+        html += (g.fpb_team_id ? '<hr style="border:0;border-top:1px solid var(--line-soft);margin:16px 0">' : '<p class="hint">Ligue este escalão à equipa da FPB para trazer jogos e jogadores. Só é preciso uma vez.</p>') +
+          '<form class="row" id="pFpbSearch"><label class="field grow"><span>Procurar equipa na FPB</span><input type="search" id="pFpbName" value="Casa"></label>' +
+          '<button class="btn dark" type="submit">Procurar</button><span class="msg"></span></form>';
+        if (S.fpbTeams) {
+          html += '<div class="stack" style="margin-top:12px">' + (S.fpbTeams.length ? S.fpbTeams.map(function (t, i) {
+            return '<button class="team-pick" data-act="fpb-pick" data-i="' + i + '"><span><b>' + esc(t.name) + '</b><br><small>' +
+              esc([t.age, genderLabel(t.gender), t.squad_label].filter(Boolean).join(' · ')) + '</small></span><span class="btn small dark" aria-hidden="true">Escolher</span></button>';
+          }).join('') : '<p class="hint">Nenhuma equipa com esse nome.</p>') + '</div>';
+        }
+      }
+      html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div>';
 
     if (S.importResult && S.importResult.gid === gid) html += renderImport();
 
@@ -1795,13 +1799,7 @@
       '<div class="row" style="margin-top:8px"><label class="field" style="width:160px"><span>PIN <small>(4 algarismos)</small></span><input id="dPin" inputmode="numeric" maxlength="4" value="' + esc(s.pin || '') + '" autocomplete="off"></label>' +
       (S.status && S.status.lan_url && s.phone_access ? '<p class="grow">No telemóvel abra <code>' + esc(S.status.lan_url) + '</code></p>' : '') + '</div></div>';
 
-    html += '<div class="card"><h2>Clube</h2><div class="cols">' +
-      '<label class="field"><span>Nome da casa <small>(máx. 12)</small></span><input id="dHome" maxlength="12" value="' + esc(s.home_name || '') + '"></label>' +
-      '<label class="field"><span>Sigla <small>(máx. 4)</small></span><input id="dHomeShort" maxlength="4" value="' + esc(s.home_short || '') + '"></label>' +
-      '<label class="field"><span>Instagram</span><input id="dInsta" value="' + esc(s.instagram || '') + '" placeholder="@clube"></label>' +
-      '<label class="field"><span>Nome do clube na FPB</span><input id="dClubSearch" value="' + esc(s.club_search || '') + '" placeholder="Clube Exemplo"></label>' +
-      '<label class="field"><span>Endereço da FPB</span><input type="url" id="dFpb" value="' + esc(s.fpb_base_url || '') + '"></label>' +
-      '</div><label class="switch" style="margin-top:8px"><input type="checkbox" id="dAuto"' + (s.auto_screens ? ' checked' : '') + '><i></i>Ecrãs automáticos ao abrir o programa</label></div>';
+    html += clubCard(s);
 
     var bug = (s.overlay && s.overlay.bug_position) || 'top-left';
     html += '<div class="card"><h2>Grafismo</h2>' +
@@ -1836,6 +1834,52 @@
     }
     root.innerHTML = html;
     if (o.enabled && !S.obsCams) loadObsCameras();
+  }
+
+  /* Club profile (settings.club): what the overlay shows for the home side, in the club's colours.
+     SPORTS follows club.Sports in internal/club; only basketball works today. */
+  var SPORTS = [['basketball', 'Basquetebol', true], ['futsal', 'Futsal'], ['handball', 'Andebol'], ['volleyball', 'Voleibol'], ['soccer', 'Futebol']];
+  var COUNTRIES = [['PT', 'Portugal'], ['ES', 'Espanha'], ['FR', 'França'], ['LU', 'Luxemburgo'], ['CH', 'Suíça'], ['BR', 'Brasil'], ['AO', 'Angola'], ['CV', 'Cabo Verde'], ['MZ', 'Moçambique']];
+  // The FPB import is for Portuguese basketball clubs only.
+  function fpbFor(c) { c = c || {}; return (c.country || 'PT') === 'PT' && (c.sport || 'basketball') === 'basketball'; }
+  function fpbOffered() { return fpbFor(S.settings && S.settings.club); }
+  function clubCard(s) {
+    var c = s.club || {}, crest = c.crest || '/assets/crest.svg', country = c.country || 'PT';
+    var countries = COUNTRIES.some(function (x) { return x[0] === country; }) ? COUNTRIES : COUNTRIES.concat([[country, country]]);
+    function colour(id, label, v) {
+      v = /^#[0-9a-f]{6}$/i.test(v || '') ? v.toLowerCase() : '#2f4b7c';
+      return '<label class="field"><span>' + label + '</span><span class="colour"><input type="color" id="' + id + '" value="' + esc(v) + '">' +
+        '<code id="' + id + 'Hex">' + esc(v.toUpperCase()) + '</code></span></label>';
+    }
+    return '<div class="card"><h2>Clube</h2><div class="club">' +
+      '<div><div class="crest-tile club-crest"><img id="dCrestImg" src="' + esc(crest) + '" alt="Emblema do clube"></div>' +
+        '<div class="stack" style="margin-top:10px">' +
+        '<label class="btn small filebtn" style="width:100%">Carregar emblema<input type="file" id="dCrestFile" accept="image/png,image/jpeg,image/svg+xml"></label>' +
+        '<button class="btn quiet small" type="button" data-act="crest-remove" style="width:100%"' + (crest.indexOf('/media/') === 0 ? '' : ' hidden') + '>Remover emblema</button>' +
+        '<span class="msg" id="dCrestMsg" role="status"></span></div></div>' +
+      '<div class="cols">' +
+        '<label class="field"><span>Nome <small>(máx. 12)</small></span><input id="dHome" maxlength="12" value="' + esc(c.name || '') + '"></label>' +
+        '<label class="field"><span>Sigla <small>(máx. 4)</small></span><input id="dHomeShort" maxlength="4" value="' + esc(c.short || '') + '"></label>' +
+        colour('dPrimary', 'Cor principal', c.primary) +
+        colour('dSecondary', 'Cor secundária', c.secondary || '#1c1a17') +
+        '<label class="field"><span>Modalidade</span><select id="dSport">' + SPORTS.map(function (x) {
+          return '<option value="' + x[0] + '"' + (x[2] ? '' : ' disabled') + ((c.sport || 'basketball') === x[0] ? ' selected' : '') + '>' + x[1] + (x[2] ? '' : ' (em breve)') + '</option>';
+        }).join('') + '</select></label>' +
+        '<label class="field"><span>País</span><select id="dCountry">' + countries.map(function (x) {
+          return '<option value="' + esc(x[0]) + '"' + (x[0] === country ? ' selected' : '') + '>' + esc(x[1]) + '</option>';
+        }).join('') + '</select></label>' +
+      '</div></div>' +
+      '<p class="hint" style="margin-top:12px">A cor principal pinta o marcador e os ecrãs inteiros, e a secundária as faixas escuras. Ponho o texto por cima a branco ou a escuro, conforme se lê melhor.</p>' +
+      '<div class="cols" style="margin-top:8px">' +
+        '<label class="field"><span>Instagram</span><input id="dInsta" value="' + esc(s.instagram || '') + '" placeholder="@clube"></label>' +
+        '<label class="field" data-fpb' + (fpbFor(c) ? '' : ' hidden') + '><span>Nome do clube na FPB</span><input id="dClubSearch" value="' + esc(s.club_search || '') + '" placeholder="Clube Exemplo"></label>' +
+        '<label class="field" data-fpb' + (fpbFor(c) ? '' : ' hidden') + '><span>Endereço da FPB</span><input type="url" id="dFpb" value="' + esc(s.fpb_base_url || '') + '"></label>' +
+      '</div><label class="switch" style="margin-top:8px"><input type="checkbox" id="dAuto"' + (s.auto_screens ? ' checked' : '') + '><i></i>Ecrãs automáticos ao abrir o programa</label></div>';
+  }
+  function setCrest(c) {
+    S.settings.club = Object.assign({}, S.settings.club, { crest: c.crest });
+    $('#dCrestImg').src = c.crest;
+    $('[data-act="crest-remove"]').hidden = c.crest.indexOf('/media/') !== 0;
   }
 
   /* YouTube: the program's own login to the club's channel (set up once, on the PC). */
@@ -1965,8 +2009,11 @@
     if ($('#dObsLaunch')) { s.obs.launch = $('#dObsLaunch').checked; s.obs.close_on_exit = $('#dObsClose').checked; }
     s.phone_access = $('#dPhone').checked;
     s.pin = $('#dPin').value.trim();
-    s.home_name = $('#dHome').value.trim();
-    s.home_short = $('#dHomeShort').value.trim().toUpperCase();
+    s.club = Object.assign({}, s.club, {
+      name: $('#dHome').value.trim(), short: $('#dHomeShort').value.trim().toUpperCase(),
+      primary: $('#dPrimary').value.toUpperCase(), secondary: $('#dSecondary').value.toUpperCase(),
+      sport: $('#dSport').value, country: $('#dCountry').value
+    });
     s.instagram = $('#dInsta').value.trim();
     s.club_search = $('#dClubSearch').value.trim();
     s.fpb_base_url = $('#dFpb').value.trim();
@@ -1986,6 +2033,8 @@
         showTab('inicio');
       } else if (b.dataset.act === 'copy') {
         busy(b, function () { $('#dUrl').select(); return copyText($('#dUrl').value); }, 'Copiado');
+      } else if (b.dataset.act === 'crest-remove') {
+        busy(b, function () { return api('DELETE', '/api/club/crest').then(setCrest); }, 'Emblema removido');
       } else if (b.dataset.act === 'save-settings') {
         var s = readSettingsForm();
         if (s.phone_access && !/^\d{4}$/.test(s.pin)) {
@@ -2026,6 +2075,18 @@
     root.addEventListener('change', function (e) {
       var t = e.target;
       if (t.id === 'dPin') t.value = t.value.replace(/\D/g, '').slice(0, 4);
+      if (t.id === 'dSport' || t.id === 'dCountry') {
+        var on = fpbFor({ sport: $('#dSport').value, country: $('#dCountry').value });
+        $all('[data-fpb]', root).forEach(function (el) { el.hidden = !on; });
+        return;
+      }
+      if (t.id === 'dPrimary' || t.id === 'dSecondary') { $('#' + t.id + 'Hex').textContent = t.value.toUpperCase(); return; }
+      if (t.id === 'dCrestFile' && t.files && t.files[0]) {
+        var fd = new FormData(); fd.append('file', t.files[0]);
+        busy(t.closest('label'), function () { return api('POST', '/api/club/crest', fd).then(setCrest); }, 'Emblema guardado');
+        t.value = '';
+        return;
+      }
       if (t.id === 'dAutostart') {
         var am = t.closest('.row').querySelector('.msg');
         t.disabled = true; am.className = 'msg'; am.textContent = '';

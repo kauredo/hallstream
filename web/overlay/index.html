@@ -17,12 +17,12 @@
       <feColorMatrix in="s" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -1.55" result="m"/>
       <feComposite in="d" in2="m" operator="in"/>
     </filter>
-    <!-- One quiet group of red strokes for the top-right corner of full screens. -->
+    <!-- One quiet group of strokes in the club colour for the top-right corner of full screens. -->
     <g id="brush-strokes" transform="rotate(180 960 540) translate(-130 1100) rotate(-61)">
       <g filter="url(#dry)">
-        <path d="M0,16 C41.6,-30 260,-16 520,-7 L490,30.4 C312,62 78,47 40,39 Z" fill="#E3202C"/>
-        <path d="M50,77 C81.4,59 246,66 442,68.7 L412,82.2 C285.2,95 108.8,87.5 90,85.3 Z" fill="#FF3B47"/>
-        <path d="M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z" fill="#E3202C"/>
+        <path d="M0,16 C41.6,-30 260,-16 520,-7 L490,30.4 C312,62 78,47 40,39 Z" style="fill: var(--red)"/>
+        <path d="M50,77 C81.4,59 246,66 442,68.7 L412,82.2 C285.2,95 108.8,87.5 90,85.3 Z" style="fill: var(--red-hi)"/>
+        <path d="M130,107 C157.9,99 304.2,103.2 478.4,103.8 L448.4,109 C339,115 182.3,110.5 170,110.2 Z" style="fill: var(--red)"/>
       </g>
     </g>
   </defs>
@@ -46,7 +46,7 @@
       <div class="sb-red"></div>
     </div>
     <div class="sb-teams">
-      <div class="sb-head"><span><span data-b="homeShort"></span> · BASKET</span><span class="sb-dot" title="Sem ligação ao marcador"></span></div>
+      <div class="sb-head"><span><span data-b="homeShort"></span> · <span data-b="sport">BASKET</span></span><span class="sb-dot" title="Sem ligação ao marcador"></span></div>
       <div class="sb-row home">
         <div class="tile" data-tile="home" data-strip></div>
         <div class="nm" data-b="homeName" data-fit="24" data-fit-min="16" data-alt="homeShort"></div>
@@ -89,7 +89,7 @@
     <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
     <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
   </svg>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="ab-kick"><div><span>TRANSMISSÃO PRESTES A COMEÇAR</span></div></div>
   <div class="ab-team home">
     <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
@@ -117,7 +117,7 @@
 <section class="screen full" id="s-plantel" data-screen="plantel">
   <div class="pl-head">
     <div class="tile pl-crest" data-tile="home"></div>
-    <div class="t"><small><span data-b="homeName"></span> · <em>BASKET</em></small><b>PLANTEL<span data-b="groupName"></span></b></div>
+    <div class="t"><small><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></small><b>PLANTEL<span data-b="groupName"></span></b></div>
   </div>
   <div class="pl-grid">
     <div class="coach">
@@ -160,7 +160,7 @@
 <!-- Apoiantes: every sponsor of this game, large -->
 <section class="screen full" id="s-apoiantes" data-screen="apoiantes">
   <div class="tile ap-crest" data-tile="home"></div>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="ap-title">
     <div class="t1">NOSSOS</div>
     <div class="t2">APOIANTES</div>
@@ -171,12 +171,12 @@
 
 <!-- Promo: a club video. Vertical: phone frame and a text column. Horizontal: a large frame and a caption. -->
 <section class="screen full" id="s-promo" data-screen="promo">
-  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em>BASKET</em></span></div>
+  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></span></div>
   <div class="pr-vid"><div class="pr-frame"><video playsinline muted preload="auto"></video></div></div>
   <i class="pr-prog pr-bar"><b></b></i>
   <div class="pr-left">FALTAM <b data-pr="left"></b></div>
   <div class="pr-txt">
-    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em>BASKET</em></span></div>
+    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></span></div>
     <div class="pr-kick"><span data-pr="kicker"></span></div>
     <div class="pr-head" data-pr="headline"></div>
     <div class="pr-line" data-pr="line"></div>
@@ -186,7 +186,7 @@
 
 <!-- Intervalo -->
 <section class="screen full" id="s-intervalo" data-screen="intervalo">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="hd-tab iv-tab"><div class="hd-word">INTERVALO</div><div class="hd-sub" data-b="halfLine"></div></div>
   <div class="blk iv-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
@@ -200,7 +200,7 @@
 
 <!-- Resultado final -->
 <section class="screen full" id="s-final" data-screen="final">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="hd-tab fn-tab"><div class="hd-word">RESULTADO FINAL</div><div class="hd-sub" data-b="compRound"></div></div>
   <div class="blk fn-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
@@ -219,7 +219,7 @@
     <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
     <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
   </svg>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="ab-kick"><div><span>PRÓXIMO JOGO</span></div></div>
   <div class="ab-team home">
     <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
@@ -244,7 +244,7 @@
 
 <!-- Voltamos já: holding screen for a technical break -->
 <section class="screen full" id="s-voltamos" data-screen="voltamos">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span>BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
   <div class="vj-crest"><i class="vj-halo"></i><div class="tile" data-tile="home"></div></div>
   <div class="vj-title">VOLTAMOS <span>JÁ</span></div>
   <div class="vj-sub"><div class="rules"><i></i><span data-b="backLine" data-fit="30"></span><i></i></div></div>

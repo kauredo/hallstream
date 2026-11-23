@@ -462,6 +462,7 @@
     v.awayName = away.name || live.away_name || '';
     v.homeShort = home.short || '';
     v.awayShort = away.short || '';
+    v.sport = game.sport_label || 'BASKET';
     v.homeScore = live.home ?? 0;
     v.awayScore = live.away ?? 0;
     v.clock = live.clock || '';
@@ -1013,6 +1014,20 @@
     return s !== '' && s != null && !isNaN(n) && n < 5;
   }
 
+  // The club's colours (game.theme, keyed by custom property name) over the defaults in overlay.css.
+  // A key the new theme lacks goes back to its default; a value only changes when the club does.
+  let themeKeys = [];
+  let themeKey = '';
+  function setTheme(theme) {
+    theme = theme && typeof theme === 'object' ? theme : {};
+    const key = JSON.stringify(theme);
+    if (key === themeKey) return;
+    themeKey = key;
+    for (const k of themeKeys) if (!(k in theme)) root.style.removeProperty('--' + k);
+    for (const [k, val] of Object.entries(theme)) if (typeof val === 'string') root.style.setProperty('--' + k, val);
+    themeKeys = Object.keys(theme);
+  }
+
   function render() {
     if (!state) return;
     const st = state;
@@ -1028,6 +1043,7 @@
       }
     }
 
+    setTheme((st.game || {}).theme);
     root.style.setProperty('--away', v.away.color || '#5C6170');
     root.style.setProperty('--next', (v.next && v.next.opponent && v.next.opponent.color) || '#5C6170');
     setClass(screens.voltamos, 'no-line', !v.backLine);

@@ -1,0 +1,166 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "GIRASSOL",
+    "away_name": "VISITANTE",
+    "home": 44,
+    "away": 40,
+    "clock": "00:00",
+    "period": "2",
+    "home_fouls": 2,
+    "away_fouls": 4,
+    "shot": "14",
+    "sport": "basketball"
+  },
+  "periods": [
+    {
+      "period": 1,
+      "home": 22,
+      "away": 19,
+      "home_points": 22,
+      "away_points": 19
+    },
+    {
+      "period": 2,
+      "home": 44,
+      "away": 40,
+      "home_points": 22,
+      "away_points": 21
+    }
+  ],
+  "game": {
+    "group": {
+      "id": "senior-m",
+      "name": "Sénior Masculino",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "GIRASSOL",
+      "short": "GIR",
+      "crest_url": "/assets/crest.svg",
+      "color": "#F4C430",
+      "initials": "GIR"
+    },
+    "away": {
+      "name": "VISITANTE",
+      "short": "VIS",
+      "crest_url": null,
+      "color": "#2E6FD8",
+      "initials": "VIS"
+    },
+    "start": "2026-11-15T18:00:00+00:00",
+    "venue": "Pavilhão Municipal do Vale",
+    "competition": "Campeonato Regional",
+    "round": "Jornada 5",
+    "squad": [
+      {
+        "number": "4",
+        "name": "Caio Rebelo"
+      },
+      {
+        "number": "5",
+        "name": "Mauro Pestana"
+      },
+      {
+        "number": "6",
+        "name": "Hélio Vaz Quaresma"
+      },
+      {
+        "number": "7",
+        "name": "Nuno Valadares"
+      },
+      {
+        "number": "8",
+        "name": "Leandro Couto"
+      },
+      {
+        "number": "9",
+        "name": "Filipe Arruda"
+      },
+      {
+        "number": "10",
+        "name": "Abel Quintas Mota"
+      },
+      {
+        "number": "11",
+        "name": "Igor Seabra"
+      },
+      {
+        "number": "12",
+        "name": "Edgar Pimenta"
+      },
+      {
+        "number": "13",
+        "name": "Bruno Teles"
+      },
+      {
+        "number": "14",
+        "name": "Joel Sarmento"
+      },
+      {
+        "number": "15",
+        "name": "Dário Neves"
+      }
+    ],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4
+    },
+    "sport": "basketball",
+    "sport_label": "BASKET",
+    "theme": {
+      "blood": "#614A05",
+      "hi-rgb": "244,196,48",
+      "ink": "#141105",
+      "ink-rgb": "20,17,5",
+      "kit": "#C8990B",
+      "navy": "#063B2A",
+      "on-kit": "#141105",
+      "on-red": "#141105",
+      "red": "#F4C430",
+      "red-hi": "#F4C430",
+      "red-lo": "#F4C430",
+      "red-rgb": "244,196,48",
+      "red-text": "#937108",
+      "tint": "#B88D0A",
+      "tint-dim": "#A78009"
+    }
+  },
+  "screen": {
+    "current": "intervalo",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": false,
+    "type": "jogador",
+    "number": "7",
+    "first_name": "Nome",
+    "last_name": "Apelido",
+    "label": "",
+    "until": null
+  },
+  "demo": false
+}

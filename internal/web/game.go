@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
@@ -174,9 +175,17 @@ func (s *Server) SyncGame() {
 	defer s.syncMu.Unlock()
 	set := s.Store.Settings()
 	g := s.Store.Game()
-	crest := "/assets/crest.svg"
+	cl := set.Club
+	crest := cl.Crest
+	if crest == "" {
+		crest = store.DefaultCrest
+	}
+	sport, _ := club.SportOf(cl.Sport)
 	out := state.Game{
-		Home:        state.Team{Name: set.HomeName, Short: set.HomeShort, CrestURL: &crest, Color: "#BD1522", Initials: set.HomeShort},
+		Home:        state.Team{Name: cl.Name, Short: cl.Short, CrestURL: &crest, Color: cl.Primary, Initials: cl.Short},
+		Sport:       sport.ID,
+		SportLabel:  sport.Short,
+		Theme:       club.Theme(cl.Primary, cl.Secondary),
 		Away:        state.Team{Name: g.Away.Name, Short: g.Away.Short, Color: fpb.EnsureContrast(g.Away.Color)},
 		Start:       g.Start,
 		Venue:       g.Venue,

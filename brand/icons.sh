@@ -11,9 +11,9 @@ mkdir -p $out
 png() { rsvg-convert -w $2 -h $2 -o $3 $1 }
 
 # Full-bleed variants: iOS rounds the corners itself, and Android masks
-# keep only the centre, so the maskable one has a smaller shield.
+# keep only the centre, so the maskable one has a smaller mark.
 sed -e 's/ rx="56"//' icon.svg > $tmp/full.svg
-sed -e 's/ rx="56"//' -e 's/scale(0.24)/scale(0.2)/' icon.svg > $tmp/maskable.svg
+sed -e 's/ rx="56"//' -e 's/scale(1.79)/scale(1.45)/' icon.svg > $tmp/maskable.svg
 
 for s in 16 20 24 32; do png icon-16.svg $s $tmp/$s.png; done
 for s in 40 48 64 256; do png icon.svg $s $tmp/$s.png; done

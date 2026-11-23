@@ -251,6 +251,8 @@ func (s *Server) routes() {
 	})
 
 	m.HandleFunc("POST /api/club/setup", s.clubSetup)
+	m.HandleFunc("POST /api/club/crest", s.clubCrest)
+	m.HandleFunc("DELETE /api/club/crest", func(w http.ResponseWriter, r *http.Request) { s.setCrest(w, store.DefaultCrest) })
 
 	m.HandleFunc("GET /api/game", func(w http.ResponseWriter, r *http.Request) { reply(w, s.Store.Game()) })
 	m.HandleFunc("PUT /api/game", s.putGame)
@@ -328,7 +330,7 @@ func (s *Server) sameSite(w http.ResponseWriter, r *http.Request) bool {
 		}
 	}
 	ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
+	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/club/crest" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
 		strings.HasPrefix(r.URL.Path, "/api/groups/") && strings.HasSuffix(r.URL.Path, "/sponsors"))
 	if ct != "application/json" && !(upload && ct == "multipart/form-data") {
 		fail(w, http.StatusUnsupportedMediaType, "Pedido recusado: tipo de conteúdo inválido.")
@@ -462,6 +464,10 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if req.Overlay.SponsorEvery < store.SponsorEveryMin || req.Overlay.SponsorEvery > store.SponsorEveryMax {
 		req.Overlay.SponsorEvery = store.SponsorEvery
 	}
+	if err := checkClub(&req.Club); err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	var old store.Settings
 	set, err := s.Store.UpdateSettings(func(cur *store.Settings) {
 		old = *cur
@@ -473,6 +479,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.Overlay.BackLine = cutRunes(strings.Join(strings.Fields(req.Overlay.BackLine), " "), maxBackLine)
 		req.DesktopShortcut, req.StartWithWindows, req.FirstSetup = cur.DesktopShortcut, cur.StartWithWindows, cur.FirstSetup
 		req.OBS.SetupAt = cur.OBS.SetupAt
+		req.Club.Crest = cur.Club.Crest // /api/club/crest owns it
 		if !isLoopback(r.RemoteAddr) {
 			// What starts programs on the PC, or reaches OBS, is set on the PC only.
 			req.OBS.Host, req.OBS.Port, req.OBS.Password = cur.OBS.Host, cur.OBS.Port, cur.OBS.Password

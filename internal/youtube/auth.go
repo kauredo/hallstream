@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Scope covers broadcasts, streams, video privacy and thumbnails.
@@ -46,7 +48,7 @@ func (c Credentials) config(redirect string) *oauth2.Config {
 		Endpoint: Google, RedirectURL: redirect, Scopes: []string{Scope}}
 }
 
-var ErrTimeout = errors.New("o login no YouTube demorou demasiado. Carregue outra vez em Ligar ao YouTube.")
+var ErrTimeout error = i18n.Key("yt.login_demorou")
 
 // Login is one sign-in waiting for Google to send the browser back.
 type Login struct {
@@ -109,15 +111,15 @@ func (l *Login) callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(l.state)) != 1 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, page("Este pedido não veio do Hallstream. Volte ao painel e carregue em Ligar ao YouTube."))
+		fmt.Fprint(w, page(i18n.T("yt.login_outro_pedido")))
 		return
 	}
 	if e := q.Get("error"); e != "" || q.Get("code") == "" {
-		msg := "O login no YouTube foi cancelado."
+		msg := i18n.T("yt.login_cancelado")
 		if e != "" && e != "access_denied" {
-			msg = "O Google não deixou ligar (" + e + ")."
+			msg = i18n.T("yt.login_recusado", "erro", e)
 		}
-		fmt.Fprint(w, page(msg+" Volte ao painel para tentar outra vez."))
+		fmt.Fprint(w, page(i18n.T("yt.login_tente_outra_vez", "motivo", msg)))
 		l.finish(nil, errors.New(msg))
 		return
 	}
@@ -125,14 +127,14 @@ func (l *Login) callback(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	tok, err := l.conf.Exchange(ctx, q.Get("code"), oauth2.VerifierOption(l.verifier))
 	if err == nil && tok.RefreshToken == "" {
-		err = errors.New("o Google não deu acesso duradouro. Tire o acesso do Hallstream em myaccount.google.com/permissions e ligue outra vez")
+		err = i18n.Err("yt.sem_acesso_duradouro")
 	}
 	if err != nil {
-		fmt.Fprint(w, page("Não consegui acabar o login. Volte ao painel para ver o que aconteceu."))
+		fmt.Fprint(w, page(i18n.T("yt.login_falhou")))
 		l.finish(nil, loginError(err))
 		return
 	}
-	fmt.Fprint(w, page("Ligado ao YouTube. Pode fechar esta janela e voltar ao painel."))
+	fmt.Fprint(w, page(i18n.T("yt.login_ok")))
 	l.finish(tok, nil)
 }
 
@@ -145,13 +147,13 @@ func loginError(err error) error {
 			code = strconv.Itoa(re.Response.StatusCode)
 		}
 		if code == "invalid_client" {
-			return errors.New("o Google não aceitou o ID ou o segredo do cliente OAuth. Confirme-os em Definições > YouTube")
+			return i18n.Err("yt.cliente_recusado")
 		}
-		return errors.New("o Google recusou o login (" + code + ")")
+		return i18n.Err("yt.login_recusado_codigo", "codigo", code)
 	}
 	var ue *url.Error
 	if errors.As(err, &ue) {
-		return errors.New("sem ligação ao Google: " + ue.Err.Error())
+		return i18n.Err("yt.sem_ligacao_google", "err", ue.Err)
 	}
 	return err
 }
@@ -182,7 +184,7 @@ func Revoke(ctx context.Context, hc *http.Client, tok string) error {
 	resp.Body.Close()
 	// 400 is a token Google no longer knows: nothing left to revoke.
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
-		return fmt.Errorf("o Google respondeu %d", resp.StatusCode)
+		return i18n.Err("yt.google_respondeu", "codigo", resp.StatusCode)
 	}
 	return nil
 }

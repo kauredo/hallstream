@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/youtube"
 )
@@ -41,7 +42,7 @@ func (s *Server) setupReply(w http.ResponseWriter, r *http.Request, set store.Se
 // onPC refuses a request from another device: the setup is done on the PC.
 func onPC(w http.ResponseWriter, r *http.Request) bool {
 	if !isLoopback(r.RemoteAddr) {
-		fail(w, http.StatusForbidden, "A configuração inicial faz-se no próprio computador.")
+		fail(w, http.StatusForbidden, i18n.T("api.setup.so_no_pc"))
 		return false
 	}
 	return true
@@ -66,11 +67,11 @@ func (s *Server) setupStep(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !slices.Contains(setupSteps, id) {
-		fail(w, http.StatusNotFound, "Passo desconhecido: "+id)
+		fail(w, http.StatusNotFound, i18n.T("api.setup.passo_desconhecido", "passo", id))
 		return
 	}
 	if req.State != "" && req.State != "done" && req.State != "skipped" {
-		fail(w, http.StatusBadRequest, "Estado inválido: "+req.State)
+		fail(w, http.StatusBadRequest, i18n.T("api.setup.estado_invalido", "estado", req.State))
 		return
 	}
 	set, err := s.Store.UpdateSettings(func(cur *store.Settings) {
@@ -96,7 +97,7 @@ func (s *Server) setupChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.ytConnected() {
-		fail(w, http.StatusConflict, "Ligue primeiro o YouTube, no passo anterior.")
+		fail(w, http.StatusConflict, i18n.T("api.setup.yt_primeiro"))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)

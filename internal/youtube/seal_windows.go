@@ -6,6 +6,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // sealed marks a file Seal wrote; a file without it is read as plain JSON.
@@ -16,7 +18,7 @@ var sealed = []byte("DPAPI1:")
 func Seal(b []byte) ([]byte, error) {
 	out, err := dpapi(b, true)
 	if err != nil {
-		return nil, errors.New("não consegui proteger o login do YouTube: " + err.Error())
+		return nil, i18n.Err("yt.nao_protegi_login", "err", err)
 	}
 	return append(append([]byte{}, sealed...), out...), nil
 }
@@ -29,7 +31,7 @@ func Unseal(b []byte) ([]byte, error) {
 	}
 	out, err := dpapi(rest, false)
 	if err != nil {
-		return nil, errors.New("o login do YouTube foi guardado por outro utilizador do Windows; ligue outra vez: " + err.Error())
+		return nil, i18n.Err("yt.login_outro_utilizador", "err", err)
 	}
 	return out, nil
 }

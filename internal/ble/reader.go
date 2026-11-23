@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/state"
 )
 
@@ -53,17 +54,15 @@ type Device struct {
 }
 
 var (
-	ErrNotBox  = errors.New("Este dispositivo não é a caixa (não tem o serviço do marcador).")
-	errTimeout = errors.New("O dispositivo não respondeu em 15 s. Se for a caixa, feche a app SL Live Stream no tablet e tente outra vez.")
-	errNoBT    = errors.New("O Bluetooth do computador está desligado ou não existe.")
+	ErrNotBox  error = i18n.Key("ble.nao_e_caixa")
+	errTimeout error = i18n.Key("ble.sem_resposta")
+	errNoBT    error = i18n.Key("ble.desligado")
 )
 
 const (
-	DeviceTTL  = 60 * time.Second
-	logEvery   = 30 * time.Second
-	btRetry    = 10 * time.Second
-	msgOff     = "O Bluetooth do computador está desligado ou não existe."
-	msgNothing = "Não vejo nenhum dispositivo Bluetooth. O Bluetooth do PC está ligado?"
+	DeviceTTL = 60 * time.Second
+	logEvery  = 30 * time.Second
+	btRetry   = 10 * time.Second
 )
 
 // Likely reports whether an advertisement looks like the Stream Box. The
@@ -215,14 +214,14 @@ func (r *Reader) ask(req request) error {
 
 // Run keeps the box connected forever.
 func (r *Reader) Run() {
-	r.Log("À procura da Stream Box...")
+	r.Log(i18n.T("ble.a_procura_box"))
 	enabled := false
 	var req *request
 	for {
 		if !enabled {
 			if err := r.Radio.Enable(); err != nil {
-				r.setScan(func(s *state.Scan) { *s = state.Scan{Bluetooth: "unavailable", Message: msgOff} })
-				r.Log(msgOff + " Vou tentar outra vez daqui a 10 s. (" + err.Error() + ")")
+				r.setScan(func(s *state.Scan) { *s = state.Scan{Bluetooth: "unavailable", Message: i18n.T("ble.desligado")} })
+				r.Log(i18n.T("ble.desligado_repete", "err", err))
 				r.idle(btRetry)
 				continue
 			}
@@ -268,8 +267,8 @@ func (r *Reader) auto() *request {
 		return req
 	}
 	if err != nil {
-		r.setScan(func(s *state.Scan) { s.Scanning, s.Bluetooth, s.Message = false, "off", msgOff })
-		r.Log(msgOff + " (" + err.Error() + ")")
+		r.setScan(func(s *state.Scan) { s.Scanning, s.Bluetooth, s.Message = false, "off", i18n.T("ble.desligado") })
+		r.Log(i18n.T("ble.desligado_erro", "err", err))
 		r.idle(btRetry)
 		return nil
 	}
@@ -279,9 +278,9 @@ func (r *Reader) auto() *request {
 	link, err := r.connect(addr)
 	if err != nil {
 		r.setScan(func(s *state.Scan) {
-			s.Message = "Encontrei a caixa mas não consegui ligar. Feche a app SL Live Stream no tablet. A caixa só aceita uma ligação."
+			s.Message = i18n.T("ble.nao_liguei_caixa")
 		})
-		r.Log("Não consegui ligar a " + addr + ": " + err.Error())
+		r.Log(i18n.T("ble.nao_liguei_a", "endereco", addr, "err", err))
 		return nil
 	}
 	return r.follow(addr, link)
@@ -308,7 +307,7 @@ func (r *Reader) forget() {
 	r.rejected = map[string]bool{}
 	r.mu.Unlock()
 	r.setScan(func(s *state.Scan) { s.Saved = "" })
-	r.Log("Esqueci a caixa guardada. Vou procurar outra vez.")
+	r.Log(i18n.T("ble.esqueci"))
 }
 
 // scanRound listens for one round. It returns the address to connect to
@@ -321,8 +320,8 @@ func (r *Reader) scanRound() (string, *request, error) {
 	r.mu.Unlock()
 	r.setScan(func(s *state.Scan) {
 		s.Scanning, s.Bluetooth, s.Address, s.Name, s.Saved = true, "ok", "", "", saved
-		if s.Message == "" || s.Message == msgOff {
-			s.Message = "À procura da caixa…"
+		if s.Message == "" || s.Message == i18n.T("ble.desligado") {
+			s.Message = i18n.T("ble.a_procura")
 		}
 	})
 
@@ -347,7 +346,7 @@ func (r *Reader) scanRound() (string, *request, error) {
 		select {
 		case err := <-done:
 			if err == nil {
-				err = errors.New("a procura parou sozinha")
+				err = i18n.Err("ble.procura_parou")
 			}
 			return "", nil, err
 		case req := <-r.reqs:
@@ -397,7 +396,7 @@ func (r *Reader) seen(a Advert) {
 			now.Format("2006-01-02T15:04:05"), d.Address, d.NameQuoted, d.RSSI, strings.Join(d.Services, ","), d.Likely)
 	}
 	if fresh && d.Likely {
-		r.Log(fmt.Sprintf("Vi uma caixa provável: %s (%s), sinal %d dBm.", d.NameQuoted, d.Address, d.RSSI))
+		r.Log(i18n.T("ble.vi_provavel", "nome", d.NameQuoted, "endereco", d.Address, "rssi", d.RSSI))
 	}
 	target := strings.EqualFold(a.Address, r.target) || (r.target == "" && d.Likely && !r.rejected[a.Address])
 	if target && r.hit != nil {
@@ -444,20 +443,20 @@ func (r *Reader) endRound(saved string) {
 	n := len(r.devices)
 	r.mu.Unlock()
 
-	msg := "À procura da caixa…"
+	msg := i18n.T("ble.a_procura")
 	switch {
 	case empty >= 2:
-		msg = msgNothing
+		msg = i18n.T("ble.nenhum_dispositivo")
 	case saved != "":
-		msg = "Não encontro a caixa guardada (" + saved + "). Está ligada? Feche a app SL Live Stream no tablet. A caixa só aceita uma ligação."
+		msg = i18n.T("ble.nao_encontro_guardada", "endereco", saved)
 	case n > 0:
-		msg = fmt.Sprintf("Vejo %d dispositivos, mas nenhum parece a caixa. Feche a app SL Live Stream no tablet ou experimente um da lista.", n)
+		msg = i18n.T("ble.vejo_dispositivos", "n", n)
 	}
 	r.setScan(func(s *state.Scan) { s.Message, s.DevicesSeen = msg, n })
 	if empty >= 2 {
-		r.Log(msgNothing)
+		r.Log(i18n.T("ble.nenhum_dispositivo"))
 	} else {
-		r.Log("Não encontrei a caixa. Está ligada e perto do computador? Vou tentar outra vez.")
+		r.Log(i18n.T("ble.nao_encontrei"))
 	}
 }
 
@@ -473,7 +472,7 @@ func (r *Reader) prune() {
 
 // connect connects to addr and starts the frames, within Timeout.
 func (r *Reader) connect(addr string) (Link, error) {
-	r.setScan(func(s *state.Scan) { s.Scanning, s.Message = false, "A ligar a "+addr+"…" })
+	r.setScan(func(s *state.Scan) { s.Scanning, s.Message = false, i18n.T("ble.a_ligar_a", "endereco", addr) })
 	type result struct {
 		link Link
 		err  error
@@ -527,13 +526,13 @@ func (r *Reader) follow(addr string, link Link) *request {
 	r.mu.Unlock()
 	r.setScan(func(s *state.Scan) {
 		s.Scanning, s.Bluetooth, s.Address, s.Name, s.Saved = false, "ok", addr, name, addr
-		s.Message = "Ligado à caixa."
+		s.Message = i18n.T("ble.ligado")
 	})
 	r.mu.Lock()
 	r.link = link
 	r.mu.Unlock()
 	r.Connected(true)
-	r.Log("Ligado à caixa (" + addr + "). O marcador está a ser atualizado.")
+	r.Log(i18n.T("ble.ligado_a", "endereco", addr))
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
 	drop := func() {
@@ -552,7 +551,7 @@ func (r *Reader) follow(addr string, link Link) *request {
 		case <-tick.C:
 			if !link.Connected() {
 				drop()
-				r.Log("A ligação caiu. A voltar a ligar...")
+				r.Log(i18n.T("ble.ligacao_caiu"))
 				time.Sleep(2 * time.Second)
 				return nil
 			}

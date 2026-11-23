@@ -18,6 +18,7 @@ import (
 
 	"rsc.io/qr"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
@@ -28,9 +29,6 @@ var promoMax, promoTotal int64 = 200 << 20, 2 << 30
 
 // promoUpload lets one upload run at a time.
 var promoUpload = make(chan struct{}, 1)
-
-// The default text of a new clip: the club's first use is selling the kit.
-const promoKicker, promoHeadline, promoLine = "LOJA DO CLUBE", "Equipamento oficial", "Disponível na receção do clube"
 
 // promoFile is the only shape a stored video name has.
 var promoFile = regexp.MustCompile(`^[0-9a-f]{8}\.mp4$`)
@@ -78,19 +76,19 @@ func (s *Server) addPromo(w http.ResponseWriter, r *http.Request) {
 	case promoUpload <- struct{}{}:
 		defer func() { <-promoUpload }()
 	default:
-		fail(w, http.StatusConflict, "Já está a carregar um vídeo. Espere que acabe.")
+		fail(w, http.StatusConflict, i18n.T("api.promo.a_carregar"))
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, promoMax+1<<20)
 	mr, err := r.MultipartReader()
 	if err != nil {
-		fail(w, http.StatusBadRequest, "Pedido inválido: "+err.Error())
+		fail(w, http.StatusBadRequest, i18n.T("api.pedido_invalido", "err", err))
 		return
 	}
 	for {
 		part, err := mr.NextPart()
 		if err == io.EOF {
-			fail(w, http.StatusBadRequest, "Escolha um vídeo MP4.")
+			fail(w, http.StatusBadRequest, i18n.T("api.promo.escolha_mp4"))
 			return
 		}
 		if err != nil {
@@ -113,7 +111,7 @@ func (s *Server) addPromo(w http.ResponseWriter, r *http.Request) {
 				total += c.Size
 			}
 			if total > promoTotal {
-				return userError("Já há muitos vídeos (máximo 2 GB no total). Apague um antes de carregar outro.")
+				return userError(i18n.T("api.promo.muitos"))
 			}
 			p.Clips = append(p.Clips, clip)
 			return nil
@@ -127,7 +125,7 @@ func (s *Server) addPromo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var errTooBig = userError("O vídeo passa dos 200 MB.")
+var errTooBig error = i18n.Key("api.promo.grande")
 
 func (s *Server) promoUploadFail(w http.ResponseWriter, err error) {
 	var ue userError
@@ -138,8 +136,8 @@ func (s *Server) promoUploadFail(w http.ResponseWriter, err error) {
 	case errors.As(err, &ue):
 		fail(w, http.StatusBadRequest, ue.Error())
 	default:
-		s.Log("Promo: " + err.Error())
-		fail(w, http.StatusInternalServerError, "Não consegui guardar o vídeo. Veja se o disco tem espaço.")
+		s.Log(i18n.T("log.promo.erro", "err", err))
+		fail(w, http.StatusInternalServerError, i18n.T("api.promo.nao_guardei"))
 	}
 }
 
@@ -148,19 +146,19 @@ func (s *Server) promoUploadFail(w http.ResponseWriter, err error) {
 func (s *Server) savePromo(part *multipart.Part) (store.Clip, error) {
 	name := part.FileName()
 	if !strings.EqualFold(filepath.Ext(name), ".mp4") {
-		return store.Clip{}, userError("O vídeo tem de ser MP4.")
+		return store.Clip{}, userError(i18n.T("api.promo.tem_de_ser_mp4"))
 	}
 	head := make([]byte, 64)
 	n, err := io.ReadFull(part, head)
 	if err != nil && err != io.ErrUnexpectedEOF {
 		if err == io.EOF {
-			return store.Clip{}, userError("O ficheiro está vazio.")
+			return store.Clip{}, userError(i18n.T("api.promo.vazio"))
 		}
 		return store.Clip{}, err
 	}
 	head = head[:n]
 	if !isMP4(head) {
-		return store.Clip{}, userError("Este ficheiro não é um vídeo MP4.")
+		return store.Clip{}, userError(i18n.T("api.promo.nao_e_mp4"))
 	}
 	dir := s.Store.PromoDir()
 	tmp, err := os.CreateTemp(dir, ".up-*")
@@ -187,7 +185,8 @@ func (s *Server) savePromo(part *multipart.Part) (store.Clip, error) {
 	}
 	return store.Clip{
 		ID: id, Name: clipName(name), File: id + ".mp4", Size: size,
-		Kicker: promoKicker, Headline: promoHeadline, Line: promoLine,
+		// The default text of a new clip: the club's first use is selling the kit.
+		Kicker: i18n.T("promo.novo.kicker"), Headline: i18n.T("promo.novo.titulo"), Line: i18n.T("promo.novo.linha"),
 		Volume: 60, End: "back", Added: time.Now().UTC().Format(time.RFC3339),
 	}, nil
 }
@@ -235,7 +234,7 @@ func clipName(name string) string {
 		return r
 	}, name)
 	if name = strings.TrimSpace(cutRunes(name, 60)); name == "" || name == "." {
-		return "Vídeo"
+		return i18n.T("promo.nome_omissao")
 	}
 	return name
 }
@@ -253,7 +252,7 @@ func promoLink(s string) (string, error) {
 	u, err := url.Parse(s)
 	if err != nil || u.Scheme != "http" && u.Scheme != "https" || u.Hostname() == "" || u.User != nil ||
 		len(s) > 300 || strings.ContainsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) {
-		return "", userError("O link tem de ser um endereço da internet, por exemplo https://loja.exemplo.pt.")
+		return "", userError(i18n.T("api.promo.link"))
 	}
 	return s, nil
 }
@@ -262,7 +261,7 @@ func (s *Server) putPromo(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	cur := findClip(s.Store.Promo(), id)
 	if cur == nil {
-		fail(w, http.StatusNotFound, "Vídeo não encontrado.")
+		fail(w, http.StatusNotFound, i18n.T("api.promo.nao_encontrado"))
 		return
 	}
 	req := *cur
@@ -283,7 +282,7 @@ func (s *Server) putPromo(w http.ResponseWriter, r *http.Request) {
 		// The file and its facts are the server's; the panel owns the rest.
 		c.Name = strings.TrimSpace(cutRunes(req.Name, 60))
 		if c.Name == "" {
-			c.Name = "Vídeo"
+			c.Name = i18n.T("promo.nome_omissao")
 		}
 		c.Kicker = strings.TrimSpace(cutRunes(req.Kicker, 40))
 		c.Headline = strings.TrimSpace(cutRunes(req.Headline, 60))
@@ -325,7 +324,7 @@ func (s *Server) putPromoLibrary(w http.ResponseWriter, r *http.Request) {
 				return store.ErrNotFound
 			}
 			if c.Orientation != "vertical" {
-				return userError("No desconto de tempo só cabem vídeos na vertical.")
+				return userError(i18n.T("api.promo.so_vertical"))
 			}
 		}
 		p.TimeoutClip = req.TimeoutClip
@@ -363,7 +362,7 @@ func (s *Server) deletePromo(w http.ResponseWriter, r *http.Request) {
 func (s *Server) showPromo(w http.ResponseWriter, r *http.Request) {
 	c := findClip(s.Store.Promo(), r.PathValue("id"))
 	if c == nil {
-		fail(w, http.StatusNotFound, "Vídeo não encontrado.")
+		fail(w, http.StatusNotFound, i18n.T("api.promo.nao_encontrado"))
 		return
 	}
 	s.State.ShowPromo(promoClip(*c))
@@ -440,7 +439,7 @@ func (s *Server) promoQR(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := qr.Encode(c.Link, qr.M)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "Não consegui fazer o código QR: "+err.Error())
+		fail(w, http.StatusInternalServerError, i18n.T("api.promo.sem_qr", "err", err))
 		return
 	}
 	w.Header().Set("Content-Type", "image/svg+xml")

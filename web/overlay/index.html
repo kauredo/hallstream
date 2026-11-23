@@ -2,7 +2,7 @@
 <html lang="pt-PT">
 <head>
 <meta charset="utf-8">
-<title>Hallstream · Overlay</title>
+<title data-i18n="overlay.pagina.titulo"></title>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/overlay/overlay.css">
 </head>
@@ -46,7 +46,7 @@
       <div class="sb-red"></div>
     </div>
     <div class="sb-teams">
-      <div class="sb-head"><span><span data-b="homeShort"></span> · <span data-b="sport">BASKET</span></span><span class="sb-dot" title="Sem ligação ao marcador"></span></div>
+      <div class="sb-head"><span><span data-b="homeShort"></span> · <span data-b="sport" data-i18n="overlay.desporto_omissao"></span></span><span class="sb-dot" data-i18n-attr="title:overlay.marcador.sem_ligacao"></span></div>
       <div class="sb-row home">
         <div class="tile" data-tile="home" data-strip></div>
         <div class="nm" data-b="homeName" data-fit="24" data-fit-min="16" data-alt="homeShort"></div>
@@ -61,9 +61,9 @@
     <div class="sb-stats">
       <div class="sb-gap"></div>
       <div class="sb-fouls">
-        <div class="sb-lbl">FALTAS</div>
-        <div class="sb-f" data-bonus="home"><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus">BÓNUS</span></div>
-        <div class="sb-f sep" data-bonus="away"><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus">BÓNUS</span></div>
+        <div class="sb-lbl" data-i18n="overlay.faltas"></div>
+        <div class="sb-f" data-bonus="home"><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span></div>
+        <div class="sb-f sep" data-bonus="away"><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span></div>
       </div>
       <div class="sb-div"></div>
       <div class="sb-time">
@@ -89,21 +89,21 @@
     <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
     <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
   </svg>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
-  <div class="ab-kick"><div><span>TRANSMISSÃO PRESTES A COMEÇAR</span></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
+  <div class="ab-kick"><div><span data-i18n="overlay.abertura.prestes"></span></div></div>
   <div class="ab-team home">
     <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
     <div class="ab-name" data-b="homeName" data-fit="100"></div>
-    <div class="ab-sub">BASQUETEBOL DESDE 1929</div>
+    <div class="ab-sub" data-i18n="overlay.abertura.casa_sub"></div>
   </div>
   <div class="ab-team away">
     <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="away"></div></div>
     <div class="ab-name" data-b="awayName" data-fit="100"></div>
-    <div class="ab-sub">VISITANTE</div>
+    <div class="ab-sub" data-i18n="overlay.abertura.visitante"></div>
   </div>
-  <div class="ab-vs"><b>VS</b></div>
+  <div class="ab-vs"><b data-i18n="overlay.vs"></b></div>
   <div class="ab-info">
-    <div class="ab-when"><div class="ab-lbl">O JOGO<br>COMEÇA ÀS</div><div class="ab-time" data-b="startTime"></div></div>
+    <div class="ab-when"><div class="ab-lbl" data-i18n-html="overlay.abertura.comeca_as"></div><div class="ab-time" data-b="startTime"></div></div>
     <div class="ab-sep"></div>
     <div class="ab-meta">
       <div class="ab-comp" data-b="compRound"></div>
@@ -117,12 +117,12 @@
 <section class="screen full" id="s-plantel" data-screen="plantel">
   <div class="pl-head">
     <div class="tile pl-crest" data-tile="home"></div>
-    <div class="t"><small><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></small><b>PLANTEL<span data-b="groupName"></span></b></div>
+    <div class="t"><small><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></small><b><span data-i18n="overlay.plantel.titulo"></span><span data-b="groupName"></span></b></div>
   </div>
   <div class="pl-grid">
     <div class="coach">
       <div class="ci"><div class="tile" data-tile="home"></div></div>
-      <div class="ct"><span>TREINADOR</span><small data-b="coachFirst"></small><b data-b="coachLast" data-fit="52"></b></div>
+      <div class="ct"><span data-i18n="overlay.plantel.treinador"></span><small data-b="coachFirst"></small><b data-b="coachLast" data-fit="52"></b></div>
     </div>
   </div>
 </section>
@@ -136,19 +136,19 @@
     </div>
     <div class="to-hole"></div>
   </div>
-  <div class="to-head"><div class="tile" data-tile="home"></div><div class="to-title">DESCONTO<span>DE TEMPO</span></div></div>
+  <div class="to-head"><div class="tile" data-tile="home"></div><div class="to-title" data-i18n-html="overlay.desconto.titulo"></div></div>
   <div class="to-u u1 home">
     <div class="to-nm" data-b="homeName" data-fit="28" data-fit-mini="24"></div>
     <div class="to-mid"><div class="tile" data-tile="home" data-strip></div><div class="to-sc"><span data-b="homeScore"></span></div></div>
-    <div class="to-f"><span class="lbl">FALTAS</span><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span></div>
+    <div class="to-f"><span class="lbl" data-i18n="overlay.faltas"></span><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span></div>
   </div>
   <div class="to-u u2 away">
     <div class="to-nm" data-b="awayName" data-fit="28" data-fit-mini="24"></div>
     <div class="to-mid"><div class="tile" data-tile="away" data-strip></div><div class="to-sc"><span data-b="awayScore"></span></div></div>
-    <div class="to-f"><span class="lbl">FALTAS</span><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span></div>
+    <div class="to-f"><span class="lbl" data-i18n="overlay.faltas"></span><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span></div>
   </div>
   <div class="to-time">
-    <div class="lbl">TEMPO DE JOGO</div>
+    <div class="lbl" data-i18n="overlay.desconto.tempo_de_jogo"></div>
     <div class="to-per" data-b="periodLong" data-fit="36" data-fit-mini="26"></div>
     <div class="to-clock" data-b="clock"></div>
   </div>
@@ -160,34 +160,34 @@
 <!-- Apoiantes: every sponsor of this game, large -->
 <section class="screen full" id="s-apoiantes" data-screen="apoiantes">
   <div class="tile ap-crest" data-tile="home"></div>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
   <div class="ap-title">
-    <div class="t1">NOSSOS</div>
-    <div class="t2">APOIANTES</div>
-    <div class="rules"><i></i><span>JUNTOS PELO CLUBE</span><i></i></div>
+    <div class="t1" data-i18n="overlay.apoiantes.nossos"></div>
+    <div class="t2" data-i18n="overlay.apoiantes.apoiantes"></div>
+    <div class="rules"><i></i><span data-i18n="overlay.apoiantes.juntos"></span><i></i></div>
   </div>
   <div class="spons ap-strip" data-spons></div>
 </section>
 
 <!-- Promo: a club video. Vertical: phone frame and a text column. Horizontal: a large frame and a caption. -->
 <section class="screen full" id="s-promo" data-screen="promo">
-  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></span></div>
+  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
   <div class="pr-vid"><div class="pr-frame"><video playsinline muted preload="auto"></video></div></div>
   <i class="pr-prog pr-bar"><b></b></i>
-  <div class="pr-left">FALTAM <b data-pr="left"></b></div>
+  <div class="pr-left"><span data-i18n="overlay.promo.faltam"></span> <b data-pr="left"></b></div>
   <div class="pr-txt">
-    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport">BASKET</em></span></div>
+    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
     <div class="pr-kick"><span data-pr="kicker"></span></div>
     <div class="pr-head" data-pr="headline"></div>
     <div class="pr-line" data-pr="line"></div>
-    <div class="pr-qr"><img alt=""><div>APONTE A CÂMARA<b data-pr="short"></b></div></div>
+    <div class="pr-qr"><img alt=""><div><span data-i18n="overlay.promo.aponte"></span><b data-pr="short"></b></div></div>
   </div>
 </section>
 
 <!-- Intervalo -->
 <section class="screen full" id="s-intervalo" data-screen="intervalo">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
-  <div class="hd-tab iv-tab"><div class="hd-word">INTERVALO</div><div class="hd-sub" data-b="halfLine"></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
+  <div class="hd-tab iv-tab"><div class="hd-word" data-i18n="overlay.intervalo.titulo"></div><div class="hd-sub" data-b="halfLine"></div></div>
   <div class="blk iv-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
     <div class="blk-rows">
@@ -200,17 +200,17 @@
 
 <!-- Resultado final -->
 <section class="screen full" id="s-final" data-screen="final">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
-  <div class="hd-tab fn-tab"><div class="hd-word">RESULTADO FINAL</div><div class="hd-sub" data-b="compRound"></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
+  <div class="hd-tab fn-tab"><div class="hd-word" data-i18n="overlay.final.titulo"></div><div class="hd-sub" data-b="compRound"></div></div>
   <div class="blk fn-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
     <div class="blk-rows">
-      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><span class="win" data-win="home">VENCEDOR</span><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
-      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><span class="win" data-win="away">VENCEDOR</span><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
+      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><span class="win" data-win="home" data-i18n="overlay.final.vencedor"></span><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
+      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><span class="win" data-win="away" data-i18n="overlay.final.vencedor"></span><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
     </div>
   </div>
   <div class="ptab fn-pt" data-periods></div>
-  <div class="fn-thanks"><div class="rules"><i></i><span>OBRIGADO AOS NOSSOS APOIANTES</span><i></i></div></div>
+  <div class="fn-thanks"><div class="rules"><i></i><span data-i18n="overlay.final.obrigado"></span><i></i></div></div>
 </section>
 
 <!-- Próximo jogo: the club's game after this one (game.next) -->
@@ -219,8 +219,8 @@
     <polygon class="ab-sw" points="1026,196 1032,196 892,906 886,906"/>
     <polygon class="ab-sr" points="1036,196 1070,196 930,906 896,906"/>
   </svg>
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
-  <div class="ab-kick"><div><span>PRÓXIMO JOGO</span></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
+  <div class="ab-kick"><div><span data-i18n="overlay.proximo.titulo"></span></div></div>
   <div class="ab-team home">
     <div class="ab-shield"><div class="sh"></div><div class="bar"></div><div class="tile ab-tile" data-tile="home"></div></div>
     <div class="ab-name" data-b="homeName" data-fit="100"></div>
@@ -231,7 +231,7 @@
     <div class="ab-name" data-b="nextName" data-fit="100"></div>
     <div class="ab-sub" data-b="nextFull"></div>
   </div>
-  <div class="ab-vs"><b>VS</b></div>
+  <div class="ab-vs"><b data-i18n="overlay.vs"></b></div>
   <div class="ab-info">
     <div class="ab-when"><div class="px-day"><small data-b="nextWeekday"></small><span data-b="nextDay"></span></div><div class="ab-time" data-b="nextTime"></div></div>
     <div class="ab-sep"></div>
@@ -244,9 +244,9 @@
 
 <!-- Voltamos já: holding screen for a technical break -->
 <section class="screen full" id="s-voltamos" data-screen="voltamos">
-  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport">BASKET</span><i></i></div></div>
+  <div class="lockup"><div class="lk1" data-b="homeName"></div><div class="lk2"><i></i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span><i></i></div></div>
   <div class="vj-crest"><i class="vj-halo"></i><div class="tile" data-tile="home"></div></div>
-  <div class="vj-title">VOLTAMOS <span>JÁ</span></div>
+  <div class="vj-title" data-i18n-html="overlay.voltamos.titulo"></div>
   <div class="vj-sub"><div class="rules"><i></i><span data-b="backLine" data-fit="30"></span><i></i></div></div>
   <div class="vj-score"><div>
     <div class="tile" data-tile="home"></div><div class="n hn" data-b="homeName"></div><div class="s hs" data-b="homeScore"></div>
@@ -281,6 +281,8 @@
 <div class="credit" id="credit"><img src="/assets/hallstream-lockup.svg" alt="Hallstream"></div>
 
 </div>
+<script src="/i18n.js"></script>
+<script src="/i18n/i18n.js"></script>
 <script src="/overlay/overlay.js"></script>
 </body>
 </html>

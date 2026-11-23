@@ -1,12 +1,13 @@
 package obsws
 
 import (
-	"errors"
-	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Rect is a box on the OBS canvas, in pixels.
@@ -378,13 +379,13 @@ func (c *Camera) resolve(set CameraSettings) (item, error) {
 	si := pick(items, set.Source)
 	if si == nil {
 		if set.Source != "" {
-			return item{}, fmt.Errorf("a cena %q do OBS não tem a fonte %q", scene, set.Source)
+			return item{}, i18n.Err("obs.camera.sem_fonte", "cena", strconv.Quote(scene), "fonte", strconv.Quote(set.Source))
 		}
-		return item{}, fmt.Errorf("não encontrei a câmara na cena %q do OBS: escolha-a em Definições", scene)
+		return item{}, i18n.Err("obs.camera.nao_encontrei", "cena", strconv.Quote(scene))
 	}
 	tr := si.Transform
 	if tr.SourceWidth <= 0 || tr.SourceHeight <= 0 || v.W <= 0 || v.H <= 0 {
-		return item{}, errors.New("a câmara " + si.Name + " ainda não tem imagem no OBS")
+		return item{}, i18n.Err("obs.camera.sem_imagem", "camara", si.Name)
 	}
 	it := item{cfg: set.Config, scene: scene, id: si.ID, name: si.Name,
 		srcW: tr.SourceWidth, srcH: tr.SourceHeight, canvas: Rect{0, 0, v.W, v.H}}

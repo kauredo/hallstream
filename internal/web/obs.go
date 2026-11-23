@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/store"
@@ -16,7 +17,7 @@ import (
 
 // errNotLive: OBS took StartStream but never sent, as when a YouTube account
 // linked in OBS has no broadcast and OBS shows a message on the PC.
-var errNotLive = errors.New("O OBS não começou a transmitir. Veja no portátil se o OBS mostra um aviso. Se tiver uma conta do YouTube ligada em Definições > Transmissão, desligue-a e tente outra vez.")
+var errNotLive error = i18n.Key("api.obs.nao_transmitiu")
 
 // startPolls times 300 ms is how long a start waits for OBS to send: the
 // connection to YouTube comes first.
@@ -87,9 +88,9 @@ func (s *Server) obsRoutes() {
 		}
 		// A test over the game (or the reverse) would lose the one on air.
 		if rec := s.ytOnAir(); rec != nil && rec.Test != req.Test {
-			msg := "O jogo está no ar. Termine a transmissão antes do teste."
+			msg := i18n.T("api.obs.jogo_no_ar")
 			if rec.Test {
-				msg = "O teste está no ar. Carregue em Terminar teste primeiro."
+				msg = i18n.T("api.obs.teste_no_ar")
 			}
 			fail(w, http.StatusConflict, msg)
 			return
@@ -168,7 +169,7 @@ func (s *Server) waitLive(w http.ResponseWriter, cfg obsws.Config) bool {
 	}
 	if last != nil && !last.Active {
 		if err := s.OBS.StopStream(cfg); err != nil {
-			s.Log("Não consegui parar o OBS depois de uma transmissão que não começou: " + err.Error())
+			s.Log(i18n.T("log.obs.nao_parei", "err", err))
 		}
 		fail(w, http.StatusBadGateway, errNotLive.Error())
 		return false
@@ -217,7 +218,7 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.setupOBSMu.TryLock() {
-		fail(w, http.StatusConflict, "O OBS já está a ser configurado. Espere um pouco.")
+		fail(w, http.StatusConflict, i18n.T("api.obs.a_configurar"))
 		return
 	}
 	defer s.setupOBSMu.Unlock()
@@ -280,7 +281,7 @@ func (s *Server) fitCamera(cam string) error {
 // obs-websocket's own file. When OBS is closed and its server off, it turns
 // the server on and starts OBS, but only for a request from the PC itself.
 func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
-	st := obsws.Step{ID: "websocket", Label: "Ligação ao OBS", Result: "ok", Detail: "O OBS responde."}
+	st := obsws.Step{ID: "websocket", Label: i18n.T("obs.setup.ligacao"), Result: "ok", Detail: i18n.T("obs.setup.ligacao_ok")}
 	o := s.Store.Settings().OBS
 	cfg := obsConfig(o)
 	if cfg.Host == "" {
@@ -292,7 +293,7 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 	if mine {
 		var err error
 		if file, err = obsapp.ReadWebSocket(app.ConfigPath); err != nil {
-			s.Log("OBS: " + err.Error())
+			s.Log(i18n.T("log.obs.erro", "err", err))
 		} else if file.Enabled {
 			cfg.Port, cfg.Password = file.Port, ""
 			if file.Auth {
@@ -305,7 +306,7 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 			set.OBS.Host, set.OBS.Port, set.OBS.Password, set.OBS.Enabled = cfg.Host, cfg.Port, cfg.Password, true
 		})
 		if err != nil {
-			st.Result, st.Detail = "failed", "Não consegui guardar a ligação ao OBS: "+err.Error()
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_guardei_ligacao", "err", err)
 		}
 		return err == nil
 	}
@@ -314,9 +315,9 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 		return cfg, st, keep()
 	}
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
-	byHand := "No OBS, ligue o servidor em Ferramentas > Definições do servidor WebSocket e escreva aqui a palavra-passe."
+	byHand := i18n.T("obs.setup.a_mao")
 	if !mine || !here || app.Running == nil || app.Start == nil {
-		st.Result, st.Detail = "failed", "O OBS não responde em "+addr+". "+byHand
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_responde", "endereco", addr, "a_mao", byHand)
 		return cfg, st, false
 	}
 	// Holding launchMu, so RunOBS can't start OBS between the check and the
@@ -327,28 +328,28 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 		running, rerr := app.Running()
 		switch {
 		case rerr != nil:
-			st.Result, st.Detail = "failed", "Não consegui ver se o OBS está aberto: "+rerr.Error()
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_vi_aberto", "err", rerr)
 			return false, false
 		case running && file.Enabled:
 			return false, true
 		case running:
-			st.Result, st.Detail = "failed", "O servidor WebSocket do OBS está desligado. Feche o OBS e carregue outra vez em Configurar OBS, que o Marcador liga-o sozinho. "+byHand
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.websocket_desligado", "a_mao", byHand)
 			return false, false
 		}
 		if !file.Enabled {
 			ws, err := obsapp.EnableWebSocket(app.ConfigPath)
 			if err != nil {
-				st.Result, st.Detail = "failed", "Não consegui ligar o servidor WebSocket do OBS: "+err.Error()
+				st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_liguei_websocket", "err", err)
 				return false, false
 			}
 			cfg.Port, cfg.Password = ws.Port, ws.Password
-			st.Result, st.Detail = "fixed", "Liguei o servidor WebSocket do OBS, com uma palavra-passe nova."
-			s.Log("Liguei o servidor WebSocket do OBS em " + app.ConfigPath)
+			st.Result, st.Detail = "fixed", i18n.T("obs.setup.liguei_websocket")
+			s.Log(i18n.T("log.obs.liguei_websocket", "ficheiro", app.ConfigPath))
 		}
 		if !keep() {
 			return false, false
 		}
-		s.Log("A abrir o OBS.")
+		s.Log(i18n.T("log.obs.a_abrir"))
 		if err := app.Start(); err != nil {
 			st.Result, st.Detail = "failed", err.Error()
 			return false, false
@@ -362,13 +363,13 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 		// OBS is open with its server on: it may still be starting, as when
 		// it opened with the program a moment ago.
 		if err := waitOBS(cfg, 20*time.Second); err != nil {
-			st.Result, st.Detail = "failed", "O OBS está aberto mas não aceita a ligação ("+err.Error()+"). Feche o OBS e carregue outra vez em Configurar OBS."
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_aceita", "err", err)
 			return cfg, st, false
 		}
 		return cfg, st, keep()
 	}
 	if err := waitOBS(cfg, time.Minute); err != nil {
-		st.Result, st.Detail = "failed", "O OBS abriu mas não responde. Se perguntou pelo modo de segurança, escolha o modo normal e carregue outra vez em Configurar OBS."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.abriu_sem_resposta")
 		return cfg, st, false
 	}
 	if st.Result == "ok" {
@@ -377,7 +378,7 @@ func (s *Server) reachOBS(here bool) (obsws.Config, obsws.Step, bool) {
 	} else {
 		st.Detail += " "
 	}
-	st.Detail += "Abri o OBS."
+	st.Detail += i18n.T("obs.setup.abri")
 	return cfg, st, true
 }
 
@@ -387,13 +388,13 @@ func (s *Server) launchOBS() error {
 	defer s.launchMu.Unlock()
 	app := s.OBSApp
 	if app.Running == nil || app.Start == nil {
-		return errors.New("este sistema não abre o OBS sozinho")
+		return i18n.Err("obs.nao_abre_sozinho")
 	}
 	running, err := app.Running()
 	if err != nil || running {
 		return err
 	}
-	s.Log("A abrir o OBS.")
+	s.Log(i18n.T("log.obs.a_abrir"))
 	return app.Start()
 }
 
@@ -449,7 +450,7 @@ func (s *Server) obsStatus() map[string]any {
 func (s *Server) RunOBS() {
 	if o := s.Store.Settings().OBS; o.Enabled && o.Launch && local(o.Host) && s.OBSApp.Start != nil {
 		if err := s.launchOBS(); err != nil {
-			s.Log("Não consegui abrir o OBS: " + err.Error())
+			s.Log(i18n.T("log.obs.nao_abri", "err", err))
 		}
 	}
 	wait, n := time.Second, 0
@@ -511,7 +512,7 @@ func (s *Server) CloseOBS() {
 	}
 	// Ending OBS by force is only for when no one is watching.
 	if err := s.OBSApp.Close(!live); err != nil {
-		s.Log("Não consegui fechar o OBS: " + err.Error())
+		s.Log(i18n.T("log.obs.nao_fechei", "err", err))
 	}
 }
 
@@ -524,16 +525,16 @@ func (s *Server) autostart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isLoopback(r.RemoteAddr) {
-		fail(w, http.StatusForbidden, "Isto só se muda no próprio computador.")
+		fail(w, http.StatusForbidden, i18n.T("api.so_no_pc"))
 		return
 	}
 	if s.Autostart == nil {
-		fail(w, http.StatusNotImplemented, "Abrir com o Windows só existe no Windows.")
+		fail(w, http.StatusNotImplemented, i18n.T("api.arranque_so_windows"))
 		return
 	}
 	if err := s.Autostart(req.On); err != nil {
-		s.Log("Abrir com o Windows: " + err.Error())
-		fail(w, http.StatusInternalServerError, "Não consegui mudar o arranque com o Windows: "+err.Error())
+		s.Log(i18n.T("log.arranque_erro", "err", err))
+		fail(w, http.StatusInternalServerError, i18n.T("api.nao_mudei_arranque", "err", err))
 		return
 	}
 	_, err := s.Store.UpdateSettings(func(set *store.Settings) { set.StartWithWindows = req.On })

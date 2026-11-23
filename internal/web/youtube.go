@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
@@ -102,7 +103,7 @@ func (s *Server) loadYouTube() {
 			err = json.Unmarshal(b, v)
 		}
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			s.Log(name + " está estragado: " + err.Error())
+			s.Log(i18n.T("log.yt.estragado", "ficheiro", name, "err", err))
 		}
 	}
 	if s.ytRecs == nil {
@@ -124,7 +125,7 @@ func (s *Server) ytWrite() {
 			err = store.WriteFile(filepath.Join(s.Store.Dir, name), b)
 		}
 		if err != nil {
-			s.Log("Não consegui guardar " + name + ": " + err.Error())
+			s.Log(i18n.T("log.yt.nao_guardei", "ficheiro", name, "err", err))
 		}
 	}
 }
@@ -168,7 +169,7 @@ func (s *Server) ytStatus(here bool) map[string]any {
 // pcOnly refuses a request from another device.
 func pcOnly(w http.ResponseWriter, r *http.Request) bool {
 	if !isLoopback(r.RemoteAddr) {
-		fail(w, http.StatusForbidden, "A ligação ao YouTube só se muda no próprio computador.")
+		fail(w, http.StatusForbidden, i18n.T("api.yt.so_no_pc"))
 		return false
 	}
 	return true
@@ -184,13 +185,13 @@ func (s *Server) ytSetClient(w http.ResponseWriter, r *http.Request) {
 	}
 	id, secret := strings.TrimSpace(req.ClientID), strings.TrimSpace(req.ClientSecret)
 	if !strings.HasSuffix(id, ".apps.googleusercontent.com") || strings.ContainsAny(id, " /") {
-		fail(w, http.StatusBadRequest, "O ID do cliente acaba em .apps.googleusercontent.com. Copie-o outra vez da Google Cloud.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.id_cliente"))
 		return
 	}
 	s.ytMu.Lock()
 	if s.yt.connected() && id != s.yt.ClientID {
 		s.ytMu.Unlock()
-		fail(w, http.StatusConflict, "Carregue primeiro em Desligar, e depois mude o cliente.")
+		fail(w, http.StatusConflict, i18n.T("api.yt.desligue_primeiro"))
 		return
 	}
 	if secret == "" && id == s.yt.ClientID {
@@ -198,7 +199,7 @@ func (s *Server) ytSetClient(w http.ResponseWriter, r *http.Request) {
 	}
 	if secret == "" {
 		s.ytMu.Unlock()
-		fail(w, http.StatusBadRequest, "Cole também o segredo do cliente.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.falta_segredo"))
 		return
 	}
 	s.yt.ClientID, s.yt.ClientSecret, s.ytErr = id, secret, ""
@@ -226,12 +227,12 @@ func (s *Server) ytConnect(w http.ResponseWriter, r *http.Request) {
 		old.Cancel()
 	}
 	if creds.ClientID == "" || creds.ClientSecret == "" {
-		fail(w, http.StatusBadRequest, "Cole primeiro o ID e o segredo do cliente OAuth e carregue em Guardar.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.falta_cliente"))
 		return
 	}
 	l, err := youtube.StartLogin(creds, ytLoginWait, s.ytLoggedIn)
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "Não consegui preparar o login: "+err.Error())
+		fail(w, http.StatusInternalServerError, i18n.T("api.yt.nao_preparei_login", "err", err))
 		return
 	}
 	s.ytMu.Lock()
@@ -250,13 +251,13 @@ func (s *Server) ytLoggedIn(l *youtube.Login, tok *oauth2.Token, err error) {
 	if err != nil {
 		s.ytErr = err.Error()
 		s.ytMu.Unlock()
-		s.Log("YouTube: " + err.Error())
+		s.Log(i18n.T("log.yt.erro", "err", err))
 		return
 	}
 	s.yt.Token, s.yt.Expired, s.yt.Channel, s.yt.Stream = tok, false, nil, nil
 	s.ytWrite()
 	s.ytMu.Unlock()
-	s.Log("Ligado ao YouTube.")
+	s.Log(i18n.T("log.yt.ligado"))
 	s.once("YouTube", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
@@ -282,7 +283,7 @@ func (s *Server) ytDisconnect(w http.ResponseWriter, r *http.Request) {
 	if y.Token != nil && y.Token.RefreshToken != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		if err := youtube.Revoke(ctx, &http.Client{}, y.Token.RefreshToken); err != nil {
-			s.Log("YouTube: não consegui cancelar o acesso no Google: " + err.Error())
+			s.Log(i18n.T("log.yt.nao_cancelei", "err", err))
 		}
 		cancel()
 	}
@@ -297,7 +298,7 @@ func (s *Server) ytDisconnect(w http.ResponseWriter, r *http.Request) {
 	s.yt.Token, s.yt.Channel, s.yt.Stream, s.yt.Expired, s.ytErr = nil, nil, nil, false, ""
 	s.ytWrite()
 	s.ytMu.Unlock()
-	s.Log("Desligado do YouTube.")
+	s.Log(i18n.T("log.yt.desligado"))
 	reply(w, s.ytStatus(true))
 }
 
@@ -328,7 +329,7 @@ func (s *Server) ytFailed(err error) error {
 	}
 	s.ytErr = err.Error()
 	s.ytMu.Unlock()
-	s.Log("YouTube: " + err.Error())
+	s.Log(i18n.T("log.yt.erro", "err", err))
 	return err
 }
 
@@ -361,9 +362,9 @@ func (s *Server) ytPrepare(ctx context.Context) (youtube.Stream, string, error) 
 	case errors.Is(err, obsws.ErrStreaming):
 		return st, "later", nil
 	case err != nil:
-		return st, "", errors.New("não consegui pôr o OBS a enviar para o YouTube: " + err.Error())
+		return st, "", i18n.Err("yt.obs_nao_envia", "err", err)
 	case changed:
-		s.Log("O OBS passou a enviar para a transmissão " + ytStream + " do YouTube.")
+		s.Log(i18n.T("log.yt.obs_envia", "stream", ytStream))
 		return st, "fixed", nil
 	}
 	return st, "ok", nil
@@ -374,7 +375,7 @@ func (s *Server) ytSetupStep() (step obsws.Step, ok bool) {
 	if !s.ytConnected() {
 		return step, false
 	}
-	step.ID, step.Label = "youtube", "Transmissão para o YouTube"
+	step.ID, step.Label = "youtube", i18n.T("obs.setup.youtube")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	_, res, err := s.ytPrepare(ctx)
@@ -383,11 +384,11 @@ func (s *Server) ytSetupStep() (step obsws.Step, ok bool) {
 		s.ytFailed(err)
 		step.Result, step.Detail = "failed", err.Error()
 	case res == "fixed":
-		step.Result, step.Detail = "fixed", "Pus o OBS a enviar para o canal do YouTube ligado ao Marcador."
+		step.Result, step.Detail = "fixed", i18n.T("obs.setup.youtube_pus")
 	case res == "later":
-		step.Result, step.Detail = "later", "O OBS está a transmitir. Fica para quando parar."
+		step.Result, step.Detail = "later", i18n.T("obs.setup.youtube_depois")
 	default:
-		step.Result, step.Detail = "ok", "O OBS envia para o canal do YouTube ligado ao Marcador."
+		step.Result, step.Detail = "ok", i18n.T("obs.setup.youtube_ok")
 	}
 	return step, true
 }
@@ -458,7 +459,7 @@ func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 	snap := s.State.Snapshot()
 	title, desc := broadcastText(snap.Game, time.Now())
 	if test {
-		r := []rune("Teste · " + title)
+		r := []rune(i18n.T("yt.titulo_teste", "titulo", title))
 		title = string(r[:min(len(r), 100)])
 	}
 	b, err := c.NewBroadcast(ctx, title, desc, privacy, time.Now())
@@ -482,7 +483,7 @@ func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 		GameKey: key, Status: b.Status, OnAir: true, Test: test, StartedAt: time.Now().Format(time.RFC3339)})
 	s.ytWrite()
 	s.ytMu.Unlock()
-	s.Log("YouTube: transmissão nova " + b.ID + " (" + title + ").")
+	s.Log(i18n.T("log.yt.transmissao_nova", "id", b.ID, "titulo", title))
 	if err := s.ytBind(ctx, c, b.ID, st); err != nil {
 		return s.ytFailed(err)
 	}
@@ -509,7 +510,7 @@ func (s *Server) ytBind(ctx context.Context, c *youtube.Client, id string, st yo
 	return err
 }
 
-var errNoTest = errors.New("A transmissão de teste precisa do YouTube ligado em Definições > YouTube.")
+var errNoTest error = i18n.Key("yt.teste_precisa")
 
 // ytOnAir is the record on air, if any.
 func (s *Server) ytOnAir() *ytRecord {
@@ -643,7 +644,7 @@ func (s *Server) ytFinish(id string) {
 		}
 		if !s.ytConnected() {
 			s.ytUpdate(id, func(r *ytRecord) {
-				r.PrivacyError = "O YouTube foi desligado antes de o vídeo ficar não listado. Ligue-o em Definições e carregue em Tentar outra vez."
+				r.PrivacyError = i18n.T("yt.desligado_antes")
 			})
 			return
 		}
@@ -677,7 +678,7 @@ func (s *Server) ytFinish(id string) {
 			}
 		default: // never went live, or gone
 			s.ytUpdate(id, func(r *ytRecord) {
-				r.Status, r.PrivacyError = status, "O direto não chegou a ficar no ar no YouTube, por isso não há vídeo."
+				r.Status, r.PrivacyError = status, i18n.T("yt.nunca_no_ar")
 			})
 			cancel()
 			return
@@ -685,9 +686,9 @@ func (s *Server) ytFinish(id string) {
 		s.ytUpdate(id, func(r *ytRecord) { r.Status = status })
 		cancel()
 	}
-	msg := "O YouTube ainda não deu o direto por acabado. Carregue em Tentar outra vez daqui a uns minutos."
+	msg := i18n.T("yt.ainda_nao_acabou")
 	if last != nil {
-		msg = "Não consegui saber do YouTube se o direto acabou (" + last.Error() + "). Carregue em Tentar outra vez."
+		msg = i18n.T("yt.nao_sei_se_acabou", "err", last)
 	}
 	s.ytUpdate(id, func(r *ytRecord) { r.PrivacyError = msg })
 }
@@ -696,7 +697,7 @@ func (s *Server) ytPrivacy(id, status string, err error) {
 	s.ytUpdate(id, func(r *ytRecord) {
 		r.Status, r.PrivacyError = status, ""
 		if err != nil {
-			r.PrivacyError = "Não consegui tornar o vídeo não listado: " + err.Error()
+			r.PrivacyError = i18n.T("yt.nao_listado_falhou", "err", err)
 			return
 		}
 		r.Privacy = "unlisted"
@@ -712,7 +713,7 @@ func (s *Server) ytPrivacy(id, status string, err error) {
 		}
 	}
 	s.ytMu.Unlock()
-	s.Log("YouTube: o vídeo " + id + " ficou não listado.")
+	s.Log(i18n.T("log.yt.nao_listado", "id", id))
 }
 
 // RunYouTube finishes streams that ended while the program was closed.
@@ -755,21 +756,21 @@ func (s *Server) ytThumbnail(w http.ResponseWriter, r *http.Request) {
 	id := r.FormValue("broadcast_id")
 	f, _, err := r.FormFile("file")
 	if err != nil {
-		fail(w, http.StatusBadRequest, "Falta a imagem.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.falta_imagem"))
 		return
 	}
 	defer f.Close()
 	png, err := io.ReadAll(io.LimitReader(f, ytThumbMax+1))
 	if err == nil && len(png) > ytThumbMax {
-		fail(w, http.StatusRequestEntityTooLarge, "A miniatura passa dos 8 MB.")
+		fail(w, http.StatusRequestEntityTooLarge, i18n.T("api.yt.miniatura_8mb"))
 		return
 	}
 	if err != nil || !bytes.HasPrefix(png, []byte("\x89PNG\r\n\x1a\n")) {
-		fail(w, http.StatusBadRequest, "A miniatura tem de ser PNG.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.miniatura_png"))
 		return
 	}
 	if s.ytRecord(id) == nil || !s.ytConnected() {
-		fail(w, http.StatusNotFound, "Esta transmissão não é do Hallstream.")
+		fail(w, http.StatusNotFound, i18n.T("api.yt.nao_e_nossa"))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
@@ -799,15 +800,15 @@ func (s *Server) ytUnlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.BroadcastID == "" || !s.ytConnected() {
-		fail(w, http.StatusBadRequest, "Ligue primeiro o YouTube em Definições.")
+		fail(w, http.StatusBadRequest, i18n.T("api.yt.ligue_primeiro"))
 		return
 	}
 	if !s.ytKnown(req.BroadcastID) {
-		fail(w, http.StatusNotFound, "Esta transmissão não está na lista do Hallstream nem do canal.")
+		fail(w, http.StatusNotFound, i18n.T("api.yt.fora_da_lista"))
 		return
 	}
 	if rec := s.ytRecord(req.BroadcastID); rec != nil && rec.Test {
-		fail(w, http.StatusConflict, "Um teste fica privado.")
+		fail(w, http.StatusConflict, i18n.T("api.yt.teste_privado"))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
@@ -819,7 +820,7 @@ func (s *Server) ytUnlist(w http.ResponseWriter, r *http.Request) {
 		s.ytFailed(err)
 	}
 	if err != nil {
-		fail(w, http.StatusBadGateway, "Não consegui tornar o vídeo não listado: "+err.Error())
+		fail(w, http.StatusBadGateway, i18n.T("yt.nao_listado_falhou", "err", err))
 		return
 	}
 	if s.ytRecord(req.BroadcastID) == nil {
@@ -855,7 +856,7 @@ func (s *Server) ytKnown(id string) bool {
 const ytThumbMax = 8 << 20
 
 // ytExternal is the escalão filter value for streams made outside the program.
-const ytExternal = "Fora do Hallstream"
+func ytExternal() string { return i18n.T("yt.fora_hallstream") }
 
 func ytSeason(date string) string {
 	t, err := time.Parse(time.RFC3339, date)
@@ -916,7 +917,7 @@ func (s *Server) ytHistory(w http.ResponseWriter, r *http.Request) {
 	for _, it := range items {
 		g := it.Escalao
 		if it.External {
-			g = ytExternal
+			g = ytExternal()
 		}
 		if g != "" && !slices.Contains(groups, g) {
 			groups = append(groups, g)
@@ -969,13 +970,13 @@ func broadcastText(g state.Game, now time.Time) (string, string) {
 	if g.AtHome != nil && !*g.AtHome {
 		home, away = away, home
 	}
-	match := home + " vs " + away
+	match := i18n.T("yt.titulo_jogo", "casa", home, "fora", away)
 	if home == "" || away == "" {
 		match = home + away
 	}
 	round := g.Round
-	if n, ok := strings.CutPrefix(round, "Jornada "); ok {
-		round = "J" + n
+	if n, ok := strings.CutPrefix(round, i18n.T("jogo.jornada", "n", "")); ok {
+		round = i18n.T("yt.jornada_curta", "n", n)
 	}
 	group := ""
 	if g.Group != nil {
@@ -991,20 +992,28 @@ func broadcastText(g state.Game, now time.Time) (string, string) {
 		title = string(r[:100])
 	}
 	if strings.TrimSpace(title) == "" {
-		title = "Basquetebol"
+		title = i18n.T("yt.titulo_omissao")
 	}
 	when := now
 	if t, err := time.Parse(time.RFC3339, g.Start); err == nil {
 		when = t
 	}
 	when = when.In(lisbon)
-	date := fmt.Sprintf("%s, %d de %s de %d, %s", weekdays[when.Weekday()], when.Day(), months[when.Month()-1], when.Year(), when.Format("15:04"))
+	date := i18n.T("yt.data", "dia_semana", weekday(when.Weekday()), "dia", when.Day(), "mes", month(when.Month()), "ano", when.Year(), "hora", when.Format("15:04"))
 	desc := ytClean(strings.Join(nonEmpty(joinDot(g.Competition, g.Round, group), g.Venue, date), "\n"))
 	return title, desc
 }
 
-var weekdays = []string{"Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"}
-var months = []string{"janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"}
+func weekday(d time.Weekday) string {
+	return [...]string{i18n.T("data.dia.0"), i18n.T("data.dia.1"), i18n.T("data.dia.2"), i18n.T("data.dia.3"),
+		i18n.T("data.dia.4"), i18n.T("data.dia.5"), i18n.T("data.dia.6")}[d]
+}
+
+func month(m time.Month) string {
+	return [...]string{i18n.T("data.mes.1"), i18n.T("data.mes.2"), i18n.T("data.mes.3"), i18n.T("data.mes.4"),
+		i18n.T("data.mes.5"), i18n.T("data.mes.6"), i18n.T("data.mes.7"), i18n.T("data.mes.8"),
+		i18n.T("data.mes.9"), i18n.T("data.mes.10"), i18n.T("data.mes.11"), i18n.T("data.mes.12")}[m-1]
+}
 
 func joinDot(parts ...string) string { return strings.Join(nonEmpty(parts...), " · ") }
 

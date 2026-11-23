@@ -1,14 +1,15 @@
 package web
 
 import (
-	"errors"
 	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
-const noReader = "O Bluetooth não está a correr (modo demo)."
+var noReader error = i18n.Key("api.ble.sem_leitor")
 
 func (s *Server) bleRoutes() {
 	m := s.mux
@@ -28,11 +29,11 @@ func (s *Server) bleRoutes() {
 		}
 		req.Address = strings.TrimSpace(req.Address)
 		if req.Address == "" {
-			fail(w, http.StatusBadRequest, "Falta o endereço do dispositivo.")
+			fail(w, http.StatusBadRequest, i18n.T("api.ble.falta_endereco"))
 			return
 		}
 		if s.BLE == nil {
-			fail(w, http.StatusServiceUnavailable, noReader)
+			fail(w, http.StatusServiceUnavailable, noReader.Error())
 			return
 		}
 		if err := s.BLE.Try(req.Address); err != nil {
@@ -43,7 +44,7 @@ func (s *Server) bleRoutes() {
 	})
 	m.HandleFunc("POST /api/ble/forget", func(w http.ResponseWriter, r *http.Request) {
 		if s.BLE == nil {
-			fail(w, http.StatusServiceUnavailable, noReader)
+			fail(w, http.StatusServiceUnavailable, noReader.Error())
 			return
 		}
 		if err := s.BLE.Forget(); err != nil {
@@ -69,10 +70,10 @@ func openBluetoothSettings() error {
 	case "darwin":
 		cmd = exec.Command("open", "x-apple.systempreferences:com.apple.BluetoothSettings")
 	default:
-		return errors.New("Abra as definições de Bluetooth do computador à mão.")
+		return i18n.Err("api.ble.abra_definicoes")
 	}
 	if err := cmd.Start(); err != nil {
-		return errors.New("Não consegui abrir as definições de Bluetooth: " + err.Error())
+		return i18n.Err("api.ble.nao_abri_definicoes", "err", err)
 	}
 	go cmd.Wait()
 	return nil

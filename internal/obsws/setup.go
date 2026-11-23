@@ -1,13 +1,14 @@
 package obsws
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // What "Configurar OBS" makes in OBS.
@@ -164,7 +165,7 @@ func (s *setup) run(fit func(string) error) {
 	s.video(busy)
 	s.program(busy)
 	if s.apply && cam != "" && fit != nil && s.err == nil {
-		st := Step{ID: "fit", Label: "Câmara ajustada ao ecrã", Result: "ok", Detail: "A câmara ocupa o ecrã inteiro."}
+		st := Step{ID: "fit", Label: i18n.T("obs.setup.ajuste"), Result: "ok", Detail: i18n.T("obs.setup.ajuste_ok")}
 		if err := fit(cam); err != nil {
 			st.Result, st.Detail = "failed", err.Error()
 		}
@@ -183,7 +184,7 @@ func (s *setup) busy() bool {
 }
 
 func (s *setup) ensureScene() bool {
-	st := Step{ID: "scene", Label: "Cena " + SceneName, Result: "ok", Detail: "A cena já existe."}
+	st := Step{ID: "scene", Label: i18n.T("obs.setup.cena", "cena", SceneName), Result: "ok", Detail: i18n.T("obs.setup.cena_existe")}
 	defer func() { s.add(st) }()
 	var r struct {
 		Scenes []struct {
@@ -191,7 +192,7 @@ func (s *setup) ensureScene() bool {
 		} `json:"scenes"`
 	}
 	if re := s.call("GetSceneList", nil, &r); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não deu a lista de cenas: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.sem_lista_cenas", "erro", re.Comment)
 		return false
 	}
 	for _, sc := range r.Scenes {
@@ -200,14 +201,14 @@ func (s *setup) ensureScene() bool {
 		}
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", "Falta a cena "+SceneName+" no OBS."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_cena", "cena", SceneName)
 		return true
 	}
 	if re := s.call("CreateScene", map[string]string{"sceneName": SceneName}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não criou a cena: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_cena", "erro", re.Comment)
 		return false
 	}
-	st.Result, st.Detail = "created", "Criei a cena "+SceneName+"."
+	st.Result, st.Detail = "created", i18n.T("obs.setup.criei_cena", "cena", SceneName)
 	return true
 }
 
@@ -217,7 +218,7 @@ func (s *setup) inputs() []input {
 	}
 	if re := s.call("GetInputList", nil, &r); re != nil {
 		if s.err == nil {
-			s.err = errors.New("o OBS não deu a lista de fontes: " + re.Comment)
+			s.err = i18n.Err("obs.setup.sem_lista_fontes", "erro", re.Comment)
 		}
 		return nil
 	}
@@ -278,7 +279,7 @@ func num(v any, def float64) float64 {
 func flag(v any) bool { b, _ := v.(bool); return b }
 
 func (s *setup) overlay(in []input) string {
-	st := Step{ID: "overlay", Label: "Grafismo (fonte Navegador)", Result: "ok", Detail: "Aponta para " + s.want.OverlayURL + "."}
+	st := Step{ID: "overlay", Label: i18n.T("obs.setup.grafismo"), Result: "ok", Detail: i18n.T("obs.setup.grafismo_aponta", "url", s.want.OverlayURL)}
 	defer func() { s.add(st) }()
 	items := s.items()
 	// Ours by name first, then one already in the scene.
@@ -302,56 +303,56 @@ func (s *setup) overlay(in []input) string {
 		"width": 1920, "height": 1080, "reroute_audio": true}
 	if found == nil {
 		if !s.apply {
-			st.Result, st.Detail = "failed", "Falta a fonte do grafismo no OBS."
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_grafismo")
 			return ""
 		}
 		name := uniqueName(in, OverlayName)
 		if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name,
 			"inputKind": "browser_source", "inputSettings": settings}, nil); re != nil {
-			st.Result, st.Detail = "failed", "O OBS não criou a fonte do grafismo: "+re.Comment
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_grafismo", "erro", re.Comment)
 			return ""
 		}
-		st.Result, st.Detail = "created", "Criei a fonte "+name+", 1920x1080, com o som pelo OBS."
+		st.Result, st.Detail = "created", i18n.T("obs.setup.criei_grafismo", "fonte", name)
 		return name
 	}
 	// GetInputSettings leaves out what is at obs-browser's defaults.
 	cur := found.Settings
 	var fixes []string
 	if str(cur["url"]) != s.want.OverlayURL || flag(cur["is_local_file"]) {
-		fixes = append(fixes, "o endereço era "+str(cur["url"]))
+		fixes = append(fixes, i18n.T("obs.setup.mal_endereco", "url", str(cur["url"])))
 	}
 	if num(cur["width"], 800) != 1920 || num(cur["height"], 600) != 1080 {
-		fixes = append(fixes, fmt.Sprintf("o tamanho era %.0fx%.0f", num(cur["width"], 800), num(cur["height"], 600)))
+		fixes = append(fixes, i18n.T("obs.setup.mal_tamanho", "tamanho", fmt.Sprintf("%.0fx%.0f", num(cur["width"], 800), num(cur["height"], 600))))
 	}
 	if !flag(cur["reroute_audio"]) {
-		fixes = append(fixes, "o som não passava pelo OBS")
+		fixes = append(fixes, i18n.T("obs.setup.mal_som"))
 	}
 	wrong := len(fixes) > 0
 	it := find(items, found.Name)
 	if it == nil {
-		fixes = append(fixes, "não estava na cena")
+		fixes = append(fixes, i18n.T("obs.setup.mal_fora_cena"))
 	} else if !it.Enabled {
-		fixes = append(fixes, "estava escondida")
+		fixes = append(fixes, i18n.T("obs.setup.mal_escondida"))
 	}
 	if len(fixes) == 0 {
 		return found.Name
 	}
 	what := strings.Join(fixes, ", ")
 	if !s.apply {
-		st.Result, st.Detail = "failed", "A fonte "+found.Name+" está mal: "+what+"."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.fonte_mal", "fonte", found.Name, "o_que", what)
 		return found.Name
 	}
 	if wrong {
 		if re := s.call("SetInputSettings", map[string]any{"inputName": found.Name, "inputSettings": settings, "overlay": true}, nil); re != nil {
-			st.Result, st.Detail = "failed", "O OBS não corrigiu a fonte do grafismo: "+re.Comment
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_corrigiu_grafismo", "erro", re.Comment)
 			return found.Name
 		}
 	}
 	if re := s.show(it, found.Name); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não pôs o grafismo na cena: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_pos_grafismo", "erro", re.Comment)
 		return found.Name
 	}
-	st.Result, st.Detail = "fixed", "Corrigi a fonte "+found.Name+": "+what+"."
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.corrigi_fonte", "fonte", found.Name, "o_que", what)
 	return found.Name
 }
 
@@ -414,7 +415,7 @@ func deviceName(id string) string {
 }
 
 func (s *setup) camera(in []input) string {
-	st := Step{ID: "camera", Label: "Câmara", Result: "ok"}
+	st := Step{ID: "camera", Label: i18n.T("obs.setup.camara"), Result: "ok"}
 	defer func() { s.add(st) }()
 	w := s.want.Camera
 	byName := func(n string) *input {
@@ -436,7 +437,7 @@ func (s *setup) camera(in []input) string {
 		}
 		if name == "" {
 			if !s.apply {
-				st.Result, st.Detail = "failed", "Carregue em Configurar OBS para juntar a câmara "+deviceName(id)+"."
+				st.Result, st.Detail = "failed", i18n.T("obs.setup.juntar_camara", "camara", deviceName(id))
 				return ""
 			}
 			return s.addDevice(&st, in, id)
@@ -449,7 +450,7 @@ func (s *setup) camera(in []input) string {
 		}
 		if name == "" {
 			if !s.apply {
-				st.Result, st.Detail = "failed", "Carregue em Configurar OBS para juntar a fonte DroidCam OBS."
+				st.Result, st.Detail = "failed", i18n.T("obs.setup.juntar_droidcam")
 				return ""
 			}
 			return s.addPlugin(&st, in)
@@ -458,10 +459,10 @@ func (s *setup) camera(in []input) string {
 		name = strings.TrimPrefix(w, "source:")
 		if byName(name) == nil {
 			if !s.apply {
-				st.Result, st.Detail = "failed", "A câmara "+name+" já não existe no OBS. Escolha outra em Definições > Câmara e carregue em Configurar OBS."
+				st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_sumiu_escolha", "camara", name)
 				return ""
 			}
-			note = "A câmara " + name + " já não existe no OBS. "
+			note = i18n.T("obs.setup.camara_sumiu", "camara", name) + " "
 			name = ""
 		}
 	}
@@ -474,19 +475,19 @@ func (s *setup) camera(in []input) string {
 	it := find(s.items(), name)
 	if it != nil && it.Enabled {
 		if st.Detail == "" {
-			st.Detail = "Usa a fonte " + name + "."
+			st.Detail = i18n.T("obs.setup.usa_fonte", "fonte", name)
 		}
 		return name
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", "A câmara "+name+" não aparece na cena "+SceneName+"."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_fora_cena", "camara", name, "cena", SceneName)
 		return name
 	}
 	if re := s.show(it, name); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não pôs a câmara na cena: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_pos_camara", "erro", re.Comment)
 		return name
 	}
-	st.Result, st.Detail = "fixed", note+"Pus a fonte "+name+" na cena."
+	st.Result, st.Detail = "fixed", note+i18n.T("obs.setup.pus_fonte", "fonte", name)
 	return name
 }
 
@@ -510,18 +511,18 @@ func (s *setup) auto(st *Step, in []input, note string) string {
 		}
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", "Falta a câmara na cena "+SceneName+". Carregue em Configurar OBS."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_camara", "cena", SceneName)
 		return ""
 	}
 	list := s.choices(in)
 	switch len(list) {
 	case 0:
-		st.Result, st.Detail = "failed", note+"Não encontrei nenhuma câmara. Instale o DroidCam no PC e no tablet (droidcam.app), ou ligue uma câmara USB, e carregue outra vez em Configurar OBS."
+		st.Result, st.Detail = "failed", note+i18n.T("obs.setup.nenhuma_camara")
 		return ""
 	case 1:
 		return s.use(st, in, list[0])
 	}
-	st.Result, st.Detail = "choose", note+"O OBS tem várias câmaras. Escolha uma e carregue em Usar esta câmara."
+	st.Result, st.Detail = "choose", note+i18n.T("obs.setup.varias_camaras")
 	s.rep.Choices = list
 	return ""
 }
@@ -621,10 +622,10 @@ func (s *setup) addDevice(st *Step, in []input, id string) string {
 	name := uniqueName(in, deviceName(id))
 	if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name, "inputKind": dshowKind,
 		"inputSettings": map[string]any{"video_device_id": id}}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não juntou a câmara "+name+": "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_camara", "camara", name, "erro", re.Comment)
 		return ""
 	}
-	st.Result, st.Detail = "created", "Juntei a câmara "+name+" à cena."
+	st.Result, st.Detail = "created", i18n.T("obs.setup.juntei_camara", "camara", name)
 	return name
 }
 
@@ -634,7 +635,7 @@ func (s *setup) addPlugin(st *Step, in []input) string {
 	name := uniqueName(in, "DroidCam")
 	if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name, "inputKind": PluginKind,
 		"inputSettings": map[string]any{}}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não juntou a fonte DroidCam: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_droidcam", "erro", re.Comment)
 		return ""
 	}
 	st.Result = "created"
@@ -644,11 +645,11 @@ func (s *setup) addPlugin(st *Step, in []input) string {
 		}
 		if s.call("SetInputSettings", map[string]any{"inputName": name, "inputSettings": map[string]any{"device_list": d.Value}}, nil) == nil &&
 			s.call("PressInputPropertiesButton", map[string]string{"inputName": name, "propertyName": "connect"}, nil) == nil {
-			st.Detail = "Juntei a fonte " + name + " e liguei-a a " + d.Name + "."
+			st.Detail = i18n.T("obs.setup.juntei_ligada", "fonte", name, "aparelho", d.Name)
 			return name
 		}
 	}
-	st.Detail = "Juntei a fonte " + name + ". Para a ligar ao tablet por Wi-Fi, abra-a no OBS uma vez, escreva o IP do tablet e carregue em Activate."
+	st.Detail = i18n.T("obs.setup.juntei_wifi", "fonte", name)
 	return name
 }
 
@@ -663,8 +664,8 @@ func (s *setup) hideOld(cam, overlay string) {
 			continue
 		}
 		if s.call("SetSceneItemEnabled", map[string]any{"sceneName": SceneName, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil) == nil {
-			s.add(Step{ID: "old-camera", Label: "Câmara antiga", Result: "fixed",
-				Detail: "Escondi " + it.Name + " na cena. Continua no OBS, se precisar dela outra vez."})
+			s.add(Step{ID: "old-camera", Label: i18n.T("obs.setup.camara_antiga"), Result: "fixed",
+				Detail: i18n.T("obs.setup.escondi", "fonte", it.Name)})
 		}
 	}
 }
@@ -675,24 +676,24 @@ func (s *setup) order(overlay, cam string) {
 	if o == nil || c == nil {
 		return
 	}
-	st := Step{ID: "order", Label: "Grafismo por cima da câmara", Result: "ok", Detail: "O grafismo está por cima da câmara."}
+	st := Step{ID: "order", Label: i18n.T("obs.setup.ordem"), Result: "ok", Detail: i18n.T("obs.setup.ordem_ok")}
 	defer func() { s.add(st) }()
 	if o.Index > c.Index {
 		return
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", "O grafismo está por baixo da câmara."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.ordem_mal")
 		return
 	}
 	if re := s.call("SetSceneItemIndex", map[string]any{"sceneName": SceneName, "sceneItemId": o.ID, "sceneItemIndex": len(items) - 1}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não mudou a ordem: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_ordem", "erro", re.Comment)
 		return
 	}
-	st.Result, st.Detail = "fixed", "Pus o grafismo por cima da câmara."
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.pus_por_cima")
 }
 
 func (s *setup) video(busy bool) {
-	st := Step{ID: "video", Label: "Resolução 1920x1080", Result: "ok", Detail: "O OBS já está em 1920x1080."}
+	st := Step{ID: "video", Label: i18n.T("obs.setup.resolucao"), Result: "ok", Detail: i18n.T("obs.setup.resolucao_ok")}
 	defer func() { s.add(st) }()
 	var v struct {
 		BaseW float64 `json:"baseWidth"`
@@ -701,7 +702,7 @@ func (s *setup) video(busy bool) {
 		OutH  float64 `json:"outputHeight"`
 	}
 	if s.call("GetVideoSettings", nil, &v) != nil {
-		st.Result, st.Detail = "failed", "Não consegui ler a resolução do OBS."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.resolucao_nao_li")
 		return
 	}
 	if v.BaseW == 1920 && v.BaseH == 1080 && v.OutW == 1920 && v.OutH == 1080 {
@@ -709,25 +710,25 @@ func (s *setup) video(busy bool) {
 	}
 	was := fmt.Sprintf("%.0fx%.0f", v.BaseW, v.BaseH)
 	if v.OutW != v.BaseW || v.OutH != v.BaseH {
-		was += fmt.Sprintf(" (saída %.0fx%.0f)", v.OutW, v.OutH)
+		was = i18n.T("obs.setup.resolucao_saida", "base", was, "saida", fmt.Sprintf("%.0fx%.0f", v.OutW, v.OutH))
 	}
 	switch {
 	case busy:
-		st.Result, st.Detail = "later", "A resolução é "+was+". Não dá para a mudar com a transmissão ou a gravação ligadas. Carregue em Configurar OBS depois de as parar."
+		st.Result, st.Detail = "later", i18n.T("obs.setup.resolucao_depois", "resolucao", was)
 		return
 	case !s.apply:
-		st.Result, st.Detail = "failed", "A resolução do OBS é "+was+"."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.resolucao_mal", "resolucao", was)
 		return
 	}
 	if re := s.call("SetVideoSettings", map[string]any{"baseWidth": 1920, "baseHeight": 1080, "outputWidth": 1920, "outputHeight": 1080}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não mudou a resolução ("+was+"): "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_resolucao", "resolucao", was, "erro", re.Comment)
 		return
 	}
-	st.Result, st.Detail = "fixed", "Mudei a resolução de "+was+" para 1920x1080."
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.mudei_resolucao", "resolucao", was)
 }
 
 func (s *setup) program(busy bool) {
-	st := Step{ID: "program", Label: "Cena no ar", Result: "ok", Detail: "O OBS mostra a cena " + SceneName + "."}
+	st := Step{ID: "program", Label: i18n.T("obs.setup.no_ar"), Result: "ok", Detail: i18n.T("obs.setup.no_ar_ok", "cena", SceneName)}
 	defer func() { s.add(st) }()
 	var sc struct {
 		Name string `json:"sceneName"`
@@ -744,18 +745,18 @@ func (s *setup) program(busy bool) {
 		return
 	}
 	if busy {
-		st.Result, st.Detail = "later", "O OBS está na cena "+cur+". Não mudei de cena com a transmissão no ar."
+		st.Result, st.Detail = "later", i18n.T("obs.setup.no_ar_depois", "cena", cur)
 		return
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", "O OBS está na cena "+cur+"."
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.no_ar_mal", "cena", cur)
 		return
 	}
 	if re := s.call("SetCurrentProgramScene", map[string]string{"sceneName": SceneName}, nil); re != nil {
-		st.Result, st.Detail = "failed", "O OBS não mudou de cena: "+re.Comment
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_cena", "erro", re.Comment)
 		return
 	}
-	st.Result, st.Detail = "fixed", "Mudei o OBS da cena "+cur+" para "+SceneName+"."
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.mudei_cena", "antes", cur, "cena", SceneName)
 }
 
 // OverlayURL is the overlay's address on port.

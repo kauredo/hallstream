@@ -11,6 +11,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // App is what the program can do with OBS here. System() gives the real
@@ -66,7 +68,7 @@ func ReadWebSocket(path string) (WebSocket, error) {
 		Password *string `json:"server_password"`
 	}
 	if err := json.Unmarshal(b, &c); err != nil {
-		return ws, errors.New("o ficheiro " + path + " não se lê: " + err.Error())
+		return ws, i18n.Err("obs.ficheiro_nao_se_le", "ficheiro", path, "err", err)
 	}
 	if c.Enabled != nil {
 		ws.Enabled = *c.Enabled
@@ -98,7 +100,7 @@ func EnableWebSocket(path string) (WebSocket, error) {
 	case len(bytes.TrimSpace(b)) > 0:
 		if err := json.Unmarshal(b, &keys); err != nil {
 			// Not ours to repair: OBS would lose whatever is in it.
-			return WebSocket{}, errors.New("o ficheiro " + path + " não se lê: " + err.Error())
+			return WebSocket{}, i18n.Err("obs.ficheiro_nao_se_le", "ficheiro", path, "err", err)
 		}
 	}
 	cur, _ := ReadWebSocket(path)

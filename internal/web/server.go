@@ -22,6 +22,7 @@ import (
 	"github.com/kauredo/hallstream/internal/ble"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/state"
@@ -124,7 +125,7 @@ func (s *Server) once(name string, fn func()) {
 		defer s.bg.Done()
 		defer func() {
 			if r := recover(); r != nil {
-				s.Log(fmt.Sprintf("%s: erro inesperado (%v).\n%s", name, r, debug.Stack()))
+				s.Log(i18n.T("log.erro_inesperado", "tarefa", name, "erro", r) + "\n" + string(debug.Stack()))
 			}
 		}()
 		fn()
@@ -146,7 +147,7 @@ func Listen(phone bool) (net.Listener, int, error) {
 			return l, p, nil
 		}
 	}
-	return nil, 0, errors.New("as portas 8765 a 8775 estão todas ocupadas")
+	return nil, 0, i18n.Err("log.portas_ocupadas")
 }
 
 func (s *Server) routes() {
@@ -168,9 +169,10 @@ func (s *Server) routes() {
 	})
 	m.HandleFunc("GET /overlay", page("overlay/index.html"))
 	m.HandleFunc("GET /painel", page("painel/index.html"))
-	for _, dir := range []string{"/overlay/", "/painel/", "/fonts/", "/assets/"} {
+	for _, dir := range []string{"/overlay/", "/painel/", "/i18n/", "/fonts/", "/assets/"} {
 		m.Handle("GET "+dir, static)
 	}
+	m.HandleFunc("GET /i18n.js", words)
 	media := http.StripPrefix("/media/", http.FileServer(http.Dir(s.Store.MediaDir())))
 	m.HandleFunc("GET /media/", func(w http.ResponseWriter, r *http.Request) {
 		// Logos come from outside (FPB, uploads): an SVG must never run scripts.
@@ -302,7 +304,7 @@ func (s *Server) allowed(w http.ResponseWriter, r *http.Request) bool {
 		time.Sleep(time.Second)
 		s.failMu.Unlock()
 	}
-	fail(w, http.StatusUnauthorized, "PIN errado ou em falta.")
+	fail(w, http.StatusUnauthorized, i18n.T("api.pin_errado"))
 	return false
 }
 
@@ -325,7 +327,7 @@ func (s *Server) sameSite(w http.ResponseWriter, r *http.Request) bool {
 	}
 	if o := r.Header.Get("Origin"); o != "" {
 		if u, err := url.Parse(o); err != nil || u.Host != r.Host {
-			fail(w, http.StatusForbidden, "Pedido recusado: vem de outra página.")
+			fail(w, http.StatusForbidden, i18n.T("api.outra_pagina"))
 			return false
 		}
 	}
@@ -333,7 +335,7 @@ func (s *Server) sameSite(w http.ResponseWriter, r *http.Request) bool {
 	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/club/crest" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
 		strings.HasPrefix(r.URL.Path, "/api/groups/") && strings.HasSuffix(r.URL.Path, "/sponsors"))
 	if ct != "application/json" && !(upload && ct == "multipart/form-data") {
-		fail(w, http.StatusUnsupportedMediaType, "Pedido recusado: tipo de conteúdo inválido.")
+		fail(w, http.StatusUnsupportedMediaType, i18n.T("api.tipo_invalido"))
 		return false
 	}
 	return true
@@ -382,7 +384,7 @@ func isLoopback(addr string) bool {
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	fl, okf := w.(http.Flusher)
 	if !okf {
-		fail(w, http.StatusInternalServerError, "sem streaming")
+		fail(w, http.StatusInternalServerError, i18n.T("api.sem_streaming"))
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -455,7 +457,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.PhoneAccess && !fourDigits(req.PIN) {
-		fail(w, http.StatusBadRequest, "Para usar o telemóvel, o PIN tem de ter 4 algarismos.")
+		fail(w, http.StatusBadRequest, i18n.T("api.pin_4"))
 		return
 	}
 	if req.FPBBaseURL == "" {
@@ -464,6 +466,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if req.Overlay.SponsorEvery < store.SponsorEveryMin || req.Overlay.SponsorEvery > store.SponsorEveryMax {
 		req.Overlay.SponsorEvery = store.SponsorEvery
 	}
+	req.Lang = i18n.Clean(req.Lang)
 	if err := checkClub(&req.Club); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
@@ -497,13 +500,29 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if !s.save(w, err) {
 		return
 	}
+	if old.Lang != set.Lang {
+		i18n.SetLang(set.Lang)
+	}
 	if old.AutoScreens != set.AutoScreens {
 		s.State.SetScreen("", set.AutoScreens)
 	}
 	if old.PhoneAccess != set.PhoneAccess {
-		s.Log("O acesso por telemóvel muda quando voltar a abrir o programa.")
+		s.Log(i18n.T("log.telemovel_depois"))
 	}
 	reply(w, forCaller(set, r))
+}
+
+// words is /i18n.js: window.I18N, every string of the panel and the overlay
+// in settings.lang, with pt under it, so the pages have them before they draw.
+func words(w http.ResponseWriter, r *http.Request) {
+	b, err := json.Marshal(i18n.Words())
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	fmt.Fprintf(w, "window.I18N = %s;\n", b)
 }
 
 // forCaller hides the OBS password from other devices: OBS's server listens
@@ -543,11 +562,11 @@ func (s *Server) screen(w http.ResponseWriter, r *http.Request) {
 		auto = *req.Auto
 	}
 	if g := s.State.Snapshot().Game; req.Screen == "proximo" && g.Next == nil {
-		fail(w, http.StatusBadRequest, "Não há próximo jogo: "+g.NextNote)
+		fail(w, http.StatusBadRequest, i18n.T("api.sem_proximo", "motivo", g.NextNote))
 		return
 	}
 	if err := s.State.SetScreen(req.Screen, auto); err != nil {
-		fail(w, http.StatusBadRequest, "Ecrã desconhecido: "+req.Screen)
+		fail(w, http.StatusBadRequest, i18n.T("api.ecra_desconhecido", "ecra", req.Screen))
 		return
 	}
 	if req.Auto != nil {
@@ -583,7 +602,7 @@ func (s *Server) lowerThird(w http.ResponseWriter, r *http.Request) {
 		g, err := s.Store.Group(game.GroupID)
 		p := findPlayer(g.Players, req.PlayerID)
 		if err != nil || p == nil {
-			fail(w, http.StatusNotFound, "Jogador não encontrado no escalão do jogo.")
+			fail(w, http.StatusNotFound, i18n.T("api.jogador_fora_escalao"))
 			return
 		}
 		number := p.Number
@@ -595,7 +614,7 @@ func (s *Server) lowerThird(w http.ResponseWriter, r *http.Request) {
 		first, last, _ := strings.Cut(strings.TrimSpace(p.DisplayName), " ")
 		lt = state.LowerThird{Type: "jogador", Number: number, FirstName: first, LastName: strings.TrimSpace(last), PhotoURL: p.PhotoURL}
 	} else if req.Type != "comentador" {
-		fail(w, http.StatusBadRequest, "Escolha um jogador ou escreva o nome do comentador.")
+		fail(w, http.StatusBadRequest, i18n.T("api.rodape_sem_nome"))
 		return
 	}
 	s.State.ShowLowerThird(lt, time.Duration(req.Seconds)*time.Second)
@@ -623,7 +642,7 @@ func fail(w http.ResponseWriter, code int, msg string) {
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(v); err != nil {
-		fail(w, http.StatusBadRequest, "Pedido inválido: "+err.Error())
+		fail(w, http.StatusBadRequest, i18n.T("api.pedido_invalido", "err", err))
 		return false
 	}
 	return true
@@ -635,12 +654,12 @@ func (s *Server) save(w http.ResponseWriter, err error) bool {
 	case err == nil:
 		return true
 	case errors.Is(err, store.ErrNotFound):
-		fail(w, http.StatusNotFound, "Não encontrado.")
+		fail(w, http.StatusNotFound, i18n.T("api.nao_encontrado"))
 	case errors.As(err, new(userError)):
 		fail(w, http.StatusBadRequest, err.Error())
 	default:
-		s.Log("Erro a guardar: " + err.Error())
-		fail(w, http.StatusInternalServerError, "Não consegui guardar: "+err.Error())
+		s.Log(i18n.T("log.erro_a_guardar", "err", err))
+		fail(w, http.StatusInternalServerError, i18n.T("api.nao_guardei", "err", err))
 	}
 	return false
 }

@@ -272,7 +272,7 @@ html.off .sb-dot { opacity: 1; }
 .pl-head small { font-weight: 600; font-size: 18px; line-height: 1; letter-spacing: 0.4em; color: var(--muted); white-space: nowrap; }
 .pl-head small em { font-style: normal; color: var(--red-hi); }
 .pl-head b { font-family: Graduate, serif; font-weight: 400; font-size: 44px; line-height: 1; white-space: nowrap; }
-.pl-head b span { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: 0.2em; color: var(--red-hi); margin-left: 18px; text-transform: uppercase; }
+.pl-head b span[data-b] { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: 0.2em; color: var(--red-hi); margin-left: 18px; text-transform: uppercase; }
 /* 7 across, 2 rows (12 players and the coach, who takes two places), centred in the space between header and strip */
 .pl-grid { left: 64px; top: 124px; width: 1792px; height: 800px; display: flex; flex-wrap: wrap; justify-content: center; align-content: center; gap: 16px; }
 .card { position: relative; width: 242px; height: 392px; flex: none; background: #FFFFFF; overflow: hidden; box-shadow: 0 8px 18px rgba(0,0,0,0.45); }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -48,8 +49,8 @@ type setupResult struct {
 }
 
 var (
-	errSetupRunning = errors.New("as equipas do clube já estão a ser importadas")
-	errNoClubSearch = errors.New("falta o nome do clube na FPB")
+	errSetupRunning error = i18n.Key("api.clube.a_importar")
+	errNoClubSearch error = i18n.Key("api.clube.falta_nome_fpb")
 )
 
 type clubTeamPlan struct {
@@ -164,21 +165,21 @@ func (s *Server) FirstRun(demo bool) {
 			}
 		}
 		if err := s.Store.SetClubSetup("pending"); err != nil {
-			s.Log("Não consegui guardar as definições: " + err.Error())
+			s.Log(i18n.T("log.nao_guardei_definicoes", "err", err))
 			return
 		}
 	case "pending":
 	default:
 		return
 	}
-	s.Log("A criar os escalões do clube com as equipas da FPB…")
+	s.Log(i18n.T("log.clube.a_criar"))
 	res, err := s.SetupClub()
 	s.SyncGame()
 	if err != nil {
-		s.Log("Não consegui falar com a FPB (" + err.Error() + "). Tento outra vez quando voltar a abrir o programa, ou carregue em \"Importar equipas do clube\" no Plantel.")
+		s.Log(i18n.T("log.clube.sem_fpb", "err", err))
 		return
 	}
-	s.Log(fmt.Sprintf("Escalões do clube: %d criados, %d jogadores importados.", res.Created, res.ImportedPlayers))
+	s.Log(i18n.T("log.clube.feito", "criados", res.Created, "jogadores", res.ImportedPlayers))
 	for _, e := range res.Errors {
 		s.Log(e)
 	}
@@ -215,7 +216,7 @@ func (s *Server) setupClub() (setupResult, error) {
 	finished := true
 	for i, t := range plan {
 		if time.Now().After(deadline) {
-			res.Errors = append(res.Errors, "Parei a meio porque a FPB estava a demorar demasiado. Carregue outra vez para continuar.")
+			res.Errors = append(res.Errors, i18n.T("api.clube.parei_a_meio"))
 			finished = false
 			break
 		}
@@ -225,12 +226,12 @@ func (s *Server) setupClub() (setupResult, error) {
 	s.recordClubTeams(plan)
 	if now := season(plan); now > s.Store.Settings().ClubSeason {
 		if err := s.Store.SetClubSeason(now); err != nil {
-			res.Errors = append(res.Errors, "Não consegui guardar as definições: "+err.Error())
+			res.Errors = append(res.Errors, i18n.T("log.nao_guardei_definicoes", "err", err))
 		}
 	}
 	if finished {
 		if err := s.Store.SetClubSetup(time.Now().Format(time.RFC3339)); err != nil {
-			res.Errors = append(res.Errors, "Não consegui guardar as definições: "+err.Error())
+			res.Errors = append(res.Errors, i18n.T("log.nao_guardei_definicoes", "err", err))
 		}
 	}
 	return res, nil
@@ -268,12 +269,12 @@ func (s *Server) setupTeam(t clubTeamPlan, res *setupResult, deadline time.Time)
 	}
 	ch, failed, err := s.syncGroup(g.ID, deadline)
 	if err != nil {
-		res.Errors = append(res.Errors, t.name+": não consegui trazer os jogadores ("+err.Error()+").")
+		res.Errors = append(res.Errors, i18n.T("api.clube.sem_jogadores", "equipa", t.name, "err", err))
 		return
 	}
 	res.ImportedPlayers += ch.NewPlayers
 	if failed > 0 {
-		res.Errors = append(res.Errors, fmt.Sprintf("%s: %d fotografias por descarregar.", t.name, failed))
+		res.Errors = append(res.Errors, i18n.T("api.clube.fotos_por_descarregar", "equipa", t.name, "n", failed))
 	}
 }
 
@@ -303,9 +304,9 @@ func (s *Server) clubSetup(w http.ResponseWriter, r *http.Request) {
 	res, err := s.SetupClub()
 	switch {
 	case errors.Is(err, errSetupRunning):
-		fail(w, http.StatusConflict, "As equipas do clube já estão a ser importadas. Aguarde um pouco.")
+		fail(w, http.StatusConflict, i18n.T("api.clube.a_importar_aguarde"))
 	case errors.Is(err, errNoClubSearch):
-		fail(w, http.StatusBadRequest, "Escreva primeiro o nome do clube na FPB, em Definições > Clube.")
+		fail(w, http.StatusBadRequest, i18n.T("api.clube.escreva_nome_fpb"))
 	case err != nil:
 		fpbFail(w, err)
 	default:

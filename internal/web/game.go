@@ -7,6 +7,7 @@ import (
 
 	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
@@ -20,7 +21,7 @@ func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {
 	if g.GroupID != "" {
 		var err error
 		if grp, err = s.Store.Group(g.GroupID); err != nil {
-			fail(w, http.StatusBadRequest, "Escalão desconhecido.")
+			fail(w, http.StatusBadRequest, i18n.T("api.escalao_desconhecido"))
 			return
 		}
 	}
@@ -59,7 +60,7 @@ func day(start string) string { return start[:min(len(start), 10)] }
 func (s *Server) fillOpponent(g *store.Game, teamID int64) {
 	next, err := s.FPB.NextGames(teamID)
 	if err != nil {
-		s.Log("Não consegui ler os jogos da FPB: " + err.Error())
+		s.Log(i18n.T("log.jogo.nao_li_fpb", "err", err))
 		return
 	}
 	for _, x := range next.Games {
@@ -92,12 +93,12 @@ func (s *Server) fillOpponent(g *store.Game, teamID int64) {
 		}
 		data, ext, err := s.FPB.Download(logo)
 		if err != nil {
-			s.Log("Não consegui descarregar o logótipo do adversário: " + err.Error())
+			s.Log(i18n.T("log.jogo.nao_descarreguei_logo", "err", err))
 			return
 		}
 		u, err := s.Store.SaveMedia(fmt.Sprintf("opp-%d%s", opp.ID, ext), data)
 		if err != nil {
-			s.Log("Não consegui guardar o logótipo: " + err.Error())
+			s.Log(i18n.T("log.jogo.nao_guardei_logo", "err", err))
 			return
 		}
 		g.Away.CrestURL = u
@@ -202,7 +203,7 @@ func (s *Server) SyncGame() {
 	if s.fix.key == fixturesKey(g) {
 		out.AtHome, out.Next, out.NextNote = s.fix.atHome, s.fix.next, s.fix.note
 	} else {
-		out.NextNote = "A ler os jogos da FPB…"
+		out.NextNote = i18n.T("proximo.a_ler")
 	}
 	s.fixMu.Unlock()
 	if out.Away.Name == "" {

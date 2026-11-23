@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/kauredo/hallstream/internal/club"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsws"
 )
 
@@ -73,6 +74,9 @@ type Settings struct {
 	StartWithWindows bool `json:"start_with_windows"`
 	// FirstSetup is the panel's "Primeira configuração"; only /api/setup changes it.
 	FirstSetup FirstSetup `json:"first_setup"`
+	// Lang is the language of the panel, the overlay and the log: the name
+	// of a file in web/i18n ("pt"). A language without a file reads pt.
+	Lang string `json:"lang"`
 }
 
 // Club is the club's profile: what the overlay shows for the home side and
@@ -135,6 +139,7 @@ func DefaultSettings() Settings {
 			Crest: DefaultCrest, Sport: "basketball", Country: "PT"},
 		Overlay: Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
 		Credit:  true,
+		Lang:    "pt",
 	}
 }
 
@@ -220,7 +225,7 @@ type Game struct {
 // Picked reports whether a game was chosen in the panel.
 func (g Game) Picked() bool { return g.GroupID != "" || g.Away.Name != "" }
 
-var ErrNotFound = errors.New("não encontrado")
+var ErrNotFound error = i18n.Key("store.nao_encontrado")
 
 type Store struct {
 	Dir      string
@@ -257,7 +262,7 @@ func Open(dir string) (*Store, error) {
 			return nil, err
 		}
 		if err := json.Unmarshal(b, v); err != nil {
-			return nil, errors.New(name + " está estragado: " + err.Error())
+			return nil, i18n.Err("store.ficheiro_estragado", "ficheiro", name, "err", err)
 		}
 		if name == "settings.json" {
 			oldHome(b, &s.settings)
@@ -269,7 +274,7 @@ func Open(dir string) (*Store, error) {
 		os.Remove(f)
 	}
 	if _, i := s.find(Shared); i < 0 {
-		s.groups = append(s.groups, Group{ID: Shared, Name: "Todos os escalões"})
+		s.groups = append(s.groups, Group{ID: Shared, Name: i18n.T("store.grupo_geral")})
 	}
 	return s, nil
 }

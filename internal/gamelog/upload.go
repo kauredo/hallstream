@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // Before is how much of the logs before the stream goes with it.
@@ -111,7 +113,7 @@ func (u *Uploader) Off() bool {
 	defer u.mu.Unlock()
 	if !u.warned {
 		u.warned = true
-		u.Log("Esta versão não tem chave de envio: os registos dos jogos ficam só neste computador.")
+		u.Log(i18n.T("envio.sem_chave"))
 	}
 	return true
 }
@@ -123,12 +125,12 @@ func (u *Uploader) Off() bool {
 // server's limits. A batch of the same name is replaced.
 func (u *Uploader) Write(name string, meta Meta, start, end time.Time, scrub func([]byte) []byte) error {
 	if !goodName(name) {
-		return fmt.Errorf("nome de envio inválido: %q", name)
+		return i18n.Err("envio.nome_invalido", "nome", strconv.Quote(name))
 	}
 	q := u.queue()
 	dst := filepath.Join(q, name)
 	if filepath.Dir(dst) != q {
-		return fmt.Errorf("nome de envio inválido: %q", name)
+		return i18n.Err("envio.nome_invalido", "nome", strconv.Quote(name))
 	}
 	if err := os.MkdirAll(q, 0o755); err != nil {
 		return err
@@ -215,7 +217,7 @@ func (u *Uploader) rawLog(tmp string, from, to time.Time, budget int64) (bool, e
 		keep = max(0, int64(float64(keep)*float64(budget)/float64(size)*0.9))
 		truncated = true
 	}
-	return truncated, errors.New("o raw.log não cabe no envio")
+	return truncated, i18n.Err("envio.raw_nao_cabe")
 }
 
 // gzipTail gzips src from offset on (from the next line when offset cuts
@@ -348,7 +350,7 @@ func (u *Uploader) prune() {
 		fi, err := os.Stat(filepath.Join(u.queue(), name, "meta.json"))
 		if err == nil && time.Since(fi.ModTime()) > MaxAge {
 			u.toFailed(name)
-			u.Log(fmt.Sprintf("Os registos do jogo %s esperaram mais de 60 dias sem ser enviados. Ficam em envios\\falhados.", name))
+			u.Log(i18n.T("envio.esperaram_60_dias", "nome", name))
 		}
 	}
 	failed := filepath.Join(u.queue(), failedDir)
@@ -379,19 +381,19 @@ func (u *Uploader) Send() {
 		code, answer, err := u.send(name, filepath.Join(u.queue(), name))
 		switch {
 		case err != nil:
-			u.failed(fmt.Sprintf("Não consegui enviar os registos do jogo %s (%v). Tento outra vez mais tarde.", name, err), false)
+			u.failed(i18n.T("envio.nao_enviei", "nome", name, "err", err), false)
 			return
 		case code == http.StatusOK:
 			os.RemoveAll(filepath.Join(u.queue(), name))
 			u.mu.Lock()
 			u.lastOK, u.lastErr, u.logged = time.Now(), "", nil
 			u.mu.Unlock()
-			u.Log("Registos do jogo enviados (" + name + ").")
+			u.Log(i18n.T("envio.enviados", "nome", name))
 		case retried(code):
-			u.failed(fmt.Sprintf("Não consegui enviar os registos do jogo %s (o servidor respondeu %d%s). Tento outra vez mais tarde.", name, code, reason(answer)), false)
+			u.failed(i18n.T("envio.nao_enviei_codigo", "nome", name, "codigo", code, "motivo", reason(answer)), false)
 		default:
 			u.toFailed(name)
-			u.failed(fmt.Sprintf("Os registos do jogo %s não foram aceites (o servidor respondeu %d%s). Ficam em envios\\falhados.", name, code, reason(answer)), true)
+			u.failed(i18n.T("envio.recusados", "nome", name, "codigo", code, "motivo", reason(answer)), true)
 		}
 	}
 }

@@ -1,6 +1,8 @@
 package obsws
 
-import "errors"
+import (
+	"github.com/kauredo/hallstream/internal/i18n"
+)
 
 // Stream is OBS's stream output.
 type Stream struct {
@@ -16,10 +18,10 @@ const (
 )
 
 // ErrNoStreamKey: OBS has no stream key, so it can't go live.
-var ErrNoStreamKey = errors.New("Configure a conta do YouTube no OBS (Definições > Transmissão) uma vez.")
+var ErrNoStreamKey error = i18n.Key("obs.sem_chave")
 
 // ErrStreaming: OBS doesn't take new stream settings while live.
-var ErrStreaming = errors.New("o OBS está a transmitir")
+var ErrStreaming error = i18n.Key("obs.a_transmitir")
 
 func (c *Client) StreamStatus(cfg Config) (Stream, error) {
 	var r struct {
@@ -55,7 +57,7 @@ func (c *Client) StartStream(cfg Config) error {
 	case ok && re.Code == OutputRunning:
 		return nil
 	case ok:
-		return errors.New("O OBS não começou a transmissão (" + re.Comment + "). Confirme a conta do YouTube no OBS, em Definições > Transmissão.")
+		return i18n.Err("obs.nao_comecou", "erro", re.Comment)
 	}
 	return err
 }

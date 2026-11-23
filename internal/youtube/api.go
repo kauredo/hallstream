@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // The API addresses; tests point them at a fake.
@@ -23,7 +24,7 @@ var (
 
 // ErrReconnect: Google no longer takes the saved login (revoked, expired or
 // the password changed), so only a new "Ligar ao YouTube" helps.
-var ErrReconnect = errors.New("A ligação ao YouTube expirou. Em Definições > YouTube, carregue em Ligar ao YouTube outra vez.")
+var ErrReconnect error = i18n.Key("yt.expirou")
 
 // APIError is an answer from YouTube with an error status.
 type APIError struct {
@@ -33,7 +34,7 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("o YouTube respondeu %d %s: %s", e.Code, e.Reason, e.Message)
+	return i18n.T("yt.respondeu", "codigo", e.Code, "motivo", e.Reason, "mensagem", e.Message)
 }
 
 // Client calls the API as the signed-in channel.
@@ -128,11 +129,11 @@ func netError(err error) error {
 		if re.ErrorCode == "invalid_grant" || re.ErrorCode == "unauthorized_client" || re.Response != nil && re.Response.StatusCode == http.StatusUnauthorized {
 			return ErrReconnect
 		}
-		return errors.New("o Google recusou renovar o acesso (" + re.ErrorCode + ")")
+		return i18n.Err("yt.renovar_recusado", "codigo", re.ErrorCode)
 	}
 	var ue *url.Error
 	if errors.As(err, &ue) {
-		return errors.New("sem ligação ao YouTube: " + ue.Err.Error())
+		return i18n.Err("yt.sem_ligacao", "err", ue.Err)
 	}
 	return err
 }
@@ -168,7 +169,7 @@ func (c *Client) Channel(ctx context.Context) (Channel, error) {
 		return Channel{}, err
 	}
 	if len(r.Items) == 0 {
-		return Channel{}, errors.New("esta conta Google não tem canal do YouTube")
+		return Channel{}, i18n.Err("yt.sem_canal")
 	}
 	it := r.Items[0]
 	return Channel{it.ID, it.Snippet.Title, it.Snippet.Thumbnails["default"].URL}, nil
@@ -197,7 +198,7 @@ func (c *Client) CheckChannel(ctx context.Context) (ChannelCheck, error) {
 		return out, err
 	}
 	if len(r.Items) == 0 {
-		return out, errors.New("esta conta Google não tem canal do YouTube")
+		return out, i18n.Err("yt.sem_canal")
 	}
 	out.Verified = map[string]string{"allowed": "yes", "eligible": "no", "disallowed": "blocked"}[r.Items[0].Status.LongUploads]
 	err := c.do(ctx, "GET", APIBase, "/liveBroadcasts", vals("part", "id", "mine", "true", "maxResults", "1"), nil, "", nil)
@@ -406,7 +407,7 @@ func (c *Client) SetPrivacy(ctx context.Context, videoID, privacy string) error 
 		return err
 	}
 	if len(r.Items) == 0 {
-		return errors.New("o YouTube não encontrou o vídeo " + videoID)
+		return i18n.Err("yt.video_nao_encontrado", "video", videoID)
 	}
 	st := map[string]any{"privacyStatus": privacy}
 	for _, k := range []string{"embeddable", "license", "publicStatsViewable"} {
@@ -418,7 +419,7 @@ func (c *Client) SetPrivacy(ctx context.Context, videoID, privacy string) error 
 }
 
 // ErrThumbnail: the channel can't have custom thumbnails yet.
-var ErrThumbnail = errors.New("O YouTube não aceitou a miniatura, porque o canal ainda não está verificado em youtube.com/verify. O direto continua com a imagem que o YouTube escolher.")
+var ErrThumbnail error = i18n.Key("yt.miniatura_recusada")
 
 // SetThumbnail uploads a PNG as the video's thumbnail.
 func (c *Client) SetThumbnail(ctx context.Context, videoID string, png []byte) error {

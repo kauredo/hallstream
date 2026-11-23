@@ -1,4 +1,4 @@
-module github.com/kauredo/tribuna
+module github.com/kauredo/hallstream
 
 go 1.27.3
 

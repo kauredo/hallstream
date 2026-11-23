@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // fakeMP4 starts like a real MP4 (an ftyp box) and is n bytes long.

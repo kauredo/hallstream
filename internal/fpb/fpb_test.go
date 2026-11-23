@@ -122,7 +122,7 @@ func TestEnsureContrast(t *testing.T) {
 func TestGetCachesAndHandles404(t *testing.T) {
 	up := true
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("User-Agent") != "tribuna/test" {
+		if r.Header.Get("User-Agent") != "hallstream/test" {
 			t.Errorf("user agent %q", r.Header.Get("User-Agent"))
 		}
 		switch {

@@ -1,8 +1,8 @@
-# Tribuna
+# Hallstream
 
-A free tool for amateur clubs that stream their games. Tribuna reads the score from the hall's scoreboard console and puts it on the stream as broadcast graphics. It also sets up OBS and YouTube, so a volunteer can run a game-day stream from one laptop.
+A free tool for amateur clubs that stream their games. Hallstream reads the score from the hall's scoreboard console and puts it on the stream as broadcast graphics. It also sets up OBS and YouTube, so a volunteer can run a game-day stream from one laptop.
 
-> Tribuna is early. It works today for **basketball**, with a **Stramatel** console and its Stream Box over Bluetooth. Its interface is in **European Portuguese**. Other sports, manual scoring, more consoles and multiple cameras are on the [roadmap](docs/ROADMAP.md).
+> Hallstream is early. It works today for **basketball**, with a **Stramatel** console and its Stream Box over Bluetooth. Its interface is in **European Portuguese**. Other sports, manual scoring, more consoles and multiple cameras are on the [roadmap](docs/ROADMAP.md).
 
 ## What it does
 
@@ -21,19 +21,19 @@ A free tool for amateur clubs that stream their games. Tribuna reads the score f
 
 ## Get started
 
-1. Download the latest zip from Releases and unzip it to a folder such as `C:\Tribuna`.
-2. Install [OBS Studio](https://obsproject.com) 31 or later, then open `Tribuna.exe`. The panel opens in your browser.
+1. Download the latest zip from Releases and unzip it to a folder such as `C:\Hallstream`.
+2. Install [OBS Studio](https://obsproject.com) 31 or later, then open `Hallstream.exe`. The panel opens in your browser.
 3. Follow the first-run steps in the panel. `LEIA-ME.txt` in the zip has the full guide, in Portuguese.
 
 Windows may warn about an unsigned app. Signed releases are planned.
 
 ## Build from source
 
-Tribuna needs Go 1.27 or later.
+Hallstream needs Go 1.27 or later.
 
 ```sh
 go test ./...                              # needs no network; Chrome tests skip without Chrome
-go run ./cmd/tribuna -demo -nobrowser      # invented game, panel at http://127.0.0.1:8765/painel
+go run ./cmd/hallstream -demo -nobrowser      # invented game, panel at http://127.0.0.1:8765/painel
 ./build.sh 0.1.0                           # Windows exes and the zip in dist/
 ```
 
@@ -49,4 +49,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Help is most useful in these areas:
 
 ## Licence
 
-[AGPL-3.0](LICENSE). Stramatel, OBS and YouTube are trademarks of their owners. Tribuna is not affiliated with any of them.
+[AGPL-3.0](LICENSE). Stramatel, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.

@@ -69,7 +69,7 @@ func New(baseURL func() string, cacheDir, version string) *Client {
 	c := &Client{
 		BaseURL:    baseURL,
 		CacheDir:   cacheDir,
-		UserAgent:  "tribuna/" + version,
+		UserAgent:  "hallstream/" + version,
 		PhotoHosts: []string{"sav2.fpb.pt", "www.fpb.pt"},
 		UploadHost: "calendariofpb.pt",
 		Every:      3 * time.Second,

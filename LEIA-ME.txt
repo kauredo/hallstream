@@ -1,11 +1,11 @@
-Tribuna para OBS
+Hallstream para OBS
 
 O programa lê a consola do marcador pela SL Stream Box, por Bluetooth,
 guarda os plantéis e os patrocinadores de cada escalão, e mostra os
 grafismos no OBS numa só fonte de navegador.
 
 Precisa de Windows 10 ou mais recente, com Bluetooth. Use o
-"Tribuna.exe". O "Tribuna (32-bit).exe" é só para Windows de
+"Hallstream.exe". O "Hallstream (32-bit).exe" é só para Windows de
 32 bits.
 
 O programa não abre nenhuma janela. Fica um ícone vermelho com o escudo
@@ -23,11 +23,11 @@ ao pé do relógio do Windows. Se não o vir, carregue na seta ^ ao lado dos
 
 PRIMEIRA VEZ (EM CASA)
 
-1. Descomprima tudo para C:\Tribuna e não mude a pasta de sítio. O
+1. Descomprima tudo para C:\Hallstream e não mude a pasta de sítio. O
    programa guarda tudo na pasta "dados", lá dentro. Para fazer uma cópia
    de segurança, carregue em "Guardar cópia" em Definições (ver "CÓPIA DE
    SEGURANÇA E OUTRO COMPUTADOR").
-2. Abra o "Tribuna.exe". O painel abre sozinho no browser.
+2. Abra o "Hallstream.exe". O painel abre sozinho no browser.
    - Se aparecer "O Windows protegeu o seu PC", carregue em "Mais
      informações" e depois em "Executar mesmo assim".
    - O painel pergunta se quer um atalho no ambiente de trabalho.
@@ -68,7 +68,7 @@ Antes de começar
    abra o DroidCam.
 2. Feche a app SL Live Stream em todos os telemóveis e tablets. A caixa
    só aceita uma ligação de cada vez.
-3. Ligue a consola do marcador e o PC. O Tribuna abre sozinho (ou pelo
+3. Ligue a consola do marcador e o PC. O Hallstream abre sozinho (ou pelo
    atalho) e abre o OBS.
 4. No separador Ecrãs, espere pela caixa "Ligado" e pelo OBS "Pronto", a
    verde. Se aparecer "Reparar", carregue nele. Se a caixa não ligar,
@@ -80,13 +80,13 @@ Antes de começar
      escolher outro jogo, outro escalão ou outra data. Num segundo jogo
      manual no mesmo dia, ou depois de testar a consola, carregue em
      "Novo jogo", em baixo no separador Jogo.
-6. Só sem o YouTube ligado no Tribuna: no separador Ecrãs, carregue em
+6. Só sem o YouTube ligado no Hallstream: no separador Ecrãs, carregue em
    "Miniatura YouTube" e depois em "Descarregar". No YouTube Studio,
    ponha a imagem como miniatura do vídeo do direto.
 7. Separador Ecrãs: quando disser "Pronto para transmitir", carregue em
    "Iniciar transmissão". Se faltar alguma coisa, a lista por baixo diz
    o quê. O direto só
-   começa quando carregar. Com o YouTube ligado, o Tribuna cria o
+   começa quando carregar. Com o YouTube ligado, o Hallstream cria o
    direto com o título do jogo e a miniatura, e mostra o link.
    Para experimentar antes, "Transmissão de teste" faz um direto
    privado: só a conta do canal o vê, no YouTube Studio. Fica privado
@@ -198,11 +198,11 @@ Para passar para outro computador:
 1. No computador antigo, carregue em "Guardar cópia" e leve o .zip numa
    pen.
 2. No computador novo, instale o OBS 31 ou mais recente e o DroidCam.
-   Descomprima o Tribuna para C:\Tribuna.
-3. Com o Tribuna fechado, descomprima a cópia: botão direito no .zip,
-   "Extrair tudo", e escreva C:\Tribuna como destino. Confirme que fica
-   C:\Tribuna\dados, com tudo o que tinha.
-4. Abra o Tribuna. Em Definições, carregue em "Configurar OBS" e em
+   Descomprima o Hallstream para C:\Hallstream.
+3. Com o Hallstream fechado, descomprima a cópia: botão direito no .zip,
+   "Extrair tudo", e escreva C:\Hallstream como destino. Confirme que fica
+   C:\Hallstream\dados, com tudo o que tinha.
+4. Abra o Hallstream. Em Definições, carregue em "Configurar OBS" e em
    "Criar atalho no ambiente de trabalho". Se "Abrir com o Windows" estava
    ligado, continua.
 5. Ligue a consola do marcador e espere pela "Caixa Ligado". Se não ligar,
@@ -233,7 +233,7 @@ SE ALGO CORRER MAL
 - Aviso de que a porta 8765 está ocupada por outro programa: o marcador
   abriu noutra porta. Carregue em "Reparar" ou em "Configurar OBS", que
   muda o endereço no OBS, ou feche o outro programa e volte a abrir o
-  Tribuna.
+  Hallstream.
 - Qualquer outro problema: envie o ficheiro dados\marcador.log, onde o
   programa escreve o que vai fazendo.
 
@@ -244,7 +244,7 @@ palavras-passe, nem o PIN.
 
 DIRETOS NO YOUTUBE
 
-Com acesso ao canal do clube, o Tribuna cria sozinho o direto público
+Com acesso ao canal do clube, o Hallstream cria sozinho o direto público
 de cada jogo, com o título e a miniatura, e no fim torna o vídeo não
 listado. O guia YouTube\LIGAR-YOUTUBE.txt tem duas partes.
 Na primeira, em qualquer computador e com qualquer conta Google,
@@ -252,7 +252,7 @@ cria-se o cliente OAuth na Google Cloud, com a app em "In production".
 Em "Testing", o login caduca todas as semanas.
 Na segunda, no PC do clube, colam-se o ID e o segredo na Configuração
 inicial e entra-se com a conta que gere o canal do clube.
-- O separador Transmissões lista os diretos do canal, os do Tribuna e
+- O separador Transmissões lista os diretos do canal, os do Hallstream e
   os feitos fora dele, com filtros por escalão e por época. Cada um tem
   "Copiar", "Abrir" e, se ainda estiver público, "Tornar não listado".
 - A miniatura própria só funciona com o canal verificado

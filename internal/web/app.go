@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
-const appID = "tribuna"
+const appID = "hallstream"
 
 func (s *Server) appRoutes() {
 	m := s.mux
@@ -29,7 +29,7 @@ func (s *Server) appRoutes() {
 			http.ServeFileFS(w, r, s.Files, file)
 		}
 	}
-	m.HandleFunc("GET /favicon.ico", typed("assets/icon/tribuna.ico", "image/x-icon"))
+	m.HandleFunc("GET /favicon.ico", typed("assets/icon/hallstream.ico", "image/x-icon"))
 	m.HandleFunc("GET /painel/manifest.webmanifest", typed("painel/manifest.webmanifest", "application/manifest+json"))
 	m.HandleFunc("POST /api/system/desktop-shortcut", s.desktopShortcut)
 	m.HandleFunc("GET /api/system/backup", s.backup)
@@ -44,7 +44,7 @@ func (s *Server) backup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", `attachment; filename="Tribuna-copia-`+time.Now().Format("2006-01-02")+`.zip"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="Hallstream-copia-`+time.Now().Format("2006-01-02")+`.zip"`)
 	zw := zip.NewWriter(w)
 	err := filepath.WalkDir(s.Store.Dir, func(path string, d fs.DirEntry, err error) error {
 		// The program may delete a file (a sent game log, a removed video)
@@ -131,7 +131,7 @@ func (s *Server) desktopShortcut(w http.ResponseWriter, r *http.Request) {
 	reply(w, map[string]any{"ok": true, "path": path})
 }
 
-// Ours reports whether another Tribuna answers at addr (host:port).
+// Ours reports whether another Hallstream answers at addr (host:port).
 func Ours(addr string) bool {
 	c := &http.Client{
 		Timeout:       500 * time.Millisecond, // loopback: a real answer takes a few ms

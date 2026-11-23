@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/state"
+	"github.com/kauredo/hallstream/internal/state"
 )
 
 // Radio is the Bluetooth adapter, behind an interface so tests can fake it.

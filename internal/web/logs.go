@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/gamelog"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 func (s *Server) newUploads() {

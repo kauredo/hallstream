@@ -1,4 +1,4 @@
-# Tribuna broadcast system, round 3 (one system for all seven screens)
+# Hallstream broadcast system, round 3 (one system for all seven screens)
 
 Two independent critics agreed: the screens look like seven designers each made one. To reach an 8 the set must be ONE system. Rebuild your screen on these parts exactly. Exact numbers matter: other designers are building the other screens from this same file in parallel, and the pieces must match across screens.
 

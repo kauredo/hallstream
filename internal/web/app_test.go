@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	assets "github.com/kauredo/tribuna/web"
+	assets "github.com/kauredo/hallstream/web"
 )
 
 // lanGet asks for path the way a phone on the club Wi-Fi does, without a PIN.
@@ -46,7 +46,7 @@ func TestManifestAndIconsOverLAN(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &man); err != nil {
 		t.Fatal(err)
 	}
-	if man.Name != "Tribuna" || man.ShortName != "Tribuna" || man.StartURL != "/painel" || man.Display != "standalone" {
+	if man.Name != "Hallstream" || man.ShortName != "Hallstream" || man.StartURL != "/painel" || man.Display != "standalone" {
 		t.Errorf("manifest = %+v", man)
 	}
 	maskable := map[string]bool{}
@@ -136,7 +136,7 @@ func TestEmbeddedFilesNoCache(t *testing.T) {
 func TestDesktopShortcut(t *testing.T) {
 	s := newServer(t)
 	calls := 0
-	s.Shortcut = func() (string, error) { calls++; return `C:\Users\Ana\Desktop\Tribuna.lnk`, nil }
+	s.Shortcut = func() (string, error) { calls++; return `C:\Users\Ana\Desktop\Hallstream.lnk`, nil }
 
 	var res struct {
 		OK   bool   `json:"ok"`
@@ -145,7 +145,7 @@ func TestDesktopShortcut(t *testing.T) {
 	if code := call(t, s, "POST", "/api/system/desktop-shortcut", map[string]bool{"create": true}, &res); code != 200 {
 		t.Fatalf("create: %d", code)
 	}
-	if !res.OK || res.Path != `C:\Users\Ana\Desktop\Tribuna.lnk` || calls != 1 {
+	if !res.OK || res.Path != `C:\Users\Ana\Desktop\Hallstream.lnk` || calls != 1 {
 		t.Errorf("create = %+v, %d calls", res, calls)
 	}
 	if got := s.Store.Settings().DesktopShortcut; got != "created" {

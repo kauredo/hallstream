@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/obsapp"
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/youtube"
+	"github.com/kauredo/hallstream/internal/obsapp"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 // errNotLive: OBS took StartStream but never sent, as when a YouTube account

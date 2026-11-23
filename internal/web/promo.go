@@ -18,8 +18,8 @@ import (
 
 	"rsc.io/qr"
 
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // promoMax is the largest video the panel can upload and promoTotal the

@@ -9,8 +9,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 var clubNames = []string{
@@ -68,7 +68,7 @@ func clubFPB(t *testing.T, s *Server) *fakeClub {
 		p := r.URL.Path
 		id, isRoster := strings.CutSuffix(strings.TrimPrefix(p, "/api/teams/"), "/roster")
 		switch {
-		case p == "/api/teams" && r.URL.Query().Get("name") == testClub && r.UserAgent() == "tribuna/test":
+		case p == "/api/teams" && r.URL.Query().Get("name") == testClub && r.UserAgent() == "hallstream/test":
 			w.Write(f.teams)
 		case isRoster:
 			if f.onRoster != nil {

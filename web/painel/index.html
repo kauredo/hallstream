@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel · Tribuna</title>
+<title>Painel · Hallstream</title>
 <link rel="icon" href="/assets/icon/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/assets/icon/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/assets/icon/apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <body>
 
 <header class="top">
-  <div class="brand"><img src="/assets/crest.png" alt=""><b>Tribuna</b></div>
+  <div class="brand"><img src="/assets/crest.png" alt=""><b>Hallstream</b></div>
   <div class="live" id="live" aria-live="off">
     <span class="score" id="liveScore">– <span>:</span> –</span>
     <span class="clock" id="liveClock"></span>
@@ -41,7 +41,7 @@
   <main>
     <div class="ask" id="shortcutAsk" hidden>
       <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">
-      <p class="txt"><b>Criar atalho no ambiente de trabalho?</b><span class="hint">Para abrir o Tribuna sem ir à pasta do programa.</span></p>
+      <p class="txt"><b>Criar atalho no ambiente de trabalho?</b><span class="hint">Para abrir o Hallstream sem ir à pasta do programa.</span></p>
       <div class="row"><button class="btn primary" type="button" data-act="sc-yes">Criar</button><button class="btn" type="button" data-act="sc-no">Agora não</button><span class="msg" role="status"></span></div>
     </div>
 
@@ -116,10 +116,10 @@
           <span class="label">Antes de começar</span>
           <ol class="steps">
             <li>Feche a app SL Live Stream nos telemóveis e tablets. A caixa só aceita uma ligação.</li>
-            <li>Ligue a consola do marcador e o PC, e abra o DroidCam no tablet. Abra o Tribuna pelo atalho, se não abriu com o Windows. O OBS abre sozinho.</li>
+            <li>Ligue a consola do marcador e o PC, e abra o DroidCam no tablet. Abra o Hallstream pelo atalho, se não abriu com o Windows. O OBS abre sozinho.</li>
             <li>No topo de <a href="#ecras" data-goto="ecras">Ecrãs</a>, espere pela <b>Caixa Ligado</b> e pelo <b>OBS Pronto</b>, a verde. Se aparecer <b>Reparar</b>, carregue nele.</li>
             <li>Em <a href="#jogo" data-goto="jogo">Jogo</a>, escolha o escalão e o jogo da FPB, e marque quem joga hoje.</li>
-            <li>Quando Ecrãs disser <b>Pronto para transmitir</b>, carregue em <b>Iniciar transmissão</b>. Se faltar alguma coisa, a lista por baixo diz o quê. Com o YouTube ligado, o Tribuna cria o direto com o título e a miniatura. Sem ele, carregue antes em <b>Miniatura YouTube</b> e ponha a imagem no YouTube Studio. Para experimentar sem público, <b>Transmissão de teste</b> faz um direto privado, que só a conta do canal vê no YouTube Studio.</li>
+            <li>Quando Ecrãs disser <b>Pronto para transmitir</b>, carregue em <b>Iniciar transmissão</b>. Se faltar alguma coisa, a lista por baixo diz o quê. Com o YouTube ligado, o Hallstream cria o direto com o título e a miniatura. Sem ele, carregue antes em <b>Miniatura YouTube</b> e ponha a imagem no YouTube Studio. Para experimentar sem público, <b>Transmissão de teste</b> faz um direto privado, que só a conta do canal vê no YouTube Studio.</li>
           </ol>
           <span class="label" id="ajuda-ecras">Na transmissão (Ecrãs)</span>
           <ol class="steps" start="6">
@@ -148,9 +148,9 @@
           <h2>Passar para outro computador</h2>
           <ol class="steps">
             <li>No computador antigo, em <a href="#definicoes" data-goto="definicoes">Definições</a> &gt; Cópia de segurança, carregue em <b>Guardar cópia</b> e leve o ficheiro .zip numa pen.</li>
-            <li>No computador novo, instale o OBS 31 ou mais recente e o DroidCam. Descomprima o Tribuna para <code>C:\Tribuna</code>.</li>
-            <li>Com o Tribuna fechado, descomprima a cópia: botão direito no .zip, <b>Extrair tudo</b>, e escreva <code>C:\Tribuna</code> como destino. Confirme que fica <code>C:\Tribuna\dados</code>, com tudo o que tinha, a ligação ao YouTube incluída.</li>
-            <li>Abra o Tribuna. Em Definições, carregue em <b>Configurar OBS</b> e em <b>Criar atalho no ambiente de trabalho</b>. Se <b>Abrir com o Windows</b> estava ligado, continua.</li>
+            <li>No computador novo, instale o OBS 31 ou mais recente e o DroidCam. Descomprima o Hallstream para <code>C:\Hallstream</code>.</li>
+            <li>Com o Hallstream fechado, descomprima a cópia: botão direito no .zip, <b>Extrair tudo</b>, e escreva <code>C:\Hallstream</code> como destino. Confirme que fica <code>C:\Hallstream\dados</code>, com tudo o que tinha, a ligação ao YouTube incluída.</li>
+            <li>Abra o Hallstream. Em Definições, carregue em <b>Configurar OBS</b> e em <b>Criar atalho no ambiente de trabalho</b>. Se <b>Abrir com o Windows</b> estava ligado, continua.</li>
             <li>Ligue a consola do marcador e espere pela <b>Caixa Ligado</b>. Se não ligar, veja <b>A caixa não liga</b>, mais abaixo.</li>
           </ol>
           <p class="hint">Se o computador antigo avariou, use a última cópia que guardou. Sem cópia, faça a <a href="#inicio" data-goto="inicio">Configuração inicial</a> outra vez: os jogadores e as fotografias voltam da FPB, mas os logótipos dos patrocinadores e os vídeos têm de ser carregados de novo.</p>
@@ -161,7 +161,7 @@
           <ol class="steps">
             <li>Noutro computador, com qualquer conta Google, crie o cliente OAuth na Google Cloud. O guia está em <code>YouTube\LIGAR-YOUTUBE.txt</code>, na pasta do programa. Traga o ID e o segredo para o PC do clube.</li>
             <li>No PC do clube, abra a <a href="#inicio" data-goto="inicio">Configuração inicial</a>, passo YouTube. Cole os dois e carregue em <b>Ligar ao YouTube</b>.</li>
-            <li>Entre com a conta que gere o canal do clube e escolha o canal do clube. Ao aviso de app não verificada, carregue em <b>Advanced</b> e em <b>Go to Tribuna</b>.</li>
+            <li>Entre com a conta que gere o canal do clube e escolha o canal do clube. Ao aviso de app não verificada, carregue em <b>Advanced</b> e em <b>Go to Hallstream</b>.</li>
           </ol>
           <p class="hint">Os diretos ficam em <a href="#transmissoes" data-goto="transmissoes">Transmissões</a>. A miniatura própria só funciona com o canal verificado (youtube.com/verify). Sem isso, o direto começa na mesma.</p>
         </div>

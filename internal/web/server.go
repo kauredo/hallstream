@@ -19,14 +19,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/ble"
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/gamelog"
-	"github.com/kauredo/tribuna/internal/obsapp"
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/youtube"
+	"github.com/kauredo/hallstream/internal/ble"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/obsapp"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 type Server struct {

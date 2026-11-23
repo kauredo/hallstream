@@ -12,12 +12,12 @@ import (
 
 // What "Configurar OBS" makes in OBS.
 const (
-	SceneName   = "Tribuna"
-	OverlayName = "Tribuna overlay"
+	SceneName   = "Hallstream"
+	OverlayName = "Hallstream overlay"
 	// PluginKind is the DroidCam OBS plugin's source (droidcam-obs-plugin, src/plugin.cc).
 	PluginKind = "droidcam_obs"
 	dshowKind  = "dshow_input"
-	probeName  = "Tribuna (à procura de câmaras)"
+	probeName  = "Hallstream (à procura de câmaras)"
 )
 
 // Step is one line of the checklist. Result is "ok", "created", "fixed",

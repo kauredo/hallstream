@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/state"
+	"github.com/kauredo/hallstream/internal/state"
 )
 
 type lockedBuffer struct {

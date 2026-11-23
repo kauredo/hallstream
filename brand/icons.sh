@@ -17,7 +17,7 @@ sed -e 's/ rx="56"//' -e 's/scale(0.24)/scale(0.2)/' icon.svg > $tmp/maskable.sv
 
 for s in 16 20 24 32; do png icon-16.svg $s $tmp/$s.png; done
 for s in 40 48 64 256; do png icon.svg $s $tmp/$s.png; done
-go run mkico.go $out/tribuna.ico $tmp/{16,20,24,32,40,48,64,256}.png
+go run mkico.go $out/hallstream.ico $tmp/{16,20,24,32,40,48,64,256}.png
 
 /bin/cp -f icon-16.svg $out/favicon.svg
 /bin/cp -f $tmp/32.png $out/favicon-32.png

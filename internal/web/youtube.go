@@ -19,10 +19,10 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/youtube"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 // ytSaved is dados/youtube.json: the club's OAuth client, the login and the
@@ -73,7 +73,7 @@ type ytRecord struct {
 const (
 	ytFile     = "youtube.json"
 	ytHistFile = "transmissoes.json"
-	ytStream   = "Tribuna"
+	ytStream   = "Hallstream"
 	// After Terminar: the first look, the most between looks, and how many.
 	ytFirstPoll = 30 * time.Second
 	ytMaxWait   = 5 * time.Minute
@@ -769,7 +769,7 @@ func (s *Server) ytThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.ytRecord(id) == nil || !s.ytConnected() {
-		fail(w, http.StatusNotFound, "Esta transmissão não é do Tribuna.")
+		fail(w, http.StatusNotFound, "Esta transmissão não é do Hallstream.")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
@@ -803,7 +803,7 @@ func (s *Server) ytUnlist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.ytKnown(req.BroadcastID) {
-		fail(w, http.StatusNotFound, "Esta transmissão não está na lista do Tribuna nem do canal.")
+		fail(w, http.StatusNotFound, "Esta transmissão não está na lista do Hallstream nem do canal.")
 		return
 	}
 	if rec := s.ytRecord(req.BroadcastID); rec != nil && rec.Test {
@@ -855,7 +855,7 @@ func (s *Server) ytKnown(id string) bool {
 const ytThumbMax = 8 << 20
 
 // ytExternal is the escalão filter value for streams made outside the program.
-const ytExternal = "Fora do Tribuna"
+const ytExternal = "Fora do Hallstream"
 
 func ytSeason(date string) string {
 	t, err := time.Parse(time.RFC3339, date)

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 func needsTeam(s *Server) []string {

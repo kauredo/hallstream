@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 func playerNamed(t *testing.T, g store.Group, name string) store.Player {

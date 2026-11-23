@@ -21,7 +21,7 @@ func (t Tray) Run() {
 		status := systray.AddMenuItem(t.Status(), "")
 		status.Disable()
 		systray.AddSeparator()
-		exit := systray.AddMenuItem("Sair", "Fechar o Tribuna")
+		exit := systray.AddMenuItem("Sair", "Fechar o Hallstream")
 		go func() {
 			last := ""
 			for range t.Changed {

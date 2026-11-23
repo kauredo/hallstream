@@ -1,6 +1,6 @@
 # Roadmap
 
-Tribuna started as a game-day tool built for one Portuguese basketball club. The goal is a free tool that any amateur club can use to stream its games:
+Hallstream started as a game-day tool built for one Portuguese basketball club. The goal is a free tool that any amateur club can use to stream its games:
 
 - the score read from the hall's console, or kept by hand on a phone
 - several cameras through OBS
@@ -16,7 +16,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Licence | AGPL-3.0. |
 | Platform | One Go exe with the panel and overlay embedded. Windows first, macOS and Linux builds after. |
 | Audience | Volunteers at amateur and youth clubs, often on an old PC in the hall. |
-| Mixer | OBS stays the mixer and encoder. Tribuna sets it up over obs-websocket. |
+| Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
 | Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |
 | Sports | A sport profile holds the clock direction, periods, scoring units, fouls and penalties, overtime and the automatic screen rules. Graphics come in two families, timed periods and sets. Targets: basketball, futsal, handball, volleyball and soccer. |
 | Cameras | One OBS scene per camera, with the overlay in a shared nested scene, switched from the panel. Sources: DroidCam, any OBS video device, and VDO.Ninja (a phone browser, no app). Up to three cameras to start. |

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kauredo/tribuna/internal/obsws"
+	"github.com/kauredo/hallstream/internal/obsws"
 )
 
 type OBS struct {

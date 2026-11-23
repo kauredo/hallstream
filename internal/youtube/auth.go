@@ -109,7 +109,7 @@ func (l *Login) callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if subtle.ConstantTimeCompare([]byte(q.Get("state")), []byte(l.state)) != 1 {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, page("Este pedido não veio do Tribuna. Volte ao painel e carregue em Ligar ao YouTube."))
+		fmt.Fprint(w, page("Este pedido não veio do Hallstream. Volte ao painel e carregue em Ligar ao YouTube."))
 		return
 	}
 	if e := q.Get("error"); e != "" || q.Get("code") == "" {
@@ -125,7 +125,7 @@ func (l *Login) callback(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	tok, err := l.conf.Exchange(ctx, q.Get("code"), oauth2.VerifierOption(l.verifier))
 	if err == nil && tok.RefreshToken == "" {
-		err = errors.New("o Google não deu acesso duradouro. Tire o acesso do Tribuna em myaccount.google.com/permissions e ligue outra vez")
+		err = errors.New("o Google não deu acesso duradouro. Tire o acesso do Hallstream em myaccount.google.com/permissions e ligue outra vez")
 	}
 	if err != nil {
 		fmt.Fprint(w, page("Não consegui acabar o login. Volte ao painel para ver o que aconteceu."))
@@ -157,7 +157,7 @@ func loginError(err error) error {
 }
 
 func page(msg string) string {
-	return `<!doctype html><html lang="pt-PT"><meta charset="utf-8"><title>Tribuna</title>` +
+	return `<!doctype html><html lang="pt-PT"><meta charset="utf-8"><title>Hallstream</title>` +
 		`<body style="font:18px system-ui,sans-serif;margin:48px;color:#181841"><p>` + html.EscapeString(msg) + `</p></body></html>`
 }
 

@@ -225,8 +225,8 @@
   function obsStatus() {
     if (obsMode === 'off') return { connected: false, error: 'O OBS não responde em 127.0.0.1:4455', health: { checked: false, ready: false, problems: [] }, stream: null };
     var h = obsMode === 'problem'
-      ? { checked: true, ready: false, problems: ['A fonte Tribuna overlay está mal: o endereço era http://127.0.0.1:8766/overlay.'] }
-      : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Tribuna não tem câmara.'] }
+      ? { checked: true, ready: false, problems: ['A fonte Hallstream overlay está mal: o endereço era http://127.0.0.1:8766/overlay.'] }
+      : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Hallstream não tem câmara.'] }
       : { checked: true, ready: true, problems: [] };
     return { connected: true, error: '', health: h, stream: streamNow() };
   }
@@ -240,23 +240,23 @@
     if (obsMode === 'choose' && !(b && b.camera)) {
       return { ok: false, ready: false, camera: '', choices: cameras, steps: [
         step('websocket', 'Ligação ao OBS', 'ok', 'O OBS responde.'),
-        step('scene', 'Cena Tribuna', 'created', 'Criei a cena Tribuna.'),
-        step('overlay', 'Grafismo (fonte Navegador)', 'created', 'Criei a fonte Tribuna overlay, 1920x1080, com o som pelo OBS.'),
+        step('scene', 'Cena Hallstream', 'created', 'Criei a cena Hallstream.'),
+        step('overlay', 'Grafismo (fonte Navegador)', 'created', 'Criei a fonte Hallstream overlay, 1920x1080, com o som pelo OBS.'),
         step('camera', 'Câmara', 'choose', 'O OBS tem várias câmaras. Escolha uma e carregue em Usar esta câmara.'),
         step('video', 'Resolução 1920x1080', 'ok', 'O OBS já está em 1920x1080.'),
-        step('program', 'Cena no ar', 'fixed', 'Mudei o OBS da cena Cena para Tribuna.')] };
+        step('program', 'Cena no ar', 'fixed', 'Mudei o OBS da cena Cena para Hallstream.')] };
     }
     obsMode = 'ready';
     cameras[0] = { value: 'source:DroidCam Video', type: 'source', label: 'DroidCam Video', droidcam: true };
     db.settings.obs.setup_at = new Date().toISOString(); db.settings.obs.launch = true; db.settings.obs.camera_source = 'DroidCam Video';
     return { ok: true, ready: true, camera: 'DroidCam Video', steps: [
       step('websocket', 'Ligação ao OBS', 'fixed', 'Liguei o servidor WebSocket do OBS, com uma palavra-passe nova. Abri o OBS.'),
-      step('scene', 'Cena Tribuna', 'created', 'Criei a cena Tribuna.'),
-      step('overlay', 'Grafismo (fonte Navegador)', 'fixed', 'Corrigi a fonte Tribuna overlay: o endereço era http://127.0.0.1:8766/overlay, não estava na cena.'),
+      step('scene', 'Cena Hallstream', 'created', 'Criei a cena Hallstream.'),
+      step('overlay', 'Grafismo (fonte Navegador)', 'fixed', 'Corrigi a fonte Hallstream overlay: o endereço era http://127.0.0.1:8766/overlay, não estava na cena.'),
       step('camera', 'Câmara', 'created', 'Juntei a câmara DroidCam Video à cena.'),
       step('order', 'Grafismo por cima da câmara', 'fixed', 'Pus o grafismo por cima da câmara.'),
       step('video', 'Resolução 1920x1080', 'fixed', 'Mudei a resolução de 1280x720 para 1920x1080.'),
-      step('program', 'Cena no ar', 'ok', 'O OBS mostra a cena Tribuna.'),
+      step('program', 'Cena no ar', 'ok', 'O OBS mostra a cena Hallstream.'),
       step('fit', 'Câmara ajustada ao ecrã', 'ok', 'A câmara ocupa o ecrã inteiro.')] };
   }
 
@@ -292,13 +292,13 @@
     var items = ytHist.filter(function (r) { return yt.connected || !r.external; });
     var esc = [], sea = [];
     items.forEach(function (r) {
-      var g = r.external ? 'Fora do Tribuna' : r.escalao, s = seasonOf(r.date);
+      var g = r.external ? 'Fora do Hallstream' : r.escalao, s = seasonOf(r.date);
       if (g && esc.indexOf(g) < 0) esc.push(g);
       if (sea.indexOf(s) < 0) sea.push(s);
     });
     var e = q.get('escalao'), s = q.get('season');
     return { connected: yt.connected, remote_error: '', escaloes: esc.sort(), seasons: sea.sort().reverse(),
-      items: items.filter(function (r) { return (!e || (r.external ? 'Fora do Tribuna' : r.escalao) === e) && (!s || seasonOf(r.date) === s); }) };
+      items: items.filter(function (r) { return (!e || (r.external ? 'Fora do Hallstream' : r.escalao) === e) && (!s || seasonOf(r.date) === s); }) };
   }
 
   var realFetch = window.fetch.bind(window);
@@ -317,7 +317,7 @@
     if (p === '/api/status') {
       return reply(200, { version: '0.9.0-mock', port: 8765, overlay_url: 'http://127.0.0.1:8765/overlay', lan_url: 'http://192.168.1.40:8765/painel',
         box: state().box, obs: obsStatus(), youtube: yt, fpb: { reachable: true, cached_at: new Date().toISOString() },
-        data_dir: 'C:\\Tribuna\\dados', shortcut: onPC, autostart: onPC, obs_app: true, club_setup: { running: false, done: 0, total: 0 } });
+        data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, club_setup: { running: false, done: 0, total: 0 } });
     }
     if (p === '/api/setup') return setupReply();
     if ((r = /^\/api\/setup\/steps\/([a-z-]+)$/.exec(p))) {
@@ -462,7 +462,7 @@
     if (p === '/api/system/bluetooth-settings') return reply(200, { ok: true });
     if (p === '/api/system/desktop-shortcut') {
       db.settings.desktop_shortcut = b && b.create ? 'created' : 'declined';
-      return reply(200, { ok: true, path: b && b.create ? 'C:\\Users\\Clube\\Desktop\\Tribuna.lnk' : '' });
+      return reply(200, { ok: true, path: b && b.create ? 'C:\\Users\\Clube\\Desktop\\Hallstream.lnk' : '' });
     }
     if (p === '/api/obs/stream') return reply(200, { known: obsMode !== 'off', stream: streamNow(), youtube: ytSummary() });
     if (p === '/api/obs/stream/start') {
@@ -498,7 +498,7 @@
     if (p === '/api/obs/cameras') return reply(200, { cameras: cameras });
     if (p === '/api/obs/setup') return reply(200, setupReport(b));
     if (p === '/api/system/autostart') { db.settings.start_with_windows = !!b.on; return reply(200, { ok: true, on: !!b.on }); }
-    if (p === '/api/obs/sources') return reply(200, { scene: 'Jogo', auto: 'DroidCam', sources: [{ name: 'Tribuna', kind: 'browser_source' }, { name: 'DroidCam', kind: 'dshow_input' }, { name: 'Fundo', kind: 'image_source' }] });
+    if (p === '/api/obs/sources') return reply(200, { scene: 'Jogo', auto: 'DroidCam', sources: [{ name: 'Hallstream', kind: 'browser_source' }, { name: 'DroidCam', kind: 'dshow_input' }, { name: 'Fundo', kind: 'image_source' }] });
     if (p === '/api/obs/camera/fit') return reply(200, { ok: true, warning: '', fit: { source: 'DroidCam', source_width: 1280, source_height: 720, canvas_width: 1920, canvas_height: 1080 } });
     if (p === '/api/obs/test') return reply(200, { connected: false, error: 'O OBS não respondeu em ' + b.host + ':' + b.port + '. Confirme que o servidor WebSocket está ligado.' });
     return err(404, 'Endpoint a fingir não existe: ' + m + ' ' + p);

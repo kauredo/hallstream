@@ -16,7 +16,7 @@ import (
 // Console is false: the exe is built without a console window.
 const Console = false
 
-const title = "Tribuna"
+const title = "Hallstream"
 
 // Fatal shows why the program can't start, in a message box.
 func Fatal(msg string) { box(msg, windows.MB_ICONERROR) }
@@ -39,7 +39,7 @@ func Ask(msg string) bool {
 	return r == 6 // IDYES
 }
 
-// Shortcut puts "Tribuna.lnk" on the user's desktop (the real one, also
+// Shortcut puts "Hallstream.lnk" on the user's desktop (the real one, also
 // when OneDrive moved it), pointing at this exe, started in its folder.
 var Shortcut = func() (string, error) { return link(windows.FOLDERID_Desktop, "o ambiente de trabalho") }
 
@@ -60,7 +60,7 @@ var Autostart = func(on bool) error {
 	return nil
 }
 
-// link makes "Tribuna.lnk" in the known folder, replacing one there.
+// link makes "Hallstream.lnk" in the known folder, replacing one there.
 func link(folder *windows.KNOWNFOLDERID, name string) (string, error) {
 	exe, err := os.Executable()
 	if err != nil {
@@ -78,12 +78,12 @@ func link(folder *windows.KNOWNFOLDERID, name string) (string, error) {
 	// The paths go in environment variables, never in the script, so a
 	// quote or an apostrophe in a folder name is only ever data.
 	const script = `$ErrorActionPreference = 'Stop'; ` +
-		`$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:TRIBUNA_LNK); ` +
-		`$s.TargetPath = $env:TRIBUNA_EXE; $s.WorkingDirectory = $env:TRIBUNA_DIR; ` +
-		`$s.IconLocation = $env:TRIBUNA_EXE + ',0'; $s.Description = 'Tribuna'; $s.Save()`
+		`$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:HALLSTREAM_LNK); ` +
+		`$s.TargetPath = $env:HALLSTREAM_EXE; $s.WorkingDirectory = $env:HALLSTREAM_DIR; ` +
+		`$s.IconLocation = $env:HALLSTREAM_EXE + ',0'; $s.Description = 'Hallstream'; $s.Save()`
 	cmd := exec.Command(filepath.Join(sys, `WindowsPowerShell\v1.0\powershell.exe`),
 		"-NoProfile", "-NonInteractive", "-Command", script)
-	cmd.Env = append(os.Environ(), "TRIBUNA_LNK="+lnk, "TRIBUNA_EXE="+exe, "TRIBUNA_DIR="+filepath.Dir(exe))
+	cmd.Env = append(os.Environ(), "HALLSTREAM_LNK="+lnk, "HALLSTREAM_EXE="+exe, "HALLSTREAM_DIR="+filepath.Dir(exe))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: windows.CREATE_NO_WINDOW}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if msg := strings.TrimSpace(string(out)); msg != "" {

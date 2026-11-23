@@ -8,9 +8,9 @@ import (
 	"time"
 	_ "time/tzdata" // Windows has no zone database
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // fixtures is what the FPB says about the game of the day and the one after

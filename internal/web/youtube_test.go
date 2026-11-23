@@ -18,11 +18,11 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/youtube"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 // fakeYT is Google: the token endpoint and the YouTube Data API.
@@ -494,10 +494,10 @@ func TestYouTubeHistory(t *testing.T) {
 	if strings.Join(ids, ",") != "new,ext,old" || h.Items[0].Privacy != "unlisted" || !h.Items[1].External || h.Items[0].External {
 		t.Fatalf("%v %+v", ids, h.Items)
 	}
-	if strings.Join(h.Seasons, ",") != "2026/27,2025/26" || strings.Join(h.Escaloes, ",") != "Fora do Tribuna,Sub 16 Masculino,Sénior Masculino" {
+	if strings.Join(h.Seasons, ",") != "2026/27,2025/26" || strings.Join(h.Escaloes, ",") != "Fora do Hallstream,Sub 16 Masculino,Sénior Masculino" {
 		t.Errorf("filters %v %v", h.Seasons, h.Escaloes)
 	}
-	call(t, s, "GET", "/api/youtube/history?escalao=Fora+do+Tribuna", nil, &h)
+	call(t, s, "GET", "/api/youtube/history?escalao=Fora+do+Hallstream", nil, &h)
 	if len(h.Items) != 1 || h.Items[0].BroadcastID != "ext" {
 		t.Errorf("escalão %+v", h.Items)
 	}

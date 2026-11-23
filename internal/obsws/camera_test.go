@@ -89,7 +89,7 @@ func item3(srcW, srcH float64) []map[string]any {
 	return []map[string]any{
 		{"sceneItemId": 1, "sceneItemIndex": 0, "sourceName": "Fundo", "inputKind": "image_source", "sceneItemEnabled": true, "sceneItemTransform": tr(1920, 1080)},
 		{"sceneItemId": 2, "sceneItemIndex": 1, "sourceName": "Tablet", "inputKind": "dshow_input", "sceneItemEnabled": true, "sceneItemTransform": tr(srcW, srcH)},
-		{"sceneItemId": 3, "sceneItemIndex": 2, "sourceName": "Tribuna", "inputKind": "browser_source", "sceneItemEnabled": true, "sceneItemTransform": tr(1920, 1080)},
+		{"sceneItemId": 3, "sceneItemIndex": 2, "sourceName": "Hallstream", "inputKind": "browser_source", "sceneItemEnabled": true, "sceneItemTransform": tr(1920, 1080)},
 		{"sceneItemId": 4, "sceneItemIndex": 3, "sourceName": "Webcam por cima", "inputKind": "dshow_input", "sceneItemEnabled": true, "sceneItemTransform": tr(1920, 1080)},
 	}
 }
@@ -245,7 +245,7 @@ func TestPick(t *testing.T) {
 	items := []sceneItem{
 		{ID: 1, Index: 0, Name: "Câmara velha", Kind: "dshow_input", Enabled: true},
 		{ID: 2, Index: 1, Name: "DroidCam", Kind: "droidcam_obs", Enabled: true},
-		{ID: 3, Index: 2, Name: "Tribuna", Kind: "browser_source", Enabled: true},
+		{ID: 3, Index: 2, Name: "Hallstream", Kind: "browser_source", Enabled: true},
 		{ID: 4, Index: 3, Name: "Webcam", Kind: "dshow_input", Enabled: true},
 	}
 	if p := pick(items, ""); p == nil || p.ID != 2 {
@@ -264,7 +264,7 @@ func TestPick(t *testing.T) {
 	cams := []sceneItem{
 		{ID: 1, Index: 0, Name: "DroidCam", Kind: "dshow_input", Enabled: true},
 		{ID: 2, Index: 1, Name: "Logitech", Kind: "dshow_input", Enabled: true},
-		{ID: 3, Index: 2, Name: "Tribuna", Kind: "browser_source", Enabled: true},
+		{ID: 3, Index: 2, Name: "Hallstream", Kind: "browser_source", Enabled: true},
 	}
 	if p := pick(cams, ""); p == nil || p.ID != 1 {
 		t.Errorf("droidcam first %+v", p)

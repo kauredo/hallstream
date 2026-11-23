@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {

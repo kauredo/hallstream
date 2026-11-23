@@ -1,4 +1,4 @@
-// Tribuna reads the live score from a Stramatel SL Stream Box over
+// Hallstream reads the live score from a Stramatel SL Stream Box over
 // Bluetooth LE and serves the OBS overlay and the control panel in the
 // browser. It also writes each value to dados/score/*.txt for older OBS setups.
 //
@@ -21,25 +21,25 @@ import (
 	"runtime/debug"
 	"time"
 
-	assets "github.com/kauredo/tribuna/web"
+	assets "github.com/kauredo/hallstream/web"
 
-	"github.com/kauredo/tribuna/internal/applog"
-	"github.com/kauredo/tribuna/internal/ble"
-	"github.com/kauredo/tribuna/internal/desktop"
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/gamelog"
-	"github.com/kauredo/tribuna/internal/obsapp"
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/state"
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/web"
+	"github.com/kauredo/hallstream/internal/applog"
+	"github.com/kauredo/hallstream/internal/ble"
+	"github.com/kauredo/hallstream/internal/desktop"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/obsapp"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/state"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/web"
 )
 
 // version is set at build time: -ldflags "-X main.version=1.0.0".
 var version = "dev"
 
 // uploadToken lets the program send each stream's logs to the club's
-// server; set by build.sh from TRIBUNA_UPLOAD_TOKEN. Empty never sends.
+// server; set by build.sh from HALLSTREAM_UPLOAD_TOKEN. Empty never sends.
 var uploadToken = ""
 
 // logOut gets every message: dados/marcador.log, and the console when there
@@ -131,7 +131,7 @@ func main() {
 	// A second double-click opens the panel of the one already running.
 	for p := web.FirstPort; p <= web.LastPort; p++ {
 		if web.Ours(fmt.Sprintf("127.0.0.1:%d", p)) {
-			say(fmt.Sprintf("O Tribuna já está aberto (porta %d): abro o painel.", p))
+			say(fmt.Sprintf("O Hallstream já está aberto (porta %d): abro o painel.", p))
 			openBrowser(fmt.Sprintf("http://127.0.0.1:%d/painel", p))
 			return
 		}
@@ -150,7 +150,7 @@ func main() {
 	case !desktop.Console:
 		logOut = io.Discard
 	}
-	say("Tribuna " + version)
+	say("Hallstream " + version)
 	if err != nil {
 		say("Não consegui criar o marcador.log: " + err.Error())
 	}
@@ -258,8 +258,8 @@ func main() {
 	}
 	say("Dados em: " + dir)
 	if port != web.FirstPort {
-		go desktop.Warn(fmt.Sprintf("A porta %d está ocupada por outro programa, por isso o Tribuna abriu na porta %d.\n\n"+
-			"No OBS, mude o endereço da fonte do marcador para %s, ou feche o outro programa e volte a abrir o Tribuna.",
+		go desktop.Warn(fmt.Sprintf("A porta %d está ocupada por outro programa, por isso o Hallstream abriu na porta %d.\n\n"+
+			"No OBS, mude o endereço da fonte do marcador para %s, ou feche o outro programa e volte a abrir o Hallstream.",
 			web.FirstPort, port, overlay))
 	}
 	if !*noBrowser {
@@ -282,11 +282,11 @@ func main() {
 		go reader.Run()
 	}
 
-	icon, _ := assets.FS.ReadFile("assets/icon/tribuna.ico")
+	icon, _ := assets.FS.ReadFile("assets/icon/hallstream.ico")
 	changed, _ := m.Subscribe()
 	desktop.Tray{
 		Icon:    icon,
-		Tooltip: "Tribuna",
+		Tooltip: "Hallstream",
 		Panel:   func() { openBrowser(panel) },
 		Overlay: overlay,
 		Status:  func() string { return trayStatus(m.Snapshot()) },

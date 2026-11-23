@@ -1,4 +1,4 @@
-// Tribuna overlay. Reads the live state (docs/CONTRACT.md) and updates the DOM in place.
+// Hallstream overlay. Reads the live state (docs/CONTRACT.md) and updates the DOM in place.
 // Query: ?screen=<name> forces a screen, ?state=<url> loads a static JSON instead of SSE,
 // ?preview=1|foto puts a background behind the transparent page, ?now=<iso> fixes the clock and
 // ?anim=0 turns transitions and animations off, so everything draws in its final state (both for tests).

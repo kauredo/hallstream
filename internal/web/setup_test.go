@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 type setupState struct {

@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/store"
-	"github.com/kauredo/tribuna/internal/youtube"
+	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 // setupSteps are the ids /api/setup/steps/{id} takes: the steps and the

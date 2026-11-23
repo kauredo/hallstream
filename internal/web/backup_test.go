@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 func TestBackup(t *testing.T) {
@@ -36,7 +36,7 @@ func TestBackup(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, req)
 	if w.Code != 200 || w.Header().Get("Content-Type") != "application/zip" ||
-		!strings.Contains(w.Header().Get("Content-Disposition"), `filename="Tribuna-copia-`) {
+		!strings.Contains(w.Header().Get("Content-Disposition"), `filename="Hallstream-copia-`) {
 		t.Fatalf("%d %v", w.Code, w.Header())
 	}
 	zr, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))

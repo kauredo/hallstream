@@ -18,7 +18,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 
-	assets "github.com/kauredo/tribuna/web"
+	assets "github.com/kauredo/hallstream/web"
 )
 
 // These tests load the overlay, which runs live in OBS, and the panel in

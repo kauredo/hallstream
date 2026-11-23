@@ -1,7 +1,7 @@
 {
-  "name": "Tribuna",
-  "short_name": "Tribuna",
-  "description": "Painel do marcador Tribuna",
+  "name": "Hallstream",
+  "short_name": "Hallstream",
+  "description": "Painel do marcador Hallstream",
   "lang": "pt-PT",
   "id": "/painel",
   "start_url": "/painel",

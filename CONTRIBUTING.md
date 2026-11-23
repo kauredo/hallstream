@@ -1,6 +1,6 @@
-# Contributing to Tribuna
+# Contributing to Hallstream
 
-Volunteers run Tribuna in a sports hall, often with no internet and nobody technical nearby. Every change has to keep that game day working.
+Volunteers run Hallstream in a sports hall, often with no internet and nobody technical nearby. Every change has to keep that game day working.
 
 ## Before you start
 
@@ -41,7 +41,7 @@ The string catalogs are planned in phase A. Until they exist, open an issue to s
 ## Reporting a problem
 
 Open an issue with:
-- the Tribuna version
+- the Hallstream version
 - the console and sport
 - what you expected to happen
 - `dados/marcador.log`

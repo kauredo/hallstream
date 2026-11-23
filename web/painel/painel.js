@@ -1,4 +1,4 @@
-/* Painel do Tribuna. Sem build, sem bibliotecas. O servidor guarda tudo;
+/* Painel do Hallstream. Sem build, sem bibliotecas. O servidor guarda tudo;
    o browser só guarda o último separador aberto. */
 'use strict';
 
@@ -147,7 +147,7 @@
         return data;
       });
     }, function () {
-      throw new Error('Sem ligação ao programa. Confirme que o Tribuna está aberto.');
+      throw new Error('Sem ligação ao programa. Confirme que o Hallstream está aberto.');
     });
   }
 
@@ -888,7 +888,7 @@
     } else {
       dot = missing.length ? '' : 'ready'; title = missing.length ? 'Fora do ar' : 'Pronto para transmitir';
       sub = missing.length ? 'Antes de começar:' :
-        yt.connected ? 'Ao carregar no botão, o Tribuna cria o direto no YouTube e começa a transmitir. Para experimentar sem público, use Transmissão de teste.' :
+        yt.connected ? 'Ao carregar no botão, o Hallstream cria o direto no YouTube e começa a transmitir. Para experimentar sem público, use Transmissão de teste.' :
         'O direto só começa quando carregar no botão.';
       btn = (canTest ? '<button class="btn" type="button" data-act="stream-test">Transmissão de teste</button>' : '') +
         '<button class="btn primary" type="button" data-act="stream-start">Iniciar transmissão</button>';
@@ -1006,7 +1006,7 @@
         '<div class="row" style="margin-top:12px"><button class="btn primary" type="button" data-act="yt-unlist" data-id="' + esc(e.broadcast_id) + '">Tentar outra vez</button>' +
         '<button class="btn" type="button" data-act="yt-copy" data-url="' + esc(e.link) + '">Copiar link</button><span class="msg" role="status"></span></div>';
     } else {
-      html = '<h2>A terminar no YouTube…</h2><p class="hint">O YouTube fecha o direto cerca de um minuto depois. Então o Tribuna torna o vídeo não listado e o link aparece aqui.</p>';
+      html = '<h2>A terminar no YouTube…</h2><p class="hint">O YouTube fecha o direto cerca de um minuto depois. Então o Hallstream torna o vídeo não listado e o link aparece aqui.</p>';
     }
     el.innerHTML = html;
   }
@@ -1731,7 +1731,7 @@
       S.promoSel = data.id;
       loadPromo().then(function () { if (S.tab === 'promo') renderPromo(); });
     };
-    x.onerror = function () { say('err', 'Sem ligação ao programa. Confirme que o Tribuna está aberto.'); };
+    x.onerror = function () { say('err', 'Sem ligação ao programa. Confirme que o Hallstream está aberto.'); };
     say('', 'A carregar… 0%');
     x.send(fd);
   }
@@ -1752,7 +1752,7 @@
           '<button class="btn primary" type="button" data-act="setup-open">' + (Object.keys(fs.steps || {}).length ? 'Continuar' : 'Começar') + '</button></div>') + '</div>';
     }
     html += '<div class="card"><h2>Controlo do OBS</h2>' +
-      '<p class="hint">Carregue em <b>Configurar OBS</b> uma vez, com o tablet ligado. O Tribuna prepara o OBS sozinho: liga o servidor WebSocket, cria a cena <b>Tribuna</b> com o grafismo por cima da câmara e põe a resolução em 1920x1080. Pode carregar outra vez quando quiser. O que já está certo fica como está.</p>' +
+      '<p class="hint">Carregue em <b>Configurar OBS</b> uma vez, com o tablet ligado. O Hallstream prepara o OBS sozinho: liga o servidor WebSocket, cria a cena <b>Hallstream</b> com o grafismo por cima da câmara e põe a resolução em 1920x1080. Pode carregar outra vez quando quiser. O que já está certo fica como está.</p>' +
       '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-act="obs-setup">Configurar OBS</button><span class="msg" id="obsSetupMsg" role="status"></span></div>' +
       '<div id="obsResult">' + setupHtml(S.obsSetup) + '</div>' +
       '<div class="cols" style="margin-top:12px">' +
@@ -1763,10 +1763,10 @@
       '</div><p class="hint">Câmara nova? Escolha-a aqui e carregue em <b>Configurar OBS</b>. A antiga fica escondida no OBS. Com "Imagem inteira", um tablet ao alto ou em 4:3 fica com margens. No desconto, as margens ficam azuis.</p>' +
       '<div class="row" style="margin-top:12px"><button class="btn" data-act="obs-fit">Ajustar câmara</button><span class="msg" id="dObsMsg"></span></div>' +
       (S.status && S.status.obs_app ?
-        '<label class="switch" style="margin-top:12px"><input type="checkbox" id="dObsLaunch"' + (o.launch ? ' checked' : '') + '><i></i>Abrir o OBS com o Tribuna</label>' +
+        '<label class="switch" style="margin-top:12px"><input type="checkbox" id="dObsLaunch"' + (o.launch ? ' checked' : '') + '><i></i>Abrir o OBS com o Hallstream</label>' +
         '<p class="hint">O OBS abre escondido ao pé do relógio. Liga-se sozinho depois de Configurar OBS correr bem.</p>' +
         '<label class="switch" style="margin-top:8px"><input type="checkbox" id="dObsClose"' + (o.close_on_exit ? ' checked' : '') + '><i></i>Fechar o OBS ao sair</label>' +
-        '<p class="hint">Ao escolher Sair no ícone do Tribuna, o OBS também fecha.</p>' : '') +
+        '<p class="hint">Ao escolher Sair no ícone do Hallstream, o OBS também fecha.</p>' : '') +
       '<details style="margin-top:12px"><summary class="hint">Ligação ao OBS feita à mão</summary>' +
       '<p class="hint">Só se o OBS estiver noutro computador, ou se Configurar OBS não conseguir ligar o servidor. No OBS: Ferramentas → Definições do servidor WebSocket.</p>' +
       '<label class="switch"><input type="checkbox" id="dObsOn"' + (o.enabled ? ' checked' : '') + '><i></i>Ligar ao OBS</label>' +
@@ -1828,11 +1828,11 @@
 
     if (S.status && S.status.shortcut) {
       html += '<div class="card"><h2>Neste computador</h2>' +
-        '<p class="hint">Para fechar o Tribuna, carregue no ícone dele ao pé do relógio e escolha <b>Sair</b>.</p>' +
+        '<p class="hint">Para fechar o Hallstream, carregue no ícone dele ao pé do relógio e escolha <b>Sair</b>.</p>' +
         '<div class="row" style="align-items:center;margin-top:12px"><button class="btn" id="dShortcut" data-act="shortcut">Criar atalho no ambiente de trabalho</button><span class="msg"></span></div>' +
         (s.desktop_shortcut === 'created' ? '<p class="hint" style="margin-top:8px">O atalho já foi criado. Se o apagou, pode criá-lo outra vez.</p>' : '') +
         (S.status.autostart ? '<div class="row" style="align-items:center;margin-top:12px"><label class="switch"><input type="checkbox" id="dAutostart"' + (s.start_with_windows ? ' checked' : '') + '><i></i>Abrir com o Windows</label><span class="msg"></span></div>' +
-          '<p class="hint">O Tribuna abre sozinho quando liga o PC. Com "Abrir o OBS com o Tribuna", o OBS abre também.</p>' : '') + '</div>';
+          '<p class="hint">O Hallstream abre sozinho quando liga o PC. Com "Abrir o OBS com o Hallstream", o OBS abre também.</p>' : '') + '</div>';
     }
     root.innerHTML = html;
     if (o.enabled && !S.obsCams) loadObsCameras();
@@ -1848,7 +1848,7 @@
       html += '<div class="yt-channel">' + (ch.thumbnail ? '<img src="' + esc(ch.thumbnail) + '" alt="" width="48" height="48" onerror="this.remove()">' : '') +
         '<p><span class="hint">Ligado como</span><b>' + esc(ch.title || 'canal do YouTube') + '</b></p></div>';
       html += y.expired ? '<p class="alert">A ligação ao YouTube expirou. Carregue em Ligar ao YouTube para entrar outra vez.</p>' :
-        '<p class="hint">Ao carregar em Iniciar transmissão, o Tribuna cria o direto público deste jogo, com o título e a miniatura. Ao terminar, o vídeo fica não listado e o link aparece em Ecrãs.</p>';
+        '<p class="hint">Ao carregar em Iniciar transmissão, o Hallstream cria o direto público deste jogo, com o título e a miniatura. Ao terminar, o vídeo fica não listado e o link aparece em Ecrãs.</p>';
       if (y.error && !y.expired) html += '<p class="msg err">' + esc(y.error) + '</p>';
       if (!y.setup) return html + '<p class="hint">Só se liga ou desliga no computador do clube.</p>';
       return html + '<div class="row" style="margin-top:12px;align-items:center">' +
@@ -1905,8 +1905,8 @@
           });
         }, function (err) { if (win) win.close(); b.disabled = false; say('err', err.message); });
       } else if (b.dataset.act === 'yt-disconnect') {
-        confirmBox('Desligar o YouTube?', '<p>O Tribuna deixa de criar os diretos e de tornar os vídeos não listados. Os vídeos ficam no canal como estão.</p>' +
-          '<p>O OBS continua a enviar para a chave do Tribuna. Para usar outra vez a conta ligada no OBS, ligue-a em Definições > Transmissão do OBS.</p>',
+        confirmBox('Desligar o YouTube?', '<p>O Hallstream deixa de criar os diretos e de tornar os vídeos não listados. Os vídeos ficam no canal como estão.</p>' +
+          '<p>O OBS continua a enviar para a chave do Hallstream. Para usar outra vez a conta ligada no OBS, ligue-a em Definições > Transmissão do OBS.</p>',
         { yes: 'Desligar', danger: true }).then(function (yes) {
           if (!yes) return;
           b.disabled = true;
@@ -2079,7 +2079,7 @@
     if (S.histErr) { list.innerHTML = '<p class="alert">' + esc(S.histErr) + '</p>'; return; }
     if (!h) { list.innerHTML = '<p class="hint">A carregar…</p>'; return; }
     var html = '';
-    if (!h.connected) html += '<p class="warn">Com o YouTube ligado em Definições, aparecem aqui também os diretos feitos fora do Tribuna.</p>';
+    if (!h.connected) html += '<p class="warn">Com o YouTube ligado em Definições, aparecem aqui também os diretos feitos fora do Hallstream.</p>';
     if (h.remote_error) html += '<p class="alert">Não consegui ler o canal: ' + esc(h.remote_error) + '</p>';
     if (!h.items.length) {
       html += '<div class="card"><p class="hint">' + (f.escalao || f.season ? 'Nenhuma transmissão com estes filtros.' : 'Ainda não há transmissões. Aparecem aqui depois do primeiro direto com o YouTube ligado.') + '</p></div>';
@@ -2087,7 +2087,7 @@
     }
     html += '<ul class="hist">' + h.items.map(function (it) {
       var d = new Date(it.date), when = isNaN(d) ? '' : d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
-      var tag = it.external ? '<span class="badge">Fora do Tribuna</span>' : it.test ? '<span class="badge">Teste</span>' : '';
+      var tag = it.external ? '<span class="badge">Fora do Hallstream</span>' : it.test ? '<span class="badge">Teste</span>' : '';
       var priv = PRIVACY[it.privacy] || it.privacy || '';
       return '<li><div class="who"><b>' + esc(it.result || it.title) + '</b>' +
         '<small>' + esc([when, it.result ? it.title : it.escalao].filter(Boolean).join(' · ')) + '</small>' +
@@ -2183,7 +2183,7 @@
       if (y.connected) return { s: 'ok', why: 'Ligado ao canal ' + ((y.channel && y.channel.title) || 'do YouTube') + '.' };
       if (y.error) return { s: 'bad', why: y.error };
       if (S.setup && S.setup.steps.youtube === 'skipped') return { s: 'skip', why: 'Fica para depois. A transmissão funciona sem o YouTube ligado ao Marcador, como até agora.' };
-      return { s: 'todo', why: 'Falta ligar o Tribuna ao canal do clube.' };
+      return { s: 'todo', why: 'Falta ligar o Hallstream ao canal do clube.' };
     }
     if (id === 'canal') {
       var l = canalItem('diretos'), v = canalItem('verificado');
@@ -2283,12 +2283,12 @@
       var club = (set.club_setup && set.club_setup !== 'pending') || S.groups.length;
       html = '<ul class="wz-list">' +
         wzItem(club ? 'on' : 'wait', 'Escalões da FPB', '<p class="hint">' + (club ? plural(S.groups.length, 'escalão', 'escalões') + ' no Plantel. Confira-os e junte os treinadores.' :
-          'O Tribuna cria-os sozinho ao abrir pela primeira vez, se houver internet.') + ' <a href="#plantel" data-goto="plantel">Abrir Plantel</a></p>') +
+          'O Hallstream cria-os sozinho ao abrir pela primeira vez, se houver internet.') + ' <a href="#plantel" data-goto="plantel">Abrir Plantel</a></p>') +
         wzItem(set.box_address || box.connected ? 'on' : 'wait', 'Caixa do marcador', '<p class="hint">' + (box.connected ? 'Ligada agora.' : set.box_address ? 'Já ligou a este computador.' :
           'Ligue a consola do marcador e feche a app SL Live Stream nos telemóveis.') + ' <a href="#caixa" data-goto="caixa">Abrir Caixa</a></p>') +
         '</ul><p class="hint">Sem a consola por perto, passe à frente. O passo fica feito quando a caixa ligar.</p>';
     } else if (id === 'obs') {
-      html = '<p>Instale o OBS 31 ou mais recente e o DroidCam, e feche o OBS. O Tribuna liga o servidor WebSocket, abre o OBS e prepara a cena, o grafismo, a câmara e a resolução.</p>';
+      html = '<p>Instale o OBS 31 ou mais recente e o DroidCam, e feche o OBS. O Hallstream liga o servidor WebSocket, abre o OBS e prepara a cena, o grafismo, a câmara e a resolução.</p>';
       if (pc) html += '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="obs-setup">Configurar OBS</button>' +
         '<span class="msg" id="wzObsMsg" role="status"></span></div>';
       html += '<div id="wzObsResult">' + setupHtml(S.obsSetup) + '</div>';
@@ -2296,7 +2296,7 @@
       html = '<div class="wz-how"><p>Precisa do ID e do segredo do cliente OAuth, criados na Google Cloud com o guia <b>LIGAR-YOUTUBE.txt</b>, na pasta YouTube.</p>' +
         '<ol class="steps"><li>Cole os dois e carregue em <b>Guardar</b>.</li>' +
         '<li>Carregue em <b>Ligar ao YouTube</b>. Entre com a conta Google que gere o canal do clube e, se o Google perguntar, escolha o canal do clube.</li>' +
-        '<li>O Google avisa que a app não foi verificada. Carregue em <b>Advanced</b> e depois em <b>Go to Tribuna</b>. A app é a do clube.</li></ol></div>' +
+        '<li>O Google avisa que a app não foi verificada. Carregue em <b>Advanced</b> e depois em <b>Go to Hallstream</b>. A app é a do clube.</li></ol></div>' +
         '<div class="wz-sub" id="ytSetup" data-bare="1">' + ytSetupHtml(true) + '</div>' +
         '<div class="wz-how"><p class="hint">Tem de ser a conta dona do canal, ou dona ou gestora da conta de marca do canal. Um convite em Permissões, no YouTube Studio, não chega, porque o Google não deixa essas contas usar a API.</p>' +
         '<p class="hint">Sem o ID e o segredo, carregue em Saltar por agora. A transmissão funciona na mesma, com a conta do YouTube ligada no próprio OBS.</p></div>';
@@ -2309,7 +2309,7 @@
         wzItem(v === 'yes' ? 'on' : v === 'blocked' ? 'off' : 'wait', 'Canal verificado com o telemóvel', '<p class="hint">Em <a href="https://www.youtube.com/verify" target="_blank" rel="noopener">youtube.com/verify</a>, confirme o canal com um código por SMS. Sem isso, o direto começa na mesma, mas sem a miniatura do jogo.</p>' +
           (c.verified ? said({ yes: 'O YouTube confirma que o canal está verificado.', no: 'O YouTube diz que ainda não está verificado.', blocked: 'O YouTube não deixa verificar este canal, porque tem avisos ou bloqueios.' }[c.verified]) : wzTick('canal-verificado'))) + '</ul>';
       if (pc && yc) html += '<div class="row" style="align-items:center"><button class="btn" type="button" data-wz-act="chk">Perguntar outra vez ao YouTube</button><span class="msg" id="wzChkMsg" role="status">' + esc(S.chkErr || '') + '</span></div>';
-      else html += '<p class="hint">Com o YouTube ligado no passo anterior, o Tribuna pergunta ao YouTube. Sem ele, marque <b>Já fiz</b>.</p>';
+      else html += '<p class="hint">Com o YouTube ligado no passo anterior, o Hallstream pergunta ao YouTube. Sem ele, marque <b>Já fiz</b>.</p>';
     } else {
       html = '<p>Um ensaio curto, antes do primeiro jogo. Marque cada um quando estiver feito.</p><ul class="wz-list">' +
         ENSAIO.map(function (e) { return wzItem(wzTicked(e[0]) ? 'on' : 'wait', esc(e[1]), '<p class="hint">' + e[2] + '</p>' + wzTick(e[0])); }).join('') + '</ul>';

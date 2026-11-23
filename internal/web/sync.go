@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // Limits for one setup or daily update, so a strange FPB answer can't keep

@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/fpb"
-	"github.com/kauredo/tribuna/internal/gamelog"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/gamelog"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // logServer is the club's server: it keeps each upload's fields and files.
@@ -28,7 +28,7 @@ type logServer struct {
 }
 
 func (l *logServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != gamelog.Path || r.Header.Get("Authorization") != "Bearer up-token" || r.Header.Get("User-Agent") != "tribuna/test" {
+	if r.URL.Path != gamelog.Path || r.Header.Get("Authorization") != "Bearer up-token" || r.Header.Get("User-Agent") != "hallstream/test" {
 		http.Error(w, `{"error":"no"}`, 401)
 		return
 	}

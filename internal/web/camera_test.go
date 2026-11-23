@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 // The camera and the overlay read the time-out window from the same file.

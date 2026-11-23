@@ -16,9 +16,9 @@ import (
 
 	"golang.org/x/net/websocket"
 
-	"github.com/kauredo/tribuna/internal/obsapp"
-	"github.com/kauredo/tribuna/internal/obsws"
-	"github.com/kauredo/tribuna/internal/store"
+	"github.com/kauredo/hallstream/internal/obsapp"
+	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/store"
 )
 
 type wsMsg struct {

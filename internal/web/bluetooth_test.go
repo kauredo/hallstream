@@ -3,7 +3,7 @@ package web
 import (
 	"testing"
 
-	"github.com/kauredo/tribuna/internal/ble"
+	"github.com/kauredo/hallstream/internal/ble"
 )
 
 // noBoxRadio hears nothing and nothing it connects to is the box.

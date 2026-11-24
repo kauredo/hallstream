@@ -77,7 +77,13 @@ type Settings struct {
 	// Lang is the language of the panel, the overlay and the log: the name
 	// of a file in web/i18n ("pt"). A language without a file reads pt.
 	Lang string `json:"lang"`
+	// Input is where the score comes from: one of Inputs.
+	Input string `json:"input"`
 }
+
+// Inputs are the values of Settings.Input, the default first: the box over
+// Bluetooth, or the score kept by hand on a phone.
+var Inputs = []string{"console", "manual"}
 
 // Club is the club's profile: what the overlay shows for the home side and
 // the colours it is drawn in.
@@ -140,6 +146,7 @@ func DefaultSettings() Settings {
 		Overlay: Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
 		Credit:  true,
 		Lang:    "pt",
+		Input:   Inputs[0],
 	}
 }
 
@@ -543,8 +550,20 @@ func (s *Store) SavePeriods(v any) error {
 }
 
 // LoadPeriods reads periods.json into v. A missing file leaves v alone.
-func (s *Store) LoadPeriods(v any) error {
-	b, err := os.ReadFile(filepath.Join(s.Dir, "periods.json"))
+func (s *Store) LoadPeriods(v any) error { return s.load("periods.json", v) }
+
+// SaveManual writes manual.json, the score kept by hand, so it outlives a restart.
+func (s *Store) SaveManual(v any) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeJSON("manual.json", v)
+}
+
+// LoadManual reads manual.json into v. A missing file leaves v alone.
+func (s *Store) LoadManual(v any) error { return s.load("manual.json", v) }
+
+func (s *Store) load(name string, v any) error {
+	b, err := os.ReadFile(filepath.Join(s.Dir, name))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}

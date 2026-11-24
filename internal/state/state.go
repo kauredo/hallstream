@@ -5,6 +5,7 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,6 +44,9 @@ type Live struct {
 	AwayFouls int    `json:"away_fouls"`
 	Shot      string `json:"shot"`
 	Sport     string `json:"sport"`
+	// Timeouts taken; only the manual scorer counts them, the console sends 0.
+	HomeTimeouts int `json:"home_timeouts"`
+	AwayTimeouts int `json:"away_timeouts"`
 }
 
 // Period is one completed period: the score when it ended (Home, Away) and
@@ -191,6 +195,8 @@ type State struct {
 	Camera     *Camera    `json:"camera"`
 	Promo      Promo      `json:"promo"`
 	Demo       bool       `json:"demo"`
+	// Input is where the score comes from: "console" or "manual" (settings.input).
+	Input string `json:"input"`
 }
 
 // Rect is a box on the 1920x1080 overlay, in pixels.
@@ -271,6 +277,7 @@ func New(now func() time.Time) *Machine {
 			Periods:    []Period{},
 			Screen:     Screen{Current: "marcador", Auto: true, Since: now().UTC()},
 			LowerThird: LowerThird{Type: "jogador"},
+			Input:      "console",
 		},
 	}
 	m.seen = m.seenNow()
@@ -444,6 +451,17 @@ func (m *Machine) SetBox(connected bool) {
 	m.mu.Lock()
 	if m.s.Box.Connected != connected {
 		m.s.Box.Connected = connected
+		m.changed()
+	}
+	m.mu.Unlock()
+}
+
+// SetInput says where the score comes from now. The new input is not
+// connected until it says so.
+func (m *Machine) SetInput(name string) {
+	m.mu.Lock()
+	if m.s.Input != name {
+		m.s.Input, m.s.Box.Connected = name, false
 		m.changed()
 	}
 	m.mu.Unlock()
@@ -631,8 +649,9 @@ func (m *Machine) saver(reset bool) func() {
 	}
 }
 
-// ApplyConsole takes the decoder's values from one box frame.
-// It is ignored while the demo runs.
+// ApplyConsole takes the values of one frame from the score input: the
+// decoder's for the box, the scorer's for manual. It is ignored while the
+// demo runs.
 func (m *Machine) ApplyConsole(v map[string]string) {
 	num := func(k string) int { n, _ := strconv.Atoi(v[k]); return n }
 	l := Live{
@@ -641,11 +660,16 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		Clock: v["clock"], Period: v["period"],
 		HomeFouls: num("home_fouls"), AwayFouls: num("away_fouls"),
 		Shot: v["shot_clock"], Sport: v["sport"],
+		HomeTimeouts: num("home_timeouts"), AwayTimeouts: num("away_timeouts"),
 	}
 	m.mu.Lock()
 	now := m.now().UTC()
 	m.s.Box.LastFrameAt = &now
-	m.s.Box.Connected = true
+	// A box frame shows the box is there. The manual scorer's frames come
+	// from this program, so only the phone calling in counts (SetBox).
+	if m.s.Input != "manual" {
+		m.s.Box.Connected = true
+	}
 	if v["box_type"] != "" {
 		m.s.Box.BoxType = v["box_type"]
 	}
@@ -710,7 +734,7 @@ func (m *Machine) setLive(l Live) bool {
 		m.started, m.lastTenths, m.zeroSince = false, -1, time.Time{}
 	}
 
-	t := tenths(l.Clock)
+	t := Tenths(l.Clock)
 	if !m.started && t >= 0 && m.lastTenths > 0 && t < m.lastTenths {
 		m.started = true
 		cur := m.s.Screen.Current
@@ -787,8 +811,19 @@ func (m *Machine) Tick() {
 	m.recorded(recorded, snap, save)
 }
 
-// tenths parses "MM:SS" or "S.T" into tenths of a second, -1 if empty.
-func tenths(clock string) int {
+// ClockText formats tenths the way the box does: "MM:SS", or "S.T" under a
+// minute. A clock counting down shows a second until it has all gone, so
+// 9:59.5 left is "10:00".
+func ClockText(t int) string {
+	if t >= 600 {
+		s := (t + 9) / 10
+		return fmt.Sprintf("%02d:%02d", s/60, s%60)
+	}
+	return fmt.Sprintf("%d.%d", t/10, t%10)
+}
+
+// Tenths parses "MM:SS" or "S.T" into tenths of a second, -1 if empty.
+func Tenths(clock string) int {
 	if a, b, ok := strings.Cut(clock, ":"); ok {
 		mm, _ := strconv.Atoi(strings.TrimSpace(a))
 		ss, _ := strconv.Atoi(strings.TrimSpace(b))

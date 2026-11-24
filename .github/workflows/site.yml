@@ -1,0 +1,22 @@
+name: Rebuild the website
+
+# hallstream.com reads the latest release at build time. release.yml calls the
+# deploy hook itself; this covers a release published by hand on GitHub, and a
+# rebuild started from the Actions tab.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the Vercel deploy hook
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          test -n "$HOOK" || { echo "VERCEL_DEPLOY_HOOK is not set"; exit 1; }
+          curl --fail --silent --show-error --max-time 30 -X POST "$HOOK" -o /dev/null

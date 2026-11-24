@@ -11,6 +11,10 @@
   --kit: #223659;       /* the darker primary of the score cells */
   --on-kit: #FFFFFF;
   --blood: #152238;     /* the darkest primary: label strips, hard shadows */
+  --lift: #3E64A5;      /* the primary a step lighter, and two steps (for dark clubs, whose layers step up) */
+  --on-lift: #FFFFFF;
+  --lift-2: #537ABE;
+  --on-lift-2: #070B12;
   --ink: #070B12;       /* near black, tinted with the primary */
   --ink-rgb: 7,11,18;
   --red-rgb: 47,75,124;

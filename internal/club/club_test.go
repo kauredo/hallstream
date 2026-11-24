@@ -71,6 +71,34 @@ func TestTheme(t *testing.T) {
 	}
 }
 
+// The tone tells the styles which way to step; the lifted tones stay the
+// club's hue, sit above it, and keep their text readable.
+func TestThemeToneAndLift(t *testing.T) {
+	for _, tt := range []struct{ primary, tone string }{
+		{DefaultPrimary, "mid"}, {"#BD1522", "mid"}, {"#0B1F4B", "dark"}, {"#101010", "dark"},
+		{"#F4C430", "light"}, {"#E5482A", "light"},
+	} {
+		th := Theme(tt.primary, DefaultSecondary)
+		if th["tone"] != tt.tone {
+			t.Errorf("%s: tone %q, want %q", tt.primary, th["tone"], tt.tone)
+		}
+		p, _ := parse(tt.primary)
+		for _, k := range []string{"lift", "lift-2"} {
+			c, ok := parse(th[k])
+			if !ok {
+				t.Fatalf("%s: %s = %q", tt.primary, k, th[k])
+			}
+			if c.lum() < p.lum() {
+				t.Errorf("%s: %s %s is darker than the club colour", tt.primary, k, th[k])
+			}
+			txt, _ := parse(th["on-"+k])
+			if r := contrast(c, txt); r < 4.5 {
+				t.Errorf("%s: text on %s is %.1f:1", tt.primary, k, r)
+			}
+		}
+	}
+}
+
 func TestThemeKeepsAColourThatAlreadyWorks(t *testing.T) {
 	th := Theme("#BD1522", "#181841")
 	if th["navy"] != "#181841" || th["red-text"] != "#BD1522" {

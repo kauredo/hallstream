@@ -72,7 +72,33 @@ func Theme(primary, secondary string) map[string]string {
 	kit := hsl(h, sat, l*0.72)
 	navy := darken(s, white, 12)
 	hi := lighten(p, ink)
+	// A dark club colour has no room to step deeper, so a style that layers
+	// tones of it steps lighter instead: lift is one step up, lift-2 two.
+	// Each comes back towards the club colour until its text reads at 4.5:1.
+	up := func(by float64) rgb {
+		for ; by > 0; by -= 0.01 {
+			c := hsl(h, sat, math.Min(l+by, 0.7))
+			if contrast(c, on(c, ink)) >= 4.5 {
+				return c
+			}
+		}
+		return p
+	}
+	lift, lift2 := up(0.11), up(0.2)
+	tone := "mid"
+	switch {
+	case l < 0.25:
+		tone = "dark"
+	case on(p, ink) == ink:
+		tone = "light" // dark text on the club colour
+	}
 	return map[string]string{
+		"lift":      lift.hex(),
+		"on-lift":   on(lift, ink).hex(),
+		"lift-2":    lift2.hex(),
+		"on-lift-2": on(lift2, ink).hex(),
+		// tone is dark, mid or light; the overlay puts it on <html data-club-tone>.
+		"tone":     tone,
 		"red":      p.hex(),
 		"on-red":   on(p, ink).hex(),
 		"kit":      kit.hex(),

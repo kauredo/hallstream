@@ -154,7 +154,7 @@ func clubPlan(search string, teams []fpb.TeamInfo) []clubTeamPlan {
 // retries on every start until the FPB has answered once. Not in demo mode,
 // and not before settings.club_search is filled in.
 func (s *Server) FirstRun(demo bool) {
-	if demo || s.Store.Settings().ClubSearch == "" {
+	if demo || s.Store.Settings().ClubSearch == "" || !s.fpbOffered() {
 		return
 	}
 	switch s.Store.Settings().ClubSetup {

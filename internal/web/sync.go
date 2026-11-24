@@ -61,6 +61,9 @@ func (s *Server) dailyRun() bool {
 // club's team list, then updates every linked escalão not updated within
 // maxAge. It does nothing without the FPB, or while the FPB answers 429.
 func (s *Server) SyncAll(maxAge time.Duration) {
+	if !s.fpbOffered() {
+		return // only the FPB has anything to sync
+	}
 	s.setupMu.Lock()
 	defer s.setupMu.Unlock()
 	// Without club_search there is no team list, only the linked escalões.

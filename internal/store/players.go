@@ -70,7 +70,9 @@ func Import(players []Player, roster []RosterPlayer) (updated []Player, suggesti
 			p.FPBAthleteID = r.AthleteID
 		}
 		p.Inactive = false
-		p.PhotoSource = r.PhotoURL
+		if !p.PhotoByHand {
+			p.PhotoSource = r.PhotoURL
+		}
 		changed := false
 		if p.FPBName == nil || *p.FPBName != r.Name {
 			name := r.Name

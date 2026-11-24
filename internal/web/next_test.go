@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,14 +9,22 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/fpb"
+	"github.com/kauredo/hallstream/internal/provider"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
+// fx is an FPB game as the FPB provider hands it on.
+func fx(id int64, date, clock string) provider.Fixture {
+	f := provider.Fixture{Ref: fmt.Sprintf("fpb/%d", id)}
+	f.Start, f.Timed = fpbStart(date, clock)
+	return f
+}
+
 func TestPickNext(t *testing.T) {
-	games := []fpb.NextGame{
-		{ID: 329595, Date: "2026-11-14", Time: "20H30"},
-		{ID: 329591, Date: "2026-11-20", Time: "21H45"},
-		{ID: 329600, Date: "2026-11-28", Time: "18H00"},
+	games := []provider.Fixture{
+		fx(329595, "2026-11-14", "20H30"),
+		fx(329591, "2026-11-20", "21H45"),
+		fx(329600, "2026-11-28", "18H00"),
 	}
 	at := func(s string) time.Time {
 		v, err := time.ParseInLocation("2006-01-02 15:04", s, lisbon)
@@ -24,24 +33,24 @@ func TestPickNext(t *testing.T) {
 		}
 		return v
 	}
-	id := func(n int64) *int64 { return &n }
+	id := func(n int64) string { return fmt.Sprintf("fpb/%d", n) }
 	for _, c := range []struct {
 		name      string
-		id        *int64
+		id        string
 		start     time.Time
 		now       string
 		cur, next int
 	}{
 		{"by id", id(329595), time.Time{}, "2026-11-14 21:30", 0, 1},
 		{"by id, last game", id(329600), time.Time{}, "2026-11-28 19:00", 2, -1},
-		{"id gone from the list", id(1), time.Time{}, "2026-11-14 21:30", -1, 1},
-		{"no id, during the game", nil, time.Time{}, "2026-11-14 21:30", -1, 1},
-		{"no id, morning of the game", nil, time.Time{}, "2026-11-14 09:00", -1, 1},
-		{"no id, after midnight", nil, time.Time{}, "2026-11-15 00:40", -1, 1},
-		{"no id, a quiet weekday", nil, time.Time{}, "2026-11-11 15:00", -1, 0},
-		{"manual start days ahead", nil, at("2026-11-14 20:30"), "2026-11-11 15:00", -1, 1},
-		{"stale start", nil, at("2026-11-01 18:00"), "2026-11-11 15:00", -1, 0},
-		{"nothing after", nil, time.Time{}, "2026-11-28 10:00", -1, -1},
+		{"id gone from the list", id(1), time.Time{}, "2026-11-14 21:30", 0, 1},
+		{"no id, during the game", "", time.Time{}, "2026-11-14 21:30", 0, 1},
+		{"no id, morning of the game", "", time.Time{}, "2026-11-14 09:00", 0, 1},
+		{"no id, after midnight", "", time.Time{}, "2026-11-15 00:40", 0, 1},
+		{"no id, a quiet weekday", "", time.Time{}, "2026-11-11 15:00", -1, 0},
+		{"manual start days ahead", "", at("2026-11-14 20:30"), "2026-11-11 15:00", 0, 1},
+		{"stale start", "", at("2026-11-01 18:00"), "2026-11-11 15:00", -1, 0},
+		{"nothing after", "", time.Time{}, "2026-11-28 10:00", 2, -1},
 	} {
 		cur, next := pickNext(games, c.id, c.start, at(c.now))
 		if cur != c.cur || next != c.next {
@@ -51,24 +60,19 @@ func TestPickNext(t *testing.T) {
 }
 
 func TestPickNextOrderAndTimes(t *testing.T) {
-	id := int64(1)
+	id := "fpb/1"
 	now := time.Date(2026, 11, 14, 21, 0, 0, 0, lisbon)
 	// Out of order: the game after 1 is 3 (20 Nov), not 2 (28 Nov) or 4 (earlier).
-	games := []fpb.NextGame{
-		{ID: 2, Date: "2026-11-28", Time: "18H00"},
-		{ID: 1, Date: "2026-11-14", Time: "20H30"},
-		{ID: 4, Date: "2026-11-10", Time: "20H30"},
-		{ID: 3, Date: "2026-11-20", Time: "21:45"},
-	}
-	if cur, next := pickNext(games, &id, time.Time{}, now); cur != 1 || next != 3 {
+	games := []provider.Fixture{fx(2, "2026-11-28", "18H00"), fx(1, "2026-11-14", "20H30"), fx(4, "2026-11-10", "20H30"), fx(3, "2026-11-20", "21:45")}
+	if cur, next := pickNext(games, id, time.Time{}, now); cur != 1 || next != 3 {
 		t.Errorf("unsorted: %d, %d", cur, next)
 	}
 	// A game with no time yet is never picked.
-	games = []fpb.NextGame{{ID: 1, Date: "2026-11-14", Time: "20H30"}, {ID: 5, Date: "2026-11-18", Time: ""}, {ID: 6, Date: "2026-11-21", Time: "TBD"}}
-	if _, next := pickNext(games, &id, time.Time{}, now); next != -1 {
+	games = []provider.Fixture{fx(1, "2026-11-14", "20H30"), fx(5, "2026-11-18", ""), fx(6, "2026-11-21", "TBD")}
+	if _, next := pickNext(games, id, time.Time{}, now); next != -1 {
 		t.Errorf("game without a time picked: %d", next)
 	}
-	if _, next := pickNext(games, nil, time.Time{}, now); next != -1 {
+	if _, next := pickNext(games, "", time.Time{}, now); next != -1 {
 		t.Errorf("no id, game without a time picked: %d", next)
 	}
 }
@@ -82,7 +86,7 @@ func TestNextGameInState(t *testing.T) {
 	var g store.Group
 	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sénior Masculino"}, &g)
 	call(t, s, "PUT", "/api/game", map[string]any{"group_id": g.ID, "away": map[string]string{"name": "ATLÉTICO VALE"}}, nil)
-	if note := s.State.Snapshot().Game.NextNote; !strings.Contains(note, "não está ligado") {
+	if note := s.State.Snapshot().Game.NextNote; !strings.Contains(note, "não tem jogos") {
 		t.Errorf("unlinked note %q", note)
 	}
 
@@ -115,7 +119,7 @@ func TestNextGameInState(t *testing.T) {
 		t.Errorf("after 556: next %+v note %q home %v", st.Next, st.NextNote, st.AtHome)
 	}
 	var e map[string]string
-	if code := call(t, s, "POST", "/api/screen", map[string]string{"screen": "proximo"}, &e); code != 400 || !strings.Contains(e["error"], "14 dias") {
+	if code := call(t, s, "POST", "/api/screen", map[string]string{"screen": "proximo"}, &e); code != 400 || !strings.Contains(e["error"], "outro jogo") {
 		t.Errorf("proximo without a next game: %d %v", code, e)
 	}
 	if code := call(t, s, "POST", "/api/screen", map[string]string{"screen": "voltamos"}, nil); code != 200 {

@@ -423,6 +423,7 @@
     if (S.fpbGamesErr) html += '<p class="alert" style="margin-top:12px">' + esc(S.fpbGamesErr) + '</p>';
     if (S.fpbGames) html += renderFpbGames();
     html += '</div>';
+    if (g) html += fixturesCard(g);
 
     html += '<div class="card"><h2>' + t('painel.jogo.adversario') + (d.fpb_game_id ? ' <span class="badge">FPB</span>' : '') + '</h2>' +
       '<div class="opp">' +
@@ -460,6 +461,153 @@
     html += '<div class="savebar"><button class="btn primary" data-act="save-game">' + t('painel.jogo.guardar') + '</button><span class="msg"></span>' +
       '<span style="flex:1"></span><button class="btn danger" data-act="new-game">' + t('painel.jogo.novo') + '</button></div>';
     root.innerHTML = html;
+  }
+
+  // Calendário: the escalão's games typed or imported by the club (any club, with or without the FPB).
+  // A game picked here fills the game of the day, as one picked from the FPB does.
+  function loadFixtures(gid) {
+    return api('GET', '/api/groups/' + encodeURIComponent(gid) + '/fixtures').then(function (list) {
+      S.fixtures = S.fixtures || {};
+      S.fixtures[gid] = list || [];
+      if (S.tab === 'jogo') renderJogo();
+    }, function (err) { S.fixtures = S.fixtures || {}; S.fixtures[gid] = []; showError(err); });
+  }
+  function fixturesCard(g) {
+    S.fixtures = S.fixtures || {};
+    var all = S.fixtures[g.id];
+    var html = '<div class="card" id="jFixtures"><h2>' + t('painel.calendario.titulo') + '</h2>';
+    if (!all) { loadFixtures(g.id); return html + '<p class="hint">' + t('painel.a_carregar') + '</p></div>'; }
+    var soon = Date.now() - 3 * 3600e3;
+    var next = all.filter(function (f) { return new Date(f.start).getTime() >= soon; });
+    if (!next.length) html += '<p class="hint">' + (fpbOffered() && g.fpb_team_id ? t('painel.calendario.vazio_fpb') : t('painel.calendario.vazio')) + '</p>';
+    else html += '<div class="games" role="list">' + next.map(function (f) {
+      var d = new Date(f.start), o = f.opponent || {};
+      var sel = !S.draft.fpb_game_id && S.draft.start && new Date(S.draft.start).getTime() === d.getTime() && S.draft.away.name === o.name;
+      return '<div class="fx-row" role="listitem"><button class="game-pick' + (sel ? ' sel' : '') + '" data-act="pick-fixture" data-fid="' + esc(f.id) + '">' +
+        '<span class="when">' + t('painel.jogo.fpb_data', { dia_semana: DOW[d.getDay()], dia: d.getDate(), mes: MON[d.getMonth()] }) + '<small>' + hhmm(d) + '</small></span>' +
+        '<span class="who">' + esc(o.name) + '<small>' + esc([f.competition, /^\d{1,3}$/.test(f.round || '') ? t('jogo.jornada', { n: f.round }) : f.round].filter(Boolean).join(', ')) + '</small>' +
+        '<span class="where">' + esc(f.venue || '') + '</span></span>' +
+        '<span class="ha">' + (f.home ? t('painel.topo.casa') : t('painel.topo.fora')) + '</span></button>' +
+        '<button class="btn quiet small" data-act="del-fixture" data-fid="' + esc(f.id) + '" aria-label="' + t('painel.calendario.apagar_jogo', { adversario: esc(o.name) }) + '">' + t('painel.apagar') + '</button></div>';
+    }).join('') + '</div>';
+    html += '<details class="fx-add"' + (all.length ? '' : ' open') + '><summary>' + t('painel.calendario.juntar') + '</summary>' +
+      '<form id="fxForm" class="stack" style="margin-top:12px"><div class="cols">' +
+        '<label class="field"><span>' + t('painel.jogo.data_hora') + '</span><input type="datetime-local" id="fxStart" required></label>' +
+        '<label class="field"><span>' + t('painel.calendario.onde') + '</span><select id="fxHome"><option value="1">' + t('painel.calendario.em_casa') + '</option><option value="0">' + t('painel.calendario.fora') + '</option></select></label>' +
+        '<label class="field"><span>' + t('painel.jogo.nome') + '</span><input id="fxName" maxlength="20" required autocomplete="off"></label>' +
+        '<label class="field"><span>' + t('painel.jogo.sigla') + '</span><input id="fxShort" maxlength="4" autocomplete="off"></label>' +
+        '<label class="field"><span>' + t('painel.jogo.pavilhao') + '</span><input id="fxVenue"></label>' +
+        '<label class="field"><span>' + t('painel.jogo.competicao') + '</span><input id="fxComp"></label>' +
+        '<label class="field"><span>' + t('painel.jogo.jornada_fase') + '</span><input id="fxRound"></label>' +
+        '<label class="field"><span>' + t('painel.calendario.emblema') + '</span><input type="file" id="fxCrest" accept="image/png,image/jpeg,image/svg+xml"></label>' +
+      '</div><div class="row"><button class="btn primary" type="submit">' + t('painel.calendario.guardar_jogo') + '</button><span class="msg"></span></div></form></details>';
+    html += csvRow('fxCsv', 'jogos.csv', t('painel.csv.modelo_jogos'), t('painel.csv.dica_jogos')) + csvResult('fixtures', g.id);
+    return html + '</div>';
+  }
+  function pickFixture(f, btn) {
+    var d = S.draft, o = f.opponent || {};
+    d.fpb_game_id = null;
+    d.away = { name: o.name || '', short: (o.short || initials(o.name)).toUpperCase().slice(0, 4), color: o.color || '', crest_url: o.crest_url || '' };
+    d.start = f.start;
+    d.venue = f.venue || '';
+    d.competition = f.competition || '';
+    d.round = /^\d{1,3}$/.test(f.round || '') ? t('jogo.jornada', { n: f.round }) : (f.round || '');
+    busy(btn, function () { return saveGame(); }, t('painel.jogo.escolhido'));
+  }
+  // An import button for a CSV, with a template to download.
+  function csvRow(id, file, template, hint) {
+    return '<div class="csv-row"><label class="btn small filebtn">' + t('painel.csv.importar') + '<input type="file" id="' + id + '" accept=".csv,text/csv,text/plain"></label>' +
+      '<a class="btn quiet small" download="' + file + '" href="data:text/csv;charset=utf-8,' + encodeURIComponent(template) + '">' + t('painel.csv.modelo') + '</a>' +
+      '<span class="msg" role="status"></span><p class="hint">' + hint + '</p></div>';
+  }
+  function csvResult(kind, gid) {
+    var r = S.csvResult;
+    if (!r || r.kind !== kind || r.gid !== gid) return '';
+    var html = '<div class="csv-result" role="status"><p><b>' + (kind === 'players'
+      ? t('painel.csv.resultado_plantel', { novos: r.added, atualizados: r.updated || 0 })
+      : t('painel.csv.resultado_jogos', { novos: r.added })) + '</b></p>';
+    if (r.skipped && r.skipped.length) html += '<p>' + t('painel.csv.ignoradas') + '</p><ul>' + r.skipped.map(function (x) {
+      return '<li>' + t('painel.csv.linha', { n: x.line, motivo: esc(x.reason) }) + '</li>';
+    }).join('') + '</ul>';
+    return html + '</div>';
+  }
+  function postCSV(path, input) {
+    var fd = new FormData(); fd.append('file', input.files[0]);
+    input.value = '';
+    return api('POST', path, fd);
+  }
+  function manualEvents() {
+    $('#plantel').addEventListener('change', function (e) {
+      var tx = e.target, gid = S.plantelGid;
+      if (tx.id === 'pCsv' && tx.files && tx.files[0]) {
+        busy(tx.closest('label'), function () {
+          return postCSV('/api/groups/' + encodeURIComponent(gid) + '/players/csv', tx).then(function (r) {
+            S.players[gid] = r.players;
+            S.csvResult = { kind: 'players', gid: gid, added: r.added, updated: r.updated, skipped: r.skipped };
+            renderPlantel();
+            // Photo addresses download in the background; read the players again shortly.
+            setTimeout(function () { loadPlayers(gid).then(function () { if (S.tab === 'plantel') renderPlantel(); }); }, 4000);
+          });
+        });
+      } else if (tx.matches('[data-photo-file]') && tx.files && tx.files[0]) {
+        var pid = tx.closest('[data-pid]').dataset.pid, fd = new FormData();
+        fd.append('file', tx.files[0]);
+        tx.value = '';
+        busy(tx.closest('label'), function () {
+          return api('POST', '/api/groups/' + encodeURIComponent(gid) + '/players/' + encodeURIComponent(pid) + '/photo', fd).then(function () {
+            return loadPlayers(gid).then(renderPlantel);
+          });
+        });
+      }
+    });
+    $('#plantel').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act="photo-remove"]'); if (!b) return;
+      var gid = S.plantelGid, pid = b.closest('[data-pid]').dataset.pid;
+      busy(b, function () {
+        return api('DELETE', '/api/groups/' + encodeURIComponent(gid) + '/players/' + encodeURIComponent(pid) + '/photo').then(function () {
+          return loadPlayers(gid).then(renderPlantel);
+        });
+      });
+    });
+    var jogo = $('#jogo');
+    jogo.addEventListener('change', function (e) {
+      var tx = e.target, gid = S.draft && S.draft.group_id;
+      if (tx.id !== 'fxCsv' || !tx.files || !tx.files[0] || !gid) return;
+      busy(tx.closest('label'), function () {
+        return postCSV('/api/groups/' + encodeURIComponent(gid) + '/fixtures/csv', tx).then(function (r) {
+          S.fixtures[gid] = r.fixtures;
+          S.csvResult = { kind: 'fixtures', gid: gid, added: r.added, skipped: r.skipped };
+          renderJogo();
+        });
+      });
+    });
+    jogo.addEventListener('submit', function (e) {
+      if (e.target.id !== 'fxForm') return;
+      e.preventDefault();
+      var gid = S.draft.group_id, btn = e.target.querySelector('[type="submit"]'), crest = $('#fxCrest').files[0];
+      var body = {
+        start: $('#fxStart').value ? isoLocal(new Date($('#fxStart').value)) : '',
+        home: $('#fxHome').value === '1',
+        opponent: { name: $('#fxName').value.trim(), short: $('#fxShort').value.trim() },
+        venue: $('#fxVenue').value.trim(), competition: $('#fxComp').value.trim(), round: $('#fxRound').value.trim()
+      };
+      busy(btn, function () {
+        return api('POST', '/api/groups/' + encodeURIComponent(gid) + '/fixtures', body).then(function (f) {
+          if (!crest) return;
+          var fd = new FormData(); fd.append('file', crest);
+          return api('POST', '/api/groups/' + encodeURIComponent(gid) + '/fixtures/' + encodeURIComponent(f.id) + '/crest', fd);
+        }).then(function () { return loadFixtures(gid); });
+      });
+    });
+    jogo.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act="pick-fixture"], [data-act="del-fixture"]'); if (!b) return;
+      var gid = S.draft.group_id, list = (S.fixtures && S.fixtures[gid]) || [];
+      var f = list.filter(function (x) { return x.id === b.dataset.fid; })[0]; if (!f) return;
+      if (b.dataset.act === 'pick-fixture') { pickFixture(f, b); return; }
+      confirmBox(t('painel.calendario.apagar_pergunta', { adversario: esc(f.opponent.name) }), '', { yes: t('painel.apagar'), danger: true }).then(function (ok) {
+        if (ok) busy(b, function () { return api('DELETE', '/api/groups/' + encodeURIComponent(gid) + '/fixtures/' + encodeURIComponent(f.id)).then(function () { return loadFixtures(gid); }); });
+      });
+    });
   }
 
   function renderFpbGames() {
@@ -1326,7 +1474,7 @@
     html += '<div class="card"><h2>' + t('painel.plantel.jogadores') + (list ? ' <span class="count">' + list.length + '</span>' : '') + '</h2>';
     html += '<div class="row photo-sw"><label class="switch"><input type="checkbox" data-photo="squad"' + (ph.squad ? ' checked' : '') + '><i></i>' + t('painel.plantel.fotos_plantel') + '</label>' +
       '<label class="switch"><input type="checkbox" data-photo="lower_third"' + (ph.lower_third ? ' checked' : '') + '><i></i>' + t('painel.plantel.foto_rodape') + '</label><span class="msg"></span></div>' +
-      '<p class="hint" style="margin-bottom:12px">' + t('painel.plantel.fotos_dica') + '</p>';
+      '<p class="hint" style="margin-bottom:12px">' + (fpb ? t('painel.plantel.fotos_dica') : t('painel.plantel.fotos_dica_sem_fpb')) + '</p>';
     if (!list) html += '<p class="hint">' + t('painel.a_carregar') + '</p>';
     else {
       html += '<table class="players"><thead><tr><th>' + t('painel.plantel.numero_curto') + '</th><th>' + t('painel.nome') + '</th><th></th></tr></thead><tbody>' + list.map(function (p) {
@@ -1336,6 +1484,8 @@
           '<td><div class="pw">' + thumb(p.photo_url, p.display_name) + '<div><input data-f="display_name" value="' + esc(p.display_name) + '" aria-label="' + t('painel.nome') + '">' +
             (p.fpb_player_id ? '<div class="fpb"><span class="badge">FPB</span>' + (differs ? '<span>' + esc(p.fpb_name) + '</span>' : '') + '</div>' : '') + '</div></div></td>' +
           '<td class="act"><span class="msg"></span> ' +
+            '<label class="btn quiet small filebtn">' + t('painel.plantel.foto') + '<input type="file" data-photo-file accept="image/png,image/jpeg"></label>' +
+            (p.photo_by_hand ? '<button class="btn quiet small" data-act="photo-remove">' + t('painel.plantel.tirar_foto') + '</button>' : '') +
             (p.fpb_player_id ? '<button class="btn quiet small" data-act="unlink">' + t('painel.desligar') + '</button>' : '') +
             '<button class="btn danger small" data-act="del-player">' + t('painel.apagar') + '</button></td></tr>';
       }).join('') + '</tbody></table>';
@@ -1353,6 +1503,7 @@
       '<label class="field" style="width:84px"><span>' + t('painel.plantel.numero_curto') + '</span><input id="pAddNum" inputmode="numeric" maxlength="2"></label>' +
       '<label class="field grow"><span>' + t('painel.plantel.nome_jogador') + '</span><input id="pAddName" autocomplete="off"></label>' +
       '<button class="btn primary" type="submit">' + t('painel.plantel.adicionar') + '</button><span class="msg"></span></form>';
+    html += csvRow('pCsv', 'plantel.csv', t('painel.csv.modelo_plantel'), t('painel.csv.dica_plantel')) + csvResult('players', gid);
     html += '</div>';
     root.innerHTML = html;
     if (!list) loadPlayers(gid).then(function () { if (S.tab === 'plantel') renderPlantel(); }, showError);
@@ -2746,7 +2897,7 @@
   /* ---------------- boot ---------------- */
   function boot() {
     $all('.nav [data-tab]').forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
-    gameEvents(); plantelEvents(); sponsorEvents(); promoEvents(); defsEvents(); caixaEvents(); shortcutEvents(); ajudaEvents();
+    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); caixaEvents(); shortcutEvents(); ajudaEvents();
     transmissoesEvents(); ytEvents($('#definicoes'));
     streamEvents(); setupEvents();
     $('#chips').addEventListener('click', function (e) {

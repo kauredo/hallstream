@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -113,8 +114,29 @@ type FirstSetup struct {
 
 // Overlay holds how the overlay is laid out.
 type Overlay struct {
-	// BugPosition is where the scoreboard sits: "top-left" or "bottom-left".
+	// Style is the on-air look, one of Styles.
+	Style string `json:"style"`
+	// BugPosition is where the scoreboard sits, one of BugPositions.
 	BugPosition string `json:"bug_position"`
+	// LowerThird is the lower third's side, one of LowerThirds. The overlay
+	// moves it out of the way of a bug at the bottom.
+	LowerThird string `json:"lower_third"`
+	// Margin is the gap in px between the frame's edge and the bug, the
+	// lower third, the sponsor corner and the credit, for TVs that crop.
+	Margin int `json:"margin"`
+	// Scale is the size of the bug and the lower third, in percent.
+	Scale int `json:"scale"`
+	// Accent lights the bonus, the points just scored and a running-out
+	// shot clock, one of Accents.
+	Accent string `json:"accent"`
+	// AwayColor is "own" (the opponent's colour) or "neutral" (grey).
+	AwayColor string `json:"away_color"`
+	// Hide lists what stays off air: "fouls", "shot" (the shot clock),
+	// "strip" (the sponsor strip on the full screens).
+	Hide []string `json:"hide"`
+	// Photo is the hall photo behind the full screens: a /media upload, or
+	// "" for the stand-in. Only /api/overlay/photo changes it.
+	Photo string `json:"photo"`
 	// SponsorCorner shows one sponsor at a time top-right on the scoreboard
 	// screen, for 10 s every SponsorEvery minutes.
 	SponsorCorner bool `json:"sponsor_corner"`
@@ -126,8 +148,53 @@ type Overlay struct {
 // SponsorEvery is the default and the limits of Overlay.SponsorEvery, in minutes.
 const SponsorEvery, SponsorEveryMin, SponsorEveryMax = 4, 1, 30
 
-// BugPositions are the values of Overlay.BugPosition, the default first.
-var BugPositions = []string{"top-left", "bottom-left"}
+// The values each Overlay setting takes, the default first.
+var (
+	Styles       = []string{"classico", "lombada", "cor", "placa", "pavilhao"}
+	BugPositions = []string{"top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"}
+	LowerThirds  = []string{"left", "center", "right"}
+	Accents      = []string{"gold", "white", "orange", "lime", "cyan"}
+	AwayColors   = []string{"own", "neutral"}
+	Hideable     = []string{"fouls", "shot", "strip"}
+)
+
+// The default and the limits of Overlay.Margin (px) and Overlay.Scale (%).
+const (
+	Margin, MarginMin, MarginMax = 64, 32, 96
+	Scale, ScaleMin, ScaleMax    = 100, 85, 125
+)
+
+// Clean puts every value of o back inside what the overlay knows: an
+// unknown name becomes the default and a number outside its limits the
+// default too. Hide keeps the known names once each, in Hideable's order.
+func (o *Overlay) Clean() {
+	pick := func(v *string, from []string) {
+		if !slices.Contains(from, *v) {
+			*v = from[0]
+		}
+	}
+	pick(&o.Style, Styles)
+	pick(&o.BugPosition, BugPositions)
+	pick(&o.LowerThird, LowerThirds)
+	pick(&o.Accent, Accents)
+	pick(&o.AwayColor, AwayColors)
+	if o.Margin < MarginMin || o.Margin > MarginMax {
+		o.Margin = Margin
+	}
+	if o.Scale < ScaleMin || o.Scale > ScaleMax {
+		o.Scale = Scale
+	}
+	if o.SponsorEvery < SponsorEveryMin || o.SponsorEvery > SponsorEveryMax {
+		o.SponsorEvery = SponsorEvery
+	}
+	hide := []string{}
+	for _, h := range Hideable {
+		if slices.Contains(o.Hide, h) {
+			hide = append(hide, h)
+		}
+	}
+	o.Hide = hide
+}
 
 // Photos switches player photos on the squad screen and the lower third.
 type Photos struct {
@@ -143,10 +210,12 @@ func DefaultSettings() Settings {
 		AutoScreens: true,
 		Club: Club{Name: "CASA", Short: "CAS", Primary: club.DefaultPrimary, Secondary: club.DefaultSecondary,
 			Crest: DefaultCrest, Sport: "basketball", Country: "PT"},
-		Overlay: Overlay{BugPosition: BugPositions[0], SponsorCorner: true, SponsorEvery: SponsorEvery},
-		Credit:  true,
-		Lang:    "pt",
-		Input:   Inputs[0],
+		Overlay: Overlay{Style: Styles[0], BugPosition: BugPositions[0], LowerThird: LowerThirds[0],
+			Margin: Margin, Scale: Scale, Accent: Accents[0], AwayColor: AwayColors[0], Hide: []string{},
+			SponsorCorner: true, SponsorEvery: SponsorEvery},
+		Credit: true,
+		Lang:   "pt",
+		Input:  Inputs[0],
 	}
 }
 

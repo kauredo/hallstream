@@ -135,8 +135,18 @@ type NextGame struct {
 }
 
 // Overlay is how the overlay is laid out (copy of settings.overlay).
+// Overlay is how the club set up the graphics; store.Overlay has the meaning
+// and the values of each field.
 type Overlay struct {
-	BugPosition string `json:"bug_position"`
+	Style       string   `json:"style"`
+	BugPosition string   `json:"bug_position"`
+	LowerThird  string   `json:"lower_third"`
+	Margin      int      `json:"margin"`
+	Scale       int      `json:"scale"`
+	Accent      string   `json:"accent"`
+	AwayColor   string   `json:"away_color"`
+	Hide        []string `json:"hide"`
+	Photo       string   `json:"photo"`
 	// SponsorCorner shows one sponsor at a time in the top-right corner of
 	// the scoreboard screen, every SponsorEvery minutes.
 	SponsorCorner bool   `json:"sponsor_corner"`

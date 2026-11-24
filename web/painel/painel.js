@@ -1894,12 +1894,8 @@
 
     html += clubCard(s);
 
-    var bug = (s.overlay && s.overlay.bug_position) || 'top-left';
-    html += '<div class="card"><h2>' + t('painel.definicoes.grafismo') + '</h2>' +
-      '<label class="field" style="max-width:340px"><span>' + t('painel.definicoes.posicao') + '</span><select id="dBug">' +
-      '<option value="top-left"' + (bug !== 'bottom-left' ? ' selected' : '') + '>' + t('painel.definicoes.canto_superior') + '</option>' +
-      '<option value="bottom-left"' + (bug === 'bottom-left' ? ' selected' : '') + '>' + t('painel.definicoes.canto_inferior') + '</option></select></label>' +
-      '<p class="hint">' + t('painel.definicoes.posicao_dica') + '</p>' +
+    html += lookCard(s.overlay || {}) +
+      '<div class="card"><h2>' + t('painel.definicoes.grafismo') + '</h2>' +
       sponsorCornerFields(s.overlay || {}) +
       '<label class="switch" style="margin-top:16px"><input type="checkbox" id="dCredit"' + (s.credit !== false ? ' checked' : '') + '><i></i>' + t('painel.definicoes.credito') + '</label>' +
       '<p class="hint">' + t('painel.definicoes.credito_dica') + '</p></div>';
@@ -1928,6 +1924,7 @@
           '<p class="hint">' + t('painel.definicoes.abrir_windows_dica') + '</p>' : '') + '</div>';
     }
     root.innerHTML = html;
+    startLook();
     if (o.enabled && !S.obsCams) loadObsCameras();
   }
 
@@ -2058,6 +2055,126 @@
     });
   }
 
+  // Aparência no ar: the on-air style and setup, with a live preview. The preview gets each change
+  // straight away (overlay.js look()); the air gets it on Guardar.
+  var LOOK = {
+    styles: ['classico', 'lombada', 'cor', 'placa', 'pavilhao'],
+    bugs: ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+    sides: ['left', 'center', 'right'],
+    accents: { gold: '#D6BD2F', white: '#F2F1EC', orange: '#F5A23A', lime: '#C3D93B', cyan: '#62CDE3' },
+    hide: ['fouls', 'shot', 'strip']
+  };
+  function lookCard(ov) {
+    var style = LOOK.styles.indexOf(ov.style) >= 0 ? ov.style : 'classico';
+    var bug = LOOK.bugs.indexOf(ov.bug_position) >= 0 ? ov.bug_position : 'top-left';
+    var side = LOOK.sides.indexOf(ov.lower_third) >= 0 ? ov.lower_third : 'left';
+    var accent = LOOK.accents[ov.accent] ? ov.accent : 'gold';
+    var hide = ov.hide || [];
+    var L = {
+      ver_marcador: t('painel.aparencia.ver.marcador'), ver_rodape: t('painel.aparencia.ver.rodape'), ver_final: t('painel.aparencia.ver.final'),
+      classico: t('painel.aparencia.estilo.classico'), classico_dica: t('painel.aparencia.estilo.classico_dica'),
+      lombada: t('painel.aparencia.estilo.lombada'), lombada_dica: t('painel.aparencia.estilo.lombada_dica'),
+      cor: t('painel.aparencia.estilo.cor'), cor_dica: t('painel.aparencia.estilo.cor_dica'),
+      placa: t('painel.aparencia.estilo.placa'), placa_dica: t('painel.aparencia.estilo.placa_dica'),
+      pavilhao: t('painel.aparencia.estilo.pavilhao'), pavilhao_dica: t('painel.aparencia.estilo.pavilhao_dica'),
+      'top-left': t('painel.aparencia.canto.cima_esquerda'), 'top-center': t('painel.aparencia.canto.cima_centro'),
+      'top-right': t('painel.aparencia.canto.cima_direita'), 'bottom-left': t('painel.aparencia.canto.baixo_esquerda'),
+      'bottom-center': t('painel.aparencia.canto.baixo_centro'), 'bottom-right': t('painel.aparencia.canto.baixo_direita'),
+      left: t('painel.aparencia.lado.esquerda'), center: t('painel.aparencia.lado.centro'), right: t('painel.aparencia.lado.direita'),
+      gold: t('painel.aparencia.destaque.ouro'), white: t('painel.aparencia.destaque.branco'), orange: t('painel.aparencia.destaque.laranja'),
+      lime: t('painel.aparencia.destaque.lima'), cyan: t('painel.aparencia.destaque.ciano'),
+      fouls: t('painel.aparencia.mostrar.faltas'), shot: t('painel.aparencia.mostrar.relogio_24'), strip: t('painel.aparencia.mostrar.faixa')
+    };
+    var radio = function (name, value, on, label, extra) {
+      return '<label class="opt"><input type="radio" name="' + name + '" value="' + value + '"' + (on ? ' checked' : '') + '>' + label + (extra || '') + '</label>';
+    };
+    var html = '<div class="card aparencia"><h2>' + t('painel.aparencia.titulo') + '</h2>' +
+      '<p class="hint">' + t('painel.aparencia.dica') + '</p>' +
+      '<div class="ap-grid"><div class="ap-ver">' +
+        '<div class="preview" id="lookPreview"><iframe id="lookFrame" title="' + t('painel.ecras.previsualizacao_titulo') + '" tabindex="-1"></iframe></div>' +
+        '<div class="seg" role="group" aria-label="' + t('painel.aparencia.ver') + '" id="lookView">' +
+          ['marcador', 'rodape', 'final'].map(function (v, i) {
+            return '<button type="button" data-view="' + v + '" aria-pressed="' + (i === 1) + '">' + L['ver_' + v] + '</button>';
+          }).join('') + '</div></div>' +
+      '<div class="ap-form">' +
+        '<fieldset class="ap-estilos"><legend>' + t('painel.aparencia.estilo') + '</legend>' +
+          LOOK.styles.map(function (k) {
+            return radio('dStyle', k, k === style, '<b>' + L[k] + '</b>', '<small>' + L[k + '_dica'] + '</small>');
+          }).join('') + '</fieldset>' +
+        '<fieldset><legend>' + t('painel.definicoes.posicao') + '</legend>' +
+          '<div class="cantos">' + LOOK.bugs.map(function (k) {
+            return '<label><input type="radio" name="dBugPos" value="' + k + '"' + (k === bug ? ' checked' : '') + ' aria-label="' + L[k] + '"><i></i></label>';
+          }).join('') + '</div></fieldset>' +
+        '<fieldset><legend>' + t('painel.aparencia.rodape') + '</legend><div class="opts">' +
+          LOOK.sides.map(function (k) { return radio('dLtSide', k, k === side, L[k]); }).join('') +
+          '</div><p class="hint">' + t('painel.aparencia.rodape_dica') + '</p></fieldset>' +
+        '<label class="field"><span>' + t('painel.aparencia.tamanho') + ' <output id="dScaleOut">' + (ov.scale || 100) + ' %</output></span>' +
+          '<input type="range" id="dScale" min="85" max="125" step="5" value="' + (ov.scale || 100) + '"></label>' +
+        '<label class="field"><span>' + t('painel.aparencia.margem') + ' <output id="dMarginOut">' + (ov.margin || 64) + ' px</output></span>' +
+          '<input type="range" id="dMargin" min="32" max="96" step="8" value="' + (ov.margin || 64) + '"></label>' +
+        '<p class="hint">' + t('painel.aparencia.margem_dica') + '</p>' +
+        '<fieldset><legend>' + t('painel.aparencia.destaque') + '</legend><div class="opts amostras">' +
+          Object.keys(LOOK.accents).map(function (k) {
+            return radio('dAccent', k, k === accent, '<i style="background:' + LOOK.accents[k] + '"></i>' + L[k]);
+          }).join('') + '</div><p class="hint">' + t('painel.aparencia.destaque_dica') + '</p></fieldset>' +
+        '<fieldset><legend>' + t('painel.aparencia.adversario') + '</legend><div class="opts">' +
+          radio('dAway', 'own', ov.away_color !== 'neutral', t('painel.aparencia.adversario.dele')) +
+          radio('dAway', 'neutral', ov.away_color === 'neutral', t('painel.aparencia.adversario.cinzento')) + '</div></fieldset>' +
+        '<fieldset><legend>' + t('painel.aparencia.mostrar') + '</legend>' +
+          LOOK.hide.map(function (k) {
+            return '<label class="switch"><input type="checkbox" data-show="' + k + '"' + (hide.indexOf(k) < 0 ? ' checked' : '') + '><i></i>' + L[k] + '</label>';
+          }).join('') + '</fieldset>' +
+        '<fieldset><legend>' + t('painel.aparencia.foto') + '</legend>' +
+          '<p class="hint">' + t('painel.aparencia.foto_dica') + '</p>' +
+          '<div class="row" style="align-items:center">' +
+          '<label class="btn small filebtn">' + t('painel.aparencia.foto.escolher') + '<input type="file" id="dHallFile" accept="image/png,image/jpeg"></label>' +
+          '<button class="btn quiet small" type="button" data-act="hall-remove"' + (ov.photo ? '' : ' hidden') + '>' + t('painel.aparencia.foto.tirar') + '</button>' +
+          '<span class="msg" id="dHallMsg" role="status"></span></div></fieldset>' +
+      '</div></div></div>';
+    return html;
+  }
+  // The setup as the form has it now, in the overlay's query words.
+  function lookForm() {
+    var val = function (n) { var el = $('input[name="' + n + '"]:checked'); return el ? el.value : ''; };
+    return {
+      style: val('dStyle'), bug: val('dBugPos'), lt: val('dLtSide'), accent: val('dAccent'), away: val('dAway'),
+      scale: $('#dScale').value, margin: $('#dMargin').value,
+      hide: LOOK.hide.filter(function (k) { var c = $('[data-show="' + k + '"]'); return c && !c.checked; })
+    };
+  }
+  function lookView() {
+    var b = $('#lookView [aria-pressed="true"]');
+    return b ? b.dataset.view : 'rodape';
+  }
+  function lookSrc() {
+    var v = lookView();
+    var base = MOCK ? '/overlay/index.html' : '/overlay';
+    return base + '?painel=1&anim=0&screen=' + (v === 'final' ? 'final' : 'marcador') + (v === 'rodape' ? '&rodape=1' : '');
+  }
+  function postLook() {
+    var fr = $('#lookFrame'); if (!fr || !fr.contentWindow) return;
+    var f = lookForm();
+    var qs = 'style=' + f.style + '&bug=' + f.bug + '&lt=' + f.lt + '&accent=' + f.accent + '&scale=' + f.scale + '&margin=' + f.margin + '&away=' + f.away + '&hide=' + f.hide.join(',');
+    fr.contentWindow.postMessage({ look: qs }, location.origin);
+    $('#dScaleOut').textContent = f.scale + ' %';
+    $('#dMarginOut').textContent = f.margin + ' px';
+  }
+  function fitLook() {
+    var box = $('#lookPreview'), fr = $('#lookFrame');
+    if (box && fr) fr.style.transform = 'scale(' + (box.clientWidth / 1920) + ')';
+  }
+  function startLook() {
+    var fr = $('#lookFrame'); if (!fr) return;
+    fr.addEventListener('load', postLook);
+    fr.src = lookSrc();
+    fitLook();
+  }
+  function setHall(ov) {
+    S.settings.overlay = Object.assign({}, S.settings.overlay, { photo: ov.photo });
+    $('[data-act="hall-remove"]').hidden = !ov.photo;
+    var fr = $('#lookFrame'); if (fr) fr.src = lookSrc(); // the photo comes with the state
+  }
+
   // Sponsor corner on the scoreboard: on by default, every 4 minutes.
   function sponsorCornerFields(ov) {
     return '<label class="switch" style="margin-top:16px"><input type="checkbox" id="dCorner"' + (ov.sponsor_corner !== false ? ' checked' : '') + '><i></i>' + t('painel.canto.ligar') + '</label>' +
@@ -2115,7 +2232,9 @@
     s.club_search = $('#dClubSearch').value.trim();
     s.fpb_base_url = $('#dFpb').value.trim();
     s.auto_screens = $('#dAuto').checked;
-    s.overlay = Object.assign({}, s.overlay, { bug_position: $('#dBug').value });
+    var lk = lookForm();
+    s.overlay = Object.assign({}, s.overlay, { style: lk.style, bug_position: lk.bug, lower_third: lk.lt, accent: lk.accent,
+      away_color: lk.away, scale: +lk.scale, margin: +lk.margin, hide: lk.hide });
     s.overlay.sponsor_corner = $('#dCorner').checked;
     s.overlay.sponsor_every = Math.min(30, Math.max(1, parseInt($('#dCornerEvery').value, 10) || 4));
     s.credit = $('#dCredit').checked;
@@ -2124,8 +2243,21 @@
 
   function defsEvents() {
     var root = $('#definicoes');
+    // Aparência no ar: every change goes to the preview at once.
+    root.addEventListener('input', function (e) { if (e.target.closest('.aparencia')) postLook(); });
+    root.addEventListener('click', function (e) {
+      var v = e.target.closest('#lookView [data-view]');
+      if (v) {
+        $all('#lookView [data-view]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === v)); });
+        $('#lookFrame').src = lookSrc();
+      }
+    });
     root.addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'hall-remove') {
+        busy(b, function () { return api('DELETE', '/api/overlay/photo').then(setHall); }, t('painel.aparencia.foto.tirada'));
+        return;
+      }
       if (b.dataset.act === 'setup-open' || b.dataset.act === 'setup-review') {
         if (b.dataset.act === 'setup-review') S.setupStep = 0;
         showTab('inicio');
@@ -2179,6 +2311,12 @@
         return;
       }
       if (tx.id === 'dPrimary' || tx.id === 'dSecondary') { $('#' + tx.id + 'Hex').textContent = tx.value.toUpperCase(); return; }
+      if (tx.id === 'dHallFile' && tx.files && tx.files[0]) {
+        var hf = new FormData(); hf.append('file', tx.files[0]);
+        busy(tx.closest('label'), function () { return api('POST', '/api/overlay/photo', hf).then(setHall); }, t('painel.aparencia.foto.guardada'));
+        tx.value = '';
+        return;
+      }
       if (tx.id === 'dCrestFile' && tx.files && tx.files[0]) {
         var fd = new FormData(); fd.append('file', tx.files[0]);
         busy(tx.closest('label'), function () { return api('POST', '/api/club/crest', fd).then(setCrest); }, t('painel.clube.emblema_guardado'));
@@ -2615,7 +2753,7 @@
       var go = e.target.closest('[data-goto]');
       if (go) { e.preventDefault(); showTab(go.dataset.goto); }
     });
-    window.addEventListener('resize', fitPreview);
+    window.addEventListener('resize', function () { fitPreview(); fitLook(); });
     window.addEventListener('hashchange', function () { showTab(location.hash.slice(1)); });
 
     var start = location.hash.slice(1);

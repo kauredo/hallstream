@@ -1,0 +1,268 @@
+/* Style "pavilhao": the pavilhão itself. Painted court lines, maple strip flooring, gym tape from the
+   scorer's table and wall-painted numerals, all drawn in CSS in the club's colours.
+   Proportions: the lines lead, the painted numerals follow, maple is the ground under the away side
+   and the lower third, and tape only ever carries a label. */
+html[data-style="pavilhao"] {
+  --mt-line: #FFFFFF;            /* line paint */
+  --mt-maple: #BC874B;           /* varnished maple, a step darker than raw so a light club colour stays apart from it */
+  --mt-tape: #E9EAE5;            /* white cloth tape */
+  --mt-wall: #D5D9DD;            /* painted block wall */
+  --mt-line-half: rgba(255,255,255,0.5);   /* outlines of empty boxes */
+  --mt-rule: rgba(255,255,255,0.3);        /* dividers inside a panel */
+  --mt-empty: rgba(255,255,255,0.28);      /* an empty foul pip */
+  --mt-soft: rgba(255,255,255,0.75);       /* secondary text on dark */
+  --mt-court: rgba(255,255,255,0.11);      /* court lines on the full-screen ground */
+  --mt-shadow: rgba(0,0,0,0.4);            /* a hard edge under a piece, never a blur */
+  --mt-ink-rule: rgba(var(--ink-rgb),0.3); /* dividers on maple */
+  --mt-word: 'Archivo', sans-serif;        /* names and words */
+  --mt-num: Graduate, serif;               /* scores, shirt numbers, clocks */
+  --mt-grain:
+    repeating-linear-gradient(180deg,
+      rgba(96,52,14,0.16) 0 1px, transparent 1px 6px,
+      rgba(255,226,180,0.10) 6px 11px, transparent 11px 17px,
+      rgba(96,52,14,0.10) 17px 18px, rgba(120,70,24,0.07) 18px 24px, transparent 24px 31px,
+      rgba(255,226,180,0.07) 31px 38px, transparent 38px 45px);
+  --mt-weave: repeating-linear-gradient(90deg, rgba(0,0,0,0.045) 0 1px, transparent 1px 3px);
+  /* Torn tape: ragged left and right ends, straight long edges. */
+  --mt-torn: polygon(3px 0, calc(100% - 2px) 0, 100% 18%, calc(100% - 3px) 34%, 100% 52%, calc(100% - 2px) 70%, 100% 86%, calc(100% - 3px) 100%,
+    2px 100%, 0 84%, 3px 66%, 0 48%, 2px 30%, 0 14%);
+}
+html[data-style="pavilhao"] #stage { font-family: var(--mt-word); font-stretch: 68%; }
+
+/* ---------- Full-screen ground: a dark court tinted with the club colour ----------
+   The tint sits over the club's ink, not its darkened primary: a light club's darkened primary is olive. */
+html[data-style="pavilhao"] .atmo > *, html[data-style="pavilhao"] .brush { display: none; }
+html[data-style="pavilhao"] .atmo {
+  --l: var(--mt-court);
+  background:
+    linear-gradient(90deg, transparent 956px, var(--l) 956px 964px, transparent 964px),
+    radial-gradient(circle at 960px 540px, transparent 0 172px, var(--l) 172.5px 180px, transparent 180.5px),
+    radial-gradient(circle at 380px 540px, transparent 0 152px, var(--l) 152.5px 160px, transparent 160.5px),
+    radial-gradient(circle at 1540px 540px, transparent 0 152px, var(--l) 152.5px 160px, transparent 160.5px),
+    linear-gradient(var(--l), var(--l)) 0 376px / 384px 8px no-repeat,
+    linear-gradient(var(--l), var(--l)) 0 704px / 384px 8px no-repeat,
+    linear-gradient(var(--l), var(--l)) 376px 376px / 8px 336px no-repeat,
+    linear-gradient(var(--l), var(--l)) 1536px 376px / 384px 8px no-repeat,
+    linear-gradient(var(--l), var(--l)) 1536px 704px / 384px 8px no-repeat,
+    linear-gradient(var(--l), var(--l)) 1536px 376px / 8px 336px no-repeat,
+    radial-gradient(circle at 60px 540px, transparent 0 700px, var(--l) 700.5px 708px, transparent 708.5px),
+    radial-gradient(circle at 1860px 540px, transparent 0 700px, var(--l) 700.5px 708px, transparent 708.5px),
+    linear-gradient(rgba(var(--red-rgb),0.1), rgba(var(--red-rgb),0.1)),
+    var(--ink);
+}
+
+/* A separator between two parts of a line is a short painted line, not a dot. */
+html[data-style="pavilhao"] i.sep { display: inline-block; width: 4px; height: 0.72em; margin: 0 0.4em; overflow: clip; vertical-align: -0.02em; white-space: nowrap; background: currentColor; opacity: 0.6; -webkit-text-fill-color: transparent; }
+html[data-style="pavilhao"] .sb-head i.sep, html[data-style="pavilhao"] .sb-head [data-b="homeShort"] { display: none; }
+
+/* ---------- Header lockup and rules: plain words, no tracking ---------- */
+html[data-style="pavilhao"] .lk1 { font-weight: 800; font-stretch: 80%; letter-spacing: 0.02em; padding-left: 0; }
+html[data-style="pavilhao"] .lk2 span { font-weight: 800; font-stretch: 80%; letter-spacing: 0.02em; padding-left: 0; }
+html[data-style="pavilhao"] .lk2 i, html[data-style="pavilhao"] .rules i { background: var(--mt-line); }
+html[data-style="pavilhao"] .rules span { letter-spacing: 0.02em !important; padding-left: 0 !important; font-weight: 800; font-stretch: 80%; }
+
+/* ---------- Marcador ---------- */
+html[data-style="pavilhao"] .sb { filter: drop-shadow(0 4px 0 var(--mt-shadow)); }
+/* The end of the floor: maple with the arc of the three-point line, the club colour inside it. */
+html[data-style="pavilhao"] .sb-fill {
+  clip-path: none;
+  background:
+    radial-gradient(circle at calc(100% + 10px) 50%, var(--red) 0 46px, var(--mt-line) 46.5px 51px, transparent 51.5px),
+    var(--mt-grain), var(--mt-maple);
+}
+html[data-style="pavilhao"] .sb-fill i { background: transparent; }
+html[data-style="pavilhao"] .sb-white, html[data-style="pavilhao"] .sb-red { display: none; }
+/* Head: the club colour with a baseline painted under it, and only the sport in it
+   (the short name would repeat the home name on the row below). */
+html[data-style="pavilhao"] .sb-head { box-shadow: inset 0 -3px 0 var(--mt-line); padding-left: 12px; }
+html[data-style="pavilhao"] .sb-head span:first-child { font-weight: 800; font-stretch: 85%; font-size: 20px; letter-spacing: 0.02em; color: var(--on-red); padding-bottom: 2px; }
+html[data-style="pavilhao"] .sb-row .nm { font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; letter-spacing: 0.01em; }
+html[data-style="pavilhao"] .sb-row.away .nm { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
+html[data-style="pavilhao"] .sb-row .sc { font-family: var(--mt-num); font-weight: 400; font-size: 34px; box-shadow: inset 4px 0 0 var(--mt-line); }
+html[data-style="pavilhao"] .sb-row.away .sc { background: var(--mt-wall); color: var(--ink); }
+/* The line between home and away is 4 px, with a dark edge under it on the maple,
+   so a light club colour and the maple never read as one stripe. */
+html[data-style="pavilhao"] .sb-row.home .nm { box-shadow: inset 0 -4px 0 var(--mt-line); }
+html[data-style="pavilhao"] .sb-row.home .sc { box-shadow: inset 4px 0 0 var(--mt-line), inset 0 -4px 0 var(--mt-line); }
+html[data-style="pavilhao"] .sb-row.away .nm { box-shadow: inset 0 2px 0 var(--mt-ink-rule); }
+/* Bonus: the accent stripe at the name's end, with an ink edge so it shows on maple and on any club colour. */
+html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink); }
+html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.home.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink), inset 0 -4px 0 var(--mt-line); }
+html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.away.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink), inset 0 2px 0 var(--mt-ink-rule); }
+/* Scorer's table: the club's second colour, tape labels on it. */
+html[data-style="pavilhao"] .sb-gap { background: var(--mt-line); clip-path: polygon(0 0,4px 0,4px 100%,0 100%); }
+html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per { position: relative; isolation: isolate; background: transparent; color: var(--ink); font-weight: 800; font-stretch: 85%; font-size: 18px; letter-spacing: 0.02em; }
+html[data-style="pavilhao"] .sb-lbl { padding-left: 16px; }
+html[data-style="pavilhao"] .sb-lbl::before, html[data-style="pavilhao"] .sb-per::before {
+  content: ""; position: absolute; top: 4px; bottom: 3px; left: 7px; right: 9px; z-index: -1;
+  background: var(--mt-weave), var(--mt-tape); clip-path: var(--mt-torn);
+}
+html[data-style="pavilhao"] .sb-per::before { left: 10px; right: 8px; }
+html[data-style="pavilhao"] .sb-f.sep { border-top-color: var(--mt-rule); }
+html[data-style="pavilhao"] .sb-f b { font-weight: 800; font-stretch: 75%; }
+html[data-style="pavilhao"] .sb-div { background: var(--mt-rule); }
+html[data-style="pavilhao"] .pips i { background: var(--mt-empty); }
+html[data-style="pavilhao"] .pips i.on { background: var(--mt-line); }
+/* A hot count is a chip of the accent with ink on it, so a white accent still differs from plain white. */
+html[data-style="pavilhao"] [data-hot].hot, html[data-style="pavilhao"] .sb-shot b.hot { background: var(--gold); color: var(--ink); padding: 0 4px; box-shadow: 0 0 0 2px var(--ink); }
+html[data-style="pavilhao"] .sb-f.bonus b[data-hot].hot { box-shadow: none; }
+html[data-style="pavilhao"] .sb-clock { font-weight: 800; font-stretch: 70%; font-size: 46px; }
+html[data-style="pavilhao"] .sb-shot { background: transparent; box-shadow: inset 0 0 0 2px var(--mt-line-half); }
+html[data-style="pavilhao"] .sb-shot span { font-weight: 800; font-stretch: 80%; font-size: 18px; letter-spacing: 0; color: var(--mt-soft); }
+html[data-style="pavilhao"] .sb-shot b { font-weight: 800; font-stretch: 75%; }
+html[data-style="pavilhao"] .sb-f .bonus { font-stretch: 80%; letter-spacing: 0.02em; }
+html[data-style="pavilhao"] .pop div { transform: none; font-family: var(--mt-num); font-weight: 400; font-size: 36px; padding: 6px 12px 4px; box-shadow: 0 0 0 3px var(--mt-line), 0 0 0 5px var(--ink); }
+html[data-style="pavilhao"] .pop span { transform: none; }
+html[data-style="pavilhao"] .spc-pl { clip-path: none; }
+html[data-style="pavilhao"] .spc-slab { clip-path: polygon(0 0,8px 0,8px 100%,0 100%); }
+
+/* ---------- Lower third: the key and the free-throw circle, the name on the maple ---------- */
+html[data-style="pavilhao"] .lt { filter: drop-shadow(0 4px 0 var(--mt-shadow)); }
+html[data-style="pavilhao"] .lt-tab { background: var(--mt-weave), var(--mt-tape); clip-path: var(--mt-torn); }
+html[data-style="pavilhao"] .lt-team { font-family: var(--mt-word); font-weight: 800; font-stretch: 80%; letter-spacing: 0.01em; color: var(--ink); }
+html[data-style="pavilhao"] .lt-body { background: var(--mt-grain), var(--mt-maple); box-shadow: inset 0 -6px 0 var(--mt-line); }
+html[data-style="pavilhao"] .lt-tile {
+  clip-path: none;
+  background:
+    linear-gradient(90deg, var(--red) 0 146px, transparent 146px),
+    radial-gradient(circle at 146px 64px, var(--red) 0 52px, var(--mt-line) 52.5px 58px, transparent 58.5px);
+}
+html[data-style="pavilhao"] .lt-band { background: transparent; }
+html[data-style="pavilhao"] .lt-num { font-family: var(--mt-num); font-weight: 400; font-size: 92px; font-variant-numeric: tabular-nums; padding-top: 4px; box-sizing: border-box; }
+html[data-style="pavilhao"] .lt-small, html[data-style="pavilhao"] .lt-label { font-weight: 600; font-stretch: 85%; font-size: 24px; letter-spacing: 0.02em; color: var(--ink); }
+html[data-style="pavilhao"] .lt-big { font-weight: 900; font-stretch: 72%; font-size: 52px; letter-spacing: 0; color: var(--ink); }
+html[data-style="pavilhao"] .lt.comentador .lt-team { padding-left: 12px; }
+/* With a photo the circle has no room: the key runs straight to the photo, a painted line
+   between them, and the baseline carries on under the photo. */
+html[data-style="pavilhao"] .lt.photo .lt-tile { background: var(--red); }
+html[data-style="pavilhao"] .lt-photo { clip-path: none; }
+html[data-style="pavilhao"] .lt-photo::before, html[data-style="pavilhao"] .lt-photo::after { content: ""; position: absolute; background: var(--mt-line); }
+html[data-style="pavilhao"] .lt-photo::before { left: 0; top: 0; bottom: 0; width: 5px; }
+html[data-style="pavilhao"] .lt-photo::after { left: 0; right: 0; bottom: 0; height: 6px; }
+
+/* ---------- Intervalo and Final ---------- */
+html[data-style="pavilhao"] .hd-tab { clip-path: none; box-shadow: 0 6px 0 var(--mt-line); }
+html[data-style="pavilhao"] .hd-word { font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; font-size: 52px; letter-spacing: 0.01em; }
+html[data-style="pavilhao"] .hd-sub { font-weight: 700; font-stretch: 85%; font-size: 26px; letter-spacing: 0.01em; text-transform: none; }
+html[data-style="pavilhao"] .blk { filter: drop-shadow(0 8px 0 var(--mt-shadow)); }
+html[data-style="pavilhao"] .blk-fill {
+  clip-path: none;
+  background:
+    radial-gradient(circle at calc(100% + 34px) 50%, var(--red) 0 124px, var(--mt-line) 124.5px 134px, transparent 134.5px),
+    var(--mt-grain), var(--mt-maple);
+  background-size: auto, 100% 45px, auto;
+}
+html[data-style="pavilhao"] .blk-fill i { background: transparent; }
+html[data-style="pavilhao"] .blk-white, html[data-style="pavilhao"] .blk-red { display: none; }
+html[data-style="pavilhao"] .blk-nm > div { font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; letter-spacing: 0.005em; }
+html[data-style="pavilhao"] .blk-row.away .blk-nm { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
+html[data-style="pavilhao"] .blk-sc { font-family: var(--mt-num); font-weight: 400; font-size: 116px; box-shadow: inset 8px 0 0 var(--mt-line); }
+html[data-style="pavilhao"] .blk-row.away .blk-sc { background: var(--mt-wall); color: var(--ink); }
+html[data-style="pavilhao"] .blk-row.home .blk-nm { box-shadow: inset 0 -8px 0 var(--mt-line); }
+html[data-style="pavilhao"] .blk-row.home .blk-sc { box-shadow: inset 8px 0 0 var(--mt-line), inset 0 -8px 0 var(--mt-line); }
+html[data-style="pavilhao"] .win, html[data-style="pavilhao"] .away .win { background: var(--mt-weave), var(--mt-tape); color: var(--ink); font-weight: 800; font-stretch: 85%; letter-spacing: 0.03em; clip-path: var(--mt-torn); }
+html[data-style="pavilhao"] .ptab { background: var(--ink); border-bottom: 6px solid var(--mt-line); }
+html[data-style="pavilhao"] .ptab > div { font-weight: 800; font-stretch: 75%; border-top-color: var(--mt-rule); }
+html[data-style="pavilhao"] .ptab .hd { font-weight: 700; font-stretch: 85%; letter-spacing: 0.02em; }
+html[data-style="pavilhao"] .ptab .tn { font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; }
+html[data-style="pavilhao"] .ptab .tot { box-shadow: inset 6px 0 0 var(--mt-line); }
+
+/* ---------- Abertura (and Próximo, which shares it) ---------- */
+html[data-style="pavilhao"] .ab-sw, html[data-style="pavilhao"] .ab-sr { fill: none; }
+html[data-style="pavilhao"] .ab-kick div { transform: none; box-shadow: none; background: var(--mt-weave), var(--mt-tape); color: var(--ink); clip-path: var(--mt-torn); }
+html[data-style="pavilhao"] .ab-kick span { transform: none; font-weight: 800; font-stretch: 85%; letter-spacing: 0.03em; padding-left: 0; }
+/* The crests hang on boards of the floor's maple, with a band of the team colour along the top. */
+html[data-style="pavilhao"] .ab-shield { filter: drop-shadow(0 8px 0 var(--mt-shadow)); }
+html[data-style="pavilhao"] .ab-shield .sh { clip-path: none; background: var(--mt-grain), var(--mt-maple); box-shadow: inset 0 -6px 0 var(--mt-line); }
+html[data-style="pavilhao"] .ab-shield .bar { height: 14px; box-shadow: 0 4px 0 var(--mt-line); }
+html[data-style="pavilhao"] .ab-tile .ini { color: var(--ink); }
+html[data-style="pavilhao"] .ab-tile .ini { font-family: var(--mt-num); margin-top: 0; }
+html[data-style="pavilhao"] .ab-name { font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; letter-spacing: 0; font-size: 108px; text-shadow: none; }
+html[data-style="pavilhao"] .ab-sub { font-weight: 700; font-stretch: 85%; letter-spacing: 0.02em; color: var(--mt-soft); }
+html[data-style="pavilhao"] .ab-vs { transform: none; background: var(--red); box-shadow: inset 0 0 0 5px var(--mt-line); }
+html[data-style="pavilhao"] .ab-vs b { transform: none; font-family: var(--mt-num); font-weight: 400; font-size: 40px; color: var(--on-red); }
+/* The when-and-where band is a run of maple boards with ink lettering. */
+html[data-style="pavilhao"] .ab-info { background: var(--mt-grain), var(--mt-maple); color: var(--ink); box-shadow: inset 0 6px 0 var(--mt-line), inset 0 -6px 0 var(--mt-line); }
+html[data-style="pavilhao"] .ab-lbl { font-weight: 800; font-stretch: 85%; letter-spacing: 0.02em; color: var(--ink); }
+html[data-style="pavilhao"] .ab-time { font-family: var(--mt-num); font-weight: 400; font-size: 84px; color: var(--ink); }
+html[data-style="pavilhao"] .ab-sep { transform: none; width: 6px; background: var(--ink); }
+html[data-style="pavilhao"] .ab-comp { font-weight: 800; font-stretch: 80%; letter-spacing: 0.01em; color: var(--ink); }
+html[data-style="pavilhao"] .ab-venue { font-family: var(--mt-word); font-weight: 600; font-stretch: 90%; color: var(--ink); }
+html[data-style="pavilhao"] .ab-date { font-weight: 700; font-stretch: 85%; letter-spacing: 0.01em; color: var(--ink); }
+html[data-style="pavilhao"] .px-day { color: var(--ink); }
+html[data-style="pavilhao"] .px-day small { font-weight: 700; font-stretch: 85%; letter-spacing: 0.02em; color: var(--ink); }
+html[data-style="pavilhao"] .px-where { transform: none; background: var(--mt-weave), var(--mt-tape); color: var(--ink); letter-spacing: 0.03em; clip-path: var(--mt-torn); }
+
+/* ---------- Desconto de tempo ---------- */
+/* The camera window keeps a painted line round it: it frames the live picture. The sponsor
+   strip under it is a plain white board standing on a club-colour baseline. */
+html[data-style="pavilhao"] .to-hole { outline: 8px solid var(--mt-line); box-shadow: 0 10px 0 var(--mt-shadow); }
+html[data-style="pavilhao"] .to-strip { outline: none; box-shadow: inset 0 -8px 0 var(--red), 0 8px 0 var(--mt-shadow); }
+html[data-style="pavilhao"] .to-title { font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; font-size: 38px; }
+html[data-style="pavilhao"] .to-nm { clip-path: none; font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; }
+html[data-style="pavilhao"] .home .to-nm { box-shadow: inset 0 -3px 0 var(--mt-line); }
+html[data-style="pavilhao"] .away .to-nm { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
+html[data-style="pavilhao"] .to-sc { clip-path: none; padding-right: 0; font-family: var(--mt-num); font-weight: 400; font-size: 64px; box-shadow: inset 5px 0 0 var(--mt-line); }
+html[data-style="pavilhao"] .away .to-sc { background: var(--mt-wall); color: var(--ink); }
+html[data-style="pavilhao"] .to-f { background: var(--ink); }
+html[data-style="pavilhao"] .to-f .lbl, html[data-style="pavilhao"] .to-time .lbl { font-weight: 800; font-stretch: 85%; letter-spacing: 0.03em; font-size: 18px; }
+html[data-style="pavilhao"] .to-time { background: var(--ink); border-left-color: var(--mt-line); }
+html[data-style="pavilhao"] .to-clock { font-family: var(--mt-num); font-weight: 400; font-size: 64px; }
+
+/* ---------- Plantel, apoiantes, promo, voltamos: the same faces ---------- */
+html[data-style="pavilhao"] .pl-head b, html[data-style="pavilhao"] .ap-title .t1, html[data-style="pavilhao"] .ap-title .t2,
+html[data-style="pavilhao"] .vj-title, html[data-style="pavilhao"] .vj-score .n, html[data-style="pavilhao"] .pr-head {
+  font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; transform: none; text-shadow: none; letter-spacing: 0;
+}
+/* Labels: plain words at normal tracking, wherever Clássico spaced them out. */
+html[data-style="pavilhao"] .pl-head small, html[data-style="pavilhao"] .pr-lock span { font-weight: 700; font-stretch: 85%; letter-spacing: 0.02em; padding-left: 0; }
+html[data-style="pavilhao"] .pl-head b span[data-b], html[data-style="pavilhao"] .coach .ct span, html[data-style="pavilhao"] .vj-score .pd small,
+html[data-style="pavilhao"] .to-mtag, html[data-style="pavilhao"] .pr-left, html[data-style="pavilhao"] .pr-qr div {
+  font-family: var(--mt-word); font-weight: 800; font-stretch: 85%; letter-spacing: 0.02em; padding-left: 0;
+}
+html[data-style="pavilhao"] .pl-head b span[data-b] { font-size: 30px; }
+html[data-style="pavilhao"] .pr-kick, html[data-style="pavilhao"] .to-mtag { transform: none; box-shadow: none; background: var(--mt-weave), var(--mt-tape); color: var(--ink); clip-path: var(--mt-torn); }
+html[data-style="pavilhao"] .pr-kick span { transform: none; letter-spacing: 0.03em; }
+html[data-style="pavilhao"] .vj-sub .rules span { letter-spacing: 0.02em; }
+html[data-style="pavilhao"] .card .no, html[data-style="pavilhao"] .vj-score .s { font-family: var(--mt-num); font-weight: 400; }
+
+/* Plantel: each player a board of maple, the shirt number painted on it in ink. */
+html[data-style="pavilhao"] .card { background: var(--mt-grain), var(--mt-maple); box-shadow: 0 6px 0 var(--mt-shadow); }
+html[data-style="pavilhao"] .card .ph::after { height: 6px; background: var(--mt-line); }
+html[data-style="pavilhao"] .card .nm { color: var(--ink); }
+html[data-style="pavilhao"] .card .nm small { font-weight: 600; font-stretch: 85%; color: var(--ink); }
+html[data-style="pavilhao"] .card .nm b { font-weight: 800; font-stretch: 62%; letter-spacing: -0.01em; }
+html[data-style="pavilhao"] .card .ph .ini { font-family: var(--mt-word); font-weight: 900; font-stretch: 72%; }
+html[data-style="pavilhao"] .nophoto .card { border-top-color: var(--red); }
+html[data-style="pavilhao"] .nophoto .card .no { color: var(--ink); font-size: 138px; letter-spacing: -0.03em; }
+html[data-style="pavilhao"] .nophoto .card .nm { border-top-color: var(--mt-ink-rule); }
+html[data-style="pavilhao"] .coach { box-shadow: 0 6px 0 var(--mt-shadow); border-top-color: var(--red); }
+html[data-style="pavilhao"] .coach .ct { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
+html[data-style="pavilhao"] .coach .ct span { color: var(--ink); }
+html[data-style="pavilhao"] .coach .ct small { font-weight: 600; font-stretch: 85%; color: var(--ink); }
+html[data-style="pavilhao"] .coach .ct b { font-weight: 900; font-stretch: 65%; }
+
+/* Apoiantes, voltamos, promo: the same boards and hard edges. */
+html[data-style="pavilhao"] .ap-strip { box-shadow: inset 0 -8px 0 var(--red), 0 8px 0 var(--mt-shadow); }
+html[data-style="pavilhao"] .ap-crest, html[data-style="pavilhao"] .vj-crest .tile { filter: none; }
+html[data-style="pavilhao"] .vj-halo { display: none; }
+html[data-style="pavilhao"] .vj-score > div { filter: drop-shadow(0 4px 0 var(--mt-shadow)); }
+html[data-style="pavilhao"] .vj-score .n { font-weight: 800; font-stretch: 78%; }
+html[data-style="pavilhao"] .vj-score .hn, html[data-style="pavilhao"] .vj-score .hs { box-shadow: inset 0 -4px 0 var(--mt-line); }
+html[data-style="pavilhao"] .vj-score .hs { box-shadow: inset 4px 0 0 var(--mt-line), inset 0 -4px 0 var(--mt-line); }
+html[data-style="pavilhao"] .vj-score .an { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
+html[data-style="pavilhao"] .vj-score .as { background: var(--mt-wall); color: var(--ink); }
+html[data-style="pavilhao"] .vj-score .pd { background: var(--ink); }
+html[data-style="pavilhao"] .vj-score .pd small { font-size: 18px; color: var(--mt-soft); }
+html[data-style="pavilhao"] .pr-frame { box-shadow: 0 10px 0 var(--mt-shadow); outline: 8px solid var(--mt-line); }
+html[data-style="pavilhao"] .spc { filter: drop-shadow(0 4px 0 var(--mt-shadow)); }
+
+/* ---------- Wall-painted numerals ----------
+   Graduate comes in one light weight. A stroke in the same colour thickens it to the brush weight
+   of a number painted on a wall, scaled to the size it is painted at. */
+html[data-style="pavilhao"] .sb-row .sc, html[data-style="pavilhao"] .pop div, html[data-style="pavilhao"] .ab-vs b { -webkit-text-stroke: 1.6px currentColor; }
+/* Kept under the width that would close the counter of the zero. */
+html[data-style="pavilhao"] .to-sc, html[data-style="pavilhao"] .to-clock, html[data-style="pavilhao"] .vj-score .s { -webkit-text-stroke: 1.6px currentColor; }
+html[data-style="pavilhao"] .ab-tile .ini, html[data-style="pavilhao"] .ab-time, html[data-style="pavilhao"] .blk-sc { -webkit-text-stroke: 2.5px currentColor; }
+html[data-style="pavilhao"] .lt-num { -webkit-text-stroke: 3px currentColor; }
+html[data-style="pavilhao"] .card .no { -webkit-text-stroke: 1px currentColor; }

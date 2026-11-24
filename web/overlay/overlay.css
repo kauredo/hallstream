@@ -18,7 +18,8 @@
   --tint: #2F4B7C;      /* multiplies the hall photo behind the full screens */
   --tint-dim: #2F4B7C;
   --navy: #1C1A17;      /* club secondary, darkened for white text */
-  --gold: #D6BD2F;
+  --gold: #D6BD2F;     /* the accent: bonus, the points just scored, a running-out shot clock */
+  --hall: url(/assets/pavilhao-demo.jpg); /* the hall photo behind the full screens; a club may upload its own */
   --grey: #ECEAE6;
   --muted: rgba(255,255,255,0.78);
   --away: #5C6170;
@@ -113,12 +114,12 @@ html[data-preview="foto"][data-screen="desconto"] #cam { left: var(--hole-x); to
 html[data-bg] .bg { opacity: 1; transition: opacity var(--t-enter) var(--ease-out); }
 .atmo { position: absolute; inset: 0; overflow: hidden; background: var(--ink); }
 .atmo > * { position: absolute; inset: 0; }
-.atmo .ph { inset: -20px; background: url(/assets/pavilhao-demo.jpg) center 40% / cover no-repeat; filter: grayscale(1) contrast(1.2) brightness(0.5) blur(2px); }
+.atmo .ph { inset: -20px; background: var(--hall) center 40% / cover no-repeat; filter: grayscale(1) contrast(1.2) brightness(0.5) blur(2px); }
 .atmo .tint { background: var(--tint); mix-blend-mode: multiply; }
 /* Intervalo and final: a calmer, colour photo. The layer is its own group, so its tint only multiplies its photo. */
 .atmo .dim { opacity: 0; transition: opacity var(--t-enter) var(--ease-in-out); }
 .atmo .dim::before, .atmo .dim::after { content: ""; position: absolute; inset: 0; }
-.atmo .dim::before { background: url(/assets/pavilhao-demo.jpg) center / cover no-repeat; filter: brightness(0.5) saturate(0.6); }
+.atmo .dim::before { background: var(--hall) center / cover no-repeat; filter: brightness(0.5) saturate(0.6); }
 .atmo .dim::after { background: var(--tint-dim); opacity: 0.75; mix-blend-mode: multiply; }
 .atmo .ph.dim { inset: 0; background: none; filter: none; }
 html[data-bg="dim"] .atmo .dim { opacity: 1; }
@@ -149,13 +150,13 @@ html[data-strip] .strip { opacity: 1; transition: opacity var(--t-quick) var(--e
 
 /* ---------- Marcador: compact bug, no sponsors on it ---------- */
 /* The wrapper holds the corner; switching corners slides it across. */
-.sb-pos { left: 64px; top: 64px; transition: transform var(--t-long) var(--ease-in-out); }
-html[data-bug="bottom-left"] .sb-pos { transform: translateY(827px); }
+/* overlay.js places it from the club's setup (layout()); this is the default, top-left at 64px. */
+.sb-pos { left: 0; top: 0; transform: translate(64px, 64px); transform-origin: 0 0; transition: transform var(--t-long) var(--ease-in-out); }
 .sb {
   display: flex; align-items: flex-end;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.45));
   /* Off screen to the left; slides in from its corner and back out the same way. */
-  transform: translateX(-720px);
+  transform: var(--bug-in, translateX(-720px));
   transition: transform var(--t-quick) var(--ease-in);
 }
 #s-marcador.on .sb { transform: none; transition: transform var(--t-enter) var(--ease-out) var(--enter-delay, 0ms); }
@@ -203,7 +204,11 @@ html.off .sb-dot { opacity: 1; }
 .sb-shot span { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1px; color: var(--red-lo); }
 .sb-shot b { font-weight: 800; font-size: 32px; line-height: 1; color: #FFFFFF; }
 .sb-shot b.hot { color: var(--gold); }
-.sb-shot.blank { visibility: hidden; }
+/* No shot clock (overtime, a sport without one, or hidden by the club): the clock centres in its cell. */
+.sb-shot.blank { display: none; }
+.sb-tbox.solo { justify-content: center; }
+/* The dot between two parts of a line; a style may draw it its own way. */
+i.sep { font-style: normal; }
 /* BÓNUS: 5 team fouls or more in the period; the fouls cell turns gold. */
 .sb-f .bonus { display: none; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: 0.08em; color: var(--navy); }
 .sb-f.bonus { background: var(--gold); border-top-color: transparent; gap: 6px; }
@@ -216,6 +221,7 @@ html.off .sb-dot { opacity: 1; }
 .pop { position: absolute; left: 288px; z-index: 3; opacity: 0; pointer-events: none; }
 .pop.home { top: -26px; }
 .pop.away { bottom: -48px; } /* under the bug, so the score stays readable */
+html[data-bug-y="bottom"] .pop.away { bottom: auto; top: -26px; } /* the frame ends under a bottom bug */
 .pop.show { opacity: 1; }
 .pop div { background: var(--gold); color: var(--navy); font-weight: 800; font-size: 40px; line-height: 1; padding: 6px 14px 4px; transform: skewX(-12deg); box-shadow: 5px 5px 0 var(--red), 0 8px 18px rgba(0,0,0,0.4); }
 .pop span { display: block; transform: skewX(12deg); font-variant-numeric: tabular-nums; }
@@ -410,16 +416,13 @@ html.off .sb-dot { opacity: 1; }
 
 /* ---------- Lower third ---------- */
 .lt {
-  position: absolute; left: 64px; top: 840px; width: 760px; height: 176px;
+  position: absolute; left: 64px; top: 840px; width: 760px; height: 176px; transform-origin: 0 0;
   display: flex; flex-direction: column; align-items: flex-start;
   filter: drop-shadow(0 8px 22px rgba(0,0,0,0.45));
   /* overlay.js wipes the parts in and out; the box itself only fades out once the wipe is done. */
   opacity: 0;
   transition: opacity var(--t-exit) linear var(--t-exit);
 }
-/* Under a bottom-left bug the lower third takes the bottom-right corner. */
-html[data-bug="bottom-left"] .lt { left: 1096px; }
-html[data-bug="bottom-left"] .lt.photo { left: 986px; }
 .lt.on { opacity: 1; transition: none; }
 .lt-tab { height: 48px; display: flex; align-items: center; gap: 12px; background: var(--red); padding: 0 22px 0 4px; box-sizing: border-box; }
 .lt-tab .tile { width: 40px; height: 40px; }
@@ -585,3 +588,16 @@ html[data-bug="bottom-left"] .lt.photo { left: 986px; }
   .sb-pos { transition: none; }
   .vj-halo { animation-name: vj-breathe-still; }
 }
+
+/* ---------- The club's setup (settings.overlay, see overlay.js look()) ----------
+   Accents: each is light, so the dark --navy text on it stays readable whatever the club's colours. */
+html[data-accent="white"] { --gold: #F2F1EC; }
+html[data-accent="orange"] { --gold: #F5A23A; }
+html[data-accent="lime"] { --gold: #C3D93B; }
+html[data-accent="cyan"] { --gold: #62CDE3; }
+/* What a club (and later a sport) keeps off air. The bug is a flex row, so a missing cell closes up. */
+html[data-hide~="fouls"] .sb-fouls, html[data-hide~="fouls"] .sb-div, html[data-hide~="fouls"] .to-f { display: none; }
+html[data-hide~="fouls"] .sb-row.bonus .nm { box-shadow: none; }
+html[data-hide~="shot"] .sb-shot { display: none; }
+html[data-hide~="shot"] .sb-tbox { justify-content: center; }
+html[data-hide~="strip"] .strip { display: none; }

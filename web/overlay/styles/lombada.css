@@ -1,0 +1,427 @@
+/* Style "lombada": overrides scoped to html[data-style="lombada"].
+   One paper, one ink, and the club colour as a flat spine at the leading end of each graphic.
+   The setup accent (--gold) marks state only: bonus, hot fouls, hot shot clock, the winner.
+   Archivo throughout; weight and width carry the hierarchy, not colour or tracking. */
+html[data-style="lombada"] {
+  --q-paper: #EEF0EC;
+  --q-paper-2: #D2D8D1;
+  --q-ink: #1F292A;
+  --q-ink-2: #2E3A3B;
+  --q-mute: #586364;       /* small text on paper */
+  --q-mute-ink: #A3ADAB;   /* small text on ink */
+  --q-face: Archivo, sans-serif;
+  --q-drop: rgba(0,0,0,0.45);
+  --q-veil-top: rgba(31,41,42,0.7);
+  --q-veil-mid: rgba(31,41,42,0.1);
+  --q-veil-edge: rgba(31,41,42,0.75);
+  --q-shadow: drop-shadow(0 1px 0 rgba(0,0,0,0.28)) drop-shadow(0 10px 22px rgba(0,0,0,0.30));
+  --muted: var(--q-mute-ink);
+  --grey: var(--q-paper-2);
+}
+html[data-style="lombada"] #stage { font-family: var(--q-face); font-stretch: 82%; }
+
+/* Type roles. Names: 82% wide, 749. Numbers: 63% wide, 900. Labels: 100% wide, 436, sentence case. */
+html[data-style="lombada"] .sb-row .nm,
+html[data-style="lombada"] .blk-nm > div,
+html[data-style="lombada"] .lt-team,
+html[data-style="lombada"] .lt-big,
+html[data-style="lombada"] .to-nm,
+html[data-style="lombada"] .ab-name,
+html[data-style="lombada"] .hd-word,
+html[data-style="lombada"] .lk1,
+html[data-style="lombada"] .ptab .tn,
+html[data-style="lombada"] .to-title,
+html[data-style="lombada"] .to-per,
+html[data-style="lombada"] .vj-title,
+html[data-style="lombada"] .vj-score .n,
+html[data-style="lombada"] .ap-title .t1,
+html[data-style="lombada"] .ap-title .t2,
+html[data-style="lombada"] .pl-head b,
+html[data-style="lombada"] .card .nm b,
+html[data-style="lombada"] .coach .ct b,
+html[data-style="lombada"] .pr-head {
+  font-family: var(--q-face); font-stretch: 82%; font-weight: 749; letter-spacing: 0; text-shadow: none;
+}
+html[data-style="lombada"] .sb-row .sc,
+html[data-style="lombada"] .sb-clock,
+html[data-style="lombada"] .sb-shot b,
+html[data-style="lombada"] .sb-f b,
+html[data-style="lombada"] .blk-sc,
+html[data-style="lombada"] .ptab > div,
+html[data-style="lombada"] .lt-num,
+html[data-style="lombada"] .to-sc,
+html[data-style="lombada"] .to-clock,
+html[data-style="lombada"] .to-f b,
+html[data-style="lombada"] .ab-time,
+html[data-style="lombada"] .pop div,
+html[data-style="lombada"] .card .no,
+html[data-style="lombada"] .vj-score .s,
+html[data-style="lombada"] .vj-score .pd b,
+html[data-style="lombada"] .px-day {
+  font-family: var(--q-face); font-stretch: 63%; font-weight: 900; letter-spacing: 0;
+}
+html[data-style="lombada"] .sb-lbl,
+html[data-style="lombada"] .sb-shot span,
+html[data-style="lombada"] .lbl,
+html[data-style="lombada"] .hd-sub,
+html[data-style="lombada"] .ptab .hd,
+html[data-style="lombada"] .win,
+html[data-style="lombada"] .lt-small,
+html[data-style="lombada"] .lt-label,
+html[data-style="lombada"] .lk2 span,
+html[data-style="lombada"] .rules span,
+html[data-style="lombada"] .ab-kick span,
+html[data-style="lombada"] .ab-sub,
+html[data-style="lombada"] .ab-lbl,
+html[data-style="lombada"] .ab-comp,
+html[data-style="lombada"] .ab-venue,
+html[data-style="lombada"] .ab-date,
+html[data-style="lombada"] .sb-f .bonus,
+html[data-style="lombada"] .px-where,
+html[data-style="lombada"] .px-day small,
+html[data-style="lombada"] .vj-score .pd small,
+html[data-style="lombada"] .coach .ct span,
+html[data-style="lombada"] .coach .ct small,
+html[data-style="lombada"] .card .nm small,
+html[data-style="lombada"] .pl-head small,
+html[data-style="lombada"] .pl-head b span[data-b],
+html[data-style="lombada"] .pr-lock span,
+html[data-style="lombada"] .pr-kick span,
+html[data-style="lombada"] .pr-left,
+html[data-style="lombada"] .pr-qr div,
+html[data-style="lombada"] .to-mtag {
+  font-family: var(--q-face); font-stretch: 100%; font-weight: 436; letter-spacing: 0; padding-left: 0;
+}
+/* Labels arrive in capitals from the dictionary; set them in sentence case. ::first-letter needs a block box. */
+html[data-style="lombada"] .sb-lbl,
+html[data-style="lombada"] .sb-per,
+html[data-style="lombada"] .sb-head [data-b="sport"],
+html[data-style="lombada"] .lbl,
+html[data-style="lombada"] .hd-word,
+html[data-style="lombada"] .win,
+html[data-style="lombada"] .ptab .hd,
+html[data-style="lombada"] .rules span,
+html[data-style="lombada"] .ab-kick span,
+html[data-style="lombada"] .ab-sub,
+html[data-style="lombada"] .ab-lbl,
+html[data-style="lombada"] .sb-f .bonus,
+html[data-style="lombada"] .lk2 span,
+html[data-style="lombada"] .to-title,
+html[data-style="lombada"] .to-per,
+html[data-style="lombada"] .px-where,
+html[data-style="lombada"] .px-day small,
+html[data-style="lombada"] .vj-title,
+html[data-style="lombada"] .vj-score .pd small,
+html[data-style="lombada"] .ap-title .t1,
+html[data-style="lombada"] .ap-title .t2,
+html[data-style="lombada"] .coach .ct span,
+html[data-style="lombada"] .pl-head small em,
+html[data-style="lombada"] .pl-head b > span:first-child,
+html[data-style="lombada"] .pr-lock em,
+html[data-style="lombada"] .pr-kick span,
+html[data-style="lombada"] .pr-left,
+html[data-style="lombada"] .pr-qr div > span { text-transform: lowercase; }
+html[data-style="lombada"] .sb-lbl::first-letter,
+html[data-style="lombada"] .sb-per::first-letter,
+html[data-style="lombada"] .sb-head [data-b="sport"]::first-letter,
+html[data-style="lombada"] .lbl::first-letter,
+html[data-style="lombada"] .hd-word::first-letter,
+html[data-style="lombada"] .win::first-letter,
+html[data-style="lombada"] .ptab .hd::first-letter,
+html[data-style="lombada"] .rules span::first-letter,
+html[data-style="lombada"] .ab-kick span::first-letter,
+html[data-style="lombada"] .ab-sub::first-letter,
+html[data-style="lombada"] .ab-lbl::first-letter,
+html[data-style="lombada"] .sb-f .bonus::first-letter,
+html[data-style="lombada"] .lk2 span::first-letter,
+html[data-style="lombada"] .to-title::first-letter,
+html[data-style="lombada"] .px-where::first-letter,
+html[data-style="lombada"] .px-day small::first-letter,
+html[data-style="lombada"] .vj-title::first-letter,
+html[data-style="lombada"] .ap-title .t1::first-letter,
+html[data-style="lombada"] .ap-title .t2::first-letter,
+html[data-style="lombada"] .coach .ct span::first-letter,
+html[data-style="lombada"] .pl-head small em::first-letter,
+html[data-style="lombada"] .pl-head b::first-letter,
+html[data-style="lombada"] .pr-lock em::first-letter,
+html[data-style="lombada"] .pr-kick span::first-letter,
+html[data-style="lombada"] .pr-left::first-letter,
+html[data-style="lombada"] .pr-qr div::first-letter { text-transform: uppercase; }
+/* Names and lines that come from the club's own data keep the case the club typed. */
+html[data-style="lombada"] .lt-small,
+html[data-style="lombada"] .lt-label,
+html[data-style="lombada"] .lt-big,
+html[data-style="lombada"] .hd-sub,
+html[data-style="lombada"] .card .nm b,
+html[data-style="lombada"] .coach .ct b,
+html[data-style="lombada"] .pl-head b span[data-b],
+html[data-style="lombada"] .vj-sub .rules span,
+html[data-style="lombada"] #s-proximo .ab-sub { text-transform: none; }
+
+/* Middle dots from the data become a comma, so "Campeonato Regional · Jornada 5" reads as a phrase.
+   The dot text goes to size 0 and the comma takes the size its line sets in --q-sep. */
+html[data-style="lombada"] i.sep { font-size: 0; }
+html[data-style="lombada"] i.sep::before { content: ", "; font-size: var(--q-sep, 24px); white-space: pre; }
+html[data-style="lombada"] .hd-sub { --q-sep: 24px; }
+html[data-style="lombada"] .ab-comp { --q-sep: 32px; }
+html[data-style="lombada"] .ab-venue { --q-sep: 26px; }
+html[data-style="lombada"] .ab-date { --q-sep: 24px; }
+/* Name + sport pairs (bug head, plantel, promo): no mark at all, the two words part by weight. */
+html[data-style="lombada"] .sb-head i.sep,
+html[data-style="lombada"] .pl-head small i.sep,
+html[data-style="lombada"] .pr-lock i.sep { display: none; }
+
+/* Tiles sit on paper. The away tile keeps the opponent's colour as a 4px edge. */
+html[data-style="lombada"] .tile[data-tile="home"],
+html[data-style="lombada"] .tile[data-tile="away"] { background: transparent; }
+html[data-style="lombada"] .tile[data-strip]::after { display: none; }
+html[data-style="lombada"] .sb-row.away .tile,
+html[data-style="lombada"] .to-u.away .to-mid .tile { box-shadow: inset 4px 0 0 var(--away); }
+html[data-style="lombada"] .blk-row.away .tile { box-shadow: inset 6px 0 0 var(--away); }
+/* Crests straight on ink get the same paper plate as the bug; crests drawn on white lose the white box. */
+html[data-style="lombada"] .to-head .tile,
+html[data-style="lombada"] .vj-crest .tile,
+html[data-style="lombada"] .ap-crest,
+html[data-style="lombada"] .pl-crest,
+html[data-style="lombada"] .coach .tile,
+html[data-style="lombada"] .pr-crest,
+html[data-style="lombada"] .lt-crest .tile,
+html[data-style="lombada"] .lt-tab .tile { background: var(--q-paper) !important; filter: none; }
+html[data-style="lombada"] .sb-row .tile img,
+html[data-style="lombada"] .blk-row .tile img,
+html[data-style="lombada"] .to-mid .tile img,
+html[data-style="lombada"] .ab-tile img,
+html[data-style="lombada"] .vj-score .tile img,
+html[data-style="lombada"] .to-head .tile img,
+html[data-style="lombada"] .vj-crest .tile img,
+html[data-style="lombada"] .ap-crest img,
+html[data-style="lombada"] .pl-crest img,
+html[data-style="lombada"] .coach .tile img,
+html[data-style="lombada"] .pr-crest img,
+html[data-style="lombada"] .lt-crest .tile img,
+html[data-style="lombada"] .lt-tab .tile img { mix-blend-mode: multiply; }
+html[data-style="lombada"] .ab-tile .ini { margin-top: 0; font-size: 84px; }
+html[data-style="lombada"] .tile .ini { color: var(--q-ink); font-family: var(--q-face); font-stretch: 82%; font-weight: 749; letter-spacing: 0; }
+
+/* Fouls: pips are ink or paper squares; four or more take the setup accent. */
+html[data-style="lombada"] .pips { gap: 4px; }
+html[data-style="lombada"] .pips i { width: 8px; height: 16px; background: var(--q-ink-2); }
+html[data-style="lombada"] .pips i.on { background: var(--q-mute-ink); }
+html[data-style="lombada"] .pips i::after { background: var(--gold); }
+html[data-style="lombada"] [data-hot] { color: var(--q-paper); }
+html[data-style="lombada"] [data-hot].hot { color: var(--gold); }
+html[data-style="lombada"] .lbl { font-size: 20px; color: var(--q-mute-ink); }
+
+/* ---------- Score bug ---------- */
+/* One paper ground under the whole bug, so no cell edge can open a seam at 85% or 125%. */
+html[data-style="lombada"] .sb { filter: var(--q-shadow); background: var(--q-paper); }
+/* The spine: the leading 53px is one flat block of the club colour. */
+html[data-style="lombada"] .sb-edge { background: var(--red); }
+html[data-style="lombada"] .sb-fill,
+html[data-style="lombada"] .sb-white,
+html[data-style="lombada"] .sb-red { display: none; }
+html[data-style="lombada"] .sb-head { background: transparent; color: var(--q-mute); padding-left: 12px; }
+/* The head says the sport, for the day the program carries futsal or volleyball; the short name repeats the row below. */
+html[data-style="lombada"] .sb-head > span:first-child { display: flex; align-items: baseline; font-size: 0; letter-spacing: 0; }
+html[data-style="lombada"] .sb-head [data-b="homeShort"] { display: none; }
+html[data-style="lombada"] .sb-head [data-b="sport"] { font-size: 18px; font-weight: 436; color: var(--q-mute); }
+html[data-style="lombada"] .sb-dot { background: var(--q-mute); }
+html[data-style="lombada"] .sb-row .tile img { width: 34px; height: 34px; }
+html[data-style="lombada"] .sb-row .nm { font-size: 25px; padding-left: 8px; }
+html[data-style="lombada"] .sb-row .sc { font-size: 44px; }
+html[data-style="lombada"] .sb-row .tile,
+html[data-style="lombada"] .sb-row .nm,
+html[data-style="lombada"] .sb-row .sc { background: transparent; color: var(--q-ink); }
+html[data-style="lombada"] .sb-row.away { background: var(--q-paper-2); }
+html[data-style="lombada"] .sb-row.bonus .nm { box-shadow: none; }
+html[data-style="lombada"] .sb-stats { background: var(--q-ink); color: var(--q-paper); }
+html[data-style="lombada"] .sb-gap { background: transparent; }
+html[data-style="lombada"] .sb-lbl { display: block; line-height: 29px; background: transparent; color: var(--q-mute-ink); font-size: 18px; }
+html[data-style="lombada"] .sb-f.sep { border-top-color: var(--q-ink-2); }
+html[data-style="lombada"] .sb-f b { font-size: 28px; }
+html[data-style="lombada"] .sb-div { background: var(--q-ink-2); }
+html[data-style="lombada"] .sb-per { display: block; line-height: 29px; text-align: center; background: transparent; color: var(--q-paper); font-size: 22px; font-weight: 749; font-stretch: 82%; letter-spacing: 0; }
+html[data-style="lombada"] .sb-clock { font-size: 48px; }
+html[data-style="lombada"] .sb-shot { background: var(--q-ink-2); overflow: clip; }
+html[data-style="lombada"] .sb-shot span { font-size: 18px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .sb-shot b { font-size: 32px; color: var(--q-paper); }
+/* Hot shot clock: the digits spread the accent over the whole cell (clipped to it), covering the 24s label. */
+html[data-style="lombada"] .sb-shot b.hot { color: var(--q-ink); background: var(--gold); box-shadow: 0 0 0 80px var(--gold); }
+/* Bonus: the fouls cell turns to the accent. */
+html[data-style="lombada"] .sb-f.bonus { background: var(--gold); }
+html[data-style="lombada"] .sb-f .bonus { font-size: 18px; font-weight: 600; color: var(--q-ink); }
+html[data-style="lombada"] .sb-f.bonus b[data-hot] { color: var(--q-ink); }
+html[data-style="lombada"] .pop div { background: var(--red); color: var(--on-red); transform: none; box-shadow: 0 8px 18px var(--q-drop); }
+html[data-style="lombada"] .pop span { transform: none; }
+/* Sponsor corner: a paper plate with the spine at its leading end. */
+html[data-style="lombada"] .spc { filter: var(--q-shadow); }
+html[data-style="lombada"] .spc-pl { background: var(--q-paper); clip-path: none; }
+html[data-style="lombada"] .spc-slab { width: 14px; clip-path: none; }
+html[data-style="lombada"] .spc-prog { left: 14px; background: var(--q-paper-2); height: 4px; }
+html[data-style="lombada"] .spc-prog b { background: var(--q-ink); }
+html[data-style="lombada"] .spc-lg b { color: var(--q-ink); font-weight: 749; letter-spacing: 0; }
+
+/* ---------- Lower third ---------- */
+html[data-style="lombada"] .lt { filter: var(--q-shadow); }
+html[data-style="lombada"] .lt-tab { background: var(--q-ink); padding-left: 4px; }
+html[data-style="lombada"] .lt.comentador .lt-tab { padding-left: 16px; }
+html[data-style="lombada"] .lt-team { font-size: 22px; color: var(--q-paper); }
+html[data-style="lombada"] .lt-body { background: var(--q-paper); box-shadow: none; }
+html[data-style="lombada"] .lt-tile { clip-path: inset(0 46px 0 0); }
+html[data-style="lombada"] .lt-band { display: none; }
+html[data-style="lombada"] .lt-num { font-size: 112px; font-variant-numeric: tabular-nums; }
+html[data-style="lombada"] .lt-photo { clip-path: none; background: var(--q-paper-2); }
+html[data-style="lombada"] .lt-small,
+html[data-style="lombada"] .lt-label { font-size: 24px; color: var(--q-mute); }
+html[data-style="lombada"] .lt-big { font-size: 52px; color: var(--q-ink); }
+
+/* ---------- Full-screen backdrop: the hall in ink, no brush ---------- */
+html[data-style="lombada"] .atmo { background: var(--q-ink); }
+html[data-style="lombada"] .atmo .tint { background: var(--q-ink); }
+html[data-style="lombada"] .atmo .dim::after { background: var(--q-ink); opacity: 0.82; }
+html[data-style="lombada"] .atmo .vig { background:
+  linear-gradient(180deg, var(--q-veil-top) 0%, transparent 30%),
+  radial-gradient(ellipse 80% 75% at 50% 50%, var(--q-veil-mid) 0%, var(--q-veil-edge) 100%); }
+html[data-style="lombada"] .brush { display: none; }
+
+/* Header: the club name, the sport under it, no rules, no tracking. */
+html[data-style="lombada"] .lk1 { font-size: 34px; color: var(--q-paper); padding-left: 0; }
+html[data-style="lombada"] .lk2 { justify-content: center; }
+html[data-style="lombada"] .lk2 i { background: transparent; }
+html[data-style="lombada"] .lk2 span { font-size: 24px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .rules i { background: transparent; }
+
+/* ---------- Intervalo and final ---------- */
+html[data-style="lombada"] .hd-tab { background: transparent; color: var(--q-paper); clip-path: none; gap: 12px; }
+html[data-style="lombada"] .hd-word { font-size: 64px; }
+html[data-style="lombada"] .hd-sub { font-size: 24px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .blk { filter: var(--q-shadow); }
+html[data-style="lombada"] .blk-edge { background: var(--red); }
+html[data-style="lombada"] .blk-fill,
+html[data-style="lombada"] .blk-white,
+html[data-style="lombada"] .blk-red { display: none; }
+html[data-style="lombada"] .blk-nm > div { font-size: 76px; }
+html[data-style="lombada"] .blk-sc { font-size: 136px; }
+html[data-style="lombada"] .blk-row .tile,
+html[data-style="lombada"] .blk-row .blk-nm,
+html[data-style="lombada"] .blk-row .blk-sc { background: transparent; color: var(--q-ink); }
+html[data-style="lombada"] .blk-row.home { background: var(--q-paper); }
+html[data-style="lombada"] .blk-row.away { background: var(--q-paper-2); }
+html[data-style="lombada"] .blk-row .tile .ini { font-size: 48px; }
+/* Winner: ink tag, the accent as its text, so every accent value reads. */
+html[data-style="lombada"] .win,
+html[data-style="lombada"] .away .win { background: var(--q-ink); color: var(--gold); font-size: 20px; font-weight: 600; padding: 6px 10px 5px; }
+html[data-style="lombada"] .ptab { background: var(--q-ink); border-bottom-color: var(--q-ink); }
+html[data-style="lombada"] .ptab > div { border-top-color: var(--q-ink-2); font-size: 30px; }
+html[data-style="lombada"] .ptab .hd { display: block; line-height: 38px; text-align: center; font-size: 18px; font-weight: 436; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ptab .tn { font-size: 24px; }
+html[data-style="lombada"] .ptab .tot { background: var(--q-paper); color: var(--q-ink); }
+html[data-style="lombada"] .ptab .hd.tot { background: var(--q-paper-2); color: var(--q-ink); }
+/* The Total column runs down through the table's bottom edge. */
+html[data-style="lombada"] .ptab > .tot:last-child { box-shadow: 0 4px 0 var(--q-paper); }
+html[data-style="lombada"] .ptab .lo { color: var(--q-mute-ink); font-weight: 500; }
+html[data-style="lombada"] .fn-thanks .rules span { font-size: 26px; color: var(--q-mute-ink); }
+
+/* ---------- Sponsor strip ---------- */
+html[data-style="lombada"] .spons { background: var(--q-paper); }
+html[data-style="lombada"] .spons .dv { width: 1px; background: var(--q-paper-2); }
+html[data-style="lombada"] .spons .sp b { color: var(--q-ink); font-weight: 749; letter-spacing: 0; }
+html[data-style="lombada"] .strip { box-shadow: 0 -6px 0 var(--red); }
+
+/* ---------- Abertura and próximo jogo ---------- */
+html[data-style="lombada"] .ab-slash { display: none; }
+html[data-style="lombada"] .ab-kick div { background: transparent; transform: none; box-shadow: none; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ab-kick span { transform: none; font-size: 28px; }
+html[data-style="lombada"] .ab-shield { filter: var(--q-shadow); }
+html[data-style="lombada"] .ab-shield .sh { background: var(--q-paper); clip-path: none; }
+html[data-style="lombada"] .ab-shield .bar { height: 14px; background: var(--red); }
+html[data-style="lombada"] .away .ab-shield .bar { background: var(--away); }
+html[data-style="lombada"] .ab-team.away .ab-tile .ini { color: var(--q-mute); }
+html[data-style="lombada"] .ab-name { font-size: 104px; color: var(--q-paper); }
+html[data-style="lombada"] .ab-sub { font-size: 24px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ab-vs { background: transparent; transform: none; box-shadow: none; }
+html[data-style="lombada"] .ab-vs b { transform: none; font-family: var(--q-face); font-stretch: 100%; font-weight: 300; font-size: 44px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ab-info { background: var(--q-ink); }
+html[data-style="lombada"] .ab-lbl { font-size: 24px; color: var(--q-mute-ink); line-height: 1.15; }
+html[data-style="lombada"] .ab-time { font-size: 104px; color: var(--q-paper); }
+html[data-style="lombada"] .ab-sep { width: 1px; transform: none; background: var(--q-ink-2); }
+html[data-style="lombada"] .ab-comp { font-size: 32px; font-weight: 749; font-stretch: 82%; color: var(--q-paper); }
+html[data-style="lombada"] .ab-venue { font-size: 26px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ab-date { font-size: 24px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .px-where { background: var(--q-paper); color: var(--q-ink); transform: none; font-size: 22px; font-weight: 600; padding: 6px 12px 5px; }
+html[data-style="lombada"] .px-day small { color: var(--q-mute-ink); }
+
+/* ---------- Desconto de tempo ---------- */
+html[data-style="lombada"] .to-hole { outline: 3px solid var(--q-paper); box-shadow: 0 18px 40px var(--q-drop); }
+html[data-style="lombada"] .to-strip { outline: 0; box-shadow: none; }
+html[data-style="lombada"] .to-title { font-size: 34px; line-height: 1.1; color: var(--q-paper); }
+html[data-style="lombada"] .to-title span { color: var(--q-mute-ink); font-weight: 436; font-stretch: 100%; }
+html[data-style="lombada"] .to-nm { clip-path: none; font-size: 28px; }
+html[data-style="lombada"] .home .to-nm { background: var(--red); color: var(--on-red); }
+html[data-style="lombada"] .away .to-nm { background: var(--q-paper-2); color: var(--q-ink); }
+html[data-style="lombada"] .to-mid .tile { background: var(--q-paper); }
+html[data-style="lombada"] .to-sc { clip-path: none; padding-right: 0; font-size: 80px; }
+html[data-style="lombada"] .home .to-sc,
+html[data-style="lombada"] .away .to-sc { background: var(--q-paper); color: var(--q-ink); }
+html[data-style="lombada"] .to-f { background: var(--q-ink); }
+html[data-style="lombada"] .to-f .lbl { font-size: 18px; }
+html[data-style="lombada"] .to-time { background: var(--q-ink); border-left-color: var(--q-ink); }
+html[data-style="lombada"] .to-per { font-size: 34px; }
+html[data-style="lombada"] .to-clock { font-size: 80px; }
+html[data-style="lombada"] .to-mtag { background: var(--q-ink); color: var(--q-paper); box-shadow: none; }
+html[data-style="lombada"] .pr-frame { outline-color: var(--q-paper); box-shadow: 0 18px 40px var(--q-drop); }
+
+/* ---------- Voltamos ---------- */
+html[data-style="lombada"] .vj-halo { display: none; }
+html[data-style="lombada"] .vj-title { transform: none; color: var(--q-paper); }
+html[data-style="lombada"] .vj-title span { color: var(--q-mute-ink); }
+html[data-style="lombada"] .vj-sub .rules span { font-size: 28px; color: var(--q-mute-ink); letter-spacing: 0; padding-left: 0; }
+html[data-style="lombada"] .vj-score > div { filter: var(--q-shadow); }
+html[data-style="lombada"] .vj-score .hn { background: var(--red); color: var(--on-red); }
+html[data-style="lombada"] .vj-score .hs,
+html[data-style="lombada"] .vj-score .as,
+html[data-style="lombada"] .vj-score .an { background: var(--q-paper); color: var(--q-ink); }
+html[data-style="lombada"] .vj-score .tile { background: var(--q-paper); }
+html[data-style="lombada"] .vj-score .pd { background: var(--q-ink); }
+
+/* ---------- Apoiantes ---------- */
+html[data-style="lombada"] .ap-title .t1,
+html[data-style="lombada"] .ap-title .t2 { transform: none; }
+html[data-style="lombada"] .ap-title .t2 { color: var(--q-mute-ink); }
+html[data-style="lombada"] .ap-title .rules span { font-size: 30px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .ap-strip { box-shadow: none; filter: var(--q-shadow); }
+
+/* ---------- Plantel ---------- */
+html[data-style="lombada"] .pl-head small { display: flex; gap: 10px; font-size: 20px; color: var(--q-paper); }
+html[data-style="lombada"] .pl-head small [data-b="homeName"] { font-weight: 749; font-stretch: 82%; }
+html[data-style="lombada"] .pl-head small em { color: var(--q-mute-ink); }
+html[data-style="lombada"] .pl-head b { font-size: 44px; color: var(--q-paper); }
+html[data-style="lombada"] .pl-head b span[data-b] { font-size: 28px; color: var(--q-mute-ink); margin-left: 16px; }
+html[data-style="lombada"] .card { box-shadow: none; filter: var(--q-shadow); background: var(--q-paper); }
+html[data-style="lombada"] .card .ph { background: var(--q-ink-2); }
+html[data-style="lombada"] .card .ph::after { display: none; }
+html[data-style="lombada"] .card .ph .ini { font-family: var(--q-face); font-stretch: 82%; font-weight: 749; color: var(--q-mute-ink); }
+html[data-style="lombada"] .card .nm { color: var(--q-ink); }
+html[data-style="lombada"] .card .nm small { color: var(--q-mute); }
+html[data-style="lombada"] .card .nm b { font-weight: 749; }
+/* Number cards: the spine at the leading edge, the number in ink. */
+html[data-style="lombada"] .nophoto .card { border-top-color: var(--q-paper); box-shadow: inset 14px 0 0 var(--red); }
+html[data-style="lombada"] .nophoto .card .no { color: var(--q-ink); padding-left: 34px; letter-spacing: 0; }
+html[data-style="lombada"] .nophoto .card .nm { border-top-color: var(--q-paper-2); }
+html[data-style="lombada"] .coach { background: var(--q-ink); box-shadow: inset 14px 0 0 var(--red); border-top-color: var(--q-ink); }
+html[data-style="lombada"] .coach .ct { background: transparent; justify-content: flex-start; padding-top: 14px; }
+html[data-style="lombada"] .coach .ct span { font-size: 20px; color: var(--q-mute-ink); }
+html[data-style="lombada"] .coach .ct small { color: var(--q-mute-ink); }
+html[data-style="lombada"] .coach .ct b { color: var(--q-paper); }
+
+/* ---------- Promo ---------- */
+html[data-style="lombada"] .pr-lock span { color: var(--q-paper); }
+html[data-style="lombada"] .pr-lock span > span { font-weight: 749; font-stretch: 82%; }
+html[data-style="lombada"] .pr-lock span { display: flex; gap: 10px; }
+html[data-style="lombada"] .pr-lock em { color: var(--q-mute-ink); }
+html[data-style="lombada"] .pr-kick { background: transparent; transform: none; box-shadow: none; padding-left: 0; }
+html[data-style="lombada"] .pr-kick span { transform: none; color: var(--q-mute-ink); }
+html[data-style="lombada"] .pr-head { color: var(--q-paper); }
+html[data-style="lombada"] .pr-line { font-family: var(--q-face); font-stretch: 100%; font-weight: 436; }
+html[data-style="lombada"] .pr-qr div b { font-family: var(--q-face); font-stretch: 82%; font-weight: 749; letter-spacing: 0; }
+html[data-style="lombada"] .pr-prog b { background: var(--q-paper); }

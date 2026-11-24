@@ -1,0 +1,207 @@
+/* The scorer's table: a phone held sideways at the hall's table. Each team owns its half in its own
+   colour, so a tired thumb can't score for the wrong side; the middle is the Marcador strip with the
+   clock, lit in Lâmpada only while it runs. Tokens come from the panel (docs/design-system.md); marcar.js
+   sets --casa, --fora and their text colours from the live state. */
+:root {
+  --soalho: #F2E4C9;
+  --soalho-claro: #F8EFDD;
+  --marcador: #1C1A17;
+  --marcador-2: #34302A;
+  --lampada: #E5482A;
+  --lampada-funda: #B8381E;
+  --letra: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --estreito: 74%;
+  --largo: 113%;
+  --estadio: 999px;
+  --raio: 2px;
+  --seg-cheio: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='40 22 22 56'%3E%3Cpath d='M52.5 23.86h3.26c2.7 0 4.55 2.19 4.12 4.89l-2.16 13.63c-.21 1.35-1.48 2.45-2.83 2.45h-8.15c-1.35 0-2.27-1.1-2.06-2.45l2.16-13.63c.43-2.7 2.97-4.89 5.67-4.89zM45.45 52.98h8.15c1.35 0 2.27 1.1 2.06 2.45l-2.49 15.72c-.43 2.7-2.97 4.89-5.67 4.89h-3.26c-2.7 0-4.55-2.19-4.12-4.89l2.49-15.72c.21-1.35 1.48-2.45 2.83-2.45z'/%3E%3C/svg%3E");
+  --seg-oco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='40 22 22 56'%3E%3Cpath fill='none' stroke='black' stroke-width='3' d='M52.5 23.86h3.26c2.7 0 4.55 2.19 4.12 4.89l-2.16 13.63c-.21 1.35-1.48 2.45-2.83 2.45h-8.15c-1.35 0-2.27-1.1-2.06-2.45l2.16-13.63c.43-2.7 2.97-4.89 5.67-4.89zM45.45 52.98h8.15c1.35 0 2.27 1.1 2.06 2.45l-2.49 15.72c-.43 2.7-2.97 4.89-5.67 4.89h-3.26c-2.7 0-4.55-2.19-4.12-4.89l2.49-15.72c.21-1.35 1.48-2.45 2.83-2.45z'/%3E%3C/svg%3E");
+  --toque: 52px;
+  --tinta-2: #5C5346;
+  --veu: rgba(28, 26, 23, .7);
+  --carvao: #0E0D0B;          /* ink on Lâmpada: 4.9:1 where Marcador gives 4.3 */
+  --casa: #2F4B7C;            /* the two teams; marcar.js sets these from game.theme */
+  --fora: #8C2F39;
+  --sobre-casa: var(--soalho-claro);
+  --sobre-fora: var(--soalho-claro);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; overflow-x: clip; }
+body {
+  margin: 0; overflow: clip;
+  background: var(--marcador); color: var(--soalho);
+  font: 400 16px/1.3 var(--letra); font-stretch: 100%;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+/* The ring takes the ink of the ground it is drawn on: the team's text colour on a half, Soalho on the strip. */
+:focus-visible { outline: 3px solid var(--soalho); outline-offset: 2px; }
+.equipa :focus-visible { outline-color: var(--sobre); }
+[hidden] { display: none !important; }
+
+.mesa {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(168px, 24vw) minmax(0, 1fr);
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* ---------- a team's half ---------- */
+.casa { --cor: var(--casa); --sobre: var(--sobre-casa); }
+.fora { --cor: var(--fora); --sobre: var(--sobre-fora); }
+.equipa {
+  display: grid; grid-template-rows: auto 1fr auto auto auto; gap: 8px;
+  padding: 12px 16px;
+  background: var(--cor); color: var(--sobre);
+  min-width: 0;
+}
+.nome { display: flex; align-items: baseline; gap: 8px; min-width: 0; border-bottom: 3px solid currentColor; padding-bottom: 4px; }
+.sigla { font-weight: 800; font-stretch: var(--largo); font-size: 20px; letter-spacing: .02em; }
+.extenso { font-stretch: var(--estreito); font-size: 15px; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fora .nome { flex-direction: row-reverse; }
+
+.pontos {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 0;
+  font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums;
+  font-size: clamp(64px, 30dvh, 132px); line-height: .9; letter-spacing: -.01em;
+}
+.pontos .ultimo {
+  align-self: flex-start; margin-top: .3em;
+  font-size: 18px; font-stretch: var(--largo); letter-spacing: .02em;
+}
+/* Lit tags lean 9° like the panel's active tab: the last score here, Bónus on the fouls row. */
+.pontos .ultimo, .aviso {
+  position: relative; isolation: isolate;
+  padding: 2px 10px; color: var(--carvao);
+}
+/* Only the ground leans; the words stay upright. */
+.pontos .ultimo::before, .aviso::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  border-radius: var(--raio); background: var(--lampada); transform: skewX(-9deg);
+}
+
+.somar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.somar button {
+  min-height: clamp(48px, 17dvh, 68px);
+  border: 0; border-radius: var(--estadio);
+  background: var(--sobre); color: var(--cor);
+  font-weight: 800; font-stretch: var(--estreito); font-size: clamp(22px, 7dvh, 30px);
+  font-variant-numeric: tabular-nums;
+}
+.somar button:active { background: var(--marcador); color: var(--sobre); }
+
+.linha {
+  display: grid; grid-template-columns: auto 1fr auto 64px; align-items: center; gap: 8px;
+  border-top: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  padding-top: 4px; min-height: calc(var(--toque) - 8px);
+}
+/* The count in figures beside the marks, so glare on the hollow ones never hides it. */
+.conta { font-weight: 800; font-stretch: var(--estreito); font-size: 22px; font-variant-numeric: tabular-nums; min-width: 1ch; text-align: right; }
+.rotulo { font-stretch: var(--estreito); font-size: 15px; font-weight: 700; }
+.marcas { display: flex; gap: 4px; }
+/* One segment of the mark's colon per foul or time-out, leaning 9° like the panel's active tab. */
+.marcas i { width: 8px; height: 20px; border: 2px solid currentColor; border-radius: 3px; transform: skewX(-9deg); }
+.marcas i.on { background: currentColor; }
+/* At five fouls the label itself turns into the lit Bónus tag. */
+.faltas[data-bonus] .rotulo { display: none; }
+.aviso { display: none; font-stretch: var(--estreito); font-weight: 800; font-size: 15px; }
+.faltas[data-bonus] .aviso { display: block; order: -1; justify-self: start; }
+.linha button {
+  height: calc(var(--toque) - 8px); border-radius: var(--raio);
+  border: 0; background: var(--sobre); color: var(--cor);
+  font-size: 26px; font-weight: 800; line-height: 1;
+}
+.linha button:active { background: var(--marcador); color: var(--sobre); }
+
+/* ---------- the middle strip ---------- */
+.mesa-centro {
+  display: grid; grid-template-rows: auto auto auto 1fr auto auto auto; justify-items: stretch; gap: 8px;
+  padding: 12px;
+  background: var(--marcador); min-width: 0;
+}
+.estado { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-stretch: var(--estreito);
+  color: color-mix(in srgb, var(--soalho) 80%, transparent); }
+.seg { width: 7px; height: 16px; background: currentColor; -webkit-mask: var(--seg-cheio) center / contain no-repeat; mask: var(--seg-cheio) center / contain no-repeat; }
+body.offline .seg { -webkit-mask-image: var(--seg-oco); mask-image: var(--seg-oco); }
+
+.periodo {
+  display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; text-align: center;
+  border-top: 3px solid var(--soalho); border-bottom: 1px solid var(--soalho); padding: 2px 0;
+  font-stretch: var(--estreito); font-size: 16px; font-weight: 600;
+}
+.periodo b { font-size: 22px; font-weight: 800; }
+.seta { height: 40px; border: 0; background: none; font-size: 26px; line-height: 1; }
+
+.relogio {
+  border: 0; background: none; padding: 0;
+  font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums;
+  font-size: clamp(40px, min(17dvh, 8.6vw), 72px); line-height: 1; color: var(--soalho);
+}
+body.corre .relogio { color: var(--lampada); }
+
+.arrancar {
+  min-height: var(--toque); border: 0; border-radius: var(--estadio);
+  background: var(--soalho); color: var(--marcador);
+  font-weight: 800; font-stretch: var(--estreito); font-size: 19px; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px;
+}
+body.corre .arrancar { background: var(--lampada); color: var(--carvao); }
+.anular {
+  min-height: 44px; border: 2px solid color-mix(in srgb, var(--soalho) 45%, transparent); border-radius: var(--estadio);
+  background: transparent; font-size: 14px; font-stretch: var(--estreito);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px;
+}
+.anular:disabled { border-color: transparent; color: color-mix(in srgb, var(--soalho) 45%, transparent); cursor: default; }
+
+/* ---------- connection lost ---------- */
+.faixa {
+  position: fixed; left: 50%; bottom: 10px; translate: -50% 0;
+  padding: 8px 16px; border-radius: var(--estadio);
+  background: var(--soalho); color: var(--marcador); font-size: 14px; font-weight: 600;
+  box-shadow: 0 0 0 2px var(--marcador);
+}
+body.offline .equipa button, body.offline .mesa-centro button { opacity: .45; pointer-events: none; }
+
+/* ---------- portrait ---------- */
+.rodar { display: none; }
+@media (orientation: portrait) {
+  .mesa { display: none; }
+  .rodar { display: grid; place-items: center; height: 100dvh; padding: 32px; text-align: center; background: var(--soalho); color: var(--marcador); font-size: 19px; }
+}
+
+/* ---------- PIN ---------- */
+dialog { border: 0; border-radius: var(--raio); padding: 20px 24px; background: var(--soalho-claro); color: var(--marcador); max-width: 360px; max-height: calc(100dvh - 16px); overflow: auto; margin: 8px auto auto; }
+dialog::backdrop { background: var(--veu); }
+dialog h2 { margin: 0 0 8px; text-wrap: balance; font-stretch: var(--estreito); font-size: 22px; border-bottom: 3px solid var(--marcador); padding-bottom: 4px; }
+dialog p { margin: 0 0 12px; font-size: 15px; color: var(--tinta-2); }
+dialog input { width: 100%; height: 52px; margin-bottom: 12px; text-align: center; font: 800 28px/1 var(--letra); letter-spacing: .4em;
+  border: 2px solid var(--marcador); border-radius: var(--raio); background: var(--soalho); }
+dialog .arrancar { width: 100%; background: var(--marcador); color: var(--soalho); }
+dialog .erro { min-height: 1.3em; margin: -4px 0 8px; color: var(--lampada-funda); font-size: 15px; font-weight: 600; }
+dialog .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+dialog .botoes .anular { color: var(--marcador); border-color: var(--marcador); }
+/* Before the first tap the console is still scoring: the strip says so, with the mark lit. */
+body.consola .estado { color: var(--soalho); text-align: left; line-height: 1.2; }
+body.consola .seg { color: var(--lampada); flex: none; }
+.mesa[hidden] { display: none; }
+
+/* Nudging the clock to the hall's, a second at a time, without opening anything. */
+.acerto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.acerto button { min-height: 44px; border: 2px solid color-mix(in srgb, var(--soalho) 45%, transparent); border-radius: var(--raio); background: transparent; font-size: 15px; font-stretch: var(--estreito); font-weight: 700; }
+.acerto button:active { background: var(--soalho); color: var(--marcador); }
+/* The next period is not Iniciar: outlined, so a thumb that expects Iniciar sees the difference. */
+.arrancar.seguinte { background: transparent; color: var(--soalho); box-shadow: inset 0 0 0 3px var(--soalho); }
+.arrancar:disabled { opacity: .4; cursor: default; }
+.mesa-centro button:disabled, .equipa button:disabled { cursor: default; }
+body.consola .equipa button, body.consola .acerto button, body.consola .seta { opacity: .35; }
+.dica { display: none; margin: 0; font-size: 12px; line-height: 1.25; color: color-mix(in srgb, var(--soalho) 80%, transparent); text-align: center; }
+body.consola .dica { display: block; }
+body.consola .anular, body.consola .relogio { opacity: .5; }
+
+/* Setting the clock: the time, big, with steps that apply at once. */
+dialog .mostrador { margin: 4px 0 12px; text-align: center; font: 800 56px/1 var(--letra); font-stretch: var(--estreito); font-variant-numeric: tabular-nums; color: var(--marcador); }
+dialog .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+dialog .passos button { min-height: 48px; border: 2px solid var(--marcador); border-radius: var(--raio); background: transparent; color: var(--marcador); font-weight: 700; font-stretch: var(--estreito); font-size: 17px; }
+dialog .passos button:active { background: var(--marcador); color: var(--soalho-claro); }
+dialog h2 b { font-weight: 800; }

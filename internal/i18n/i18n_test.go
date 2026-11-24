@@ -264,9 +264,9 @@ func TestNoCopyLeftInCode(t *testing.T) {
 			}
 			goStrings(t, p, s.text, check)
 		case mockFiles[p]:
-		case strings.HasSuffix(p, ".js") && (strings.HasPrefix(p, "web/painel/") || strings.HasPrefix(p, "web/overlay/")) && strings.Count(p, "/") == 2:
+		case strings.HasSuffix(p, ".js") && (strings.HasPrefix(p, "web/painel/") || strings.HasPrefix(p, "web/overlay/") || strings.HasPrefix(p, "web/marcar/")) && strings.Count(p, "/") == 2:
 			jsStrings(s.text, func(line int, lit string) { check(p, line, lit) })
-		case strings.HasSuffix(p, ".html") && (strings.HasPrefix(p, "web/painel/") || strings.HasPrefix(p, "web/overlay/")) && strings.Count(p, "/") == 2:
+		case strings.HasSuffix(p, ".html") && (strings.HasPrefix(p, "web/painel/") || strings.HasPrefix(p, "web/overlay/") || strings.HasPrefix(p, "web/marcar/")) && strings.Count(p, "/") == 2:
 			htmlText(s.text, func(line int, txt string) { check(p, line, txt) })
 		}
 	}

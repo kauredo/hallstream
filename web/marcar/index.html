@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1C1A17">
+<title data-i18n="marcar.pagina.titulo"></title>
+<meta name="description" data-i18n-attr="content:marcar.pagina.descricao">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/marcar/marcar.css">
+</head>
+<body class="consola">
+<main class="mesa" id="mesa" hidden>
+  <section class="equipa casa" data-team="home">
+    <header class="nome"><b class="sigla" data-v="homeShort"></b><span class="extenso" data-v="homeName"></span></header>
+    <output class="pontos" aria-live="polite"><span class="n" data-v="home"></span><span class="ultimo" data-last="home" hidden></span></output>
+    <div class="somar" role="group" data-i18n-attr="aria-label:marcar.pontos_casa">
+      <button type="button" data-do="point" data-n="1" data-long>+1</button>
+      <button type="button" data-do="point" data-n="2" data-long>+2</button>
+      <button type="button" data-do="point" data-n="3" data-long>+3</button>
+    </div>
+    <div class="linha faltas">
+      <span class="rotulo" data-i18n="marcar.faltas"></span>
+      <span class="aviso" data-i18n="marcar.bonus"></span>
+      <span class="marcas" data-marks="homeFouls" data-max="5"></span>
+      <b class="conta" data-v="homeFouls"></b>
+      <button type="button" class="mais" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta">+</button>
+    </div>
+    <div class="linha descontos">
+      <span class="rotulo" data-i18n="marcar.descontos"></span>
+      <span class="marcas" data-marks="homeTimeouts"></span>
+      <b class="conta" data-v="homeTimeouts"></b>
+      <button type="button" class="mais" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto">+</button>
+    </div>
+  </section>
+
+  <section class="mesa-centro">
+    <div class="estado" role="status"><i class="seg" aria-hidden="true"></i><span id="estado"></span></div>
+    <button type="button" class="anular" id="anular" data-do="undo"></button>
+    <div class="periodo">
+      <button type="button" class="seta" data-ask="period_back" data-i18n-attr="aria-label:marcar.periodo_anterior">‹</button>
+      <span id="periodo"></span>
+      <button type="button" class="seta" data-ask="period_next" data-i18n-attr="aria-label:marcar.periodo_seguinte">›</button>
+    </div>
+    <button type="button" class="relogio" id="relogio" data-i18n-attr="aria-label:marcar.acertar_relogio"></button>
+    <div class="acerto" role="group" data-i18n-attr="aria-label:marcar.acertar_relogio">
+      <button type="button" data-do="clock_add" data-tenths="-10">−1 s</button>
+      <button type="button" data-do="clock_add" data-tenths="10">+1 s</button>
+    </div>
+    <button type="button" class="arrancar" id="arrancar"></button>
+    <p class="dica" id="dica" data-i18n="marcar.dica_longo"></p>
+  </section>
+
+  <section class="equipa fora" data-team="away">
+    <header class="nome"><b class="sigla" data-v="awayShort"></b><span class="extenso" data-v="awayName"></span></header>
+    <output class="pontos" aria-live="polite"><span class="n" data-v="away"></span><span class="ultimo" data-last="away" hidden></span></output>
+    <div class="somar" role="group" data-i18n-attr="aria-label:marcar.pontos_fora">
+      <button type="button" data-do="point" data-n="1" data-long>+1</button>
+      <button type="button" data-do="point" data-n="2" data-long>+2</button>
+      <button type="button" data-do="point" data-n="3" data-long>+3</button>
+    </div>
+    <div class="linha faltas">
+      <span class="rotulo" data-i18n="marcar.faltas"></span>
+      <span class="aviso" data-i18n="marcar.bonus"></span>
+      <span class="marcas" data-marks="awayFouls" data-max="5"></span>
+      <b class="conta" data-v="awayFouls"></b>
+      <button type="button" class="mais" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta">+</button>
+    </div>
+    <div class="linha descontos">
+      <span class="rotulo" data-i18n="marcar.descontos"></span>
+      <span class="marcas" data-marks="awayTimeouts"></span>
+      <b class="conta" data-v="awayTimeouts"></b>
+      <button type="button" class="mais" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto">+</button>
+    </div>
+  </section>
+</main>
+
+<div class="faixa" id="faixa" role="alert" hidden></div>
+
+<div class="rodar"><p data-i18n-html="marcar.rodar"></p></div>
+
+<dialog id="pin">
+  <form method="dialog" id="pinForm">
+    <h2 data-i18n="marcar.pin.titulo"></h2>
+    <p data-i18n="marcar.pin.dica"></p>
+    <input id="pinValue" inputmode="numeric" maxlength="4" autocomplete="off" data-i18n-attr="aria-label:marcar.pin.titulo">
+    <p class="erro" id="pinMsg" role="alert"></p>
+    <button type="submit" class="arrancar" data-i18n="marcar.pin.entrar"></button>
+  </form>
+</dialog>
+
+<!-- Setting the clock: steps that apply at once, so a running clock never jumps back by the time spent typing. -->
+<dialog id="acertar">
+  <h2 data-i18n="marcar.acertar.titulo"></h2>
+  <p class="mostrador" id="acertarClock"></p>
+  <div class="passos">
+    <button type="button" data-do="clock_add" data-tenths="-600">−1 min</button>
+    <button type="button" data-do="clock_add" data-tenths="-100">−10 s</button>
+    <button type="button" data-do="clock_add" data-tenths="-10">−1 s</button>
+    <button type="button" data-do="clock_add" data-tenths="10">+1 s</button>
+    <button type="button" data-do="clock_add" data-tenths="100">+10 s</button>
+    <button type="button" data-do="clock_add" data-tenths="600">+1 min</button>
+  </div>
+  <div class="botoes">
+    <button type="button" class="anular" id="acertarRepor"></button>
+    <button type="button" class="arrancar" id="acertarFechar" data-i18n="marcar.feito"></button>
+  </div>
+</dialog>
+
+<dialog id="confirmar">
+  <h2 id="confirmarTitulo"></h2>
+  <p id="confirmarDica"></p>
+  <div class="botoes">
+    <button type="button" class="anular" id="confirmarNao" data-i18n="marcar.cancelar"></button>
+    <button type="button" class="arrancar" id="confirmarSim"></button>
+  </div>
+</dialog>
+
+<script src="/i18n.js"></script>
+<script src="/i18n/i18n.js"></script>
+<script src="/marcar/marcar.js"></script>
+</body>
+</html>

@@ -19,3 +19,15 @@ The on-air graphics have their own system in `docs/design/SYSTEM-R3.md` (amended
 - **Direction (picked 2026-11-23): Programme desk.** The panel is the night's match programme printed on Soalho. Thick-thin ink rules open each section instead of cards; the screen tiles are drawn thumbnails of what each screen puts on air, in the club's colours; Lâmpada only where something is lit (on air, the newest score digit, the live timer); the active nav item is a Marcador fill leaning 9°; status marks are the mark's colon segments. Type: Archivo along its width axis (condensed 74 for nav, heads, tile names and score; wide 113 for the page title and codes; 100 for text). Radius 2px on frames, stadium ends on buttons only. Tone steps: Lâmpada funda #B8381E (Lâmpada as text on Soalho, 4.6:1), Soalho claro #F8EFDD (the one raised surface). One filled primary button per view.
 - **What the owner disliked:** a first round read as "AI built": cream cards stacked everywhere, identical rounded text tiles, a lit word inside a heading, italic sporty display type, pills on non-controls. Nunito.
 - **Constraints:** `web/` ships embedded with no build step and nothing from a CDN (fonts are woff2 files in `web/fonts/`). All copy European Portuguese. Touch targets usable on a phone.
+
+# On-air styles
+
+The overlay ships five looks, picked per club in Definições > Aparência no ar. Each one is a restyle of the same boxes: no style moves or resizes anything, so the club's corner, size and margin, and the hidden cells, work the same in all five. Every look reads the club's colours from the theme tokens and never hard-codes one.
+
+- **Clássico** (`classico`, default): the diagonal kit band of `docs/design/SYSTEM-R3.md`, R4 and R8.
+- **Lombada** (`lombada`, `web/overlay/styles/lombada.css`): paper and ink, with the club colour as a book's spine; weight and width carry the hierarchy.
+- **Cor do Clube** (`cor`): every surface a tone of the club colour, each layer one step deeper, corners cut at 45°.
+- **Placa Esmaltada** (`placa`): Portuguese enamel plates: white ground, an inset line in the club colour, numbers on their own plate.
+- **Chão do Pavilhão** (`pavilhao`): the hall's own materials drawn in CSS: maple, painted court lines, the scorer's tape.
+
+**How they were made (2026-11-24).** Four blind directions on the frozen layout (premises Quiet, Committed, Material and Borrow). The owner picked all four to ship beside Clássico, and asked that they be polished and ready for other sports. Each then went through an outside critique and a polish pass against it. Rules every style keeps: no letter-spaced caps eyebrows and no dotted meta (every middle dot is an `<i class="sep">` a style may redraw); text on solid ground; labels in the bug at 18 px or more, so the period and the clock read on a phone at 400 px; the accent visible on its ground with all five values; Chromium 103 only (no `:has()`, no `color-mix()`, no nesting).

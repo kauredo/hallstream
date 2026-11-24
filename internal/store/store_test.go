@@ -240,8 +240,29 @@ func TestOldSettingsGetTheSponsorCorner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o := s.Settings().Overlay; o != (Overlay{BugPosition: "bottom-left", SponsorCorner: true, SponsorEvery: 4}) {
-		t.Errorf("overlay %+v", o)
+	want := DefaultSettings().Overlay
+	want.BugPosition = "bottom-left"
+	if o := s.Settings().Overlay; !reflect.DeepEqual(o, want) {
+		t.Errorf("overlay %+v, want %+v", o, want)
+	}
+}
+
+func TestOverlayClean(t *testing.T) {
+	o := Overlay{Style: "neon", BugPosition: "middle", LowerThird: "up", Margin: 10, Scale: 300,
+		Accent: "pink", AwayColor: "", Hide: []string{"strip", "nope", "fouls", "strip"}, SponsorEvery: 99}
+	o.Clean()
+	want := Overlay{Style: "classico", BugPosition: "top-left", LowerThird: "left", Margin: 64, Scale: 100,
+		Accent: "gold", AwayColor: "own", Hide: []string{"fouls", "strip"}, SponsorEvery: SponsorEvery}
+	if !reflect.DeepEqual(o, want) {
+		t.Errorf("got %+v, want %+v", o, want)
+	}
+	ok := Overlay{Style: "placa", BugPosition: "bottom-right", LowerThird: "center", Margin: 32, Scale: 125,
+		Accent: "cyan", AwayColor: "neutral", Hide: []string{"shot"}, SponsorEvery: 1}
+	kept := ok
+	kept.Hide = []string{"shot"}
+	ok.Clean()
+	if !reflect.DeepEqual(ok, kept) {
+		t.Errorf("valid values changed: %+v", ok)
 	}
 }
 

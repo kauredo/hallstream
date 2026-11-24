@@ -5,6 +5,11 @@
 <title data-i18n="overlay.pagina.titulo"></title>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <link rel="stylesheet" href="/overlay/overlay.css">
+<!-- The other on-air looks; each one only applies under html[data-style="<name>"]. -->
+<link rel="stylesheet" href="/overlay/styles/lombada.css">
+<link rel="stylesheet" href="/overlay/styles/cor.css">
+<link rel="stylesheet" href="/overlay/styles/placa.css">
+<link rel="stylesheet" href="/overlay/styles/pavilhao.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -46,7 +51,7 @@
       <div class="sb-red"></div>
     </div>
     <div class="sb-teams">
-      <div class="sb-head"><span><span data-b="homeShort"></span> · <span data-b="sport" data-i18n="overlay.desporto_omissao"></span></span><span class="sb-dot" data-i18n-attr="title:overlay.marcador.sem_ligacao"></span></div>
+      <div class="sb-head"><span><span data-b="homeShort"></span><i class="sep"> · </i><span data-b="sport" data-i18n="overlay.desporto_omissao"></span></span><span class="sb-dot" data-i18n-attr="title:overlay.marcador.sem_ligacao"></span></div>
       <div class="sb-row home">
         <div class="tile" data-tile="home" data-strip></div>
         <div class="nm" data-b="homeName" data-fit="24" data-fit-min="16" data-alt="homeShort"></div>
@@ -117,7 +122,7 @@
 <section class="screen full" id="s-plantel" data-screen="plantel">
   <div class="pl-head">
     <div class="tile pl-crest" data-tile="home"></div>
-    <div class="t"><small><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></small><b><span data-i18n="overlay.plantel.titulo"></span><span data-b="groupName"></span></b></div>
+    <div class="t"><small><span data-b="homeName"></span><i class="sep"> · </i><em data-b="sport" data-i18n="overlay.desporto_omissao"></em></small><b><span data-i18n="overlay.plantel.titulo"></span><span data-b="groupName"></span></b></div>
   </div>
   <div class="pl-grid">
     <div class="coach">
@@ -171,12 +176,12 @@
 
 <!-- Promo: a club video. Vertical: phone frame and a text column. Horizontal: a large frame and a caption. -->
 <section class="screen full" id="s-promo" data-screen="promo">
-  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
+  <div class="pr-lock pr-top"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span><i class="sep"> · </i><em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
   <div class="pr-vid"><div class="pr-frame"><video playsinline muted preload="auto"></video></div></div>
   <i class="pr-prog pr-bar"><b></b></i>
   <div class="pr-left"><span data-i18n="overlay.promo.faltam"></span> <b data-pr="left"></b></div>
   <div class="pr-txt">
-    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span> · <em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
+    <div class="pr-lock pr-in"><div class="tile pr-crest" data-tile="home"></div><span><span data-b="homeName"></span><i class="sep"> · </i><em data-b="sport" data-i18n="overlay.desporto_omissao"></em></span></div>
     <div class="pr-kick"><span data-pr="kicker"></span></div>
     <div class="pr-head" data-pr="headline"></div>
     <div class="pr-line" data-pr="line"></div>

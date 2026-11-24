@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -471,6 +472,33 @@ func TestInputSetting(t *testing.T) {
 	// Only a change swaps the source.
 	if strings.Join(used, ",") != "manual,console" {
 		t.Errorf("swapped to %v", used)
+	}
+}
+
+// The on-air setup goes from PUT /api/settings to the live state, and the
+// hall photo stays the one /api/overlay/photo set.
+func TestOnAirSetup(t *testing.T) {
+	s := newServer(t)
+	s.SyncGame()
+	if o := s.State.Snapshot().Game.Overlay; o.Style != "classico" || o.Margin != 64 || o.Scale != 100 || o.Accent != "gold" || len(o.Hide) != 0 {
+		t.Errorf("default %+v", o)
+	}
+	if _, err := s.Store.UpdateSettings(func(v *store.Settings) { v.Overlay.Photo = "/media/hall-x.jpg" }); err != nil {
+		t.Fatal(err)
+	}
+	set := s.Store.Settings()
+	set.Overlay = store.Overlay{Style: "placa", BugPosition: "bottom-right", LowerThird: "center", Margin: 96, Scale: 85,
+		Accent: "lime", AwayColor: "neutral", Hide: []string{"shot", "fouls"}, Photo: "/media/other.jpg", SponsorEvery: 4}
+	var got store.Settings
+	call(t, s, "PUT", "/api/settings", set, &got)
+	o := s.State.Snapshot().Game.Overlay
+	want := state.Overlay{Style: "placa", BugPosition: "bottom-right", LowerThird: "center", Margin: 96, Scale: 85,
+		Accent: "lime", AwayColor: "neutral", Hide: []string{"fouls", "shot"}, Photo: "/media/hall-x.jpg", SponsorEvery: 4}
+	if !reflect.DeepEqual(o, want) {
+		t.Errorf("state %+v\nwant  %+v", o, want)
+	}
+	if got.Overlay.Photo != "/media/hall-x.jpg" {
+		t.Errorf("PUT replaced the photo: %q", got.Overlay.Photo)
 	}
 }
 

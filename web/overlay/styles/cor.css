@@ -1,0 +1,286 @@
+/* Style "cor" (Cor do Clube): overrides scoped to html[data-style="cor"].
+   The club colour is the ground, not the accent. Every surface is a tone of the club's own colour,
+   and each layer sits one step deeper than what it sits on: --red, then --kit, then --blood, then --ink.
+   Corners: opposite corners cut at 45 degrees, like a number cut from kit fabric.
+   Type: Archivo for names (84% width) and figures (62% width), Barlow for small text.
+   Labels the DOM gives in capitals are set in lowercase; titles and names stay in capitals. */
+
+html[data-style="cor"] {
+  --cm-cut: 18px;          /* the bug and the lower third */
+  --cm-cut-lg: 36px;       /* full screens */
+  --cm-cut-sm: 9px;        /* chips */
+  --cm-mesh: radial-gradient(circle at 3px 3px, rgba(0,0,0,0.09) 1.1px, rgba(0,0,0,0) 1.7px);
+  --cm-mesh-size: 6px 6px;
+  --cm-chalk: #F7F6F2;    /* text on the deep steps */
+  --cm-seam: rgba(247,246,242,0.3);  /* chalk keyline between two dark steps, so a dark club still splits */
+  --cm-face-name: Archivo, sans-serif;
+  --cm-face-text: Barlow, sans-serif;
+}
+
+/* ---------- Type ---------- */
+html[data-style="cor"] #stage { font-family: var(--cm-face-name); font-stretch: 62%; font-weight: 900; }
+html[data-style="cor"] .tile .ini { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; }
+/* Labels in lowercase, one rule everywhere (::first-letter does not reach flex boxes). */
+html[data-style="cor"] .sb-lbl,
+html[data-style="cor"] .sb-per,
+html[data-style="cor"] .sb-shot span,
+html[data-style="cor"] .sb-f .bonus,
+html[data-style="cor"] .to-f .lbl,
+html[data-style="cor"] .to-time .lbl,
+html[data-style="cor"] .win,
+html[data-style="cor"] .lk2 span,
+html[data-style="cor"] .rules span,
+html[data-style="cor"] .ab-kick span,
+html[data-style="cor"] .ab-lbl,
+html[data-style="cor"] .ab-sub,
+html[data-style="cor"] .px-where,
+html[data-style="cor"] .px-day small,
+html[data-style="cor"] .ptab .hd,
+html[data-style="cor"] .pl-head small,
+html[data-style="cor"] .coach .ct span,
+html[data-style="cor"] .vj-score .pd small,
+html[data-style="cor"] .pr-lock span,
+html[data-style="cor"] .pr-kick span,
+html[data-style="cor"] .pr-left,
+html[data-style="cor"] .pr-qr div,
+html[data-style="cor"] .to-mtag { text-transform: lowercase; }
+
+/* Middle dots between two parts become a comma, so the pair reads as one phrase. */
+html[data-style="cor"] i.sep { font-size: 0; }
+html[data-style="cor"] i.sep::before { content: ", "; font-size: 26px; }
+html[data-style="cor"] .ab-comp i.sep::before { font-size: 34px; }
+html[data-style="cor"] .pl-head i.sep::before { font-size: 20px; }
+html[data-style="cor"] .pr-lock i.sep::before { font-size: 20px; }
+html[data-style="cor"] .sb-head i.sep::before { content: none; }
+
+/* ---------- Full-screen ground: one flat slab of the club colour, kit mesh in it ---------- */
+html[data-style="cor"] .atmo { background-color: var(--red); background-image: var(--cm-mesh); background-size: var(--cm-mesh-size); }
+html[data-style="cor"] .atmo > * { display: none; }
+html[data-style="cor"] .brush { display: none; }
+
+/* Header lockup: the club name in the name face, the sport under it in Barlow, no rules either side */
+html[data-style="cor"] .lk1 { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; font-size: 40px; letter-spacing: 0; padding-left: 0; color: var(--on-red); }
+html[data-style="cor"] .lk2 i { background: transparent; }
+html[data-style="cor"] .lk2 span { font-family: var(--cm-face-text); font-weight: 600; font-size: 26px; letter-spacing: 0; padding-left: 0; color: var(--on-red); }
+html[data-style="cor"] .rules i { background: transparent; }
+html[data-style="cor"] .rules span { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0 !important; padding-left: 0 !important; color: var(--on-red); }
+
+/* Sponsor strip: the paper stays, its top edge and dividers take the deep steps */
+html[data-style="cor"] .strip { box-shadow: 0 -6px 0 var(--blood); }
+html[data-style="cor"] .spons .dv { background: var(--kit); }
+
+/* ---------- Marcador ---------- */
+/* A hard ink edge under the slab instead of a soft blur. */
+html[data-style="cor"] .sb { filter: drop-shadow(0 3px 0 var(--ink)); }
+/* The kit band becomes the slab's own end: the two rows run on past the crests and stop at a 45 degree cut. */
+html[data-style="cor"] .sb-fill { clip-path: polygon(var(--cm-cut) 0,53px 0,53px 125px,0 125px,0 var(--cm-cut)); }
+html[data-style="cor"] .sb-fill .n,
+html[data-style="cor"] .sb-fill .w { background-color: var(--red); background-image: var(--cm-mesh); background-size: var(--cm-mesh-size); }
+html[data-style="cor"] .sb-fill .g { background: var(--kit); box-shadow: inset 0 2px 0 var(--cm-seam); }
+html[data-style="cor"] .sb-white,
+html[data-style="cor"] .sb-red { display: none; }
+
+html[data-style="cor"] .sb-head { background-color: var(--red); background-image: var(--cm-mesh); background-size: var(--cm-mesh-size); }
+/* "CAS · BASKET": the short name heavy, the sport lighter, the dot gone */
+html[data-style="cor"] .sb-head span:first-child { font-family: var(--cm-face-text); font-size: 0; letter-spacing: 0; word-spacing: 0; }
+html[data-style="cor"] .sb-head span:first-child > span { font-size: 20px; line-height: 1; }
+html[data-style="cor"] .sb-head span[data-b="homeShort"] { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; margin-right: 8px; }
+html[data-style="cor"] .sb-head span[data-b="sport"] { font-weight: 600; text-transform: lowercase; }
+
+html[data-style="cor"] .sb-row .nm { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-transform: uppercase; }
+html[data-style="cor"] .sb-row .sc { font-weight: 900; font-size: 46px; font-stretch: 62%; }
+html[data-style="cor"] .sb-row.home .nm { background-color: var(--red); background-image: var(--cm-mesh); background-size: var(--cm-mesh-size); color: var(--on-red); }
+html[data-style="cor"] .sb-row.home .sc { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .sb-row.away .nm { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .sb-row.away .sc { background: var(--blood); color: var(--cm-chalk); }
+/* The seam between the two rows: chalk at 30%, drawn inside the cells so nothing grows */
+html[data-style="cor"] .sb-row.away .nm,
+html[data-style="cor"] .sb-row.away .sc { box-shadow: inset 0 2px 0 var(--cm-seam); }
+html[data-style="cor"] .sb-row.home.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -9px 0 0 var(--ink); }
+html[data-style="cor"] .sb-row.away.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -9px 0 0 var(--ink), inset 0 2px 0 var(--cm-seam); }
+html[data-style="cor"][data-hide~="fouls"] .sb-row.home.bonus .nm { box-shadow: none; }
+html[data-style="cor"][data-hide~="fouls"] .sb-row.away.bonus .nm { box-shadow: inset 0 2px 0 var(--cm-seam); }
+
+html[data-style="cor"] .sb-stats { background: var(--blood); clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .sb-gap { background: var(--blood); clip-path: none; }
+html[data-style="cor"] .sb-lbl,
+html[data-style="cor"] .sb-per { background: transparent; font-family: var(--cm-face-text); font-weight: 700; font-size: 20px; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .sb-f b { font-size: 30px; }
+html[data-style="cor"] .sb-f.sep { border-top-color: var(--cm-seam); }
+html[data-style="cor"] .sb-div { background: var(--cm-seam); }
+html[data-style="cor"] .sb-clock { font-size: 52px; line-height: 46px; letter-spacing: 0; }
+html[data-style="cor"] .sb-shot { background: var(--kit); box-shadow: inset 0 0 0 2px var(--cm-seam); clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%); }
+html[data-style="cor"] .sb-shot span { font-family: var(--cm-face-text); font-weight: 700; font-size: 20px; letter-spacing: 0; color: var(--on-kit); }
+html[data-style="cor"] .sb-shot b { font-size: 34px; color: var(--on-kit); }
+/* Shot clock running out: the figure sits on an accent chip in ink, whatever the club and accent colours */
+html[data-style="cor"] .sb-shot b.hot { color: var(--ink); background: var(--gold); padding: 1px 7px; box-shadow: inset 0 0 0 2px var(--ink); }
+/* Fouls warning and bonus: an ink keyline so the accent never melts into a club tone */
+html[data-style="cor"] .pips.hot i.on::after { box-shadow: inset 0 0 0 2px var(--ink); }
+html[data-style="cor"] .sb-f.bonus { box-shadow: inset 0 0 0 3px var(--ink); }
+html[data-style="cor"] .sb-f.bonus b[data-hot],
+html[data-style="cor"] .sb-f .bonus { color: var(--ink); }
+html[data-style="cor"] .sb-f .bonus { font-family: var(--cm-face-text); font-weight: 700; font-size: 20px; letter-spacing: 0; }
+html[data-style="cor"] .pop div { transform: none; font-size: 44px; color: var(--ink); box-shadow: none; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%); }
+html[data-style="cor"] .pop span { transform: none; }
+
+/* Sponsor corner: paper plate, the slab end cut like the bug's */
+html[data-style="cor"] .spc { filter: drop-shadow(0 3px 0 var(--ink)); }
+html[data-style="cor"] .spc-pl { clip-path: polygon(38px 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,38px 100%); }
+html[data-style="cor"] .spc-slab { clip-path: polygon(var(--cm-cut-sm) 0,38px 0,38px 100%,0 100%,0 var(--cm-cut-sm)); }
+html[data-style="cor"] .spc-prog { background: var(--kit); }
+
+/* ---------- Lower third ---------- */
+/* The name runs on the club colour; the team tab and the number block are one deeper step that wraps its left end. */
+html[data-style="cor"] .lt { filter: drop-shadow(0 3px 0 var(--ink)); }
+html[data-style="cor"] .lt-tab { background: var(--kit); clip-path: polygon(0 0,calc(100% - var(--cm-cut)) 0,100% var(--cm-cut),100% 100%,0 100%); }
+html[data-style="cor"] .lt-team { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; font-size: 24px; letter-spacing: 0; color: var(--on-kit); text-transform: uppercase; }
+/* No crest in the tab (commentator): the name steps in off the edge */
+html[data-style="cor"] .lt.comentador .lt-team { transform: translateX(10px); }
+html[data-style="cor"] .lt-body { background-color: var(--red); background-image: var(--cm-mesh); background-size: var(--cm-mesh-size); box-shadow: none; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .lt-tile { background: var(--kit); clip-path: none; }
+html[data-style="cor"] .lt-band { display: none; }
+/* The number and crest boxes are 158px; without the diagonal the block is 204px (176px beside a photo), so centre them in it. */
+html[data-style="cor"] .lt-num { font-variant-numeric: tabular-nums; color: var(--on-kit); font-weight: 900; font-size: 116px; transform: translateX(23px); }
+html[data-style="cor"] .lt-crest { transform: translateX(23px); }
+html[data-style="cor"] .lt.photo .lt-num,
+html[data-style="cor"] .lt.photo .lt-crest { transform: translateX(9px); }
+html[data-style="cor"] .lt-photo { clip-path: none; background: var(--blood); }
+html[data-style="cor"] .lt-small,
+html[data-style="cor"] .lt-label { font-family: var(--cm-face-text); font-weight: 600; font-size: 26px; letter-spacing: 0; text-transform: none; color: var(--on-red); }
+html[data-style="cor"] .lt-big { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; letter-spacing: 0; color: var(--on-red); }
+
+/* ---------- Intervalo and Final ---------- */
+html[data-style="cor"] .hd-tab { background: var(--kit); color: var(--on-kit); gap: 8px; clip-path: polygon(var(--cm-cut) 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%,0 var(--cm-cut)); }
+html[data-style="cor"] .hd-word { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; font-size: 54px; letter-spacing: 0; }
+html[data-style="cor"] .hd-sub { font-family: var(--cm-face-text); font-weight: 600; font-size: 26px; line-height: 1.25; letter-spacing: 0; text-transform: none; }
+
+html[data-style="cor"] .blk { filter: none; }
+html[data-style="cor"] .blk-fill { clip-path: polygon(var(--cm-cut-lg) 0,109px 0,109px 320px,0 320px,0 var(--cm-cut-lg)); }
+html[data-style="cor"] .blk-fill .w { background: var(--kit); }
+html[data-style="cor"] .blk-fill .g { background: var(--blood); box-shadow: inset 0 3px 0 var(--cm-seam); }
+html[data-style="cor"] .blk-white,
+html[data-style="cor"] .blk-red { display: none; }
+html[data-style="cor"] .blk-rows { clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-lg)),calc(100% - var(--cm-cut-lg)) 100%,0 100%); }
+html[data-style="cor"] .blk-nm > div { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-transform: uppercase; }
+html[data-style="cor"] .blk-sc { font-size: 150px; font-weight: 900; letter-spacing: -1px; color: var(--cm-chalk); }
+html[data-style="cor"] .blk-row.home .blk-nm { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .blk-row.home .blk-sc { background: var(--blood); color: var(--cm-chalk); }
+html[data-style="cor"] .blk-row.away .blk-nm { background: var(--blood); color: var(--cm-chalk); }
+html[data-style="cor"] .blk-row.away .blk-sc { background: var(--ink); color: var(--cm-chalk); }
+html[data-style="cor"] .blk-row.away .blk-nm,
+html[data-style="cor"] .blk-row.away .blk-sc { box-shadow: inset 0 3px 0 var(--cm-seam); }
+/* Winner: an accent chip with ink text and an ink keyline */
+html[data-style="cor"] .win,
+html[data-style="cor"] .away .win { background: var(--gold); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); font-family: var(--cm-face-text); font-weight: 700; font-size: 22px; letter-spacing: 0; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%); }
+
+html[data-style="cor"] .ptab { background: var(--blood); border-bottom: 0; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .ptab > div { font-weight: 900; font-size: 34px; border-top-color: var(--cm-seam); }
+html[data-style="cor"] .ptab .hd { font-family: var(--cm-face-text); font-weight: 700; font-size: 20px; letter-spacing: 0; color: var(--cm-chalk); border-top: 0; }
+html[data-style="cor"] .ptab .tn { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; font-size: 26px; text-transform: uppercase; }
+html[data-style="cor"] .ptab .tot,
+html[data-style="cor"] .ptab .hd.tot { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .ptab .lo { color: var(--cm-chalk); opacity: 0.7; }
+
+html[data-style="cor"] .fn-thanks .rules span { font-size: 30px; }
+
+/* ---------- Abertura and Próximo ---------- */
+html[data-style="cor"] .ab-slash { display: none; }
+html[data-style="cor"] .ab-kick div { background: var(--kit); color: var(--on-kit); transform: none; box-shadow: none; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%); }
+html[data-style="cor"] .ab-kick span { transform: none; font-family: var(--cm-face-text); font-weight: 600; font-size: 30px; letter-spacing: 0; padding-left: 0; }
+html[data-style="cor"] .ab-shield { filter: none; }
+html[data-style="cor"] .ab-shield .bar { background: var(--kit); }
+/* The crest backing follows the pennant's point, so a square crest never sticks out past the chevron */
+html[data-style="cor"] .tile.ab-tile { clip-path: polygon(0 0,100% 0,100% 197px,50% 278px,0 197px); }
+html[data-style="cor"] .ab-name { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; letter-spacing: 0; color: var(--on-red); text-shadow: none; text-transform: uppercase; }
+html[data-style="cor"] .ab-sub,
+html[data-style="cor"] #s-proximo .ab-sub { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; color: var(--on-red); }
+/* The opponent's full name is a proper name: as the club typed it */
+html[data-style="cor"] #s-proximo .ab-sub { text-transform: none; }
+html[data-style="cor"] .ab-vs { background: var(--blood); transform: none; box-shadow: none; clip-path: polygon(var(--cm-cut-sm) 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%,0 var(--cm-cut-sm)); }
+html[data-style="cor"] .ab-vs b { transform: none; color: var(--cm-chalk); font-size: 56px; }
+html[data-style="cor"] .ab-info { background: var(--blood); }
+html[data-style="cor"] .ab-lbl { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .ab-time { font-size: 104px; }
+html[data-style="cor"] .ab-sep { background: var(--kit); transform: none; }
+html[data-style="cor"] .ab-comp { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; letter-spacing: 0; }
+html[data-style="cor"] .ab-date { font-family: var(--cm-face-text); font-weight: 600; line-height: 1.15; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .ab-venue { font-weight: 600; color: var(--cm-chalk); }
+html[data-style="cor"] .px-where { transform: none; background: var(--kit); color: var(--on-kit); font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; }
+html[data-style="cor"] .px-day small { color: var(--cm-chalk); letter-spacing: 0; font-family: var(--cm-face-text); font-weight: 600; }
+
+/* ---------- Plantel: kit-coloured cards on the club slab ---------- */
+html[data-style="cor"] .pl-head small { font-family: var(--cm-face-text); font-weight: 600; font-size: 20px; letter-spacing: 0; color: var(--on-red); }
+html[data-style="cor"] .pl-head small em { color: var(--on-red); }
+html[data-style="cor"] .pl-head b { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-transform: uppercase; color: var(--on-red); }
+html[data-style="cor"] .pl-head b span[data-b] { font-family: var(--cm-face-text); font-stretch: 100%; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--on-red); }
+html[data-style="cor"] .card { background: var(--kit); box-shadow: none; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .card .ph { background: var(--blood); }
+html[data-style="cor"] .card .ph::after { display: none; }
+html[data-style="cor"] .card .ph .ini { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; color: var(--cm-chalk); }
+html[data-style="cor"] .card .no { background: var(--red); color: var(--on-red); font-weight: 900; }
+html[data-style="cor"] .card .nm { color: var(--on-kit); }
+html[data-style="cor"] .card .nm small { font-family: var(--cm-face-text); font-weight: 600; color: var(--on-kit); }
+html[data-style="cor"] .card .nm b { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; }
+html[data-style="cor"] .nophoto .card { border-top: 0; }
+html[data-style="cor"] .nophoto .card .no { background: none; color: var(--on-kit); }
+html[data-style="cor"] .nophoto .card .nm { border-top-color: var(--blood); }
+html[data-style="cor"] .coach { background: var(--blood); box-shadow: none; border-top: 0; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .coach .ct { background: var(--ink); }
+html[data-style="cor"] .coach .ct span { font-family: var(--cm-face-text); font-weight: 700; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .coach .ct small { font-family: var(--cm-face-text); font-weight: 600; color: var(--cm-chalk); }
+html[data-style="cor"] .coach .ct b { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; color: var(--cm-chalk); }
+
+/* ---------- Apoiantes ---------- */
+html[data-style="cor"] .ap-crest { filter: none; }
+html[data-style="cor"] .ap-title .t1,
+html[data-style="cor"] .ap-title .t2 { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; letter-spacing: 0; text-shadow: none; transform: none; color: var(--on-red); }
+html[data-style="cor"] .ap-strip { box-shadow: 0 0 0 8px var(--blood); }
+
+/* ---------- Voltamos já ---------- */
+html[data-style="cor"] .vj-crest .tile { filter: none; }
+html[data-style="cor"] .vj-title { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; letter-spacing: 0; transform: none; text-shadow: none; color: var(--on-red); }
+html[data-style="cor"] .vj-title span { color: var(--on-red); }
+html[data-style="cor"] .vj-sub .rules span { text-transform: lowercase; }
+html[data-style="cor"] .vj-score > div { filter: none; clip-path: polygon(var(--cm-cut-sm) 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%,0 var(--cm-cut-sm)); }
+html[data-style="cor"] .vj-score .n { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-transform: uppercase; }
+html[data-style="cor"] .vj-score .hn,
+html[data-style="cor"] .vj-score .an { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .vj-score .hs,
+html[data-style="cor"] .vj-score .as { background: var(--blood); color: var(--cm-chalk); }
+html[data-style="cor"] .vj-score .pd { background: var(--ink); color: var(--cm-chalk); }
+html[data-style="cor"] .vj-score .pd small { font-family: var(--cm-face-text); font-weight: 700; letter-spacing: 0; color: var(--cm-chalk); }
+
+/* ---------- Promo ---------- */
+html[data-style="cor"] .pr-frame { outline: 0; box-shadow: 0 0 0 10px var(--blood); }
+html[data-style="cor"] .pr-prog { background: var(--blood); }
+html[data-style="cor"] .pr-prog b { background: var(--on-red); }
+html[data-style="cor"] .pr-lock span { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; color: var(--on-red); }
+html[data-style="cor"] .pr-lock em { color: var(--on-red); }
+html[data-style="cor"] .pr-kick { background: var(--kit); color: var(--on-kit); transform: none; box-shadow: none; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut-sm)),calc(100% - var(--cm-cut-sm)) 100%,0 100%); }
+html[data-style="cor"] .pr-kick span { transform: none; font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; }
+html[data-style="cor"] .pr-head { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-shadow: none; color: var(--on-red); }
+html[data-style="cor"] .pr-line { font-weight: 600; color: var(--on-red); }
+html[data-style="cor"] .pr-left { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; color: var(--on-red); }
+html[data-style="cor"] .pr-left b { color: var(--on-red); }
+html[data-style="cor"] .pr-qr div { font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; color: var(--on-red); }
+html[data-style="cor"] .pr-qr div b { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; color: var(--on-red); text-transform: none; }
+
+/* ---------- Desconto de tempo: the club slab frames the camera ---------- */
+html[data-style="cor"] .to-hole { outline: 0; box-shadow: 0 0 0 10px var(--blood); }
+html[data-style="cor"] .to-title { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; font-size: 38px; color: var(--on-red); }
+html[data-style="cor"] .to-title span { color: var(--on-red); }
+html[data-style="cor"] .to-nm { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; text-transform: uppercase; clip-path: polygon(var(--cm-cut-sm) 0,100% 0,100% 100%,0 100%,0 var(--cm-cut-sm)); }
+html[data-style="cor"] .home .to-nm { background: var(--kit); color: var(--on-kit); }
+html[data-style="cor"] .away .to-nm { background: var(--blood); color: var(--cm-chalk); }
+html[data-style="cor"] .to-sc { font-size: 84px; color: var(--cm-chalk); clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .home .to-sc { background: var(--blood); color: var(--cm-chalk); }
+html[data-style="cor"] .away .to-sc { background: var(--ink); color: var(--cm-chalk); }
+html[data-style="cor"] .to-f { background: var(--blood); }
+html[data-style="cor"] .to-f .lbl { font-family: var(--cm-face-text); font-weight: 700; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .to-time { background: var(--blood); border-left: 0; clip-path: polygon(0 0,100% 0,100% calc(100% - var(--cm-cut)),calc(100% - var(--cm-cut)) 100%,0 100%); }
+html[data-style="cor"] .to-time .lbl { font-family: var(--cm-face-text); font-weight: 700; letter-spacing: 0; color: var(--cm-chalk); }
+html[data-style="cor"] .to-per { font-family: var(--cm-face-name); font-stretch: 84%; font-weight: 800; }
+html[data-style="cor"] .to-clock { font-size: 84px; }
+html[data-style="cor"] .to-strip { box-shadow: 0 0 0 10px var(--blood); outline: 0; }
+html[data-style="cor"] .to-mtag { background: var(--kit); color: var(--on-kit); box-shadow: none; font-family: var(--cm-face-text); font-weight: 600; letter-spacing: 0; }
+html[data-style="cor"] .to-mini .pr-frame { outline: 0; box-shadow: 0 0 0 8px var(--blood); }

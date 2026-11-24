@@ -4,7 +4,8 @@
 // ?anim=0 turns transitions and animations off, so everything draws in its final state (both for tests).
 // Screenshots of the live touches: ?pop=home:3 (or away:1…3) shows the points plate and ?corner=<n> shows
 // sponsor n in the sponsor corner. Promo: ?vt=<seconds> shows the clip paused at that second, and
-// ?painel=1 (the panel's preview) keeps every clip silent and never reports a clip's end.
+// ?painel=1 (the panel's preview) keeps every clip silent and never reports a clip's end, and takes the setup the panel
+// posts (see look()); ?rodape=1 adds a sample lower third. The setup itself: ?style= ?bug= ?lt= ?margin= ?scale= ?accent= ?hide=
 (() => {
   'use strict';
 
@@ -43,7 +44,17 @@
     v = v == null ? '' : String(v);
     if (el._v === v) return;
     el._v = v;
-    el.textContent = v;
+    // A dotted pair ("Campeonato · Jornada 5") gets its dot in an <i class="sep">, so a style can draw it its own way.
+    const parts = v.split(' · ');
+    if (parts.length > 1) {
+      el.replaceChildren(...parts.flatMap((p, i) => {
+        if (!i) return [p];
+        const sep = document.createElement('i');
+        sep.className = 'sep';
+        sep.textContent = ' · ';
+        return [sep, p];
+      }));
+    } else el.textContent = v;
     if (el.dataset.fit) fit(el);
   }
   function setClass(el, cls, on) {
@@ -108,6 +119,7 @@
   const strip = $('#strip');
   const sponsorBoxes = $$('[data-spons]');
   const bugPos = $('.sb-pos');
+  const bugBox = $('.sb');
 
   const lt = $('#lt');
   const ltBody = $('.lt-body', lt);
@@ -523,7 +535,6 @@
   let shownScreen = null;
   let periodsKey = null;
   let sponsorsKey = null;
-  let bugKey = null;
 
   function renderTile(el, team) {
     const crest = team.crest_url || '';
@@ -962,17 +973,94 @@
     if (STRIP_SCREENS.has(name) && !stripBefore) enterStrip(STRIP_DELAY[name] + base);
   }
 
-  // Top-left or bottom-left. A change after the first state slides the bug across (a fade with
-  // reduced motion); the lower third takes the other corner.
-  function setBug(pos) {
-    pos = pos === 'bottom-left' ? 'bottom-left' : 'top-left';
-    if (pos === bugKey) return;
-    const first = bugKey === null;
-    bugKey = pos;
+  // ---------- the club's setup: style, places, size, accent, what stays off air ----------
+  // The query wins over the state, so the panel can preview a setup before saving it:
+  // ?style= ?bug= ?lt= ?margin= ?scale= ?accent= ?away=neutral ?hide=fouls,shot
+  const W = 1920, H = 1080;
+  const ACCENTS = new Set(['gold', 'white', 'orange', 'lime', 'cyan']);
+  const STYLES = new Set(['classico', 'lombada', 'cor', 'placa', 'pavilhao']);
+  const BUGS = new Set(['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right']);
+  const SIDES = new Set(['left', 'center', 'right']);
+  // The panel's preview (?painel=1) posts {look: '<query string>'} as the club changes the setup,
+  // so the preview follows the form before anything is saved.
+  let lq = q;
+  if (q.get('painel') === '1') {
+    addEventListener('message', (e) => {
+      if (e.origin !== location.origin || !e.data || typeof e.data.look !== 'string') return;
+      lq = new URLSearchParams(e.data.look);
+      render();
+    });
+  }
+  function look(o) {
+    o = o || {};
+    const pick = (k, v, ok, def) => { v = lq.get(k) || v; return ok.has(v) ? v : def; };
+    const num = (k, v, lo, hi, def) => { v = +(lq.get(k) || v); return v >= lo && v <= hi ? v : def; };
+    const hide = lq.has('hide') ? lq.get('hide').split(',') : (o.hide || []);
+    return {
+      style: pick('style', o.style, STYLES, 'classico'),
+      bug: pick('bug', o.bug_position, BUGS, 'top-left'),
+      lt: pick('lt', o.lower_third, SIDES, 'left'),
+      margin: num('margin', o.margin, 32, 96, 64),
+      scale: num('scale', o.scale, 85, 125, 100) / 100,
+      accent: pick('accent', o.accent, ACCENTS, 'gold'),
+      neutralAway: (lq.get('away') || o.away_color) === 'neutral',
+      hide: ['fouls', 'shot', 'strip'].filter((h) => hide.includes(h)).join(' '),
+      photo: typeof o.photo === 'string' && o.photo.startsWith('/media/') ? o.photo : '',
+    };
+  }
+  function setLook(lk) {
+    for (const k of ['style', 'accent', 'hide']) if (root.dataset[k] !== lk[k]) root.dataset[k] = lk[k];
+    const hall = lk.photo ? `url("${lk.photo}")` : '';
+    if (root.style.getPropertyValue('--hall') !== hall) {
+      if (hall) root.style.setProperty('--hall', hall); else root.style.removeProperty('--hall');
+    }
+  }
+
+  // Where the bug, the lower third, the sponsor corner and the credit sit on the scoreboard screen.
+  // Each takes its place from the setup; the lower third, then the corner and the credit, step aside
+  // for what is already there. A change after the first state slides the bug across (a fade with
+  // reduced motion).
+  const overlaps = (a, b) => a && b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const xAt = (side, w, m) => (side === 'left' ? m : side === 'right' ? W - m - w : Math.round((W - w) / 2));
+  let rects = {};
+  function layout(lk, ltUp) {
+    const m = lk.margin, s = lk.scale;
+    const [vy, vx] = lk.bug.split('-');
+    const bw = bugBox.offsetWidth * s, bh = bugBox.offsetHeight * s;
+    const bug = { x: xAt(vx, bw, m), y: vy === 'top' ? m : H - m - bh, w: bw, h: bh };
+
+    const lw = ltBody.offsetWidth * s, lh = lt.offsetHeight * s;
+    let ltR = null;
+    for (const side of [lk.lt, 'right', 'left', 'center']) {
+      const r = { x: xAt(side, lw, m), y: H - m - lh, w: lw, h: lh };
+      if (!overlaps(r, bug)) { ltR = r; break; }
+    }
+    if (!ltR) ltR = { x: xAt(lk.lt, lw, m), y: bug.y - 24 - lh, w: lw, h: lh }; // above a bottom bug
+
+    const cw = spc.offsetWidth || 252, ch = spc.offsetHeight || 86;
+    const corner = [W - m - cw, m].map((x) => ({ x, y: m, w: cw, h: ch })).find((r) => !overlaps(r, bug)) || null;
+    const kw = credit.offsetWidth || 160, kh = credit.offsetHeight || 36;
+    const busy = [bug, ltUp ? ltR : null];
+    const cred = [W - m - kw, m].map((x) => ({ x, y: H - m - kh, w: kw, h: kh })).find((r) => !busy.some((b) => overlaps(r, b))) || null;
+
+    const key = JSON.stringify([bug, ltR, corner, cred, s]);
+    if (key === rects.key) return;
+    const first = !rects.key;
     if (first) bugPos.style.transition = 'none';
-    root.dataset.bug = pos;
-    if (first) { void bugPos.offsetWidth; bugPos.style.transition = ''; return; }
-    if (reduced.matches) nudge(bugPos, fade(), { dur: T.enter });
+    bugPos.style.transform = `translate(${bug.x}px, ${bug.y}px) scale(${s})`;
+    root.dataset.bugX = vx;
+    root.dataset.bugY = vy;
+    // Off screen through the nearest edge, so it slides in from its own corner.
+    root.style.setProperty('--bug-in', vx === 'left' ? 'translateX(-900px)' : vx === 'right' ? 'translateX(900px)'
+      : `translateY(${vy === 'top' ? -(bug.y + bug.h + 40) / s : (H - bug.y + 40) / s}px)`);
+    Object.assign(lt.style, { left: ltR.x + 'px', top: ltR.y + 'px', transform: `scale(${s})` });
+    spc.style.visibility = corner ? '' : 'hidden';
+    if (corner) Object.assign(spc.style, { left: corner.x + 'px', top: corner.y + 'px', right: 'auto' });
+    credit.dataset.room = cred ? '1' : '';
+    if (cred) Object.assign(credit.style, { left: cred.x + 'px', top: cred.y + 'px', right: 'auto', bottom: 'auto' });
+    if (first) { void bugPos.offsetWidth; bugPos.style.transition = ''; }
+    else if (reduced.matches && rects.bug && (rects.bug.x !== bug.x || rects.bug.y !== bug.y)) nudge(bugPos, fade(), { dur: T.enter });
+    rects = { key, bug, lt: ltR, corner, cred };
   }
 
   // Score, fouls, period and shot clock changes animate only on the scoreboard and the time-out
@@ -1047,7 +1135,9 @@
     }
 
     setTheme((st.game || {}).theme);
-    root.style.setProperty('--away', v.away.color || '#5C6170');
+    const lk = look((st.game || {}).overlay);
+    setLook(lk);
+    root.style.setProperty('--away', (!lk.neutralAway && v.away.color) || '#5C6170');
     root.style.setProperty('--next', (v.next && v.next.opponent && v.next.opponent.color) || '#5C6170');
     setClass(screens.voltamos, 'no-line', !v.backLine);
     setClass(screens.voltamos, 'no-score', !v.inPlay);
@@ -1074,7 +1164,9 @@
 
     const shotEl = binds.shot[0];
     setClass(shotEl, 'hot', String(v.shot).includes('.') || shotUrgent(v.shot));
-    setClass(shotEl.parentElement, 'blank', v.shot === '' || v.shot == null);
+    const noShot = v.shot === '' || v.shot == null;
+    setClass(shotEl.parentElement, 'blank', noShot);
+    setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
     const hs = +v.homeScore, as = +v.awayScore;
     setClass(winners.home, 'on', hs > as);
@@ -1084,7 +1176,6 @@
     renderPeriods(v.periods, v);
     renderSquad(st.game || {});
     renderSponsors((st.game || {}).sponsors);
-    setBug(((st.game || {}).overlay || {}).bug_position);
 
     renderPromo(st);
     let screen = forcedScreen || (st.screen && st.screen.current) || 'nada';
@@ -1092,15 +1183,25 @@
     setScreen(screen);
     syncMini(false);
     renderLowerThird(st, screen);
-    // A lower third under a bottom-left bug takes the same corner, so the credit steps aside for it.
-    setClass(credit, 'on', (st.game || {}).credit !== false && CREDIT_SCREENS.has(screen) && !(ltPhase !== 'hidden' && bugKey === 'bottom-left'));
+    layout(lk, ltPhase !== 'hidden');
+    // The credit shows only where it has a free bottom corner.
+    setClass(credit, 'on', (st.game || {}).credit !== false && CREDIT_SCREENS.has(screen) && credit.dataset.room === '1');
     liveEffects(v);
     cornerTick();
     quiet = false;
   }
 
   let queued = false;
+  // ?rodape=1 (the panel's setup preview) always shows a player's lower third: the squad's first
+  // player, or the club's name with a shirt number when there is no squad.
+  function withSampleLT(st) {
+    const p = ((st.game || {}).squad || [])[0] || {};
+    const name = String(p.name || (st.game && st.game.home && st.game.home.name) || '').trim().split(/\s+/);
+    return { ...st, lower_third: { visible: true, type: 'jogador', number: p.number || '7',
+      first_name: name.length > 1 ? name[0] : '', last_name: name.slice(name.length > 1 ? 1 : 0).join(' ') } };
+  }
   function apply(st) {
+    if (st && q.get('rodape') === '1') st = withSampleLT(st);
     state = st;
     if (queued) return;
     queued = true;

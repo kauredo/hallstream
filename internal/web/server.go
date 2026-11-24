@@ -262,6 +262,8 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/club/setup", s.clubSetup)
 	m.HandleFunc("POST /api/club/crest", s.clubCrest)
 	m.HandleFunc("DELETE /api/club/crest", func(w http.ResponseWriter, r *http.Request) { s.setCrest(w, store.DefaultCrest) })
+	m.HandleFunc("POST /api/overlay/photo", s.overlayPhoto)
+	m.HandleFunc("DELETE /api/overlay/photo", func(w http.ResponseWriter, r *http.Request) { s.setPhoto(w, "") })
 
 	m.HandleFunc("GET /api/game", func(w http.ResponseWriter, r *http.Request) { reply(w, s.Store.Game()) })
 	m.HandleFunc("PUT /api/game", s.putGame)
@@ -339,7 +341,7 @@ func (s *Server) sameSite(w http.ResponseWriter, r *http.Request) bool {
 		}
 	}
 	ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/club/crest" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
+	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/club/crest" || r.URL.Path == "/api/overlay/photo" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
 		strings.HasPrefix(r.URL.Path, "/api/groups/") && strings.HasSuffix(r.URL.Path, "/sponsors"))
 	if ct != "application/json" && !(upload && ct == "multipart/form-data") {
 		fail(w, http.StatusUnsupportedMediaType, i18n.T("api.tipo_invalido"))
@@ -470,9 +472,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if req.FPBBaseURL == "" {
 		req.FPBBaseURL = store.DefaultSettings().FPBBaseURL
 	}
-	if req.Overlay.SponsorEvery < store.SponsorEveryMin || req.Overlay.SponsorEvery > store.SponsorEveryMax {
-		req.Overlay.SponsorEvery = store.SponsorEvery
-	}
+	req.Overlay.Clean()
 	req.Lang = i18n.Clean(req.Lang)
 	if err := checkClub(&req.Club); err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
@@ -483,12 +483,10 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		old = *cur
 		// The panel owns the rest; these change elsewhere meanwhile.
 		req.BoxAddress, req.ClubSetup, req.ClubTeams, req.ClubSeason = cur.BoxAddress, cur.ClubSetup, cur.ClubTeams, cur.ClubSeason
-		if !slices.Contains(store.BugPositions, req.Overlay.BugPosition) {
-			req.Overlay.BugPosition = store.BugPositions[0]
-		}
 		if !slices.Contains(store.Inputs, req.Input) {
 			req.Input = store.Inputs[0]
 		}
+		req.Overlay.Photo = cur.Overlay.Photo // /api/overlay/photo owns it
 		req.Overlay.BackLine = cutRunes(strings.Join(strings.Fields(req.Overlay.BackLine), " "), maxBackLine)
 		req.DesktopShortcut, req.StartWithWindows, req.FirstSetup = cur.DesktopShortcut, cur.StartWithWindows, cur.FirstSetup
 		req.OBS.SetupAt = cur.OBS.SetupAt

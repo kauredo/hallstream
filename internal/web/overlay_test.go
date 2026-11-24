@@ -18,6 +18,7 @@ import (
 
 	"github.com/chromedp/chromedp"
 
+	"github.com/kauredo/hallstream/internal/store"
 	assets "github.com/kauredo/hallstream/web"
 )
 
@@ -110,6 +111,74 @@ func TestOverlayRendersEveryFixture(t *testing.T) {
 				t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
 			}
 		})
+	}
+}
+
+// Every style draws every screen kind without an error, and puts its name on <html>.
+func TestOverlayStyles(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	for _, style := range store.Styles {
+		for _, fx := range []string{"marcador", "marcador-12", "rodape-fotos", "rodape-comentador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo-casa", "voltamos"} {
+			t.Run(style+"/"+fx, func(t *testing.T) {
+				messages := chromedp.Console(tab)
+				if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {
+					t.Fatal(err)
+				}
+				if err := until(tab, `document.documentElement.dataset.style === "`+style+`" && document.documentElement.dataset.screen !== undefined`); err != nil {
+					t.Fatal(err)
+				}
+				if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool { return m.Type == chromedp.ConsoleError || m.IsException() }); len(errs) > 0 {
+					t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
+				}
+			})
+		}
+	}
+}
+
+// Wherever the club puts the bug and the lower third, at the largest size and the smallest
+// margin, in every style: both stay inside the frame and never cover each other, and the
+// credit and the sponsor corner only show where they cover neither.
+func TestOverlayPlaces(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const check = `(() => {
+		const r = (s) => { const e = document.querySelector(s); if (!e || getComputedStyle(e).visibility === 'hidden') return null; const b = e.getBoundingClientRect(); return b.width ? b : null; };
+		const over = (a, b) => a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+		const inside = (a) => !a || (a.left >= 0 && a.top >= 0 && a.right <= 1920 && a.bottom <= 1080);
+		const bug = r('.sb'), lt = r('.lt-body'), spc = r('#spc'), cr = document.querySelector('#credit.on') && r('#credit');
+		const bad = [];
+		if (!bug) bad.push('no bug');
+		if (!inside(bug)) bad.push('bug out of frame');
+		if (!inside(lt)) bad.push('lower third out of frame');
+		if (over(bug, lt)) bad.push('bug covers lower third');
+		if (over(cr, bug) || over(cr, lt)) bad.push('credit covers something');
+		if (over(spc, bug)) bad.push('sponsor corner covers the bug');
+		return bad.join(', ');
+	})()`
+	for _, style := range store.Styles {
+		for _, bug := range store.BugPositions {
+			for _, side := range store.LowerThirds {
+				t.Run(style+"/"+bug+"/"+side, func(t *testing.T) {
+					u := srv.URL + "/overlay?anim=0&style=" + style + "&bug=" + bug + "&lt=" + side + "&scale=125&margin=32&state=/overlay/fixtures/rodape-fotos.json"
+					if err := chromedp.Do(tab, chromedp.Navigate(u)); err != nil {
+						t.Fatal(err)
+					}
+					if err := until(tab, `document.documentElement.dataset.bugX !== undefined && [...document.images].every((i) => i.complete)`); err != nil {
+						t.Fatal(err)
+					}
+					bad, err := chromedp.Run(tab, chromedp.Evaluate[string](check))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if bad != "" {
+						t.Error(bad)
+					}
+				})
+			}
+		}
 	}
 }
 

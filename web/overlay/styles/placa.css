@@ -1,0 +1,343 @@
+/* Style "placa" (Placa Esmaltada): overrides scoped to html[data-style="placa"].
+   Enamel plates. Every group of information is a vitreous-enamel plate: white ground, a club-colour line
+   inset from the edge, rounded corners. Numbers sit on their own plates: the home number on the club colour,
+   the away number on white in ink, so the plate itself says whose score is whose. Lettering on white is ink;
+   the club colour carries the lines and the plates, never small text on white (light clubs stay readable).
+   Small plates (bug, lower third, desconto, cards): radius 7, line inset 3, line 3.
+   Large plates (final, intervalo, abertura, apoiantes): radius 12, line inset 6, line 6.
+   Shadows are hard (the plate standing off the wall), never a soft blur. */
+
+html[data-style="placa"] {
+  --en-white: #F1F3F0;   /* enamel ground, cool white */
+  --en-ink: #1A1F23;     /* lettering on white */
+  --en-grey: #575F64;    /* small labels on white, 5.9:1 on the ground */
+  --en-rule: #D2D7D5;    /* hairlines and unlit pips on white */
+  --en-shade-hard: rgba(0,0,0,0.45); /* the plate standing off the wall */
+  --en-shade-edge: rgba(0,0,0,0.5);  /* a one-pixel dark edge so white plates hold over a bright picture */
+  --en-face: "Archivo", sans-serif;
+}
+html[data-style="placa"] #stage { font-family: var(--en-face); font-stretch: 72%; }
+
+/* The Clássico brush and slash go. */
+html[data-style="placa"] .brush,
+html[data-style="placa"] .ab-slash { display: none; }
+
+/* Middle dots: a short dash at mid-cap height in the text colour, the separator a signwriter would paint. */
+html[data-style="placa"] i.sep {
+  display: inline-block; width: 1.1em; height: 0.72em; overflow: clip; white-space: nowrap; text-indent: 2em;
+  vertical-align: baseline; background: linear-gradient(currentColor, currentColor) no-repeat 50% 55% / 0.5em 0.12em;
+}
+
+/* Text rules between two lines are a stock divider: the lines go, the words stay. */
+html[data-style="placa"] .rules i,
+html[data-style="placa"] .lk2 i { display: none; }
+html[data-style="placa"] .rules { justify-content: center; }
+html[data-style="placa"] .rules span { letter-spacing: 0.01em !important; padding-left: 0 !important; font-weight: 700; font-stretch: 72%; }
+
+/* ---------- Marcador: a row of four plates ---------- */
+html[data-style="placa"] .sb { filter: drop-shadow(0 0 1px var(--en-shade-edge)) drop-shadow(0 2px 0 var(--en-shade-hard)); }
+/* Plate 1: names, across the edge, the crests and the names. */
+html[data-style="placa"] .sb::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 279px; height: 125px; z-index: -1;
+  border-radius: 7px; background: var(--en-white);
+}
+html[data-style="placa"] .sb::after {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 273px; height: 119px; z-index: -1; box-sizing: border-box;
+  border: 3px solid var(--red-text); border-radius: 5px; pointer-events: none;
+}
+html[data-style="placa"] .sb-fill,
+html[data-style="placa"] .sb-white,
+html[data-style="placa"] .sb-red { display: none; }
+/* The short name and sport repeat the name plate; the head row stays as the plate's top margin. */
+html[data-style="placa"] .sb-head { background: transparent; }
+html[data-style="placa"] .sb-head > span:first-child { display: none; }
+html[data-style="placa"] .sb-row .tile { background: transparent; }
+html[data-style="placa"] .sb-row .tile[data-strip]::after { display: none; }
+html[data-style="placa"] .sb-row .tile .ini { color: var(--en-ink); font-weight: 800; font-stretch: 72%; }
+/* Names: overlay.js fits them at 24px; the first line is drawn 1.18x, so the fit measures the bigger size. */
+html[data-style="placa"] .sb-row .nm { display: block; line-height: 48px; font-family: var(--en-face); font-weight: 750; font-stretch: 64%; text-transform: uppercase; letter-spacing: 0; }
+html[data-style="placa"] .sb-row .nm::first-line { font-size: 1.18em; }
+html[data-style="placa"] .sb-row.home .nm,
+html[data-style="placa"] .sb-row.away .nm { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .sb-row.bonus .nm,
+html[data-style="placa"][data-hide~="fouls"] .sb-row.bonus .nm { box-shadow: none; background: transparent; }
+/* Plate 2: the scores. Home half in the club colour, away half white, one club line round both. */
+html[data-style="placa"] .sb-teams { position: relative; }
+html[data-style="placa"] .sb-teams::before {
+  content: ""; position: absolute; left: 232px; top: 0; width: 68px; height: 125px; z-index: -1; border-radius: 7px;
+  background: linear-gradient(var(--red) 0 77px, var(--en-white) 77px);
+}
+html[data-style="placa"] .sb-teams::after {
+  content: ""; position: absolute; left: 235px; top: 3px; width: 62px; height: 119px; z-index: -1; box-sizing: border-box;
+  border: 3px solid var(--red-text); border-radius: 5px;
+}
+html[data-style="placa"] .sb-row .sc { box-sizing: border-box; width: 72px; padding-left: 4px; font-weight: 800; font-stretch: 66%; font-size: 44px; }
+html[data-style="placa"] .sb-row.home .sc { background: transparent; color: var(--on-red); }
+html[data-style="placa"] .sb-row.away .sc { background: transparent; color: var(--en-ink); }
+/* Plate 3: fouls, white. Plate 4: the clock, a number plate. */
+html[data-style="placa"] .sb-stats { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .sb-gap,
+html[data-style="placa"] .sb-div { background: transparent; }
+html[data-style="placa"] .sb-fouls { position: relative; }
+html[data-style="placa"] .sb-fouls::before {
+  content: ""; position: absolute; left: -4px; top: 0; width: 120px; height: 125px; z-index: -1;
+  border-radius: 7px; background: var(--en-white);
+}
+html[data-style="placa"] .sb-fouls::after {
+  content: ""; position: absolute; left: -1px; top: 3px; width: 114px; height: 119px; z-index: -1; box-sizing: border-box;
+  border: 3px solid var(--red-text); border-radius: 5px;
+}
+html[data-style="placa"] .sb-lbl { background: transparent; color: var(--en-grey); align-items: flex-end; padding-bottom: 0; box-sizing: border-box; font-weight: 700; font-size: 18px; letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .sb-f { gap: 6px; padding-left: 10px; }
+html[data-style="placa"] .sb-f b { font-weight: 800; font-stretch: 70%; font-size: 30px; }
+html[data-style="placa"] .sb-fouls [data-hot] { color: var(--en-ink); }
+/* The accent only ever appears as a chip with an ink edge, so white or lime still shows on white. */
+html[data-style="placa"] .sb-fouls [data-hot].hot,
+html[data-style="placa"] .sb-f .bonus,
+html[data-style="placa"] .to-f [data-hot].hot,
+html[data-style="placa"] .sb-shot b.hot {
+  color: var(--en-ink); background: var(--gold); border-radius: 3px; box-shadow: inset 0 0 0 2px var(--en-ink);
+}
+html[data-style="placa"] .sb-fouls [data-hot].hot { padding: 3px 4px 1px; min-width: 0; }
+html[data-style="placa"] .sb-f.sep { border-top-color: transparent; background: linear-gradient(var(--en-rule), var(--en-rule)) no-repeat 2px 0 / 100px 2px; background-origin: border-box; }
+html[data-style="placa"] .sb-fouls .pips { gap: 3px; }
+html[data-style="placa"] .sb-fouls .pips i { width: 11px; height: 20px; border-radius: 2px; background: var(--en-rule); }
+html[data-style="placa"] .sb-fouls .pips i.on,
+html[data-style="placa"] .to-f .pips i.on { background: var(--en-ink); }
+html[data-style="placa"] .pips i::after { border-radius: 2px; box-shadow: inset 0 0 0 2px var(--en-ink); }
+html[data-style="placa"] .sb-f.bonus { background: transparent; }
+html[data-style="placa"] .sb-f .bonus { padding: 4px 6px 2px; font-weight: 800; font-size: 19px; letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .sb-f.bonus b[data-hot] { color: var(--en-ink); }
+html[data-style="placa"] .sb-time { position: relative; background: var(--red); color: var(--on-red); border-radius: 7px; }
+html[data-style="placa"] .sb-time::before {
+  content: ""; position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border: 2px solid var(--on-red); border-radius: 4px; opacity: 0.85; pointer-events: none;
+}
+html[data-style="placa"] .sb-per { position: relative; background: transparent; align-items: flex-end; padding-bottom: 0; box-sizing: border-box; font-weight: 700; font-size: 18px; letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .sb-tbox { position: relative; }
+html[data-style="placa"] .sb-clock { font-weight: 800; font-stretch: 70%; font-size: 46px; }
+/* The shot clock gets its own small white plate inside the clock plate. */
+html[data-style="placa"] .sb-shot { background: var(--en-white); border-radius: 4px; width: 104px; height: 34px; gap: 6px; }
+html[data-style="placa"] .sb-shot span { color: var(--en-grey); font-weight: 700; font-size: 18px; letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .sb-shot b { color: var(--en-ink); font-weight: 800; font-stretch: 70%; font-size: 30px; }
+html[data-style="placa"] .sb-shot b.hot { padding: 2px 5px 0; }
+html[data-style="placa"] .pop div { transform: none; border-radius: 6px; background: var(--gold); color: var(--en-ink); font-weight: 800; font-stretch: 70%; box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 5px var(--en-ink), 0 2px 0 var(--en-shade-hard); padding: 8px 14px 6px; }
+html[data-style="placa"] .pop span { transform: none; }
+
+/* Sponsor corner: a small white plate with the club line. */
+html[data-style="placa"] .spc { filter: drop-shadow(0 0 1px var(--en-shade-edge)) drop-shadow(0 2px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .spc-pl { clip-path: none; border-radius: 7px; background: var(--en-white); box-shadow: inset 0 0 0 3px var(--en-white), inset 0 0 0 6px var(--red-text); }
+html[data-style="placa"] .spc-slab { display: none; }
+html[data-style="placa"] .spc-lg { left: 18px; }
+html[data-style="placa"] .spc-lg b { color: var(--en-ink); letter-spacing: 0; font-stretch: 70%; }
+html[data-style="placa"] .spc-prog { left: 10px; right: 10px; bottom: 10px; height: 3px; background: var(--en-rule); }
+
+/* ---------- Lower third: a club tab on a white plate, the shirt number on its own plate ---------- */
+html[data-style="placa"] .lt { filter: drop-shadow(0 0 1px var(--en-shade-edge)) drop-shadow(0 2px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .lt-tab { border-radius: 7px 7px 0 0; padding-left: 4px; }
+html[data-style="placa"] .lt-tab .tile { border-radius: 4px; }
+html[data-style="placa"] .lt-team { font-family: var(--en-face); font-weight: 750; font-stretch: 66%; font-size: 28px; letter-spacing: 0; text-transform: uppercase; }
+html[data-style="placa"] .lt.comentador .lt-team { padding-left: 12px; }
+html[data-style="placa"] .lt-body { position: relative; background: var(--en-white); border-radius: 0 7px 7px 7px; box-shadow: none; }
+html[data-style="placa"] .lt-body::before {
+  content: ""; position: absolute; left: 3px; top: 3px; right: 3px; bottom: 3px; border: 3px solid var(--red-text); border-radius: 0 5px 5px 5px; pointer-events: none;
+}
+/* The shirt number: a club number plate set into the white plate, centred on x 87. */
+html[data-style="placa"] .lt-tile { clip-path: inset(10px 40px 10px 10px round 5px); background: var(--red); }
+html[data-style="placa"] .lt-left::after {
+  content: ""; position: absolute; left: 15px; top: 15px; width: 144px; height: 98px; box-sizing: border-box;
+  border: 2px solid var(--on-red); border-radius: 3px; opacity: 0.85; pointer-events: none;
+}
+html[data-style="placa"] .lt.photo .lt-tile { clip-path: inset(10px 166px 10px 10px round 5px); }
+html[data-style="placa"] .lt.photo .lt-left::after { width: 128px; }
+html[data-style="placa"] .lt-band { display: none; }
+html[data-style="placa"] .lt-num { font-weight: 800; font-variant-numeric: tabular-nums; font-stretch: 70%; font-size: 84px; padding: 2px 0 0 16px; box-sizing: border-box; }
+html[data-style="placa"] .lt.photo .lt-num { padding-left: 0; }
+html[data-style="placa"] .lt-crest { box-sizing: border-box; padding-left: 16px; }
+html[data-style="placa"] .lt-crest .tile { border-radius: 5px; }
+html[data-style="placa"] .lt-photo { clip-path: inset(10px 0 10px 6px round 5px); }
+html[data-style="placa"] .lt-small,
+html[data-style="placa"] .lt-label { font-weight: 700; font-size: 26px; letter-spacing: 0; color: var(--en-grey); font-stretch: 78%; }
+html[data-style="placa"] .lt-big { font-weight: 800; font-stretch: 64%; font-size: 56px; letter-spacing: 0; color: var(--en-ink); }
+html[data-style="placa"] .lt-text { gap: 4px; }
+
+/* ---------- Full screens: lockup, title plate, score plates, period table ---------- */
+html[data-style="placa"] .lk1 { font-weight: 800; font-stretch: 70%; font-size: 40px; letter-spacing: 0; padding-left: 0; }
+html[data-style="placa"] .lk2 { justify-content: center; }
+html[data-style="placa"] .lk2 span { font-weight: 700; font-stretch: 78%; font-size: 24px; letter-spacing: 0; padding: 5px 10px 4px; border-radius: 4px; background: var(--red); color: var(--on-red); }
+
+html[data-style="placa"] .hd-tab { clip-path: none; border-radius: 12px; gap: 6px; }
+html[data-style="placa"] .hd-tab::before {
+  content: ""; position: absolute; left: 8px; top: 8px; right: 8px; bottom: 8px; border: 2px solid var(--on-red); border-radius: 6px; opacity: 0.85;
+}
+html[data-style="placa"] .hd-word { font-family: var(--en-face); font-weight: 800; font-stretch: 70%; font-size: 50px; letter-spacing: 0; text-transform: uppercase; }
+html[data-style="placa"] .hd-sub { font-family: var(--en-face); font-weight: 600; font-stretch: 78%; font-size: 24px; line-height: 1; letter-spacing: 0; text-transform: none; }
+
+html[data-style="placa"] .blk { filter: drop-shadow(0 0 1px var(--en-shade-edge)) drop-shadow(0 3px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .blk-fill,
+html[data-style="placa"] .blk-white,
+html[data-style="placa"] .blk-red { display: none; }
+html[data-style="placa"] .blk-rows { position: relative; z-index: 1; }
+html[data-style="placa"] .blk-edge { z-index: 0; }
+/* Name plate across crests and names; the scores on a number plate beside it, split home/away. */
+html[data-style="placa"] .blk-rows::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 734px; height: 320px; z-index: -1; border-radius: 12px;
+  background: linear-gradient(var(--en-rule), var(--en-rule)) no-repeat 28px 159px / 678px 2px, var(--en-white);
+}
+html[data-style="placa"] .blk-rows::after {
+  content: ""; position: absolute; left: 6px; top: 6px; width: 722px; height: 308px; z-index: -1; box-sizing: border-box;
+  border: 6px solid var(--red-text); border-radius: 8px;
+}
+html[data-style="placa"] .blk-edge::before {
+  content: ""; position: absolute; left: 849px; top: 0; width: 244px; height: 320px; border-radius: 12px;
+  background: linear-gradient(var(--red) 0 160px, var(--en-white) 160px);
+}
+html[data-style="placa"] .blk-edge::after {
+  content: ""; position: absolute; left: 855px; top: 6px; width: 232px; height: 308px; box-sizing: border-box;
+  border: 6px solid var(--red-text); border-radius: 8px;
+}
+html[data-style="placa"] .blk-row .tile img,
+html[data-style="placa"] .sb-row .tile img,
+html[data-style="placa"] .to-mid .tile img,
+html[data-style="placa"] .ab-tile img,
+html[data-style="placa"] .vj-score .tile img { mix-blend-mode: multiply; }
+html[data-style="placa"] .blk-row .tile { background: transparent; }
+html[data-style="placa"] .blk-row .tile .ini { color: var(--en-ink); font-family: var(--en-face); font-weight: 800; font-stretch: 70%; }
+html[data-style="placa"] .blk-row.home .blk-nm,
+html[data-style="placa"] .blk-row.away .blk-nm { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .blk-nm > div { font-family: var(--en-face); font-weight: 800; font-stretch: 64%; text-transform: uppercase; letter-spacing: 0; }
+html[data-style="placa"] .blk-sc { box-sizing: border-box; padding-left: 6px; font-weight: 800; font-stretch: 70%; font-size: 136px; }
+html[data-style="placa"] .blk-row.home .blk-sc { background: transparent; color: var(--on-red); }
+html[data-style="placa"] .blk-row.away .blk-sc { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .win,
+html[data-style="placa"] .away .win { background: var(--red); color: var(--on-red); border-radius: 4px; font-weight: 700; font-stretch: 78%; font-size: 20px; letter-spacing: 0; padding: 6px 9px 5px; }
+
+/* Period table: a white plate with the line drawn by outline, which sits over the total column. */
+html[data-style="placa"] .ptab { background: var(--en-white); border-bottom: 0; border-radius: 12px; overflow: clip; outline: 3px solid var(--red-text); outline-offset: -6px; box-shadow: 0 0 0 1px var(--en-shade-edge), 0 3px 0 var(--en-shade-hard); }
+html[data-style="placa"] .ptab > div { color: var(--en-ink); font-weight: 800; font-stretch: 70%; border-top-color: var(--en-rule); }
+html[data-style="placa"] .ptab .hd { color: var(--en-grey); font-weight: 700; font-stretch: 78%; letter-spacing: 0; font-size: 20px; }
+html[data-style="placa"] .ptab .tn { font-family: var(--en-face); font-weight: 750; font-stretch: 64%; text-transform: uppercase; }
+html[data-style="placa"] .ptab .lo { color: var(--en-ink); }
+html[data-style="placa"] .ptab .tot,
+html[data-style="placa"] .ptab .hd.tot { background: var(--red); color: var(--on-red); border-top-color: transparent; }
+
+html[data-style="placa"] .fn-thanks .rules span { font-size: 32px; }
+
+/* Sponsor strip: an enamel band with the club line along its top. */
+html[data-style="placa"] .spons { background: var(--en-white); }
+html[data-style="placa"] .spons .dv { width: 3px; border-radius: 2px; background: var(--red-text); }
+html[data-style="placa"] .spons .sp b { color: var(--en-ink); font-stretch: 70%; letter-spacing: 0; }
+html[data-style="placa"] .strip { box-shadow: inset 0 6px 0 var(--en-white), inset 0 12px 0 var(--red-text), 0 -2px 0 var(--en-shade-hard); }
+
+/* ---------- Abertura and Próximo jogo ---------- */
+html[data-style="placa"] .ab-kick div { transform: none; border-radius: 7px; box-shadow: inset 0 0 0 5px var(--red), inset 0 0 0 7px var(--on-red), 0 2px 0 var(--en-shade-hard); padding: 13px 26px 11px; }
+html[data-style="placa"] .ab-kick span { transform: none; font-weight: 800; font-stretch: 72%; font-size: 30px; letter-spacing: 0; padding-left: 0; }
+html[data-style="placa"] .ab-shield { filter: drop-shadow(0 3px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .ab-shield .sh { clip-path: none; border-radius: 12px; background: var(--en-white); box-shadow: inset 0 0 0 6px var(--en-white), inset 0 0 0 12px var(--red-text); }
+html[data-style="placa"] .away .ab-shield .sh { box-shadow: inset 0 0 0 6px var(--en-white), inset 0 0 0 12px var(--en-ink); }
+html[data-style="placa"] .ab-shield .bar { display: none; }
+html[data-style="placa"] .ab-tile .ini { color: var(--en-ink); font-family: var(--en-face); font-weight: 800; font-stretch: 70%; margin-top: 0; }
+html[data-style="placa"] .ab-name { font-family: var(--en-face); font-weight: 800; font-stretch: 66%; text-transform: uppercase; letter-spacing: 0; text-shadow: 0 3px 0 rgba(var(--ink-rgb),0.8); }
+html[data-style="placa"] .ab-sub { font-weight: 650; font-stretch: 78%; letter-spacing: 0; }
+html[data-style="placa"] .ab-vs { transform: none; border-radius: 12px; background: var(--red); box-shadow: inset 0 0 0 6px var(--red), inset 0 0 0 8px var(--on-red), 0 3px 0 var(--en-shade-hard); }
+html[data-style="placa"] .ab-vs b { transform: none; color: var(--on-red); font-weight: 800; font-stretch: 72%; font-size: 46px; }
+html[data-style="placa"] .ab-lbl { font-weight: 700; font-stretch: 78%; letter-spacing: 0; }
+html[data-style="placa"] .ab-time { font-weight: 800; font-stretch: 70%; }
+html[data-style="placa"] .ab-sep { transform: none; border-radius: 2px; }
+html[data-style="placa"] .ab-comp { font-weight: 700; font-stretch: 74%; letter-spacing: 0; }
+html[data-style="placa"] .ab-venue { font-family: var(--en-face); font-weight: 600; font-stretch: 78%; }
+html[data-style="placa"] .ab-date { font-weight: 700; font-stretch: 78%; letter-spacing: 0; }
+html[data-style="placa"] .px-where { transform: none; background: var(--red); color: var(--on-red); border-radius: 4px; font-weight: 700; font-stretch: 78%; letter-spacing: 0; padding: 6px 10px 5px; }
+html[data-style="placa"] .px-day { font-stretch: 70%; }
+html[data-style="placa"] .px-day small { letter-spacing: 0; font-weight: 700; font-stretch: 78%; }
+
+/* ---------- Plantel: each player a small plate, the number on its own club plate ---------- */
+html[data-style="placa"] .pl-head small { font-weight: 650; font-stretch: 78%; font-size: 22px; letter-spacing: 0; }
+html[data-style="placa"] .pl-head b { font-family: var(--en-face); font-weight: 800; font-stretch: 66%; font-size: 52px; text-transform: uppercase; }
+html[data-style="placa"] .pl-head b span[data-b] { font-family: var(--en-face); font-weight: 700; font-stretch: 78%; font-size: 28px; letter-spacing: 0; text-transform: none; }
+html[data-style="placa"] .card { background: var(--en-white); border-radius: 7px; outline: 3px solid var(--red-text); outline-offset: -6px; box-shadow: 0 0 0 1px var(--en-shade-edge), 0 3px 0 var(--en-shade-hard); }
+html[data-style="placa"] .card .ph { background: var(--blood); }
+html[data-style="placa"] .card .ph::after { display: none; }
+html[data-style="placa"] .card .ph .ini { font-family: var(--en-face); font-weight: 800; font-stretch: 70%; color: var(--on-kit); }
+html[data-style="placa"] .card .no { font-weight: 800; font-stretch: 70%; }
+html[data-style="placa"] .card .nm { color: var(--en-ink); }
+html[data-style="placa"] .card .nm small { color: var(--en-grey); font-weight: 650; font-stretch: 78%; }
+html[data-style="placa"] .card .nm b { font-weight: 800; font-stretch: 64%; letter-spacing: 0; }
+html[data-style="placa"] .nophoto .card { border-top-color: transparent; }
+html[data-style="placa"] .nophoto .card .no { background: var(--red); color: var(--on-red); clip-path: inset(4px 12px 2px 12px round 5px); font-size: 150px; letter-spacing: 0; padding-left: 26px; }
+html[data-style="placa"] .nophoto .card .nm { border-top-color: var(--en-rule); }
+html[data-style="placa"] .coach { background: var(--red); border-top-color: var(--red); border-radius: 7px; outline: 2px solid var(--on-red); outline-offset: -10px; box-shadow: 0 0 0 1px var(--en-shade-edge), 0 3px 0 var(--en-shade-hard); }
+html[data-style="placa"] .coach .tile { border-radius: 7px; }
+html[data-style="placa"] .coach .tile .ini { color: var(--on-red); font-family: var(--en-face); font-weight: 800; }
+html[data-style="placa"] .coach .ct { background: transparent; }
+html[data-style="placa"] .coach .ct span { color: var(--on-red); font-weight: 700; font-stretch: 78%; font-size: 24px; letter-spacing: 0; }
+html[data-style="placa"] .coach .ct small { color: var(--on-red); font-weight: 650; font-stretch: 78%; }
+html[data-style="placa"] .coach .ct b { color: var(--on-red); font-weight: 800; font-stretch: 64%; }
+html[data-style="placa"] .nophoto .coach .ct { gap: 4px; }
+html[data-style="placa"] .nophoto .coach .ct span { font-size: 20px; }
+html[data-style="placa"] .nophoto .coach .ct b { font-size: 44px; }
+
+/* ---------- Apoiantes ---------- */
+html[data-style="placa"] .ap-crest { filter: drop-shadow(0 3px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .ap-title .t1,
+html[data-style="placa"] .ap-title .t2 { font-family: var(--en-face); font-weight: 800; font-stretch: 66%; font-size: 150px; line-height: 1; letter-spacing: 0; text-transform: uppercase; transform: none; text-shadow: 0 4px 0 rgba(var(--ink-rgb),0.8); }
+html[data-style="placa"] .ap-title .rules span { font-size: 36px; }
+html[data-style="placa"] .ap-strip { border-radius: 12px; box-shadow: inset 0 0 0 6px var(--en-white), inset 0 0 0 12px var(--red-text), 0 0 0 1px var(--en-shade-edge), 0 3px 0 var(--en-shade-hard); }
+
+/* ---------- Voltamos já: the title in the plate capitals, the score as a row of plates ---------- */
+html[data-style="placa"] .vj-crest .tile { filter: drop-shadow(0 3px 0 var(--en-shade-hard)); }
+/* The breathing behind the crest stays, as a flat club-colour roundel instead of a soft glow. */
+html[data-style="placa"] .vj-halo { background: var(--red); box-shadow: inset 0 0 0 8px var(--red), inset 0 0 0 10px var(--on-red); }
+html[data-style="placa"] .vj-title { font-family: var(--en-face); font-weight: 800; font-stretch: 66%; font-size: 168px; letter-spacing: 0; text-transform: uppercase; transform: none; text-shadow: 0 4px 0 rgba(var(--ink-rgb),0.8); }
+html[data-style="placa"] .vj-sub .rules span { letter-spacing: 0; font-size: 32px; }
+html[data-style="placa"] .vj-score > div { background: var(--en-white); border-radius: 7px; overflow: clip; outline: 3px solid var(--red-text); outline-offset: -3px; filter: drop-shadow(0 0 1px var(--en-shade-edge)) drop-shadow(0 2px 0 var(--en-shade-hard)); }
+html[data-style="placa"] .vj-score .tile { background: transparent; }
+html[data-style="placa"] .vj-score .n { font-family: var(--en-face); font-weight: 750; font-stretch: 64%; font-size: 34px; text-transform: uppercase; }
+html[data-style="placa"] .vj-score .hn,
+html[data-style="placa"] .vj-score .an { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .vj-score .s { font-weight: 800; font-stretch: 70%; font-size: 48px; }
+html[data-style="placa"] .vj-score .hs { background: var(--red); color: var(--on-red); }
+html[data-style="placa"] .vj-score .as { background: transparent; color: var(--en-ink); box-shadow: inset 3px 0 0 var(--en-rule); }
+html[data-style="placa"] .vj-score .pd { background: var(--en-ink); color: var(--en-white); }
+html[data-style="placa"] .vj-score .pd small { font-weight: 700; font-stretch: 78%; letter-spacing: 0; color: var(--en-white); opacity: 0.8; }
+html[data-style="placa"] .vj-score .pd b { font-stretch: 70%; }
+
+/* ---------- Promo ---------- */
+html[data-style="placa"] .pr-lock span { font-weight: 650; font-stretch: 78%; letter-spacing: 0; font-size: 22px; }
+html[data-style="placa"] .pr-kick { transform: none; border-radius: 7px; box-shadow: inset 0 0 0 5px var(--red), inset 0 0 0 7px var(--on-red), 0 2px 0 var(--en-shade-hard); padding: 13px 24px 11px; }
+html[data-style="placa"] .pr-kick span { transform: none; letter-spacing: 0; font-stretch: 72%; }
+html[data-style="placa"] .pr-head { font-family: var(--en-face); font-weight: 800; font-stretch: 66%; text-transform: uppercase; text-shadow: 0 4px 0 rgba(var(--ink-rgb),0.8); }
+html[data-style="placa"] .pr-line { font-family: var(--en-face); font-weight: 500; font-stretch: 82%; }
+html[data-style="placa"] .pr-qr div { letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .pr-left { letter-spacing: 0; font-stretch: 78%; }
+html[data-style="placa"] .pr-frame { box-shadow: 0 0 0 9px var(--red), 0 3px 0 9px var(--en-shade-hard); }
+
+/* ---------- Desconto: each team a stack of plates, the clock a number plate ---------- */
+html[data-style="placa"] .to-head .tile .ini { font-family: var(--en-face); font-weight: 800; }
+html[data-style="placa"] .to-title { font-family: var(--en-face); font-weight: 800; font-stretch: 68%; font-size: 38px; text-transform: uppercase; }
+html[data-style="placa"] .to-u::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 306px; height: 146px; box-sizing: border-box; z-index: 1;
+  border: 3px solid var(--red-text); border-radius: 5px 5px 5px 0; pointer-events: none;
+}
+html[data-style="placa"] .to-nm { clip-path: none; border-radius: 7px 7px 0 0; font-family: var(--en-face); font-weight: 750; font-stretch: 64%; text-transform: uppercase; }
+html[data-style="placa"] .home .to-nm,
+html[data-style="placa"] .away .to-nm { background: var(--en-white); color: var(--en-ink); }
+html[data-style="placa"] .to-mid { background: var(--en-white); border-radius: 0 0 7px 0; }
+html[data-style="placa"] .to-mid .tile { background: transparent; }
+html[data-style="placa"] .to-mid .tile[data-strip]::after { display: none; }
+html[data-style="placa"] .to-sc { clip-path: inset(0 10px 10px 0 round 5px); padding-right: 10px; padding-bottom: 10px; font-weight: 800; font-stretch: 70%; font-size: 74px; }
+html[data-style="placa"] .home .to-sc { background: var(--red); color: var(--on-red); }
+html[data-style="placa"] .away .to-sc { background: transparent; color: var(--en-ink); }
+html[data-style="placa"] .to-f { position: relative; background: var(--en-white); border-radius: 0 0 7px 7px; color: var(--en-ink); }
+html[data-style="placa"] .to-f::after {
+  content: ""; position: absolute; left: 3px; right: 3px; top: -3px; bottom: 3px; box-sizing: border-box;
+  border: 3px solid var(--red-text); border-top: 0; border-radius: 0 0 5px 5px; pointer-events: none;
+}
+html[data-style="placa"] .to-f .lbl { color: var(--en-grey); font-weight: 700; font-stretch: 78%; letter-spacing: 0; }
+html[data-style="placa"] .to-f [data-hot] { color: var(--en-ink); font-weight: 800; font-stretch: 70%; }
+html[data-style="placa"] .to-f [data-hot].hot { padding: 3px 5px 1px; }
+html[data-style="placa"] .to-f .pips i { border-radius: 2px; background: var(--en-rule); }
+html[data-style="placa"] .to-time { background: var(--red); color: var(--on-red); border-left: 0; border-radius: 7px; box-shadow: inset 0 0 0 5px var(--red), inset 0 0 0 7px var(--on-red); }
+html[data-style="placa"] .to-time .lbl { color: var(--on-red); opacity: 0.85; font-weight: 700; font-stretch: 78%; letter-spacing: 0; }
+html[data-style="placa"] .to-per,
+html[data-style="placa"] .to-clock { font-stretch: 70%; }
+html[data-style="placa"] .to-mini .pr-frame { box-shadow: 0 0 0 6px var(--red), 0 3px 0 6px var(--en-shade-hard); }

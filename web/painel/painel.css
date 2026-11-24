@@ -679,9 +679,42 @@ a.chip.link:hover b { text-decoration: underline; text-decoration-thickness: 2px
 .cx-qr img { flex: none; border: 1px solid var(--marcador); border-radius: var(--raio); background: #fff; }
 .cx-qr code { overflow-wrap: anywhere; }
 
+/* ---------- Aparência no ar: the preview stays in view while the club picks ---------- */
+.ap-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 40px; align-items: start; margin-top: 16px; }
+.ap-ver { position: sticky; top: 80px; display: grid; gap: 12px; }
+.ap-form { display: grid; gap: 24px; }
+.ap-form fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.ap-form legend { padding: 0; margin-bottom: 8px; font-stretch: var(--estreito); font-weight: 800; font-size: 19px; line-height: 1.1; }
+.ap-form input[type="radio"], .ap-form input[type="range"] { accent-color: var(--marcador); }
+.ap-form input[type="range"] { width: 100%; min-height: 44px; }
+.ap-form output { font-weight: 400; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+.opt { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.opt input { flex: none; width: 20px; height: 20px; margin: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+/* The styles as a programme's running order: a name, a line, a hairline between. */
+.ap-estilos .opt { align-items: baseline; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--regra); }
+.ap-estilos .opt:last-child { border-bottom: 1px solid var(--regra); }
+.ap-estilos .opt input { align-self: center; }
+.ap-estilos .opt b { font-stretch: var(--estreito); font-size: 18px; }
+.ap-estilos .opt small { flex-basis: 100%; padding-left: 30px; color: var(--tinta-2); font-size: 15px; }
+/* The six places of the scoreboard, drawn as a small frame. */
+.cantos { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; width: 192px; aspect-ratio: 16 / 9;
+  border: 2px solid var(--marcador); border-radius: var(--raio); background: var(--soalho-claro); }
+.cantos label { position: relative; display: flex; padding: 8px; cursor: pointer; }
+.cantos label:nth-child(3n+2) { justify-content: center; }
+.cantos label:nth-child(3n) { justify-content: flex-end; }
+.cantos label:nth-child(n+4) { align-items: flex-end; }
+.cantos input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.cantos i { display: block; width: 32px; height: 12px; border: 2px solid var(--marcador-60); border-radius: var(--raio); }
+.cantos label:hover i { border-color: var(--marcador); }
+.cantos input:checked + i { background: var(--marcador); border-color: var(--marcador); }
+.cantos label:has(input:focus-visible) { outline: 3px solid var(--marcador); outline-offset: -3px; }
+.amostras .opt i { width: 22px; height: 22px; border: 1px solid var(--marcador); border-radius: var(--raio); }
+
 /* ---------- narrower screens ---------- */
 @media (max-width: 1100px) {
-  .ecras-grid, .promo-grid { grid-template-columns: minmax(0, 1fr); }
+  .ecras-grid, .promo-grid, .ap-grid { grid-template-columns: minmax(0, 1fr); }
+  .ap-ver { position: static; }
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; background: none; }

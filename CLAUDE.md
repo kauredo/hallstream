@@ -8,7 +8,7 @@ Hallstream is an open-source game-day tool for basketball clubs. Volunteers doub
 - CI vets and tests on Linux and macOS, and builds the exe for Linux, macOS and Windows (amd64 and the 32-bit one the release ships). Before you finish, run `GOOS=windows GOARCH=386 go build ./...`.
 - `go run ./cmd/hallstream -demo -nobrowser` plays an invented game with no Bluetooth. The panel is at `http://127.0.0.1:8765/painel` and the overlay at `/overlay`. A second copy only opens the first one's panel and exits.
 - The program keeps its data in `dados/` beside the exe, or in the current folder under `go run`. Demo mode invents the game and still uses the OBS and YouTube logins saved there. For a clean run, `go build -o <scratch folder>/hallstream ./cmd/hallstream` and start that.
-- `./build.sh <version>` is a zsh script. It runs the tests, then builds both Windows exes and the zip into `dist/`. Without `HALLSTREAM_UPLOAD_TOKEN` set, the exes never upload game logs.
+- `./build.sh <version>` is a zsh script. It runs the tests, then builds both Windows exes and the zip into `dist/`. Without `HALLSTREAM_UPLOAD_TOKEN` set, the exes never upload game logs. Public releases are always built without it: the website promises they send nothing.
 
 ## Where the truth is
 

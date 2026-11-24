@@ -1126,6 +1126,7 @@
   function renderCaixa() {
     if (!caixaBuilt) {
       $('#caixa').innerHTML =
+        '<div class="card" id="cxInput"></div>' +
         '<div class="card" id="cxStatus"></div>' +
         '<div id="cxBanner"></div>' +
         '<p class="warn">' + t('painel.caixa.feche_app') + '</p>' +
@@ -1133,9 +1134,37 @@
         '<p class="hint">' + t('painel.caixa.dispositivos_dica') + '</p>' +
         '<ul class="devs" id="cxList"></ul></div>';
       caixaBuilt = true;
+      $('#cxInput').addEventListener('change', function (e) {
+        if (e.target.name !== 'cxIn' || !S.settings) return;
+        var s = Object.assign({}, S.settings, { input: e.target.value }), msg = $('#cxInMsg');
+        msg.className = 'msg'; msg.textContent = '';
+        api('PUT', '/api/settings', s).then(function (got) {
+          S.settings = got; msg.className = 'msg ok'; msg.textContent = t('painel.marcar.guardado');
+        }, function (err) { msg.className = 'msg err'; msg.textContent = err.message; renderCaixaInput(); });
+      });
     }
+    renderCaixaInput();
     renderCaixaStatus();
     renderDevices();
+  }
+
+  // Where the score comes from: the console's Stream Box, or a phone on /marcar (with its QR code).
+  function renderCaixaInput() {
+    var el = $('#cxInput'); if (!el || !S.settings) return;
+    var s = S.settings, manual = s.input === 'manual';
+    var lan = S.status && S.status.lan_url ? S.status.lan_url.replace(/\/painel$/, '/marcar') : '';
+    var opt = function (v, on, label, hint) {
+      return '<label><input type="radio" name="cxIn" value="' + v + '"' + (on ? ' checked' : '') + '><span><b>' + label + '</b><small>' + hint + '</small></span></label>';
+    };
+    el.innerHTML = '<h2>' + t('painel.marcar.titulo') + '</h2>' +
+      '<div class="cx-in">' +
+        opt('console', !manual, t('painel.marcar.consola'), t('painel.marcar.consola_dica')) +
+        opt('manual', manual, t('painel.marcar.telemovel'), t('painel.marcar.telemovel_dica')) +
+      '</div><span class="msg" id="cxInMsg" role="status"></span>' +
+      (lan
+        ? '<div class="cx-qr"><img src="/marcar/qr.svg" width="148" height="148" alt="' + t('painel.marcar.qr_alt') + '">' +
+          '<p>' + t('painel.marcar.abra', { url: '<code>' + esc(lan) + '</code>' }) + '</p></div>'
+        : '<p class="hint">' + t('painel.marcar.sem_telemovel') + '</p>');
   }
 
   function scanState() {

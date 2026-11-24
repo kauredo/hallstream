@@ -287,3 +287,48 @@ func TestSeed(t *testing.T) {
 		t.Error("undo goes back past the seed")
 	}
 }
+
+// The scorer nudges the clock to the hall's: a second or ten at a time,
+// running or not, never below 0, and undo takes the nudge back.
+func TestClockAdd(t *testing.T) {
+	mn, _, c := newTest()
+	do(t, mn, Action{Do: "clock_add", Tenths: -10})
+	if s := mn.Score(); s.Clock != DefaultLength-10 || s.Running {
+		t.Errorf("-1 s stopped: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(2 * time.Second)
+	do(t, mn, Action{Do: "clock_add", Tenths: 100})
+	if s := mn.Score(); s.Clock != DefaultLength-10-20+100 || !s.Running {
+		t.Errorf("+10 s running: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "clock_add", Tenths: -MaxClock})
+	if s := mn.Score(); s.Clock != 0 {
+		t.Errorf("below 0: %+v", s)
+	}
+	if err := mn.Do(Action{Do: "clock_add"}); err == nil {
+		t.Error("0 s accepted")
+	}
+	if a, ok := mn.Undo(); !ok || a.Do != "clock_add" || a.Tenths != -MaxClock {
+		t.Errorf("next undo %+v %v", a, ok)
+	}
+	do(t, mn, Action{Do: "undo"})
+	if s := mn.Score(); s.Clock != DefaultLength-30+100 {
+		t.Errorf("after undo %+v", s)
+	}
+}
+
+// FIBA timeouts: the count goes back to 0 for the second half and each overtime only.
+func TestTimeoutsPerHalf(t *testing.T) {
+	mn, _, _ := newTest()
+	want := map[int]int{2: 1, 3: 0, 4: 1, 5: 0, 6: 0}
+	for p := 2; p <= 6; p++ {
+		do(t, mn, Action{Do: "timeout", Team: "home", N: 1}, Action{Do: "period_next"})
+		if got := mn.Score(); got.Period != p || got.HomeTimeouts != want[p] {
+			t.Errorf("period %d: %d timeouts, want %d", got.Period, got.HomeTimeouts, want[p])
+		}
+	}
+	if _, ok := NewManual(&Manual{}).Undo(); ok {
+		t.Error("a new game has something to undo")
+	}
+}

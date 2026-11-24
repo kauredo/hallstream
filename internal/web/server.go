@@ -25,6 +25,7 @@ import (
 	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/source"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/youtube"
@@ -54,6 +55,8 @@ type Server struct {
 	// UseInput switches the score input to settings.input's new value; nil
 	// in tests.
 	UseInput func(name string)
+	// Manual is the score kept by hand from /marcar; nil answers 503.
+	Manual *source.Manual
 
 	mux        *http.ServeMux
 	failMu     sync.Mutex
@@ -172,7 +175,8 @@ func (s *Server) routes() {
 	})
 	m.HandleFunc("GET /overlay", page("overlay/index.html"))
 	m.HandleFunc("GET /painel", page("painel/index.html"))
-	for _, dir := range []string{"/overlay/", "/painel/", "/i18n/", "/fonts/", "/assets/"} {
+	s.marcarRoutes(m, page)
+	for _, dir := range []string{"/overlay/", "/painel/", "/marcar/", "/i18n/", "/fonts/", "/assets/"} {
 		m.Handle("GET "+dir, static)
 	}
 	m.HandleFunc("GET /i18n.js", words)

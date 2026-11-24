@@ -39,7 +39,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - Move `internal/ble` behind it.
    - Add `manual` next to `demo`.
    - Document the frame shape in `docs/CONTRACT.md`.
-4. **Scorer page** (`/marcar`).
+4. **Scorer page** (`/marcar`). Done: the first tap takes the scoring over from the console; the panel's Marcação tab picks the input and shows the QR code.
    - A page for a phone held sideways, reached over the LAN with the PIN.
    - It covers points per team, undo, the clock, the period, fouls and timeouts.
    - It can also run next to a console, as a fallback.

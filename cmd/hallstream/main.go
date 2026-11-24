@@ -225,6 +225,7 @@ func main() {
 		UploadToken: uploadToken,
 		Timeline:    tl,
 		UseInput:    inputs.Use,
+		Manual:      manual,
 	})
 	srv.SyncGame()
 	srv.SyncPromo()

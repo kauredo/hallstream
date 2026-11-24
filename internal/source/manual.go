@@ -43,8 +43,10 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //     start and stop, and only takes the clock back for an action that set it
 //   - "clock_start", "clock_stop"
 //   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps running
+//   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0 and MaxClock
 //   - "period_next": the next period, with the clock stopped at the period
-//     length and the team fouls at 0
+//     length and the team fouls at 0; the timeouts go back to 0 for the
+//     second half (period 3) and each overtime (5 on)
 //   - "period_back": the period before, the clock stopped where it is
 //   - "period_length": the period length to Tenths (above 0); a clock
 //     stopped at the old length moves to the new one
@@ -86,6 +88,7 @@ type Manual struct {
 }
 
 type undone struct {
+	a     Action // what it takes back, for the scorer's "Anular …"
 	s     Score
 	clock bool // the action set the clock
 }
@@ -197,9 +200,20 @@ func (m *Manual) Do(a Action) error {
 		}
 		s.Clock, m.from, m.fromClock, clock = a.Tenths, m.Now(), a.Tenths, true
 		s.Running = s.Running && s.Clock > 0
+	case "clock_add":
+		if a.Tenths == 0 || a.Tenths < -MaxClock || a.Tenths > MaxClock {
+			return errClock
+		}
+		s.Clock = min(max(s.Clock+a.Tenths, 0), MaxClock)
+		m.from, m.fromClock, clock = m.Now(), s.Clock, true
+		s.Running = s.Running && s.Clock > 0
 	case "period_next":
 		s.Period++
 		s.Clock, s.Running, s.HomeFouls, s.AwayFouls, clock = s.Length, false, 0, 0, true
+		// FIBA timeouts: 2 in the first half, 3 in the second, 1 in each overtime.
+		if s.Period == 3 || s.Period >= 5 {
+			s.HomeTimeouts, s.AwayTimeouts = 0, 0
+		}
 	case "period_back":
 		s.Period, s.Running, clock = max(s.Period-1, 1), false, true
 	case "period_length":
@@ -219,13 +233,23 @@ func (m *Manual) Do(a Action) error {
 		return nil
 	}
 	if a.Do != "clock_start" && a.Do != "clock_stop" {
-		m.undo = append(m.undo, undone{prev, clock})
+		m.undo = append(m.undo, undone{a, prev, clock})
 		if len(m.undo) > undoMax {
 			m.undo = m.undo[len(m.undo)-undoMax:]
 		}
 	}
 	m.changed()
 	return nil
+}
+
+// Undo is the action undo would take back next; false when there is none.
+func (m *Manual) Undo() (Action, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.undo) == 0 {
+		return Action{}, false
+	}
+	return m.undo[len(m.undo)-1].a, true
 }
 
 // count is the number a point, foul or timeout action changes.

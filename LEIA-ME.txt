@@ -237,9 +237,10 @@ SE ALGO CORRER MAL
 - Qualquer outro problema: envie o ficheiro dados\marcador.log, onde o
   programa escreve o que vai fazendo.
 
-No fim de cada transmissão, o programa envia os registos desse jogo para
-o servidor do clube. Não vai com eles nada de pessoal: nem nomes, nem
-palavras-passe, nem o PIN.
+As versões publicadas no GitHub não enviam nada para fora do PC. Só uma
+versão feita para um clube, com uma chave própria, envia os registos de
+cada jogo para o servidor desse clube no fim da transmissão. Não vai com
+eles nada de pessoal: nem nomes, nem palavras-passe, nem o PIN.
 
 
 DIRETOS NO YOUTUBE
@@ -261,4 +262,20 @@ inicial e entra-se com a conta que gere o canal do clube.
   YouTube e carregue em "Ligar ao YouTube" outra vez.
 - O login fica na pasta dados, no ficheiro youtube.json. Não o mande a
   ninguém. "Desligar" cancela o acesso no Google e apaga-o.
+
+
+LICENÇA
+
+Hallstream é software livre e de código aberto.
+Copyright (C) 2026 Vasco Kaufmann.
+
+Pode usá-lo, alterá-lo e partilhá-lo nos termos da GNU Affero General
+Public License, versão 3 ou posterior, no ficheiro LICENSE.txt. O
+programa vem sem qualquer garantia.
+
+O código-fonte está em https://github.com/kauredo/hallstream.
+
+O programa inclui software de terceiros, cada um com a sua licença, no
+ficheiro THIRD-PARTY-NOTICES.txt. As fontes de letra estão sob a SIL Open
+Font License, que o painel mostra em /fonts/OFL.txt.
 

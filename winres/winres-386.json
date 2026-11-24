@@ -28,7 +28,8 @@
             "FileDescription": "Hallstream",
             "InternalName": "Hallstream",
             "OriginalFilename": "Hallstream (32-bit).exe",
-            "ProductName": "Hallstream"
+            "ProductName": "Hallstream",
+            "LegalCopyright": "Copyright (C) 2026 Vasco Kaufmann. AGPL-3.0-or-later."
           }
         }
       }

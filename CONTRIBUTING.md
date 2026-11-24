@@ -47,3 +47,7 @@ Open an issue with:
 - `dados/marcador.log`
 
 Remove anything personal before you attach a file.
+
+## Licence of contributions
+
+Hallstream is under the AGPL-3.0-or-later. By opening a pull request you agree that your contribution is licensed under the same terms.

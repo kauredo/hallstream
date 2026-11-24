@@ -49,4 +49,6 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Help is most useful in these areas:
 
 ## Licence
 
-[AGPL-3.0](LICENSE). Stramatel, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.
+Copyright (C) 2026 Vasco Kaufmann. Hallstream is free software under the [GNU Affero General Public License, version 3 or later](LICENSE) (AGPL-3.0-or-later), with no warranty. The release zip carries the licence and `THIRD-PARTY-NOTICES.txt`, the licences of the code linked into the exes (`scripts/notices.sh` writes it).
+
+Stramatel, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.

@@ -28,10 +28,13 @@ GOOS=windows GOARCH=386 go build -ldflags $flags -o "dist/Hallstream (32-bit).ex
 rm -f cmd/hallstream/rsrc_windows_*.syso
 
 /bin/cp -f LEIA-ME.txt dist/LEIA-ME.txt
+# The AGPL text and the licences of the code linked into the exes ship with them.
+/bin/cp -f LICENSE dist/LICENSE.txt
+scripts/notices.sh dist/THIRD-PARTY-NOTICES.txt
 rm -rf dist/YouTube
 mkdir -p dist/YouTube
 # A .txt opens with a double click on Windows; the guide is Markdown-light.
 /bin/cp -f docs/youtube/SETUP.md dist/YouTube/LIGAR-YOUTUBE.txt
 rm -f dist/Hallstream-$version.zip
-(cd dist && zip -q -X -9 Hallstream-$version.zip "Hallstream.exe" "Hallstream (32-bit).exe" LEIA-ME.txt YouTube/LIGAR-YOUTUBE.txt)
+(cd dist && zip -q -X -9 Hallstream-$version.zip "Hallstream.exe" "Hallstream (32-bit).exe" LEIA-ME.txt LICENSE.txt THIRD-PARTY-NOTICES.txt YouTube/LIGAR-YOUTUBE.txt)
 ls -lh dist

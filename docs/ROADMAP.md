@@ -1,6 +1,6 @@
 # Roadmap
 
-Hallstream started as a game-day tool built for one Portuguese basketball club. The goal is a free tool that any amateur club can use to stream its games:
+Hallstream started as a game-day tool built for one Portuguese basketball club. The goal is a free tool that any club can use to stream its games, in any country, at any level from youth and amateur to professional, and in the club's own language:
 
 - the score read from the hall's console, or kept by hand on a phone
 - several cameras through OBS
@@ -15,7 +15,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 |---|---|
 | Licence | AGPL-3.0. |
 | Platform | One Go exe with the panel and overlay embedded. Windows first, macOS and Linux builds after. |
-| Audience | Volunteers at amateur and youth clubs, often on an old PC in the hall. |
+| Audience | Clubs anywhere, at any level. Most are run by volunteers, often on an old PC in the hall, so the app has to stay simple for them; it must also scale up for professional and semi-professional clubs. |
 | Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
 | Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |
 | Sports | A sport profile holds the clock direction, periods, scoring units, fouls and penalties, overtime and the automatic screen rules. Graphics come in two families, timed periods and sets. Targets: basketball, futsal, handball, volleyball and soccer. |

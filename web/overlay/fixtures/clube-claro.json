@@ -129,8 +129,12 @@
       "ink": "#141105",
       "ink-rgb": "20,17,5",
       "kit": "#C8990B",
+      "lift": "#F7D365",
+      "lift-2": "#F7D66E",
       "navy": "#063B2A",
       "on-kit": "#141105",
+      "on-lift": "#141105",
+      "on-lift-2": "#141105",
       "on-red": "#141105",
       "red": "#F4C430",
       "red-hi": "#F4C430",
@@ -138,7 +142,8 @@
       "red-rgb": "244,196,48",
       "red-text": "#937108",
       "tint": "#B88D0A",
-      "tint-dim": "#A78009"
+      "tint-dim": "#A78009",
+      "tone": "light"
     }
   },
   "screen": {

@@ -152,6 +152,9 @@ func TestOverlayCSSDefaultsAreTheDefaultClub(t *testing.T) {
 	}
 	root, _, _ := strings.Cut(string(css), "}")
 	for k, v := range club.Theme(club.DefaultPrimary, club.DefaultSecondary) {
+		if k == "tone" {
+			continue // not a colour: overlay.js puts it on <html data-club-tone>, mid by default
+		}
 		if !strings.Contains(root, "--"+k+": "+v+";") {
 			t.Errorf("overlay.css :root lacks --%s: %s;", k, v)
 		}

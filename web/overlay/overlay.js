@@ -1115,7 +1115,9 @@
     if (key === themeKey) return;
     themeKey = key;
     for (const k of themeKeys) if (!(k in theme)) root.style.removeProperty('--' + k);
-    for (const [k, val] of Object.entries(theme)) if (typeof val === 'string') root.style.setProperty('--' + k, val);
+    for (const [k, val] of Object.entries(theme)) if (typeof val === 'string' && k !== 'tone') root.style.setProperty('--' + k, val);
+    // dark, mid or light (club.Theme): a style that layers tones of the club colour steps up on a dark one.
+    root.dataset.clubTone = theme.tone === 'dark' || theme.tone === 'light' ? theme.tone : 'mid';
     themeKeys = Object.keys(theme);
   }
 

@@ -452,6 +452,28 @@ func TestBugPosition(t *testing.T) {
 	}
 }
 
+func TestInputSetting(t *testing.T) {
+	s := newServer(t)
+	var used []string
+	s.UseInput = func(name string) { used = append(used, name) }
+	if in := s.Store.Settings().Input; in != "console" {
+		t.Errorf("default %q", in)
+	}
+	for _, c := range []struct{ send, want string }{{"manual", "manual"}, {"manual", "manual"}, {"serial", "console"}, {"", "console"}} {
+		set := s.Store.Settings()
+		set.Input = c.send
+		var got store.Settings
+		call(t, s, "PUT", "/api/settings", set, &got)
+		if got.Input != c.want {
+			t.Errorf("sent %q: input %q, want %q", c.send, got.Input, c.want)
+		}
+	}
+	// Only a change swaps the source.
+	if strings.Join(used, ",") != "manual,console" {
+		t.Errorf("swapped to %v", used)
+	}
+}
+
 func TestSponsorCornerSettings(t *testing.T) {
 	s := newServer(t)
 	s.SyncGame()

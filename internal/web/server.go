@@ -51,6 +51,9 @@ type Server struct {
 	// UploadToken lets the program send each stream's logs; "" never sends.
 	UploadToken string
 	Timeline    *gamelog.Timeline // nil writes nothing
+	// UseInput switches the score input to settings.input's new value; nil
+	// in tests.
+	UseInput func(name string)
 
 	mux        *http.ServeMux
 	failMu     sync.Mutex
@@ -479,6 +482,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		if !slices.Contains(store.BugPositions, req.Overlay.BugPosition) {
 			req.Overlay.BugPosition = store.BugPositions[0]
 		}
+		if !slices.Contains(store.Inputs, req.Input) {
+			req.Input = store.Inputs[0]
+		}
 		req.Overlay.BackLine = cutRunes(strings.Join(strings.Fields(req.Overlay.BackLine), " "), maxBackLine)
 		req.DesktopShortcut, req.StartWithWindows, req.FirstSetup = cur.DesktopShortcut, cur.StartWithWindows, cur.FirstSetup
 		req.OBS.SetupAt = cur.OBS.SetupAt
@@ -505,6 +511,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if old.AutoScreens != set.AutoScreens {
 		s.State.SetScreen("", set.AutoScreens)
+	}
+	if old.Input != set.Input && s.UseInput != nil {
+		s.UseInput(set.Input)
 	}
 	if old.PhoneAccess != set.PhoneAccess {
 		s.Log(i18n.T("log.telemovel_depois"))

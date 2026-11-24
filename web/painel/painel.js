@@ -873,7 +873,10 @@
     var html = '';
     if (st.demo) html += '<span class="chip"><span class="dot wait"></span>' + t('painel.chip.demo') + '</span>';
     var bt = (box.scan && box.scan.bluetooth) || 'ok';
-    html += '<a class="chip link" href="#caixa" data-goto="caixa">' + (box.connected
+    if (st.input === 'manual') html += '<span class="chip">' + (box.connected
+      ? '<span class="dot on"></span>' + t('painel.chip.manual_ligada')
+      : '<span class="dot wait"></span>' + t('painel.chip.manual_espera')) + '</span>';
+    else html += '<a class="chip link" href="#caixa" data-goto="caixa">' + (box.connected
       ? '<span class="dot on"></span>' + t('painel.chip.caixa_ligada') + (box.last_frame_at ? ' · ' + esc(ago(box.last_frame_at)) : '')
       : bt !== 'ok'
         ? '<span class="dot off"></span>' + t('painel.chip.caixa_bt_desligado')
@@ -965,7 +968,7 @@
   // buttons stay on: the start is the volunteer's call.
   function readiness(h, problem, expired) {
     var s = S.state || {}, box = s.box || (S.status && S.status.box) || {}, g = S.game || {}, out = [];
-    if (!box.connected && !s.demo) out.push(['off', t('painel.stream.falta_caixa'), 'caixa']);
+    if (!box.connected && !s.demo) out.push(s.input === 'manual' ? ['off', t('painel.stream.falta_marcador'), ''] : ['off', t('painel.stream.falta_caixa'), 'caixa']);
     if (!g.group_id || !(g.away && g.away.name)) out.push(['wait', t('painel.stream.falta_jogo'), 'jogo']);
     if (problem) out.push(['off', t('painel.stream.falta_obs', { problema: problem }), '']);
     else if (!h.checked) out.push(['wait', t('painel.stream.a_verificar_obs'), '']);
@@ -1137,6 +1140,8 @@
 
   function scanState() {
     var st = S.state || {}, box = st.box || {};
+    // With manual scoring box.connected is the phone; the box is linked when the reader has an address.
+    if (st.input === 'manual') box = Object.assign({}, box, { connected: !!(box.scan && box.scan.address) });
     return { box: box, scan: box.scan || {}, demo: !!st.demo };
   }
 

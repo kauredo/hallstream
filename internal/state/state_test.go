@@ -289,13 +289,42 @@ func TestDemoKeepsTheGamesPeriods(t *testing.T) {
 	}
 }
 
+func TestManualFramesDoNotConnectTheBox(t *testing.T) {
+	m, _ := newTest()
+	if in := m.Snapshot().Input; in != "console" {
+		t.Fatalf("input %q, want console", in)
+	}
+	m.ApplyConsole(map[string]string{"period": "1", "home": "2"})
+	if !m.Snapshot().Box.Connected {
+		t.Fatal("a box frame does not connect")
+	}
+	m.SetInput("manual")
+	if m.Snapshot().Box.Connected {
+		t.Fatal("still connected after the input changed")
+	}
+	m.ApplyConsole(map[string]string{"period": "1", "home": "4", "home_timeouts": "1"})
+	s := m.Snapshot()
+	if s.Box.Connected || s.Live.Home != 4 || s.Live.HomeTimeouts != 1 || s.Input != "manual" {
+		t.Errorf("manual frame: connected %t, live %+v, input %q", s.Box.Connected, s.Live, s.Input)
+	}
+	m.SetBox(true)
+	if !m.Snapshot().Box.Connected {
+		t.Error("SetBox does not connect the scorer")
+	}
+}
+
 func TestClockText(t *testing.T) {
 	for in, want := range map[int]string{6000: "10:00", 600: "01:00", 599: "59.9", 0: "0.0"} {
-		if got := clockText(in); got != want {
-			t.Errorf("clockText(%d) = %q, want %q", in, got, want)
+		if got := ClockText(in); got != want {
+			t.Errorf("ClockText(%d) = %q, want %q", in, got, want)
 		}
-		if got := tenths(want); got != in {
-			t.Errorf("tenths(%q) = %d, want %d", want, got, in)
+		if got := Tenths(want); got != in {
+			t.Errorf("Tenths(%q) = %d, want %d", want, got, in)
+		}
+	}
+	for in, want := range map[int]string{5999: "10:00", 5991: "10:00", 5990: "09:59", 601: "01:01"} {
+		if got := ClockText(in); got != want {
+			t.Errorf("ClockText(%d) = %q, want %q", in, got, want)
 		}
 	}
 }

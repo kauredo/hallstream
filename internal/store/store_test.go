@@ -203,6 +203,36 @@ func TestPeriodsFile(t *testing.T) {
 	}
 }
 
+func TestOldSettingsReadTheConsole(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"auto_screens":true}`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in := s.Settings().Input; in != "console" {
+		t.Errorf("input %q, want console", in)
+	}
+}
+
+func TestManualRoundTrip(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	type score struct{ Home, Away int }
+	got := score{7, 7}
+	if err := s.LoadManual(&got); err != nil || got != (score{7, 7}) {
+		t.Fatalf("no file: %v %v", got, err)
+	}
+	if err := s.SaveManual(score{12, 9}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LoadManual(&got); err != nil || got != (score{12, 9}) {
+		t.Errorf("got %v %v", got, err)
+	}
+}
+
 func TestOldSettingsGetTheSponsorCorner(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"overlay":{"bug_position":"bottom-left"}}`), 0o644)

@@ -35,7 +35,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 2. **Translations.**
    - Move every user-facing string, in the panel, the overlay and the log, into `i18n/<lang>.json`.
    - Add a test that fails on a missing key.
-3. **`Source` interface** (`internal/source`).
+3. **`Source` interface** (`internal/source`). Done: the console and `manual` sit behind it, switched by `settings.input`; the demo stays in `internal/state`.
    - Move `internal/ble` behind it.
    - Add `manual` next to `demo`.
    - Document the frame shape in `docs/CONTRACT.md`.

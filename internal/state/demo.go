@@ -30,14 +30,6 @@ func (m *Machine) SetDemo(on bool) {
 	m.changed()
 }
 
-// clockText formats tenths the way the box does: "MM:SS", or "S.T" under a minute.
-func clockText(t int) string {
-	if t >= 600 {
-		return fmt.Sprintf("%02d:%02d", t/600, t/10%60)
-	}
-	return fmt.Sprintf("%d.%d", t/10, t%10)
-}
-
 func shotText(s int) string {
 	if s < 10 {
 		return fmt.Sprintf("%d.0", s)
@@ -112,7 +104,7 @@ func playDemo(r *rand.Rand, show func(Live), hold func(int) bool, newGame func()
 			if p > 4 {
 				length = 300
 			}
-			l.Period, l.Clock, l.Shot = strconv.Itoa(p), clockText(length*10), "24"
+			l.Period, l.Clock, l.Shot = strconv.Itoa(p), ClockText(length*10), "24"
 			if p <= 4 {
 				l.HomeFouls, l.AwayFouls = 0, 0
 			}
@@ -141,7 +133,7 @@ func playDemo(r *rand.Rand, show func(Live), hold func(int) bool, newGame func()
 				if shot <= 0 {
 					shot = 24
 				}
-				l.Clock, l.Shot = clockText(left*10), shotText(min(shot, left))
+				l.Clock, l.Shot = ClockText(left*10), shotText(min(shot, left))
 				show(l)
 				if !hold(1) {
 					return

@@ -31,6 +31,7 @@ import (
 	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/source"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/web"
@@ -179,14 +180,19 @@ func main() {
 	restorePeriods(st, m)
 	m.Start()
 
-	// The server answers /api/ble with the reader; the reader runs last.
+	// The score comes from one source at a time, settings.input: the box
+	// (console) or the phone (manual). The Bluetooth reader runs either way,
+	// and the server answers /api/ble with it; it starts last.
+	console := source.NewConsole(&source.Console{Raw: w.frame})
+	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say})
+	restoreManual(st, manual)
+	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader
-	frames := make(chan []byte, 64)
 	if !*demo {
 		reader = ble.New(&ble.Reader{
 			Radio:     ble.Adapter(),
-			Frame:     func(f []byte) { frames <- f },
-			Connected: m.SetBox,
+			Frame:     console.Frame,
+			Connected: console.Connected,
 			Log:       say,
 			Status:    m.SetScan,
 			Saved:     func() string { return st.Settings().BoxAddress },
@@ -218,6 +224,7 @@ func main() {
 
 		UploadToken: uploadToken,
 		Timeline:    tl,
+		UseInput:    inputs.Use,
 	})
 	srv.SyncGame()
 	srv.SyncPromo()
@@ -266,19 +273,11 @@ func main() {
 		openBrowser(panel)
 	}
 
+	inputs.Use(set.Input)
 	if *demo {
 		say(i18n.T("log.modo_demo"))
 		m.SetDemo(true)
 	} else {
-		go func() {
-			vals := map[string]string{}
-			for f := range frames {
-				w.frame(f)
-				ble.Decode(f, vals)
-				w.state(vals)
-				m.ApplyConsole(vals)
-			}
-		}()
 		go reader.Run()
 	}
 
@@ -328,6 +327,10 @@ func trayStatus(s state.State) string {
 	switch {
 	case s.Demo:
 		return i18n.T("app.bandeja.demo")
+	case s.Input == "manual" && s.Box.Connected:
+		return i18n.T("app.bandeja.manual_ligada")
+	case s.Input == "manual":
+		return i18n.T("app.bandeja.manual_espera")
 	case s.Box.Connected:
 		return i18n.T("app.bandeja.ligada")
 	case s.Box.Scan.Bluetooth == "off" || s.Box.Scan.Bluetooth == "unavailable":
@@ -351,6 +354,16 @@ func restorePeriods(st *store.Store, m *state.Machine) {
 			say(i18n.T("log.nao_guardei_periodos", "err", err))
 		}
 	}
+}
+
+// restoreManual brings back the score kept by hand before a restart.
+func restoreManual(st *store.Store, mn *source.Manual) {
+	sc := mn.Score()
+	if err := st.LoadManual(&sc); err != nil {
+		say(i18n.T("log.nao_li_marcacao", "err", err))
+		return
+	}
+	mn.Restore(sc)
 }
 
 // saveHistory writes the game's periods to dados/jogos each time one ends.

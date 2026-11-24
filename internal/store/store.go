@@ -236,6 +236,8 @@ type Player struct {
 	FPBAthleteID int64 `json:"fpb_athlete_id"`
 	// Inactive: linked, but not in the squad of the team the group moved to.
 	Inactive bool `json:"inactive"`
+	// PhotoByHand: the club uploaded PhotoURL; no FPB import or CSV replaces it.
+	PhotoByHand bool `json:"photo_by_hand"`
 }
 
 // SyncChanges counts what the last FPB update changed in a group.
@@ -270,6 +272,20 @@ type Group struct {
 	LastSync    string      `json:"last_sync"` // RFC 3339, "" = never
 	LastChanges SyncChanges `json:"last_changes"`
 	SyncedTeam  int64       `json:"synced_team"` // FPBTeamID at the last sync
+	// Fixtures are the games the club typed or imported for this escalão;
+	// with an FPB team linked they add to the FPB's list.
+	Fixtures []Fixture `json:"fixtures"`
+}
+
+// Fixture is one game the club entered by hand.
+type Fixture struct {
+	ID          string   `json:"id"`
+	Start       string   `json:"start"` // RFC 3339, Lisbon time
+	Opponent    Opponent `json:"opponent"`
+	Home        bool     `json:"home"` // the club plays at home
+	Venue       string   `json:"venue"`
+	Competition string   `json:"competition"`
+	Round       string   `json:"round"`
 }
 
 // Shared is the group whose sponsors show for every age group.

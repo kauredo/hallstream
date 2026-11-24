@@ -11,6 +11,7 @@
   /* tone steps */
   --lampada-funda: #B8381E;   /* Lâmpada as text on Soalho (4.6:1), and the error mark */
   --soalho-claro: #F8EFDD;    /* the one raised surface: fields, the notice, dialogs */
+  --qr: #FFFFFF;             /* behind a QR code: a phone camera reads it on white */
   --tinta-2: #5C5346;         /* second ink for running text, 6:1 on Soalho */
   --marcador-2: #34302A;      /* the filled button under the pointer */
   --regra: rgba(28, 26, 23, .22);      /* hairline between rows */
@@ -676,7 +677,7 @@ a.chip.link:hover b { text-decoration: underline; text-decoration-thickness: 2px
 .cx-in b { display: block; font-stretch: var(--estreito); font-size: 18px; }
 .cx-in small { display: block; color: var(--tinta-2); font-size: 15px; }
 .cx-qr { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
-.cx-qr img { flex: none; border: 1px solid var(--marcador); border-radius: var(--raio); background: #fff; }
+.cx-qr img { flex: none; border: 1px solid var(--marcador); border-radius: var(--raio); background: var(--qr); }
 .cx-qr code { overflow-wrap: anywhere; }
 
 /* ---------- Aparência no ar: the preview stays in view while the club picks ---------- */
@@ -710,6 +711,17 @@ a.chip.link:hover b { text-decoration: underline; text-decoration-thickness: 2px
 .cantos input:checked + i { background: var(--marcador); border-color: var(--marcador); }
 .cantos label:has(input:focus-visible) { outline: 3px solid var(--marcador); outline-offset: -3px; }
 .amostras .opt i { width: 22px; height: 22px; border: 1px solid var(--marcador); border-radius: var(--raio); }
+
+/* ---------- Calendário and CSV imports: what every club can do without the FPB ---------- */
+.fx-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border-bottom: 1px solid var(--regra); }
+.fx-row .game-pick { border-bottom: 0; }
+.fx-add { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--regra); }
+.fx-add > summary { font-weight: 600; }
+.csv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--regra); }
+.csv-row .hint { flex-basis: 100%; margin: 0; }
+.csv-result { margin-top: 12px; padding: 12px 16px; background: var(--soalho-claro); border-left: 3px solid var(--marcador); }
+.csv-result p { margin: 0 0 4px; }
+.csv-result ul { margin: 4px 0 0; padding-left: 20px; color: var(--tinta-2); font-size: 15px; }
 
 /* ---------- narrower screens ---------- */
 @media (max-width: 1100px) {

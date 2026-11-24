@@ -390,7 +390,9 @@ func (s *Server) linkPlayer(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		id, name, src := req.FPBPlayerID, req.FPBName, fpb.RealPhoto(req.PhotoURL)
-		if p.FPBPlayerID == nil || *p.FPBPlayerID != id || p.PhotoSource != src {
+		if p.PhotoByHand {
+			src = "" // the club's own photo stays
+		} else if p.FPBPlayerID == nil || *p.FPBPlayerID != id || p.PhotoSource != src {
 			p.PhotoURL = "" // another athlete or photo: drop the old copy
 		}
 		p.FPBPlayerID, p.FPBName, p.PhotoSource = &id, &name, src
@@ -411,11 +413,15 @@ func (s *Server) linkPlayer(w http.ResponseWriter, r *http.Request) {
 func (s *Server) unlinkPlayer(w http.ResponseWriter, r *http.Request) {
 	before, p, okp := s.editPlayer(w, r, func(_ *store.Group, p *store.Player) error {
 		p.FPBPlayerID, p.FPBName, p.NumberFromFPB = nil, nil, false
-		p.PhotoURL, p.PhotoSource = "", ""
+		if !p.PhotoByHand {
+			p.PhotoURL, p.PhotoSource = "", ""
+		}
 		return nil
 	})
 	if okp {
-		s.Store.RemoveMedia(before.PhotoURL)
+		if p.PhotoURL != before.PhotoURL {
+			s.Store.RemoveMedia(before.PhotoURL)
+		}
 		reply(w, p)
 	}
 }

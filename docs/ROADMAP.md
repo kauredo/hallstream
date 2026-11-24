@@ -43,7 +43,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - A page for a phone held sideways, reached over the LAN with the PIN.
    - It covers points per team, undo, the clock, the period, fouls and timeouts.
    - It can also run next to a console, as a fallback.
-5. **`Provider` interface.**
+5. **`Provider` interface.** Done: the next game reads every provider (`internal/provider`): the FPB where it covers the club, and fixtures typed or imported from a CSV for every club; squads come from a CSV too, and the server refuses the FPB to clubs it does not cover. Which open sources could be the next providers is in `docs/research/team-data-sources.md`.
    - Move `internal/fpb` behind it.
    - Add `manual`: typed squads, CSV import (`number,name,photo`) and typed fixtures.
    - Only offer FPB for Portuguese basketball clubs.

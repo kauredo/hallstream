@@ -176,6 +176,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /overlay", page("overlay/index.html"))
 	m.HandleFunc("GET /painel", page("painel/index.html"))
 	s.marcarRoutes(m, page)
+	s.manualRoutes(m)
 	for _, dir := range []string{"/overlay/", "/painel/", "/marcar/", "/i18n/", "/fonts/", "/assets/"} {
 		m.Handle("GET "+dir, static)
 	}
@@ -280,7 +281,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-	if !s.sameSite(w, r) || !s.allowed(w, r) {
+	if !s.sameSite(w, r) || !s.allowed(w, r) || !s.fpbGate(w, r) {
 		return
 	}
 	s.mux.ServeHTTP(w, r)
@@ -289,6 +290,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.SyncGame()
 		s.SyncPromo()
 	}
+}
+
+// fpbGate answers 404 on the routes that only make sense for a club the FPB
+// covers (Portuguese basketball), so no other club reaches the FPB at all.
+func (s *Server) fpbGate(w http.ResponseWriter, r *http.Request) bool {
+	p := r.URL.Path
+	fpbOnly := strings.HasPrefix(p, "/api/fpb/") || p == "/api/club/setup" ||
+		strings.HasPrefix(p, "/api/groups/") && (strings.HasSuffix(p, "/players/import") || strings.HasSuffix(p, "/players/from-fpb") || strings.HasSuffix(p, "/link"))
+	if fpbOnly && !s.fpbOffered() {
+		fail(w, http.StatusNotFound, noFPB.Error())
+		return false
+	}
+	return true
 }
 
 // allowed applies the PIN rule: /api/* from other devices needs the PIN
@@ -342,7 +356,7 @@ func (s *Server) sameSite(w http.ResponseWriter, r *http.Request) bool {
 	}
 	ct, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	upload := r.Method == http.MethodPost && (r.URL.Path == "/api/game/opponent-logo" || r.URL.Path == "/api/club/crest" || r.URL.Path == "/api/overlay/photo" || r.URL.Path == "/api/promo" || r.URL.Path == "/api/youtube/thumbnail" ||
-		strings.HasPrefix(r.URL.Path, "/api/groups/") && strings.HasSuffix(r.URL.Path, "/sponsors"))
+		strings.HasPrefix(r.URL.Path, "/api/groups/") && strings.HasSuffix(r.URL.Path, "/sponsors") || manualUpload(r.URL.Path))
 	if ct != "application/json" && !(upload && ct == "multipart/form-data") {
 		fail(w, http.StatusUnsupportedMediaType, i18n.T("api.tipo_invalido"))
 		return false

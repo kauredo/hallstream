@@ -539,14 +539,17 @@
     send({ do: 'suspension_end', id: suspOpen }, t('marcar.exclusao_acabou'));
   });
 
+  // The live state can reach the page before the reply to its own tap, so Repor reads
+  // the same period the header shows.
+  const shownPeriod = () => +(st && st.live && st.live.period) || score.period;
   // A tap on the clock opens the steps; each one applies at once.
   $('#relogio').addEventListener('click', () => {
     if (!score) return;
-    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart(score.period)) });
+    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart(shownPeriod())) });
     $('#acertar').showModal();
     render();
   });
-  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart(score.period) }, t('marcar.ultimo.relogio')));
+  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart(shownPeriod()) }, t('marcar.ultimo.relogio')));
   $('#acertarFechar').addEventListener('click', () => $('#acertar').close());
 
   // ---------- start ----------

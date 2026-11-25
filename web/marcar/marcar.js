@@ -137,7 +137,7 @@
     const r = (st && st.game && st.game.rules) || {};
     return {
       periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5,
-      foulMarks: r.foul_marks ?? 5, sixth: r.foul_penalty === 'sixth', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
+      foulMarks: r.foul_marks ?? 5, freeKick: r.foul_penalty === 'free_kick', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
       lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2,
     };
@@ -149,8 +149,10 @@
     if (away >= target && away - home >= r.winBy) return 'away';
     return '';
   }
+  // A regulation period in the sport's word, by rules.period_word.
+  const regulationName = (word, n) => (word === 'half' ? t('marcar.parte', { n }) : t('marcar.periodo', { n }));
   function periodName(p, periods, word) {
-    return p <= periods ? (word === 'half' ? t('marcar.parte', { n: `<b>${p}</b>` }) : t('marcar.periodo', { n: `<b>${p}</b>` })) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
+    return p <= periods ? regulationName(word, `<b>${p}</b>`) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
   // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
   const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : `${h}–${a}`);
@@ -193,7 +195,8 @@
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
     const rules = rulesOf();
-    const { periods, half, timeouts, bonus, sets, foulMarks, word, sixth } = rules;
+    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick } = rules;
+    const penaltyWord = freeKick ? t('marcar.livre') : t('marcar.bonus');
     document.body.classList.toggle('sets', sets);
     document.body.classList.toggle('nofouls', foulMarks === 0);
     // A sets sport has the same timeouts in every set.
@@ -207,11 +210,11 @@
       setV(tx + 'Sets', +l[tx + '_sets'] || 0);
       const serving = sets && l.serve === tx, ring = $(`.equipa[data-team="${tx}"] .servico`);
       ring.classList.toggle('on', serving);
-      const word = serving ? t('marcar.a_servir') : t('marcar.servico');
-      if (ring.textContent !== word) ring.textContent = word;
+      const serveText = serving ? t('marcar.a_servir') : t('marcar.servico');
+      if (ring.textContent !== serveText) ring.textContent = serveText;
       const fouls = $(`.equipa[data-team="${tx}"] .faltas`);
       fouls.toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
-      const warning = fouls.querySelector('.aviso'), penaltyWord = sixth ? t('marcar.livre') : t('marcar.bonus');
+      const warning = fouls.querySelector('.aviso');
       if (warning.textContent !== penaltyWord) warning.textContent = penaltyWord;
     }
     // The finished sets, as small scores in the middle strip.

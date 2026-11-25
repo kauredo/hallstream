@@ -22,7 +22,7 @@ type Profile struct {
 	FoulsCarry     bool   `json:"fouls_carry"`     // fouls of the last regulation period run on through overtime
 	PeriodWord     string `json:"period_word"`     // "quarter", "half" or "set": which period labels the pages use
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
-	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "sixth" (futsal)
+	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
 	Scoring       string `json:"scoring"`         // "points" (basketball) or "sets"
 	SetPoints     int    `json:"set_points"`      // points to win a set (25); 0 when Scoring is "points"
@@ -49,7 +49,7 @@ var Volleyball = Profile{ID: "volleyball", Scoring: "sets", SetPoints: 25, LastS
 var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown: true,
 	FoulsReset: true, FoulsCarry: true, FoulWarn: 5, FoulBonus: 6, FinalHold: 600,
 	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", OvertimeLength: 3000, PeriodWord: "half",
-	FoulMarks: 5, FoulPenalty: "sixth"}
+	FoulMarks: 5, FoulPenalty: "free_kick"}
 
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {

@@ -145,7 +145,7 @@
       "fouls_carry": true,
       "period_word": "half",
       "foul_marks": 5,
-      "foul_penalty": "sixth",
+      "foul_penalty": "free_kick",
       "scoring": "points",
       "set_points": 0,
       "last_set_points": 0,

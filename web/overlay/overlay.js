@@ -465,18 +465,31 @@
     return { full: w.join(' '), first: w.length > 1 ? w[0] : '', last: w.length > 1 ? w.slice(1).join(' ') : (w[0] || '') };
   }
 
+  // How a sport words its regulation periods, by rules.period_word. Each key is named in full so the i18n test can find it.
+  const periodWords = {
+    quarter: {
+      short: (n) => t('overlay.periodo.curto', { n }), long: (n) => t('overlay.periodo.longo', { n }),
+      column: (n) => t('overlay.periodos.n', { n }), next: (n) => t('overlay.intervalo.a_seguir', { n }),
+    },
+    half: {
+      short: (n) => t('overlay.periodo.parte_curto', { n }), long: (n) => t('overlay.periodo.parte_longo', { n }),
+      column: (n) => t('overlay.periodos.parte', { n }), next: (n) => t('overlay.intervalo.parte_seguinte', { n }),
+    },
+  };
+  const wordsOf = (v) => periodWords[v.periodWord] || periodWords.quarter;
+
   // The period's name: "SET 3" in a sets sport, "2º PER." / "PROL." in basketball; the box's own word when it sent none.
   function periodShort(pn, raw, v) {
     if (pn == null) return raw;
     if (v.sets) return t('overlay.set.curto', { n: pn });
-    if (pn <= v.regulationPeriods) return v.periodWord === 'half' ? t('overlay.periodo.parte_curto', { n: pn }) : t('overlay.periodo.curto', { n: pn });
+    if (pn <= v.regulationPeriods) return wordsOf(v).short(pn);
     if (pn === v.regulationPeriods + 1) return t('overlay.periodo.prol');
     return t('overlay.periodo.prol_n', { n: pn - v.regulationPeriods });
   }
   function periodLong(pn, raw, v) {
     if (pn == null) return raw;
     if (v.sets) return t('overlay.set.longo', { n: pn });
-    if (pn <= v.regulationPeriods) return v.periodWord === 'half' ? t('overlay.periodo.parte_longo', { n: pn }) : t('overlay.periodo.longo', { n: pn });
+    if (pn <= v.regulationPeriods) return wordsOf(v).long(pn);
     if (pn === v.regulationPeriods + 1) return t('overlay.periodo.prolongamento');
     return t('overlay.periodo.prolong_n', { n: pn - v.regulationPeriods });
   }
@@ -496,7 +509,7 @@
     v.foulWarn = rules.foul_warn ?? 4;
     v.foulBonus = rules.foul_bonus ?? 5;
     v.periodWord = rules.period_word ?? 'quarter';
-    v.sixthFoul = rules.foul_penalty === 'sixth';
+    v.freeKick = rules.foul_penalty === 'free_kick';
     // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
     v.sets = rules.scoring === 'sets';
     const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];
@@ -563,7 +576,7 @@
 
     const periods = Array.isArray(st.periods) ? st.periods : [];
     const lastDone = periods.length ? periods[periods.length - 1].period : (rules.half ?? 2);
-    v.halfLine = !v.sets ? (v.periodWord === 'half' ? t('overlay.intervalo.parte_seguinte', { n: lastDone + 1 }) : t('overlay.intervalo.a_seguir', { n: lastDone + 1 }))
+    v.halfLine = !v.sets ? wordsOf(v).next(lastDone + 1)
       : v.setsOver ? '' : t('overlay.intervalo.set_seguinte', { n: Math.max(setList.length, v.homeSets + v.awaySets) + 1 });
     v.periods = periods;
     v.home = home;
@@ -596,10 +609,11 @@
     }
   }
 
-  // The markup has four pips; a sport that warns at a later foul (futsal's 5th) gets as many as it warns at.
+  // The markup draws MARKUP_PIPS per team; futsal warns at its 5th foul and needs five.
+  const MARKUP_PIPS = 4;
   function renderPips(team, n, warn) {
     const hot = warn > 0 && n >= warn;
-    const count = warn > 0 ? warn : 4;
+    const count = warn > 0 ? warn : MARKUP_PIPS;
     for (const p of $$(`[data-pips="${team}"]`)) {
       while (p.children.length < count) p.append(document.createElement('i'));
       while (p.children.length > count) p.lastElementChild.remove();
@@ -669,7 +683,7 @@
       cell('hd', '');
       for (const p of shown) {
         if (v.sets) cell('hd', t('overlay.periodos.set', { n: p.period }));
-        else if (p.period <= v.regulationPeriods) cell('hd', v.periodWord === 'half' ? t('overlay.periodos.parte', { n: p.period }) : t('overlay.periodos.n', { n: p.period }));
+        else if (p.period <= v.regulationPeriods) cell('hd', wordsOf(v).column(p.period));
         else cell('hd ot', p.period === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - v.regulationPeriods }));
       }
       cell('hd tot', v.sets ? t('overlay.periodos.sets') : t('overlay.periodos.total'));
@@ -1250,7 +1264,7 @@
     // Basketball (FIBA): from the 5th team foul of the period the other side shoots free throws. Futsal: the 6th gives a free kick without a wall.
     for (const [tx, n] of [['home', hf], ['away', af]]) {
       const bonus = v.foulBonus > 0 && n >= v.foulBonus;
-      const word = v.sixthFoul ? t('overlay.sexta_falta') : t('overlay.bonus');
+      const word = v.freeKick ? t('overlay.livre') : t('overlay.bonus');
       for (const el of bonusWords[tx]) if (el.textContent !== word) el.textContent = word;
       setClass(bonusCells[tx], 'bonus', bonus);
       setClass(bugRows[tx], 'bonus', bonus);

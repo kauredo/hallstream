@@ -230,10 +230,12 @@ func (m *Manual) Heartbeat() {
 }
 
 // SetLength sets the period length to tenths, as "period_length" does: a
-// stopped clock sitting at the old length moves to the new one. It is for the
-// server, when the game's sport changes, so unlike Do it is not the phone
-// calling in and it leaves the undo list alone. A length outside 1 to
-// MaxClock is refused.
+// clock sitting at the old length moves to the new one. It is for the server,
+// when the game's sport changes, so unlike Do it is not the phone calling in
+// and it leaves the undo list alone. It only touches a fresh game (period 1,
+// 0-0, no set played, the clock stopped) and changes nothing otherwise: a game
+// under way keeps its length until the volunteer starts a new one. A length
+// outside 1 to MaxClock is refused.
 func (m *Manual) SetLength(tenths int) error {
 	if tenths <= 0 || tenths > MaxClock {
 		return errClock
@@ -241,8 +243,11 @@ func (m *Manual) SetLength(tenths int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.s = m.current()
+	if n, _, _ := m.s.played(); m.s.Running || m.s.Period != 1 || m.s.Home != 0 || m.s.Away != 0 || n > 0 {
+		return nil
+	}
 	prev := m.s
-	if !m.s.Running && m.s.Clock == m.s.Length {
+	if m.s.Clock == m.s.Length {
 		m.s.Clock = tenths
 	}
 	m.s.Length = tenths

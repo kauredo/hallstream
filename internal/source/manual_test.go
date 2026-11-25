@@ -594,13 +594,48 @@ func TestSetLength(t *testing.T) {
 	if err := mn.SetLength(4800); err != nil {
 		t.Fatal(err)
 	}
-	if s := mn.Score(); !s.Running || s.Clock != 5900 || s.Length != 4800 {
+	if s := mn.Score(); !s.Running || s.Clock != 5900 || s.Length != 6000 {
 		t.Errorf("a running clock was touched: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "point", Team: "home", N: 2})
+	if err := mn.SetLength(4800); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 6000 || s.Clock != 5900 {
+		t.Errorf("a game under way changed length: %+v", s)
+	}
+	do(t, mn, Action{Do: "new_game"})
+	if err := mn.SetLength(4800); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 4800 || s.Clock != 4800 {
+		t.Errorf("a new game kept the old length: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if err := mn.SetLength(3000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 4800 || s.Period != 2 {
+		t.Errorf("period 2 changed length: %+v", s)
 	}
 
 	for _, n := range []int{0, -1, MaxClock + 1} {
 		if mn.SetLength(n) == nil {
 			t.Errorf("SetLength(%d): want an error", n)
 		}
+	}
+}
+
+// The scorer takes a timeout tap in futsal extra time, where the rules give
+// none: only the page, which draws no marks for it, shows the limit.
+func TestFutsalExtraTimeTimeoutIsNotRefused(t *testing.T) {
+	mn, _, _ := newSport(sport.Futsal)
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "period_next"})
+	if got := sport.Futsal.Timeouts(mn.Score().Period); got != 0 {
+		t.Fatalf("extra time has %d timeouts, want 0", got)
+	}
+	do(t, mn, Action{Do: "timeout", Team: "home", N: 1})
+	if s := mn.Score(); s.Period != 3 || s.HomeTimeouts != 1 {
+		t.Errorf("the tap was not counted: %+v", s)
 	}
 }

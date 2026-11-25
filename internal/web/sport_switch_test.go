@@ -104,6 +104,69 @@ func TestSportSwitchDoesNotConnectTheScorer(t *testing.T) {
 	if s.State.Snapshot().Box.Connected {
 		t.Error("a sport switch marked the scorer connected")
 	}
+	// Control: a tap from the phone does connect it, so the false above means something.
+	if err := m.Do(source.Action{Do: "point", Team: "home", N: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if !s.State.Snapshot().Box.Connected {
+		t.Error("a tap did not mark the scorer connected")
+	}
+}
+
+// A game under way keeps its length and clock when the sport changes: the
+// volunteer starts a new game.
+func TestSportSwitchLeavesAGameUnderWay(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	bb := gameIn(t, s, "Sub 16", "basketball")
+	fut := gameIn(t, s, "Futsal", "futsal")
+	playIn(t, s, bb)
+	for _, a := range []source.Action{{Do: "period_next"}, {Do: "period_next"}, {Do: "clock_set", Tenths: 2520}} {
+		if err := m.Do(a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	playIn(t, s, fut)
+	if sc := m.Score(); sc.Length != 6000 || sc.Clock != 2520 || sc.Period != 3 {
+		t.Errorf("a game in the 3rd quarter was switched: %+v", sc)
+	}
+}
+
+// An escalão with no sport of its own and a club with none reads as
+// basketball, so the first switch away from it still counts.
+func TestSportSwitchFromAnEmptySport(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	if _, err := s.Store.UpdateSettings(func(v *store.Settings) { v.Club.Sport = "" }); err != nil {
+		t.Fatal(err)
+	}
+	fut := gameIn(t, s, "Futsal", "futsal")
+	s.SyncGame()
+	playIn(t, s, fut)
+	if sc := m.Score(); sc.Length != 12000 || sc.Clock != 12000 {
+		t.Errorf("from an empty sport to futsal: %+v, want 12000", sc)
+	}
+}
+
+// Volleyball has no clock and no period length, so a hop through it leaves
+// the length alone.
+func TestSportSwitchThroughVolleyball(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	bb := gameIn(t, s, "Sub 16", "basketball")
+	vb := gameIn(t, s, "Voley", "volleyball")
+	playIn(t, s, bb)
+	if err := m.Do(source.Action{Do: "period_length", Tenths: 4800}); err != nil {
+		t.Fatal(err)
+	}
+	playIn(t, s, vb)
+	if sc := m.Score(); sc.Length != 4800 || sc.Clock != 4800 {
+		t.Errorf("the volleyball hop changed the length: %+v", sc)
+	}
+	playIn(t, s, bb)
+	if sc := m.Score(); sc.Length != 6000 || sc.Clock != 6000 {
+		t.Errorf("back to basketball: %+v, want 6000", sc)
+	}
 }
 
 // A restart starts with no sport recorded, so a length the volunteer set

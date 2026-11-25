@@ -183,6 +183,7 @@ func main() {
 	m.SetScreen("", set.AutoScreens)
 	m.OnPeriods = func(s state.State) { saveHistory(st, s) }
 	restorePeriods(st, m)
+	restoreSets(st, m)
 	m.Start()
 
 	// The score comes from one source at a time, settings.input: the box
@@ -365,6 +366,22 @@ func restorePeriods(st *store.Store, m *state.Machine) {
 	}
 }
 
+// restoreSets is restorePeriods for the finished sets of a sets sport
+// (sets.json).
+func restoreSets(st *store.Store, m *state.Machine) {
+	var ss []state.SetScore
+	if err := st.LoadSets(&ss); err != nil {
+		say(i18n.T("log.nao_li_sets", "err", err))
+		ss = nil
+	}
+	m.RestoreSets(ss)
+	m.SaveSets = func(ss []state.SetScore) {
+		if err := st.SaveSets(ss); err != nil {
+			say(i18n.T("log.nao_guardei_sets", "err", err))
+		}
+	}
+}
+
 // restoreManual brings back the score kept by hand before a restart.
 func restoreManual(st *store.Store, mn *source.Manual) {
 	sc := mn.Score()
@@ -392,10 +409,14 @@ func saveHistory(st *store.Store, s state.State) {
 	if n := len(s.Periods); n > 0 {
 		final = map[string]int{"home": s.Periods[n-1].Home, "away": s.Periods[n-1].Away}
 	}
+	if s.Game.Rules.Sets() {
+		final = map[string]int{"home": s.Live.HomeSets, "away": s.Live.AwaySets}
+	}
 	err := st.SaveHistory(date, group, map[string]any{
 		"saved_at": time.Now().Format(time.RFC3339),
 		"game":     s.Game,
 		"periods":  s.Periods,
+		"sets":     s.Sets,
 		"final":    final,
 	})
 	if err != nil {

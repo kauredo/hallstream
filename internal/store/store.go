@@ -685,6 +685,17 @@ func (s *Store) SavePeriods(v any) error {
 // LoadPeriods reads periods.json into v. A missing file leaves v alone.
 func (s *Store) LoadPeriods(v any) error { return s.load("periods.json", v) }
 
+// SaveSets writes sets.json, the current game's finished sets (volleyball), so
+// they outlive a restart.
+func (s *Store) SaveSets(v any) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeJSON("sets.json", v)
+}
+
+// LoadSets reads sets.json into v. A missing file leaves v alone.
+func (s *Store) LoadSets(v any) error { return s.load("sets.json", v) }
+
 // SaveManual writes manual.json, the score kept by hand, so it outlives a restart.
 func (s *Store) SaveManual(v any) error {
 	s.mu.Lock()

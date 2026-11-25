@@ -31,7 +31,7 @@ var Sports = []Sport{
 	{"basketball", "BASQUETEBOL", "BASKET", true},
 	{"futsal", "FUTSAL", "FUTSAL", false},
 	{"handball", "ANDEBOL", "ANDEBOL", false},
-	{"volleyball", "VOLEIBOL", "VOLEIBOL", false},
+	{"volleyball", "VOLEIBOL", "VOLEIBOL", true},
 	{"soccer", "FUTEBOL", "FUTEBOL", false},
 }
 

@@ -85,7 +85,7 @@ html[data-preview="foto"][data-screen="desconto"] #cam { left: var(--hole-x); to
 }
 .screen.on { opacity: 1; transition: opacity var(--fade) var(--ease-out) var(--enter-delay, 0ms); }
 .screen > * { position: absolute; }
-.num, [data-b$="Score"], [data-b$="Fouls"], [data-b="clock"], [data-b="shot"], [data-b="startTime"] { font-variant-numeric: tabular-nums; }
+.num, [data-b$="Score"], [data-b$="Big"], [data-b$="Sets"], [data-b$="Fouls"], [data-b="clock"], [data-b="shot"], [data-b="startTime"] { font-variant-numeric: tabular-nums; }
 
 /* Team tile: crest image, or the team initials when there is no crest */
 .tile { position: relative; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -211,6 +211,23 @@ html.off .sb-dot { opacity: 1; }
 /* No shot clock (overtime, a sport without one, or hidden by the club): the clock centres in its cell. */
 .sb-shot.blank { display: none; }
 .sb-tbox.solo { justify-content: center; }
+/* A sets sport (volleyball) swaps the fouls cell for the sets won and the time cell for the finished
+   sets; the markup carries both and html[data-scoring] says which one shows. */
+html:not([data-scoring="sets"]) .only-sets, html[data-scoring="sets"] .only-pts { display: none !important; }
+/* The serve: a gold dot at the end of the serving team's name. */
+.sb-row .nm { position: relative; }
+.sb-row.serving .nm::after { content: ""; position: absolute; right: 10px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--navy); }
+html[data-scoring="sets"] .sb-f b.only-sets { font-size: 34px; }
+.sb-setlist { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.sb-setlist .sr { width: 100%; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; line-height: 1; white-space: nowrap; }
+.sb-setlist .sr > div { padding: 0 5px; }
+.sb-setlist .sr > div + div { border-left: 1px solid rgba(255,255,255,0.18); }
+.sb-setlist .sr + .sr { border-top: 2px solid rgba(255,255,255,0.14); }
+.sb-setlist .sr .l { color: rgba(255,255,255,0.7); }
+.sb-f b.only-sets.trail { color: rgba(255,255,255,0.6); }
+html[data-scoring="sets"] .sb-tbox { padding: 0; }
+.sb-setlist .to { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1.5px; color: var(--muted); }
+.sb-setlist .goal { font-weight: 800; font-size: 44px; line-height: 46px; }
 /* The dot between two parts of a line; a style may draw it its own way. */
 i.sep { font-style: normal; }
 /* BÓNUS: 5 team fouls or more in the period; the fouls cell turns gold. */

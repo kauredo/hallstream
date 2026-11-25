@@ -96,6 +96,7 @@ html[data-style="lombada"] .to-mtag {
 html[data-style="lombada"] .sb-lbl,
 html[data-style="lombada"] .sb-per,
 html[data-style="lombada"] .sb-head [data-b="sport"],
+html[data-style="lombada"] .sb-head .only-sets[data-b="periodShort"],
 html[data-style="lombada"] .lbl,
 html[data-style="lombada"] .hd-word,
 html[data-style="lombada"] .win,
@@ -124,6 +125,7 @@ html[data-style="lombada"] .pr-qr div > span { text-transform: lowercase; }
 html[data-style="lombada"] .sb-lbl::first-letter,
 html[data-style="lombada"] .sb-per::first-letter,
 html[data-style="lombada"] .sb-head [data-b="sport"]::first-letter,
+html[data-style="lombada"] .sb-head .only-sets[data-b="periodShort"]::first-letter,
 html[data-style="lombada"] .lbl::first-letter,
 html[data-style="lombada"] .hd-word::first-letter,
 html[data-style="lombada"] .win::first-letter,
@@ -224,7 +226,8 @@ html[data-style="lombada"] .sb-head { background: transparent; color: var(--q-mu
 /* The head says the sport, for the day the program carries futsal or volleyball; the short name repeats the row below. */
 html[data-style="lombada"] .sb-head > span:first-child { display: flex; align-items: baseline; font-size: 0; letter-spacing: 0; }
 html[data-style="lombada"] .sb-head [data-b="homeShort"] { display: none; }
-html[data-style="lombada"] .sb-head [data-b="sport"] { font-size: 18px; font-weight: 436; color: var(--q-mute); }
+html[data-style="lombada"] .sb-head [data-b="sport"],
+html[data-style="lombada"] .sb-head .only-sets[data-b="periodShort"] { font-size: 18px; font-weight: 436; color: var(--q-mute); }
 html[data-style="lombada"] .sb-dot { background: var(--q-mute); }
 html[data-style="lombada"] .sb-row .tile img { width: 34px; height: 34px; }
 html[data-style="lombada"] .sb-row .nm { font-size: 25px; padding-left: 8px; }

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
-	"path"
 	"strings"
 	"testing"
 	"time"
@@ -88,8 +87,14 @@ func TestOverlayRendersEveryFixture(t *testing.T) {
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no fixtures: %v", err)
 	}
+	// Sports with their own screens keep their fixtures in a folder.
+	more, err := fs.Glob(assets.FS, "overlay/fixtures/*/*.json")
+	if err != nil || len(more) == 0 {
+		t.Fatalf("no fixtures in the sport folders: %v", err)
+	}
+	names = append(names, more...)
 	for _, name := range names {
-		t.Run(strings.TrimSuffix(path.Base(name), ".json"), func(t *testing.T) {
+		t.Run(strings.TrimSuffix(strings.TrimPrefix(name, "overlay/fixtures/"), ".json"), func(t *testing.T) {
 			data, _ := fs.ReadFile(assets.FS, name)
 			var st struct{ Screen struct{ Current string } }
 			if err := json.Unmarshal(data, &st); err != nil || st.Screen.Current == "" {
@@ -120,7 +125,7 @@ func TestOverlayStyles(t *testing.T) {
 	srv := httptest.NewServer(newServerFiles(t, assets.FS))
 	t.Cleanup(srv.Close)
 	for _, style := range store.Styles {
-		for _, fx := range []string{"marcador", "marcador-12", "rodape-fotos", "rodape-comentador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo-casa", "voltamos"} {
+		for _, fx := range []string{"marcador", "marcador-12", "rodape-fotos", "rodape-comentador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo-casa", "voltamos", "volleyball/marcador", "volleyball/final"} {
 			t.Run(style+"/"+fx, func(t *testing.T) {
 				messages := chromedp.Console(tab)
 				if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {

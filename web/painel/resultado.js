@@ -26,8 +26,17 @@
   }
   function periodLabel(n) { return n <= 4 ? t('painel.resultado.periodo', { n: n }) : n === 5 ? t('painel.resultado.prol') : t('painel.resultado.prol_n', { n: n - 4 }); }
 
+  // A sets sport (volleyball): the big score is the sets won, and the periods line lists the sets.
+  function rulesOf(st) { return (st.game && st.game.rules) || {}; }
+  function isSets(st) { return rulesOf(st).scoring === 'sets'; }
+
   // Final = o 4º período (ou um prolongamento) já registado e nenhum período novo a decorrer.
   function heading(st) {
+    if (isSets(st)) {
+      var lv = st.live || {}, win = rulesOf(st).sets_to_win || 3;
+      if (Math.max(+lv.home_sets || 0, +lv.away_sets || 0) >= win) return t('painel.resultado.final');
+      return st.screen && st.screen.current === 'intervalo' ? t('painel.resultado.intervalo') : t('painel.resultado.em_curso');
+    }
     var ps = st.periods || [], last = ps[ps.length - 1], now = parseInt((st.live || {}).period, 10);
     if (last && last.period >= 4 && !(now > last.period)) return t('painel.resultado.final');
     return st.screen && st.screen.current === 'intervalo' ? t('painel.resultado.intervalo') : t('painel.resultado.em_curso');
@@ -113,11 +122,17 @@
     text(x, String(score), cx, (M + B) / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2, x.font, onRed ? C['on-kit'] : '#FFFFFF', 'center');
   }
 
-  function periodsLine(x, periods, y) {
+  function periodsLine(x, periods, y, sets) {
     if (!periods.length) return;
     var parts = [];
     periods.forEach(function (p, i) {
       if (i) parts.push(['·', '700 30px ' + COND, MUTED, 18]);
+      if (sets) {
+        // A set seeded from a console has no points: the score shows a dash.
+        parts.push([t('painel.resultado.set', { n: p.set }), '700 28px ' + COND, MUTED, 10]);
+        parts.push([p.home === 0 && p.away === 0 ? '–' : p.home + '–' + p.away, '800 38px ' + COND, '#FFFFFF', 18]);
+        return;
+      }
       parts.push([periodLabel(p.period), '700 28px ' + COND, MUTED, 10]);
       parts.push([p.home + '–' + p.away, '800 38px ' + COND, '#FFFFFF', 18]);
     });
@@ -153,7 +168,8 @@
 
   function draw(st, homeImg, awayImg, logo) {
     var g = st.game || {}, live = st.live || {}, home = g.home || {}, away = g.away || {};
-    var hs = +live.home || 0, as = +live.away || 0;
+    var sets = isSets(st);
+    var hs = +(sets ? live.home_sets : live.home) || 0, as = +(sets ? live.away_sets : live.away) || 0;
     var head = heading(st), final = head === t('painel.resultado.final');
     var sp = g.sponsors && g.sponsors.principal;
     var c = document.createElement('canvas');
@@ -177,7 +193,7 @@
     side(x, home, home.name || live.home_name || '', homeImg, hs, HOME_X, final && hs > as, true);
     side(x, away, away.name || live.away_name || '', awayImg, as, AWAY_X, final && as > hs, false);
 
-    periodsLine(x, st.periods || [], 862);
+    periodsLine(x, sets ? st.sets || [] : st.periods || [], 862, sets);
     x.letterSpacing = '0px';
     var info = joinDot(dateLine(gameDate(st)), g.venue);
     text(x, info, W / 2, 926, fit(x, info, 28, TEXT, 500, 960), MUTED, 'center');

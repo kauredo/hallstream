@@ -135,11 +135,24 @@
   // The sport's rules from game.rules; a missing field reads as basketball's.
   function rulesOf() {
     const r = (st && st.game && st.game.rules) || {};
-    return { periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5 };
+    return {
+      periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5,
+      sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
+      lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2,
+    };
+  }
+  // The same rule as sport.SetWon: the side that has the set's points with the lead, else ''.
+  function setWon(r, n, home, away) {
+    const target = n === 2 * r.setsToWin - 1 ? r.lastSetPoints : r.setPoints;
+    if (home >= target && home - away >= r.winBy) return 'home';
+    if (away >= target && away - home >= r.winBy) return 'away';
+    return '';
   }
   function periodName(p, periods) {
     return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
+  // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
+  const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : `${h}–${a}`);
   const sigla = (team) => ((st && st.game && st.game[team]) || {}).short || '';
   // What undo takes back, in the words of the tap.
   function undoLabel(a) {
@@ -149,6 +162,8 @@
       case 'point': return `${a.n > 0 ? '+' : '−'}${Math.abs(a.n)} ${s}`;
       case 'foul': return a.n > 0 ? t('marcar.ultimo.falta', { sigla: s }) : t('marcar.ultimo.falta_menos', { sigla: s });
       case 'timeout': return a.n > 0 ? t('marcar.ultimo.desconto', { sigla: s }) : t('marcar.ultimo.desconto_menos', { sigla: s });
+      case 'serve': return t('marcar.ultimo.servico', { sigla: s });
+      case 'set_next': return t('marcar.ultimo.set');
       case 'period_next': case 'period_back': return t('marcar.ultimo.periodo');
       case 'clock_set': case 'clock_add': return t('marcar.ultimo.relogio');
       default: return '';
@@ -176,21 +191,42 @@
     setV('home', l.home ?? 0);
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
-    const { periods, half, timeouts, bonus } = rulesOf();
-    const maxTO = period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
+    const rules = rulesOf();
+    const { periods, half, timeouts, bonus, sets } = rules;
+    document.body.classList.toggle('sets', sets);
+    // A sets sport has the same timeouts in every set.
+    const maxTO = sets || period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
       marks($(`[data-marks="${tx}Fouls"]`), f, bonus);
       marks($(`[data-marks="${tx}Timeouts"]`), to, maxTO);
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
+      setV(tx + 'Sets', +l[tx + '_sets'] || 0);
+      const serving = sets && l.serve === tx, ring = $(`.equipa[data-team="${tx}"] .servico`);
+      ring.classList.toggle('on', serving);
+      const word = serving ? t('marcar.a_servir') : t('marcar.servico');
+      if (ring.textContent !== word) ring.textContent = word;
       $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
     }
+    // The finished sets, as small scores in the middle strip.
+    const finished = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
+    finished.hidden = !sets;
+    // Heads for the two columns, in the order the scores are written (home first).
+    const head = document.createElement('span');
+    head.className = 'cab';
+    head.textContent = `${sigla('home')} – ${sigla('away')}`;
+    finished.replaceChildren(...(done.length ? [head] : []), ...done.map((x, i) => {
+      const row = document.createElement('span'), k = document.createElement('i');
+      k.textContent = x.set ?? i + 1;
+      row.append(k, setScoreText(x.home, x.away));
+      return row;
+    }));
 
     const manual = input === 'manual';
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
-    $('#periodo').innerHTML = periodName(period, periods);
+    $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods);
     const running = !!(manual && score && score.running);
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
@@ -199,11 +235,24 @@
     if (atZero && !zeroSince) { zeroSince = Date.now(); setTimeout(render, 2100); }
     if (!atZero) zeroSince = 0;
     const go = $('#arrancar');
-    go.classList.toggle('seguinte', !!atZero);
-    if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; go.disabled = false; }
+    go.classList.toggle('seguinte', !!atZero && !sets);
+    // The set can end once a side has the points with the lead; the button lights up to say so.
+    const setOver = sets && !!setWon(rules, period, +l.home || 0, +l.away || 0) && (+l.home_sets || 0) < rules.setsToWin && (+l.away_sets || 0) < rules.setsToWin;
+    go.classList.toggle('pronto', manual && setOver);
+    // Why "Set seguinte" waits: the points the leading side still needs, with the lead the set takes.
+    const why = $('#falta'), won = (+l.home_sets || 0) >= rules.setsToWin || (+l.away_sets || 0) >= rules.setsToWin;
+    why.hidden = !(sets && manual);
+    if (sets && manual) {
+      const h = +l.home || 0, a = +l.away || 0;
+      const target = period === 2 * rules.setsToWin - 1 ? rules.lastSetPoints : rules.setPoints;
+      const need = Math.max(target - Math.max(h, a), rules.winBy - Math.abs(h - a), 1);
+      why.textContent = won ? t('marcar.jogo_acabado') : setOver ? t('marcar.set_pronto') : need === 1 ? t('marcar.set_falta_um') : t('marcar.set_falta', { n: need });
+    }
+    if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; delete go.dataset.ask; go.disabled = false; }
+    else if (sets) { go.textContent = t('marcar.set_seguinte'); go.dataset.do = ''; go.dataset.ask = 'set_next'; go.disabled = !setOver; }
     else if (atZero) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - zeroSince < 2000; }
     else { go.textContent = running ? t('marcar.parar') : t('marcar.iniciar'); go.dataset.do = running ? 'clock_stop' : 'clock_start'; delete go.dataset.ask; go.disabled = false; }
-    if (!atZero) delete go.dataset.ask;
+    if (!atZero && !sets) delete go.dataset.ask;
     for (const b of $$('.equipa button, .seta, .acerto button, #relogio')) b.disabled = !manual;
     const u = $('#anular'), label = undoLabel(undo);
     u.disabled = !manual || !undo;
@@ -271,9 +320,18 @@
     send(a, undoLabel(a));
   });
 
-  // Changing the period zeroes the team fouls, so it asks first.
+  // Changing the period zeroes the team fouls, and a set can only be reopened with undo, so both ask first.
   function ask(what) {
     const box = $('#confirmar'), period = (st && +st.live?.period) || (score && score.period) || 1;
+    if (what === 'set_next') {
+      const l = (st && st.live) || {};
+      $('#confirmarTitulo').textContent = t('marcar.confirmar.set', { n: period, casa: l.home ?? 0, fora: l.away ?? 0 });
+      $('#confirmarDica').textContent = t('marcar.confirmar.set_dica');
+      $('#confirmarSim').textContent = t('marcar.confirmar.acabar_set');
+      $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.set')); };
+      box.showModal();
+      return;
+    }
     const next = what === 'period_next';
     const { periods } = rulesOf();
     if (!next && period <= 1) return;

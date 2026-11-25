@@ -307,6 +307,7 @@
       if (S.tab === 'ajuda') renderAjudaDir();
       renderShortcutAsk();
       renderUpdateAsk();
+      renderFeedback();
       refreshInicio();
       var dl = $('#dLang');
       if (dl && s && s.langs && dl.options.length !== s.langs.length) dl.innerHTML = langOptions(s.langs);
@@ -3021,6 +3022,28 @@
     });
     return 'https://github.com/kauredo/hallstream/issues/new?body=' + encodeURIComponent(body);
   }
+  // With a feedback worker in this build, Ajuda sends the form itself; the GitHub link stays below it.
+  function renderFeedback() {
+    var on = !!(S.status && S.status.feedback);
+    $('#feedbackForm').hidden = !on;
+    $('#feedbackOr').hidden = !on;
+    $('#feedbackGh').hidden = on;
+  }
+  function feedbackEvents() {
+    var form = $('#feedbackForm');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var b = form.querySelector('button[type="submit"]'), msg = form.querySelector('.msg');
+      var body = { type: form.elements.type.value, title: form.elements.title.value, description: form.elements.description.value };
+      b.disabled = true; msg.className = 'msg'; msg.textContent = '';
+      api('POST', '/api/feedback', body).then(function (r) {
+        form.reset();
+        msg.className = 'msg ok';
+        msg.innerHTML = esc(t('painel.feedback.enviado')) + ' <a href="' + esc(r.issue_url) + '" target="_blank" rel="noopener">' + esc(r.issue_url.replace('https://github.com/', '')) + '</a>';
+      }, function (err) { msg.className = 'msg err'; msg.textContent = err.message; })
+        .then(function () { b.disabled = false; });
+    });
+  }
   function ajudaEvents() {
     $('main').addEventListener('click', function (e) {
       var h = e.target.closest('[data-help]');
@@ -3087,7 +3110,7 @@
   /* ---------------- boot ---------------- */
   function boot() {
     $all('.nav [data-tab]').forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
-    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); destEvents(); caixaEvents(); shortcutEvents(); updateEvents(); ajudaEvents();
+    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); destEvents(); caixaEvents(); shortcutEvents(); updateEvents(); feedbackEvents(); ajudaEvents();
     transmissoesEvents(); ytEvents($('#definicoes'));
     streamEvents(); setupEvents();
     $('#chips').addEventListener('click', function (e) {

@@ -210,8 +210,22 @@
 
         <div class="card help" id="ajuda-feedback">
           <h2 data-i18n="painel.feedback.titulo"></h2>
-          <p data-i18n="painel.feedback.texto"></p>
-          <div class="row"><button class="btn primary" type="button" data-act="feedback" data-i18n="painel.feedback.botao"></button></div>
+          <form id="feedbackForm" class="stack" hidden>
+            <p class="hint" data-i18n="painel.feedback.form_texto"></p>
+            <div class="cols">
+              <label class="field"><span data-i18n="painel.feedback.tipo"></span><select name="type">
+                <option value="bug" data-i18n="painel.feedback.tipo_bug"></option>
+                <option value="feature" data-i18n="painel.feedback.tipo_ideia"></option>
+                <option value="feedback" data-i18n="painel.feedback.tipo_outro"></option>
+              </select></label>
+              <label class="field"><span data-i18n="painel.feedback.assunto"></span><input name="title" maxlength="200" required></label>
+            </div>
+            <label class="field"><span data-i18n="painel.feedback.descricao"></span><textarea name="description" rows="5" maxlength="10000" required></textarea></label>
+            <div class="row" style="align-items:center"><button class="btn primary" type="submit" data-i18n="painel.feedback.enviar"></button><span class="msg" role="status"></span></div>
+          </form>
+          <p id="feedbackOr" class="hint" data-i18n="painel.feedback.ou_github" hidden></p>
+          <p id="feedbackGh" data-i18n="painel.feedback.texto"></p>
+          <div class="row"><button class="btn" type="button" data-act="feedback" data-i18n="painel.feedback.botao"></button></div>
         </div>
       </div>
     </section>

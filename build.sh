@@ -22,7 +22,7 @@ winres winres/winres-386.json 386
 # the server, build with the same value, and hand over the new zip. Until the
 # club swaps the exe its uploads get 401 and stay queued in dados/envios/ for
 # up to 60 days, and the new exe sends them.
-flags="-s -w -H windowsgui -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN"
+flags="-s -w -H windowsgui -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
 GOOS=windows GOARCH=amd64 go build -ldflags $flags -o "dist/Hallstream.exe" ./cmd/hallstream
 GOOS=windows GOARCH=386 go build -ldflags $flags -o "dist/Hallstream (32-bit).exe" ./cmd/hallstream
 rm -f cmd/hallstream/rsrc_windows_*.syso

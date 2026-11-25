@@ -1100,3 +1100,247 @@ func TestSameScoreNilLists(t *testing.T) {
 		t.Error("a nil list and an empty one count as the same; lists must stay nil until used")
 	}
 }
+
+func newSoccer() (*Manual, *state.Machine, *fakeClock) {
+	mn, m, c := newSport(sport.Soccer)
+	do2 := func(a Action) {
+		if err := mn.Do(a); err != nil {
+			panic(err)
+		}
+	}
+	do2(Action{Do: "period_length", Tenths: 27000})
+	do2(Action{Do: "new_game"})
+	return mn, m, c
+}
+
+func card(team, number, kind string) Action {
+	return Action{Do: "card", Team: team, Number: number, Kind: kind}
+}
+
+func TestSoccerCards(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, card("home", "7", "yellow"), card("home", "7", "yellow"))
+	cs := mn.Score().Cards
+	if len(cs) != 2 || cs[0].Kind != "yellow" || cs[1].Kind != "second_yellow" {
+		t.Fatalf("two yellows: %+v", cs)
+	}
+	if err := mn.Do(card("home", "7", "red")); !errors.Is(err, errSentOff) {
+		t.Errorf("a card after a second yellow: %v", err)
+	}
+	if err := mn.Do(card("away", "7", "yellow")); err != nil {
+		t.Errorf("the same number on the other team is another player: %v", err)
+	}
+	do(t, mn, card("home", "08", "red"), card("home", "9", "red"))
+	if err := mn.Do(card("home", "9", "yellow")); !errors.Is(err, errSentOff) {
+		t.Errorf("a card after a red: %v", err)
+	}
+	if err := mn.Do(card("home", "008", "yellow")); !errors.Is(err, errSentOff) {
+		t.Errorf("008 is shirt 8: %v", err)
+	}
+	if got := mn.Score().Cards[3]; got.Number != "8" {
+		t.Errorf("number not normalised: %+v", got)
+	}
+	for _, a := range []Action{card("home", "", "red"), card("home", "1234", "red"), card("home", "x", "red"),
+		card("home", "5", "blue"), card("home", "5", "second_yellow"), card("casa", "5", "red")} {
+		if err := mn.Do(a); !errors.Is(err, errCard) {
+			t.Errorf("%+v: %v", a, err)
+		}
+	}
+}
+
+func TestSoccerSubs(t *testing.T) {
+	mn, _, _ := newSoccer()
+	for _, a := range []Action{
+		{Do: "sub", Team: "home", Out: "7", In: "7"}, {Do: "sub", Team: "home", Out: "0", In: "7"},
+		{Do: "sub", Team: "home", Out: "100", In: "7"}, {Do: "sub", Team: "home", Out: "7", In: ""},
+		{Do: "sub", Team: "home", Out: "7", In: "100"}, {Do: "sub", Team: "x", Out: "7", In: "8"},
+	} {
+		if err := mn.Do(a); !errors.Is(err, errSub) {
+			t.Errorf("%+v: %v", a, err)
+		}
+	}
+	do(t, mn, Action{Do: "sub", Team: "away", Out: "9", In: "99"})
+	if got := mn.Score().Subs; len(got) != 1 || got[0].Out != "9" || got[0].In != "99" {
+		t.Errorf("subs %+v", got)
+	}
+}
+
+func TestSoccerUndoKeepsListsApart(t *testing.T) {
+	mn, _, _ := newSoccer()
+	before := mn.Score()
+	do(t, mn, card("home", "4", "yellow"))
+	if sameScore(before, mn.Score()) {
+		t.Error("a card-only change is dropped as no change")
+	}
+	do(t, mn, Action{Do: "undo"})
+	if mn.Score().Cards != nil || !sameScore(before, mn.Score()) {
+		t.Errorf("after the undo: %+v", mn.Score().Cards)
+	}
+	// Older snapshots keep their lists when the live one grows.
+	do(t, mn, card("home", "4", "yellow"), card("home", "5", "yellow"), card("home", "6", "yellow"))
+	do(t, mn, Action{Do: "undo"}, card("away", "8", "red"))
+	do(t, mn, Action{Do: "undo"})
+	if got := mn.Score().Cards; len(got) != 2 || got[0].Number != "4" || got[1].Number != "5" {
+		t.Errorf("cards %+v", got)
+	}
+	do(t, mn, Action{Do: "undo"}, Action{Do: "undo"})
+	if mn.Score().Cards != nil {
+		t.Errorf("undo to the start leaves %+v, want nil", mn.Score().Cards)
+	}
+	// Subs only differing is a change too.
+	a, b := before, before
+	b.Subs = []Sub{{ID: 1}}
+	c := before
+	c.Cards = []Card{{ID: 1}}
+	if sameScore(a, b) || sameScore(a, c) {
+		t.Error("sameScore misses a list")
+	}
+}
+
+func TestSoccerCardIDsGoUpEvenAfterUndo(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, card("home", "4", "yellow"), card("home", "5", "yellow"), Action{Do: "undo"}, card("home", "6", "yellow"))
+	cs := mn.Score().Cards
+	if len(cs) != 2 || cs[0].ID != 1 || cs[1].ID != 3 {
+		t.Errorf("ids %+v", cs)
+	}
+}
+
+func TestSoccerStoppageAndPeriods(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, Action{Do: "stoppage", N: 4})
+	if mn.Score().Stoppage != 4 {
+		t.Error("stoppage not set")
+	}
+	for _, n := range []int{-1, 16} {
+		if err := mn.Do(Action{Do: "stoppage", N: n}); !errors.Is(err, errStoppage) {
+			t.Errorf("stoppage %d: %v", n, err)
+		}
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if s := mn.Score(); s.Stoppage != 0 || s.Clock != 27000 || s.Period != 2 {
+		t.Errorf("after period_next: %+v", s)
+	}
+	if err := mn.Do(Action{Do: "period_next"}); !errors.Is(err, errNoExtra) {
+		t.Errorf("period_next past the last half: %v", err)
+	}
+	if mn.Score().Period != 2 {
+		t.Error("period moved")
+	}
+}
+
+func TestSoccerGameEnd(t *testing.T) {
+	mn, _, c := newSoccer()
+	if err := mn.Do(Action{Do: "game_end"}); !errors.Is(err, errEndEarly) {
+		t.Errorf("game_end in period 1: %v", err)
+	}
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(47*time.Minute + 12*time.Second)
+	if mn.Score().Clock != 28320 {
+		t.Fatalf("clock %d", mn.Score().Clock)
+	}
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "clock_start"})
+	c.add(time.Minute)
+	do(t, mn, Action{Do: "game_end"})
+	if s := mn.Score(); !s.Over || s.Running {
+		t.Errorf("after game_end: %+v", s)
+	}
+	do(t, mn, Action{Do: "undo"})
+	if mn.Score().Over {
+		t.Error("undo leaves Over")
+	}
+	do(t, mn, Action{Do: "game_end"}, Action{Do: "clock_start"})
+	if s := mn.Score(); s.Over || !s.Running {
+		t.Errorf("clock_start after game_end: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "game_end"}, Action{Do: "period_back"})
+	if s := mn.Score(); s.Over || s.Period != 1 {
+		t.Errorf("period_back after game_end: %+v", s)
+	}
+}
+
+func TestSoccerClockRunsPastTheHalf(t *testing.T) {
+	mn, _, c := newSoccer()
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(47*time.Minute + 12*time.Second)
+	if s := mn.Score(); s.Clock != 28320 || !s.Running {
+		t.Errorf("clock %d running %v", s.Clock, s.Running)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if mn.Score().Clock != 27000 {
+		t.Errorf("second half starts at %d", mn.Score().Clock)
+	}
+	do(t, mn, Action{Do: "period_back"}, Action{Do: "period_length", Tenths: 21000}, Action{Do: "period_next"})
+	if mn.Score().Clock != 21000 {
+		t.Errorf("35 minute second half starts at %d", mn.Score().Clock)
+	}
+}
+
+func TestOtherSportsRefuseCards(t *testing.T) {
+	for _, p := range []sport.Profile{sport.Basketball, sport.Handball, sport.Volleyball} {
+		mn, _, _ := newSport(p)
+		for _, a := range []Action{card("home", "4", "red"), {Do: "sub", Team: "home", Out: "1", In: "2"}, {Do: "stoppage", N: 2}, {Do: "game_end"}} {
+			if err := mn.Do(a); !errors.Is(err, errNoCards) {
+				t.Errorf("%s %s: %v", p.ID, a.Do, err)
+			}
+		}
+		if _, ok := frame(p, mn.Score())["cards"]; ok {
+			t.Errorf("%s frame carries cards", p.ID)
+		}
+	}
+}
+
+func TestMinute(t *testing.T) {
+	r := sport.Soccer
+	for _, c := range []struct {
+		period, clock int
+		want          string
+	}{
+		{1, 0, "1'"}, {1, 22*600 + 100, "23'"}, {1, 27000, "45'"}, {1, 27001, "45+1'"}, {1, 28320, "45+3'"},
+		{2, 27000, "46'"}, {2, 54000, "90'"}, {2, 54001, "90+1'"}, {2, 54000 + 4*600, "90+4'"},
+	} {
+		if got := minute(r, 27000, c.period, c.clock); got != c.want {
+			t.Errorf("minute(%d, %d) = %q, want %q", c.period, c.clock, got, c.want)
+		}
+	}
+	if got := minute(r, 21000, 2, 42001); got != "70+1'" {
+		t.Errorf("35 minute halves: %q", got)
+	}
+}
+
+func TestSoccerFrame(t *testing.T) {
+	mn, _, _ := newSoccer()
+	f := frame(sport.Soccer, mn.Score())
+	if f["cards"] != "[]" || f["subs"] != "[]" || f["over"] != "" || f["stoppage"] != "0" || f["period_end"] != "27000" {
+		t.Errorf("empty frame %v", f)
+	}
+	do(t, mn, card("home", "4", "yellow"), Action{Do: "sub", Team: "away", Out: "9", In: "12"}, Action{Do: "stoppage", N: 3})
+	f = frame(sport.Soccer, mn.Score())
+	if f["cards"] != `[{"id":1,"team":"home","number":"4","kind":"yellow","minute":"1'"}]` ||
+		f["subs"] != `[{"id":2,"team":"away","out":"9","in":"12","minute":"1'"}]` || f["stoppage"] != "3" {
+		t.Errorf("frame %v", f)
+	}
+}
+
+func TestSoccerRestore(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, card("home", "4", "yellow"), Action{Do: "sub", Team: "home", Out: "1", In: "2"})
+	saved := mn.Score()
+	saved.Cards = append(saved.Cards, Card{ID: 0, Team: "home", Number: "9", Kind: "red"}, Card{ID: 7, Team: "x", Number: "9", Kind: "red"})
+	saved.Stoppage = 99
+	back, _, _ := newSoccer()
+	back.Restore(saved)
+	got := back.Score()
+	if len(got.Cards) != 1 || len(got.Subs) != 1 || got.Stoppage != maxStoppage {
+		t.Errorf("restored %+v", got)
+	}
+	do(t, back, card("home", "5", "yellow"))
+	if cs := back.Score().Cards; cs[len(cs)-1].ID != 3 {
+		t.Errorf("next id %+v", cs)
+	}
+	empty := newScoreAt(27000, 0)
+	back.Restore(empty)
+	if s := back.Score(); s.Cards != nil || s.Subs != nil {
+		t.Error("restore turned a nil list into an empty one")
+	}
+}

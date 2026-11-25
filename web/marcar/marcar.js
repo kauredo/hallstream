@@ -148,16 +148,16 @@
       countUp: !!r.count_up, suspensions: r.suspensions ?? 0,
     };
   }
-  // Where the clock starts and ends in period p, from game.rules and score.length, as sport.Profile.Start and
-  // End do. A countdown starts at its length (an overtime's own when the sport sets one) and has no end (0);
-  // a count-up starts at the time played before p.
-  function bounds(p) {
+  // Where the clock starts in period p, from game.rules and score.length; Go is the source (sport.Profile.Start).
+  // A countdown starts at its length (an overtime's own when the sport sets one), a count-up at the time
+  // played before p. The end of a count-up period comes from live.period_end.
+  function periodStart(p) {
     const r = rulesOf(), length = score ? score.length : 0;
     const len = (n) => (n > r.periods && r.overtimeLength > 0 ? r.overtimeLength : length);
-    if (!r.countUp) return { start: len(p), end: 0 };
+    if (!r.countUp) return len(p);
     let start = 0;
     for (let n = 1; n < p; n++) start += len(n);
-    return { start, end: start + len(p) };
+    return start;
   }
   // The tenths in a clock text, "MM:SS" or "S.T"; -1 when there is none.
   function clockTenths(text) {
@@ -199,7 +199,7 @@
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-  let zeroSince = 0;
+  let endSince = 0;
   function render() {
     if (!st) return;
     $('#mesa').hidden = false;
@@ -236,6 +236,8 @@
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
       setV(tx + 'Sets', +l[tx + '_sets'] || 0);
+      const plus = $(`.equipa[data-team="${tx}"] [data-do="suspension"]`), plusLabel = t('marcar.exclusao_dois_min', { sigla: sigla(tx) });
+      if (plus.getAttribute('aria-label') !== plusLabel) plus.setAttribute('aria-label', plusLabel);
       renderChips(tx, suspensions > 0 ? susp.filter((x) => x && x.team === tx).slice(0, 3) : []);
       const serving = sets && l.serve === tx, ring = $(`.equipa[data-team="${tx}"] .servico`);
       ring.classList.toggle('on', serving);
@@ -264,19 +266,19 @@
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
     $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods, word);
-    // A count-up clock is at the end of its period when the live clock has got there (it stops itself).
+    // A count-up clock stops itself at the end of its period, which the scorer sends as live.period_end.
     const liveT = clockTenths(l.clock);
-    const upEnd = !!(manual && score && countUp && (liveT >= 0 ? liveT : score.clock) >= bounds(period).end);
+    const upEnd = !!(manual && score && countUp && l.period_end > 0 && (liveT >= 0 ? liveT : score.clock) >= l.period_end);
     const running = !!(manual && score && score.running) && !upEnd;
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
-    // At 0:00 (a count-up: at the period's end) the button waits two seconds before it offers the next
-    // period, so a late Parar does nothing.
-    const atZero = upEnd || (manual && score && !countUp && !score.running && score.clock === 0);
-    if (atZero && !zeroSince) { zeroSince = Date.now(); setTimeout(render, 2100); }
-    if (!atZero) zeroSince = 0;
+    // At the end of the period (a countdown at 0:00) the button waits two seconds before it offers the
+    // next period, so a late Parar does nothing.
+    const atEnd = upEnd || (manual && score && !countUp && !score.running && score.clock === 0);
+    if (atEnd && !endSince) { endSince = Date.now(); setTimeout(render, 2100); }
+    if (!atEnd) endSince = 0;
     const go = $('#arrancar');
-    go.classList.toggle('seguinte', !!atZero && !sets);
+    go.classList.toggle('seguinte', !!atEnd && !sets);
     // The set can end once a side has the points with the lead; the button lights up to say so.
     const setOver = sets && !!setWon(rules, period, +l.home || 0, +l.away || 0) && (+l.home_sets || 0) < rules.setsToWin && (+l.away_sets || 0) < rules.setsToWin;
     go.classList.toggle('pronto', manual && setOver);
@@ -291,9 +293,9 @@
     }
     if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; delete go.dataset.ask; go.disabled = false; }
     else if (sets) { go.textContent = t('marcar.set_seguinte'); go.dataset.do = ''; go.dataset.ask = 'set_next'; go.disabled = !setOver; }
-    else if (atZero) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - zeroSince < 2000; }
+    else if (atEnd) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - endSince < 2000; }
     else { go.textContent = running ? t('marcar.parar') : t('marcar.iniciar'); go.dataset.do = running ? 'clock_stop' : 'clock_start'; delete go.dataset.ask; go.disabled = false; }
-    if (!atZero && !sets) delete go.dataset.ask;
+    if (!atEnd && !sets) delete go.dataset.ask;
     for (const b of $$('.equipa button, .seta, .acerto button, #relogio')) b.disabled = !manual;
     const u = $('#anular'), label = undoLabel(undo);
     u.disabled = !manual || !undo;
@@ -384,10 +386,6 @@
   }
   $('#confirmarNao').addEventListener('click', () => $('#confirmar').close());
 
-  // The clock "Repor" sets: the start of the period on now (the length of a countdown's period, an
-  // overtime's own when the sport sets one; the time already played before a count-up's period).
-  const periodStart = () => bounds(score.period).start;
-
   // A running suspension is a chip with its time left and, once typed, the shirt number. The chips are
   // rebuilt only when the set of suspensions changes, so a tap in progress never lands on a new button.
   function renderChips(tx, list) {
@@ -401,12 +399,12 @@
         b.dataset.team = tx;
         b.dataset.id = x.id;
         b.append(document.createElement('span'), document.createElement('b'));
-        b.disabled = input !== 'manual';
         return b;
       }));
     }
     list.forEach((x, i) => {
       const b = box.children[i], [time, no] = b.children;
+      b.disabled = input !== 'manual';
       if (time.textContent !== x.left) time.textContent = x.left || '';
       no.hidden = !x.number;
       if (no.textContent !== String(x.number || '')) no.textContent = x.number || '';
@@ -438,11 +436,11 @@
   // A tap on the clock opens the steps; each one applies at once.
   $('#relogio').addEventListener('click', () => {
     if (!score) return;
-    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart()) });
+    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart(score.period)) });
     $('#acertar').showModal();
     render();
   });
-  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart() }, t('marcar.ultimo.relogio')));
+  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart(score.period) }, t('marcar.ultimo.relogio')));
   $('#acertarFechar').addEventListener('click', () => $('#acertar').close());
 
   // ---------- start ----------

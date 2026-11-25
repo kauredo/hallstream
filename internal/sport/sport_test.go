@@ -1,6 +1,9 @@
 package sport
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestGetDefaultsToBasketball(t *testing.T) {
 	for _, id := range []string{"", "nonsense", "basketball"} {
@@ -114,10 +117,21 @@ func TestMaxPoint(t *testing.T) {
 	}
 }
 
-func TestCountsUpMatchesCountUp(t *testing.T) {
+func TestProfileJSONSaysCountUp(t *testing.T) {
 	for id, p := range profiles {
-		if p.CountsUp != p.CountUp() {
-			t.Errorf("%s: CountsUp %v, CountUp() %v", id, p.CountsUp, p.CountUp())
+		b, err := json.Marshal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got["count_up"] != p.CountUp() {
+			t.Errorf("%s: count_up %v, CountUp() %v", id, got["count_up"], p.CountUp())
+		}
+		if got["id"] != id || got["length"] != float64(p.Length) {
+			t.Errorf("%s: the other fields did not carry over: %v", id, got)
 		}
 	}
 	if !Handball.CountUp() || Basketball.CountUp() || Volleyball.CountUp() || Futsal.CountUp() {

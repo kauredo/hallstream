@@ -3,6 +3,8 @@
 // machine and the pages read them from here.
 package sport
 
+import "encoding/json"
+
 // Profile is one sport's rules. Times are in tenths of a second. It goes to
 // the pages as game.rules, so the JSON names are part of the contract.
 type Profile struct {
@@ -24,7 +26,6 @@ type Profile struct {
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
-	CountsUp    bool `json:"count_up"`    // the clock counts up (handball); same as CountUp(), for the pages
 	StopAtEnd   bool `json:"stop_at_end"` // a count-up clock stops at the end of the period; false runs on (soccer)
 	Suspensions int  `json:"suspensions"` // tenths a suspension lasts; 0 = the sport has none
 
@@ -59,7 +60,7 @@ var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown
 // Handball is IHF: two halves of 30:00 on a clock that counts up, 2-minute
 // suspensions, no team fouls, two timeouts per team per half shown (three per
 // match is the rule, not enforced), extra time in periods of 5:00.
-var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false, CountsUp: true,
+var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false,
 	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points",
 	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200}
 
@@ -174,4 +175,14 @@ func (p Profile) End(period, length int) int {
 		return 0
 	}
 	return p.Start(period, length) + p.length(period, length)
+}
+
+// MarshalJSON adds count_up, which the pages read as game.rules.count_up. It is
+// worked out from CountUp, so no profile can say one thing and do another.
+func (p Profile) MarshalJSON() ([]byte, error) {
+	type plain Profile
+	return json.Marshal(struct {
+		plain
+		CountUp bool `json:"count_up"`
+	}{plain(p), p.CountUp()})
 }

@@ -43,6 +43,9 @@ const maxSets = 5
 // maxSusp is the most suspensions a team can have running.
 const maxSusp = 3
 
+// maxSuspID bounds the IDs a saved score may hold.
+const maxSuspID = 1_000_000
+
 // Suspension is one running suspension; an empty slot has ID 0.
 type Suspension struct {
 	ID     int    `json:"id"`
@@ -50,9 +53,14 @@ type Suspension struct {
 	End    int    `json:"end"`    // the game clock (count-up, tenths) at which it ends
 }
 
+// sides are the two teams' suspension slots, home first.
+func (s *Score) sides() [2]*[maxSusp]Suspension {
+	return [2]*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp}
+}
+
 // expire empties every suspension slot that has run out at the clock.
 func (s *Score) expire() {
-	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
+	for _, side := range s.sides() {
 		for i, x := range side {
 			if x.ID != 0 && x.End <= s.Clock {
 				side[i] = Suspension{}
@@ -88,9 +96,7 @@ const (
 	undoMax = 50
 )
 
-func newScore(length int) Score { return Score{Period: 1, Clock: length, Length: length} }
-
-// newScoreAt is newScore with the clock at start: 0 for a count-up sport.
+// newScoreAt is a new game with the clock at start: the length for a countdown, 0 for a count-up.
 func newScoreAt(length, start int) Score { return Score{Period: 1, Clock: start, Length: length} }
 
 // Action is one tap on the scorer's page. Do is one of:
@@ -149,10 +155,10 @@ var (
 	errGameOver error = i18n.Key("manual.jogo_acabou")
 	errNoClock  error = i18n.Key("manual.sem_relogio")
 
-	errSuspFull   error = i18n.Key("manual.suspensoes_cheias")
-	errNoSusp     error = i18n.Key("manual.sem_exclusoes")
-	errSuspGone   error = i18n.Key("manual.exclusao_desconhecida")
-	errSuspNumber error = i18n.Key("manual.exclusao_numero")
+	errExclusaoFull   error = i18n.Key("manual.exclusao_cheia")
+	errExclusaoSport  error = i18n.Key("manual.exclusao_modalidade")
+	errExclusaoGone   error = i18n.Key("manual.exclusao_desconhecida")
+	errExclusaoNumber error = i18n.Key("manual.exclusao_numero")
 )
 
 // Manual is the score kept by hand on a phone (the /marcar page). The page
@@ -198,7 +204,7 @@ func NewManual(m *Manual) *Manual {
 	if m.Rules == nil {
 		m.Rules = func() sport.Profile { return sport.Basketball }
 	}
-	m.s = newScore(DefaultLength)
+	m.s = newScoreAt(DefaultLength, DefaultLength)
 	return m
 }
 
@@ -213,11 +219,22 @@ func (m *Manual) Restore(s Score) {
 	s.Period = max(s.Period, 1)
 	s.Clock = min(max(s.Clock, 0), MaxClock)
 	s.Running = false
-	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
-		for i := range side {
-			side[i].End = min(max(side[i].End, 0), 2*MaxClock)
+	// A saved file can be edited or damaged: keep only slots that make sense.
+	highest := 0
+	for _, side := range s.sides() {
+		for i, x := range side {
+			if x.ID <= 0 || x.ID > maxSuspID {
+				side[i] = Suspension{}
+				continue
+			}
+			if !validNumber(x.Number) {
+				side[i].Number = ""
+			}
+			side[i].End = min(max(x.End, 0), 2*MaxClock)
+			highest = max(highest, x.ID)
 		}
 	}
+	s.NextSusp = min(max(s.NextSusp, highest), maxSuspID)
 	m.mu.Lock()
 	m.s, m.undo = s, nil
 	m.mu.Unlock()
@@ -228,7 +245,8 @@ func (m *Manual) Restore(s Score) {
 func (m *Manual) Seed(l state.Live) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.Rules().Sets() {
+	r := m.Rules()
+	if r.Sets() {
 		m.seedSets(l)
 		return
 	}
@@ -240,7 +258,7 @@ func (m *Manual) Seed(l state.Live) {
 		HomeFouls: l.HomeFouls, AwayFouls: l.AwayFouls, HomeTimeouts: l.HomeTimeouts, AwayTimeouts: l.AwayTimeouts}
 	s.Clock = min(state.Tenths(l.Clock), MaxClock)
 	if s.Clock < 0 {
-		s.Clock = m.Rules().Start(p, s.Length)
+		s.Clock = r.Start(p, s.Length)
 	}
 	m.s, m.undo = s, nil
 	m.changed()
@@ -271,7 +289,7 @@ func (m *Manual) seedSets(l state.Live) {
 func (m *Manual) Score() Score {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.current()
+	return m.current(m.Rules())
 }
 
 // Heartbeat is the scorer's page calling in. It counts as connected for Seen.
@@ -283,32 +301,37 @@ func (m *Manual) Heartbeat() {
 }
 
 // SetLength sets the period length to tenths, as "period_length" does: a
-// clock sitting at the old start (the old length, or 0 on a count-up) moves to
-// the new sport's start, and suspensions are cleared. It is for the server,
-// when the game's sport changes, so unlike Do it is not the phone calling in
-// and it leaves the undo list alone. It only touches a fresh game (period 1,
-// 0-0, no set played, the clock stopped) and changes nothing otherwise: a game
-// under way keeps its length until the volunteer starts a new one. A length
-// outside 1 to MaxClock is refused.
+// clock sitting at the start of the first period moves to its new start. It is
+// for the server, when the game's sport changes, so unlike Do it is not the
+// phone calling in and it leaves the undo list alone. It only touches a fresh
+// game (period 1, 0-0, no set played, the clock stopped) and changes nothing
+// otherwise: a game under way keeps its length until the volunteer starts a new
+// one. A length outside 1 to MaxClock is refused.
 func (m *Manual) SetLength(tenths int) error {
+	return m.SetLengthFrom(m.Rules(), tenths)
+}
+
+// SetLengthFrom is SetLength for a change of sport: was is the sport the game
+// had, so a clock still at that sport's start (the old length on a countdown, 0
+// on a count-up) goes to the new sport's start and the old game's suspensions
+// go with it. A clock anywhere else, and the suspensions, stay.
+func (m *Manual) SetLengthFrom(was sport.Profile, tenths int) error {
 	if tenths <= 0 || tenths > MaxClock {
 		return errClock
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.s = m.current()
+	r := m.Rules()
+	m.s = m.current(r)
 	if n, _, _ := m.s.played(); m.s.Running || m.s.Period != 1 || m.s.Home != 0 || m.s.Away != 0 || n > 0 {
 		return nil
 	}
 	prev := m.s
-	// A fresh clock sits at the old sport's start: the old length (a countdown)
-	// or 0 (a count-up). It goes to the new sport's start, and suspensions
-	// from the old game go.
-	if m.s.Clock == m.s.Length || m.s.Clock == 0 {
-		m.s.Clock = m.Rules().Start(1, tenths)
+	if m.s.Clock == was.Start(1, m.s.Length) {
+		m.s.Clock = r.Start(1, tenths)
+		m.s.HomeSusp, m.s.AwaySusp = [maxSusp]Suspension{}, [maxSusp]Suspension{}
 	}
 	m.s.Length = tenths
-	m.s.HomeSusp, m.s.AwaySusp, m.s.NextSusp = [maxSusp]Suspension{}, [maxSusp]Suspension{}, 0
 	if m.s != prev {
 		m.changed()
 	}
@@ -321,10 +344,10 @@ func (m *Manual) Do(a Action) error {
 	defer m.mu.Unlock()
 	m.seen = m.Now()
 	m.tellBox()
-	m.s = m.current()
+	r := m.Rules()
+	m.s = m.current(r)
 	prev, clock := m.s, false
 	s := &m.s
-	r := m.Rules()
 	sets := r.Sets()
 	if err := refused(a, sets); err != nil {
 		return err
@@ -372,7 +395,7 @@ func (m *Manual) Do(a Action) error {
 		m.changed()
 		return nil
 	case "clock_start":
-		if !s.Running && m.clockCanStart(r, s) {
+		if !s.Running && clockCanStart(r, s) {
 			s.Running, m.from, m.fromClock = true, m.Now(), s.Clock
 		}
 	case "clock_stop":
@@ -386,7 +409,7 @@ func (m *Manual) Do(a Action) error {
 			s.Clock = clampUp(r, s, s.Clock)
 		}
 		m.from, m.fromClock = m.Now(), s.Clock
-		s.Running = s.Running && m.clockCanStart(r, s)
+		s.Running = s.Running && clockCanStart(r, s)
 	case "clock_add":
 		if a.Tenths == 0 || a.Tenths < -MaxClock || a.Tenths > MaxClock {
 			return errClock
@@ -396,7 +419,7 @@ func (m *Manual) Do(a Action) error {
 			s.Clock = clampUp(r, s, s.Clock)
 		}
 		m.from, m.fromClock, clock = m.Now(), s.Clock, true
-		s.Running = s.Running && m.clockCanStart(r, s)
+		s.Running = s.Running && clockCanStart(r, s)
 	case "period_next":
 		s.Period++
 		s.Clock, s.Running, clock = r.Start(s.Period, s.Length), false, true
@@ -423,7 +446,7 @@ func (m *Manual) Do(a Action) error {
 		*s, clock = newScoreAt(s.Length, r.Start(1, s.Length)), true
 	case "suspension":
 		if r.Suspensions == 0 {
-			return errNoSusp
+			return errExclusaoSport
 		}
 		side, err := suspSide(s, a.Team)
 		if err != nil {
@@ -434,24 +457,24 @@ func (m *Manual) Do(a Action) error {
 			i++
 		}
 		if i == maxSusp {
-			return errSuspFull
+			return errExclusaoFull
 		}
 		s.NextSusp++
 		side[i] = Suspension{ID: s.NextSusp, End: s.Clock + r.Suspensions}
 	case "suspension_number", "suspension_end":
 		if r.Suspensions == 0 {
-			return errNoSusp
+			return errExclusaoSport
 		}
 		x := s.suspension(a.ID)
 		if x == nil {
-			return errSuspGone
+			return errExclusaoGone
 		}
 		if a.Do == "suspension_end" {
 			*x = Suspension{}
 			break
 		}
 		if !validNumber(a.Number) {
-			return errSuspNumber
+			return errExclusaoNumber
 		}
 		x.Number = a.Number
 	default:
@@ -472,7 +495,7 @@ func (m *Manual) Do(a Action) error {
 
 // clockCanStart reports whether a stopped clock may start: a countdown above
 // 0, a count-up below the end of its period (below MaxClock when it runs on).
-func (m *Manual) clockCanStart(r sport.Profile, s *Score) bool {
+func clockCanStart(r sport.Profile, s *Score) bool {
 	if !r.CountUp() {
 		return s.Clock > 0
 	}
@@ -493,9 +516,9 @@ func clampUp(r sport.Profile, s *Score, t int) int {
 func suspSide(s *Score, team string) (*[maxSusp]Suspension, error) {
 	switch team {
 	case "home":
-		return &s.HomeSusp, nil
+		return s.sides()[0], nil
 	case "away":
-		return &s.AwaySusp, nil
+		return s.sides()[1], nil
 	}
 	return nil, errTeam
 }
@@ -505,7 +528,7 @@ func (s *Score) suspension(id int) *Suspension {
 	if id <= 0 {
 		return nil
 	}
-	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
+	for _, side := range s.sides() {
 		for i := range side {
 			if side[i].ID == id {
 				return &side[i]
@@ -652,9 +675,10 @@ func (m *Manual) Tick() {
 	if m.out == nil {
 		return
 	}
-	m.s = m.current()
+	r := m.Rules()
+	m.s = m.current(r)
 	was := m.sent
-	if m.clockText(m.s.Clock) == m.clockText(was.Clock) && m.s.Running == was.Running &&
+	if clockText(r, m.s.Clock) == clockText(r, was.Clock) && m.s.Running == was.Running &&
 		suspensionsJSON(m.s) == suspensionsJSON(was) {
 		return
 	}
@@ -667,9 +691,8 @@ func (m *Manual) Tick() {
 // current is the score with the running clock brought up to now. A countdown
 // stops at 0; a count-up stops at the end of its period when the sport says
 // so, else at MaxClock. Suspensions that have run out are gone.
-func (m *Manual) current() Score {
+func (m *Manual) current(r sport.Profile) Score {
 	s := m.s
-	r := m.Rules()
 	if s.Running {
 		elapsed := int(m.Now().Sub(m.from) / (100 * time.Millisecond))
 		if r.CountUp() {
@@ -690,16 +713,17 @@ func (m *Manual) current() Score {
 
 // clockText is the clock as the box shows it: MM:SS counting up, or the
 // countdown's text.
-func (m *Manual) clockText(t int) string {
-	if m.Rules().CountUp() {
+func clockText(r sport.Profile, t int) string {
+	if r.CountUp() {
 		return state.ClockTextUp(t)
 	}
 	return state.ClockText(t)
 }
 
 // suspensionsJSON is the running suspensions for the state, home first:
-// [{"team":"home","id":1,"number":"7","left":"01:23"}, ...]. A slot whose
-// time has run out is never in it.
+// [{"team":"home","id":1,"number":"7","left":"01:23"}, ...]. The time left
+// rounds up, so the last second reads 00:01. A slot that has run out is
+// never in it.
 func suspensionsJSON(s Score) string {
 	type out struct {
 		Team   string `json:"team"`
@@ -708,20 +732,16 @@ func suspensionsJSON(s Score) string {
 		Left   string `json:"left"`
 	}
 	list := []out{}
-	for _, side := range []struct {
-		team  string
-		slots [maxSusp]Suspension
-	}{{"home", s.HomeSusp}, {"away", s.AwaySusp}} {
-		for _, x := range side.slots {
+	for i, side := range s.sides() {
+		team := [2]string{"home", "away"}[i]
+		for _, x := range side {
 			if x.ID != 0 && x.End > s.Clock {
-				list = append(list, out{side.team, x.ID, x.Number, state.ClockTextUp(x.End - s.Clock)})
+				left := (x.End - s.Clock + 9) / 10 * 10
+				list = append(list, out{team, x.ID, x.Number, state.ClockTextUp(left)})
 			}
 		}
 	}
-	b, err := json.Marshal(list)
-	if err != nil {
-		return "[]"
-	}
+	b, _ := json.Marshal(list) // a list of strings and ints always marshals
 	return string(b)
 }
 
@@ -749,10 +769,23 @@ func (m *Manual) emit() {
 	if m.out == nil {
 		return
 	}
-	s := m.s
-	m.sent = s
+	m.sent = m.s
+	m.out(frame(m.Rules(), m.s))
+}
+
+// Frame is what the scorer sends the state for the game as it stands, for a
+// caller that wants it before Run starts (the state is primed with it at start).
+func (m *Manual) Frame() map[string]string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	r := m.Rules()
+	return frame(r, m.current(r))
+}
+
+// frame is the map of values for s under r's rules.
+func frame(r sport.Profile, s Score) map[string]string {
 	n := strconv.Itoa
-	if m.Rules().Sets() {
+	if r.Sets() {
 		played, hs, as := s.played()
 		var done []string
 		for _, x := range s.Sets[:played] {
@@ -762,17 +795,15 @@ func (m *Manual) emit() {
 			}
 			done = append(done, n(x.Home)+"-"+n(x.Away)+side)
 		}
-		m.out(map[string]string{
+		return map[string]string{
 			"home": n(s.Home), "away": n(s.Away),
 			"clock": "", "period": n(s.Period),
 			"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
 			"home_sets": n(hs), "away_sets": n(as), "serve": s.Serve,
 			"sets": strings.Join(done, ","), "shot_clock": "",
 			"period_end": "", "suspensions": "[]",
-		})
-		return
+		}
 	}
-	r := m.Rules()
 	end, susp := "", "[]"
 	if r.CountUp() {
 		end = n(r.End(s.Period, s.Length))
@@ -780,13 +811,13 @@ func (m *Manual) emit() {
 	if r.Suspensions > 0 {
 		susp = suspensionsJSON(s)
 	}
-	m.out(map[string]string{
+	return map[string]string{
 		"home": n(s.Home), "away": n(s.Away),
-		"clock": m.clockText(s.Clock), "period": n(s.Period), "period_end": end,
+		"clock": clockText(r, s.Clock), "period": n(s.Period), "period_end": end,
 		"home_fouls": n(s.HomeFouls), "away_fouls": n(s.AwayFouls),
 		"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
 		"shot_clock": "", "suspensions": susp,
-	})
+	}
 }
 
 // tellBox reports whether the phone called in within Seen, while manual runs.

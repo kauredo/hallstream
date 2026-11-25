@@ -310,12 +310,9 @@ type Machine struct {
 	OnEvent    func(event string, fields map[string]any)
 	seen       seen
 	autoSwitch bool // the program picked the screen, not the volunteer
-	// restored is the floor for seen.susp after a restart, until the scorer's
-	// first frame has been applied.
-	restored struct {
-		susp    int
-		pending bool
-	}
+	// suspRenumber: a new game began while suspensions of the last one were still
+	// live, so seen.susp holds at their ID until they are gone, and then goes to 0.
+	suspRenumber bool
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"
@@ -386,7 +383,7 @@ type seen struct {
 	box        bool
 	periods    int
 	sets       int
-	susp       int // the highest suspension ID on air
+	susp       int // the highest suspension ID told so far; it only goes up, until a new game
 	demo       bool
 }
 
@@ -396,11 +393,7 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	susp := m.liveSusp()
-	if m.restored.pending {
-		susp = max(susp, m.restored.susp)
-	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), susp, m.s.Demo}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.liveSusp(), m.s.Demo}
 }
 
 // liveSusp is the highest suspension ID in the live state.
@@ -429,7 +422,11 @@ func (m *Machine) EmitCurrent() {
 // emit tells OnEvent what changed since the last call. The demo is no game,
 // so nothing is told while it runs.
 func (m *Machine) emit() {
+	if m.suspRenumber && m.liveSusp() < m.seen.susp {
+		m.seen.susp, m.suspRenumber = 0, false
+	}
 	old, cur, auto := m.seen, m.seenNow(), m.autoSwitch
+	cur.susp = max(old.susp, cur.susp)
 	m.seen, m.autoSwitch = cur, false
 	if m.OnEvent == nil || old.demo || cur.demo {
 		return
@@ -708,7 +705,9 @@ func (m *Machine) ResetPeriods() {
 	m.s.Periods, m.realPeriods = []Period{}, nil
 	m.s.Sets, m.realSets = []SetScore{}, nil
 	m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
-	m.restored.pending = false
+	// A new game numbers its suspensions from 1 again.
+	m.seen.susp = m.liveSusp()
+	m.suspRenumber = m.seen.susp > 0
 	m.changed()
 	save := m.saver(true)
 	m.mu.Unlock()
@@ -724,14 +723,13 @@ func (m *Machine) RestoreSets(ss []SetScore) {
 	m.mu.Unlock()
 }
 
-// RestoreSeen sets the highest suspension ID the scorer had given out before
-// a restart, so the suspensions it still holds are not told as new. The floor
-// lasts until the scorer's first frame has been applied: SetGame runs
-// changed() before that frame, and a floor kept only in seen would be undone.
-func (m *Machine) RestoreSeen(susp int) {
+// Prime loads the live values the scorer had before a restart, without telling
+// the timeline anything: what it holds now is not news. SetGame calls changed()
+// before the scorer's first frame, so what Prime loads goes into seen as well.
+func (m *Machine) Prime(l Live) {
 	m.mu.Lock()
-	m.restored.susp, m.restored.pending = susp, true
-	m.seen.susp = susp
+	m.s.Live = l
+	m.seen = m.seenNow()
 	m.mu.Unlock()
 }
 
@@ -768,10 +766,13 @@ func (m *Machine) saver(reset bool) func() {
 	}
 }
 
-// ApplyConsole takes the values of one frame from the score input: the
-// decoder's for the box, the scorer's for manual. It is ignored while the
-// demo runs.
-func (m *Machine) ApplyConsole(v map[string]string) {
+// maxLiveSusp is the most suspensions a frame can carry (three a team).
+const maxLiveSusp = 6
+
+// LiveOf reads one frame's values (the keys ApplyConsole documents) into a Live.
+// A suspensions list that is not JSON reads as none; entries beyond the sixth
+// and entries for a team that is neither home nor away are dropped.
+func LiveOf(v map[string]string) Live {
 	num := func(k string) int { n, _ := strconv.Atoi(v[k]); return n }
 	l := Live{
 		HomeName: v["home_name"], AwayName: v["away_name"],
@@ -783,13 +784,25 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"], Sets: v["sets"],
 		PeriodEnd: num("period_end"),
 	}
-	// Bad JSON leaves the list empty; the frame still counts.
-	if err := json.Unmarshal([]byte(v["suspensions"]), &l.Suspensions); err != nil {
-		l.Suspensions = nil
+	var list []Suspension
+	if json.Unmarshal([]byte(v["suspensions"]), &list) == nil {
+		for _, x := range list {
+			if (x.Team == "home" || x.Team == "away") && len(l.Suspensions) < maxLiveSusp {
+				l.Suspensions = append(l.Suspensions, x)
+			}
+		}
 	}
 	_, hasHome := v["home_sets"]
 	_, hasAway := v["away_sets"]
 	l.setCounts = hasHome || hasAway
+	return l
+}
+
+// ApplyConsole takes the values of one frame from the score input: the
+// decoder's for the box, the scorer's for manual. It is ignored while the
+// demo runs.
+func (m *Machine) ApplyConsole(v map[string]string) {
+	l := LiveOf(v)
 	m.mu.Lock()
 	now := m.now().UTC()
 	m.s.Box.LastFrameAt = &now
@@ -850,11 +863,6 @@ func (m *Machine) update(l Live, fromDemo bool) {
 	}
 	recorded := m.setLive(l)
 	m.changed()
-	if !fromDemo && m.restored.pending {
-		// This frame's diff has respected the floor; from here on the timeline
-		// goes by what is live, so an ID below the floor counts as new.
-		m.restored.pending, m.seen.susp = false, m.liveSusp()
-	}
 	snap := m.snapshot()
 	save := m.recordedSaver(recorded)
 	m.mu.Unlock()

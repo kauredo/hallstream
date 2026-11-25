@@ -231,13 +231,15 @@ html[data-scoring="sets"] .sb-f b.only-sets { font-size: 34px; }
 html[data-scoring="sets"] .sb-tbox { padding: 0; }
 .sb-setlist .to { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1.5px; color: var(--muted); }
 .sb-setlist .goal { font-weight: 800; font-size: 44px; line-height: 46px; }
-/* Handball: html[data-penalties] swaps the fouls cell for the suspensions, one compact cell per team: the
-   players out ("\2212 2"), the soonest return and, once typed, that player's number. Its time turns gold
-   for the last 10 seconds. The cell is a little wider than the fouls one; the other sports do not move. */
-html:not([data-penalties]) .only-susp { display: none !important; }
-html[data-penalties] .sb-f b[data-hot], html[data-penalties] .sb-f .pips, html[data-penalties] .sb-f .bonus,
-html[data-penalties] .sb-lbl.only-pts, html[data-penalties] .to-f { display: none !important; }
-html[data-penalties] .sb-fouls { width: 172px; }
+/* Handball: html[data-penalties="suspensions"] swaps the fouls cell for the suspensions, one compact cell
+   per team: the players out, the soonest return and, once typed, that player's number. Its time turns
+   gold for the last 10 seconds. The cell is a little wider than the fouls one; other sports do not move. */
+html:not([data-penalties="suspensions"]) .only-susp { display: none !important; }
+html[data-penalties="suspensions"] { --susp-w: 172px; }
+html[data-penalties="suspensions"] .sb-f b[data-hot], html[data-penalties="suspensions"] .sb-f .pips,
+html[data-penalties="suspensions"] .sb-f .bonus, html[data-penalties="suspensions"] .sb-lbl.only-pts,
+html[data-penalties="suspensions"] .to-f { display: none !important; }
+html[data-penalties="suspensions"] .sb-fouls { width: var(--susp-w); }
 /* Generated, not bound, so the figures get their tabular rule here. */
 .susp { display: flex; align-items: center; min-width: 0; font-variant-numeric: tabular-nums; }
 .susp .out { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; line-height: 1; }

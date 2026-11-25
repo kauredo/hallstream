@@ -549,19 +549,28 @@ func TestHandballHoldUsesPeriodEnd(t *testing.T) {
 	}
 }
 
-func TestCountUpWithoutStopAtEndNeverHolds(t *testing.T) {
-	p := sport.Handball
-	p.StopAtEnd = false
-	m, c := newTest()
-	m.rulesFor = func(string) sport.Profile { return p }
-	m.SetGame(Game{Sport: "handball", Rules: p}, true)
-	for _, clock := range []string{"00:00", "30:00"} {
-		m.ApplyConsole(map[string]string{"period": "2", "clock": clock})
-	}
-	c.t = c.t.Add(10 * time.Minute)
-	m.Tick()
-	if got := m.Snapshot().Screen.Current; got == "final" {
-		t.Error("a clock that runs on ended the game")
+// A count-up that runs on (soccer) never holds at the end of the game; one
+// that stops at the end of its period (handball) does, for final_hold.
+func TestCountUpHoldDependsOnStopAtEnd(t *testing.T) {
+	for _, stop := range []bool{false, true} {
+		p := sport.Handball
+		p.StopAtEnd = stop
+		m, c := newTest()
+		m.rulesFor = func(string) sport.Profile { return p }
+		m.SetGame(Game{Sport: "handball", Rules: p}, true)
+		for _, clock := range []string{"00:00", "30:00"} {
+			m.ApplyConsole(map[string]string{"period": "2", "clock": clock})
+		}
+		m.ApplyConsole(map[string]string{"period": "2", "clock": "60:00"})
+		c.t = c.t.Add(time.Minute)
+		m.Tick()
+		got := m.Snapshot().Screen.Current
+		if stop && got != "final" {
+			t.Errorf("StopAtEnd: screen %q at 60:00 after the hold, want final", got)
+		}
+		if !stop && got == "final" {
+			t.Error("a clock that runs on ended the game")
+		}
 	}
 }
 
@@ -634,28 +643,37 @@ func TestSuspensionEventMutedInTheDemo(t *testing.T) {
 	}
 }
 
-// After a restart the scorer holds suspensions 1 and 2 already told. The
-// first sync (SetGame) runs before its first frame, and must not undo the floor.
-func TestRestoreSeenKeepsRestoredSuspensionsQuiet(t *testing.T) {
+// After a restart the scorer holds suspension 3, already told. The first sync
+// (SetGame) runs before its first frame, and must not make 3 news again.
+func TestPrimeKeepsRestoredSuspensionsQuiet(t *testing.T) {
 	m, _ := newTest()
 	got := events(m)
-	m.RestoreSeen(2)
+	m.Prime(LiveOf(suspFrame(3)))
 	m.SetGame(Game{Sport: "handball", Rules: sport.Handball}, true)
-	m.ApplyConsole(suspFrame(1, 2))
+	m.ApplyConsole(suspFrame(3))
 	if len(*got) != 0 {
-		t.Fatalf("restored suspensions were told as new: %v", *got)
+		t.Fatalf("a restored suspension was told as new: %v", *got)
 	}
-	m.ApplyConsole(suspFrame(1, 2))
-	m.ApplyConsole(suspFrame(1, 2, 3))
-	if !reflect.DeepEqual(*got, []string{"home:3"}) {
-		t.Errorf("events %v, want one for ID 3", *got)
+	m.ApplyConsole(suspFrame(3, 4))
+	if !reflect.DeepEqual(*got, []string{"home:4"}) {
+		t.Errorf("events %v, want one for ID 4", *got)
 	}
 }
 
-func TestResetPeriodsClearsTheSuspensionFloor(t *testing.T) {
+func TestPrimeLoadsTheLiveValues(t *testing.T) {
+	m, _ := newTest()
+	f := suspFrame(3)
+	f["home"] = "7"
+	m.Prime(LiveOf(f))
+	if l := m.Snapshot().Live; l.Home != 7 || len(l.Suspensions) != 1 {
+		t.Errorf("live after Prime: %+v", l)
+	}
+}
+
+func TestResetPeriodsNumbersSuspensionsFromOneAgain(t *testing.T) {
 	m, _ := newTest()
 	got := events(m)
-	m.RestoreSeen(2)
+	m.Prime(LiveOf(suspFrame(3)))
 	m.ResetPeriods()
 	m.ApplyConsole(suspFrame(1))
 	if !reflect.DeepEqual(*got, []string{"home:1"}) {
@@ -663,15 +681,26 @@ func TestResetPeriodsClearsTheSuspensionFloor(t *testing.T) {
 	}
 }
 
-// The floor is for the first frame only: later, an ID below it (the scorer
-// numbers from 1 again after a switch of sport) is a new suspension.
-func TestSuspensionFloorEndsWithTheFirstFrame(t *testing.T) {
+// An ID is told once: ending ID 2 early and undoing it brings the chip back
+// but is no news.
+func TestSuspensionIsToldOnce(t *testing.T) {
 	m, _ := newTest()
 	got := events(m)
-	m.RestoreSeen(5)
-	m.ApplyConsole(suspFrame())
+	m.ApplyConsole(suspFrame(1, 2))
 	m.ApplyConsole(suspFrame(1))
-	if !reflect.DeepEqual(*got, []string{"home:1"}) {
-		t.Errorf("events %v, want one for ID 1", *got)
+	m.ApplyConsole(suspFrame(1, 2))
+	if !reflect.DeepEqual(*got, []string{"home:1", "home:2"}) {
+		t.Errorf("events %v, want one each for IDs 1 and 2", *got)
+	}
+}
+
+func TestLiveOfBoundsTheSuspensionList(t *testing.T) {
+	v := suspFrame(1, 2, 3, 4, 5, 6, 7, 8)
+	if got := LiveOf(v).Suspensions; len(got) != 6 {
+		t.Errorf("%d suspensions, want 6", len(got))
+	}
+	v["suspensions"] = `[{"team":"cat","id":1,"left":"01:00"},{"team":"away","id":2,"left":"01:00"}]`
+	if got := LiveOf(v).Suspensions; len(got) != 1 || got[0].Team != "away" {
+		t.Errorf("a team that is neither home nor away got through: %+v", got)
 	}
 }

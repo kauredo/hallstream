@@ -256,7 +256,7 @@ func TestSportSwitchClearsSuspensionsOnAFreshScore(t *testing.T) {
 		t.Fatal(err)
 	}
 	playIn(t, s, bb)
-	if sc := m.Score(); sc.AwaySusp[0].ID != 0 || sc.NextSusp != 0 {
+	if sc := m.Score(); sc.AwaySusp[0].ID != 0 {
 		t.Errorf("suspensions survived a switch on a fresh score: %+v", sc)
 	}
 }

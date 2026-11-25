@@ -23,7 +23,7 @@ A free tool for amateur clubs that stream their games. Hallstream reads the scor
 
 1. Download the latest zip from Releases and unzip it to a folder such as `C:\Hallstream`.
 2. Install [OBS Studio](https://obsproject.com) 31 or later, then open `Hallstream.exe`. The panel opens in your browser.
-3. Follow the first-run steps in the panel. `LEIA-ME.txt` in the zip has the full guide, in Portuguese.
+3. Follow the first-run steps in the panel. `READ-ME.txt` in the zip has the full guide (`LEIA-ME.txt` in Portuguese).
 
 Windows may warn about an unsigned app. Signed releases are planned.
 

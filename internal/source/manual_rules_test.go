@@ -13,8 +13,6 @@ func TestDefaultLengthIsBasketballs(t *testing.T) {
 	}
 }
 
-// A scorer with its own profile keeps fouls between periods and resets the
-// timeouts at the profile's half, so it reads the profile and not literals.
 func TestPeriodNextReadsTheProfile(t *testing.T) {
 	c := &fakeClock{t: time.Date(2026, 11, 15, 18, 0, 0, 0, time.UTC)}
 	p := sport.Basketball

@@ -75,8 +75,7 @@ type Manual struct {
 	Now  func() time.Time
 	Save func(Score) error // dados/manual.json, after each change
 	Log  func(string)
-	// Rules is the sport's profile; nil means basketball. It is called under
-	// the scorer's lock, so it must not call back into Manual.
+	// Rules is called under the scorer's lock, so it must not call back into Manual.
 	Rules func() sport.Profile
 
 	mu         sync.Mutex

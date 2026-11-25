@@ -132,6 +132,11 @@
     const s = Math.ceil(tenths / 10);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
+  // The sport's rules from game.rules; a missing field reads as basketball's.
+  function rulesOf() {
+    const r = (st && st.game && st.game.rules) || {};
+    return { periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5 };
+  }
   function periodName(p, periods) {
     return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
@@ -155,7 +160,7 @@
   function render() {
     if (!st) return;
     $('#mesa').hidden = false;
-    const g = st.game || {}, rules = g.rules || {}, l = st.live || {}, home = g.home || {}, away = g.away || {}, th = g.theme || {};
+    const g = st.game || {}, l = st.live || {}, home = g.home || {}, away = g.away || {}, th = g.theme || {};
     const root = document.documentElement.style;
     const hc = th.red || home.color || '#2F4B7C', ac = awayColour(hc, away.color);
     root.setProperty('--casa', hc);
@@ -171,8 +176,8 @@
     setV('home', l.home ?? 0);
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
-    const periods = rules.periods ?? 4, half = rules.half ?? 2, tos = rules.timeouts ?? [2, 3, 1], bonus = rules.foul_bonus ?? 5;
-    const maxTO = period <= half ? tos[0] : period <= periods ? tos[1] : tos[2];
+    const { periods, half, timeouts, bonus } = rulesOf();
+    const maxTO = period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
       marks($(`[data-marks="${tx}Fouls"]`), f, bonus);
@@ -270,9 +275,9 @@
   function ask(what) {
     const box = $('#confirmar'), period = (st && +st.live?.period) || (score && score.period) || 1;
     const next = what === 'period_next';
-    const regular = (st && st.game && st.game.rules && st.game.rules.periods) ?? 4;
+    const { periods } = rulesOf();
     if (!next && period <= 1) return;
-    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, regular) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, regular) });
+    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, periods) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, periods) });
     $('#confirmarDica').textContent = next ? t('marcar.confirmar.seguinte_dica') : t('marcar.confirmar.anterior_dica');
     $('#confirmarSim').textContent = next ? t('marcar.confirmar.passar') : t('marcar.confirmar.voltar');
     $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.periodo')); };

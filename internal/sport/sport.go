@@ -10,7 +10,7 @@ type Profile struct {
 	Periods    int    `json:"periods"`     // regulation periods
 	Half       int    `json:"half"`        // the period after which the half-time break falls
 	Length     int    `json:"length"`      // tenths in a regulation period
-	ClockDown  bool   `json:"clock_down"`  // the clock counts down (plans 006 and 007 add count-up sports)
+	ClockDown  bool   `json:"clock_down"`  // the clock counts down
 	FoulsReset bool   `json:"fouls_reset"` // team fouls go back to 0 each period
 	FoulWarn   int    `json:"foul_warn"`   // fouls at which the pips turn hot; 0 = never
 	FoulBonus  int    `json:"foul_bonus"`  // fouls from which the other side shoots; 0 = never
@@ -24,13 +24,14 @@ var Basketball = Profile{ID: "basketball", Periods: 4, Half: 2, Length: 6000, Cl
 	FoulsReset: true, FoulWarn: 4, FoulBonus: 5, ShotClock: true, FinalHold: 600,
 	TimeoutsBy: [3]int{2, 3, 1}}
 
-// Get returns the profile for id; an unknown or empty id is basketball.
+// Get returns the profile for id. Only basketball exists so far, so every id,
+// the empty one included, gets it.
 func Get(id string) Profile {
 	return Basketball
 }
 
-// Timeouts is how many timeouts each team has in period p:
-// TimeoutsBy[0] for p <= Half, [1] for Half < p <= Periods, [2] after.
+// Timeouts is how many timeouts each team has in period:
+// TimeoutsBy[0] up to Half, [1] after Half up to Periods, [2] after.
 func (p Profile) Timeouts(period int) int {
 	switch {
 	case period <= p.Half:
@@ -41,8 +42,8 @@ func (p Profile) Timeouts(period int) int {
 	return p.TimeoutsBy[2]
 }
 
-// ResetsTimeouts reports whether starting period p puts timeouts back to 0:
-// p == Half+1, and every p > Periods.
+// ResetsTimeouts reports whether starting period puts timeouts back to 0:
+// it is the period after Half, or any period after Periods.
 func (p Profile) ResetsTimeouts(period int) bool {
 	return period == p.Half+1 || period > p.Periods
 }

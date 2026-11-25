@@ -245,14 +245,16 @@ func promoLength(sec float64) time.Duration {
 
 // FinalHold is how long the clock must sit at 0 in period 4+ before the
 // game counts as over.
-const FinalHold = 60 * time.Second
+var FinalHold = time.Duration(sport.Basketball.FinalHold) * 100 * time.Millisecond
 
 type Machine struct {
 	mu     sync.Mutex
 	now    func() time.Time
 	s      State
 	picked bool
-	subs   map[chan struct{}]bool
+	// rulesFor is the profile lookup; tests set it, nil means sport.Get.
+	rulesFor func(id string) sport.Profile
+	subs     map[chan struct{}]bool
 
 	// OnPeriods runs (outside the lock) each time a period score is recorded.
 	OnPeriods func(State)
@@ -398,6 +400,9 @@ func (m *Machine) snapshot() State {
 	s.Periods = append([]Period{}, m.s.Periods...)
 	s.Promo.Clip, s.Promo.Mini = clipCopy(m.s.Promo.Clip), clipCopy(m.s.Promo.Mini)
 	g := m.s.Game
+	if g.Rules.ID == "" {
+		g.Rules = m.rules()
+	}
 	g.Squad = append([]SquadPlayer{}, g.Squad...)
 	g.Sponsors.Others = append([]Sponsor{}, g.Sponsors.Others...)
 	if !m.picked {
@@ -769,7 +774,12 @@ func (m *Machine) setLive(l Live) bool {
 }
 
 // rules is the profile of the game's sport. Call it with the lock held.
-func (m *Machine) rules() sport.Profile { return sport.Get(m.s.Game.Sport) }
+func (m *Machine) rules() sport.Profile {
+	if m.rulesFor != nil {
+		return m.rulesFor(m.s.Game.Sport)
+	}
+	return sport.Get(m.s.Game.Sport)
+}
 
 // checkFinal fires the end of the game once the clock has sat at 0 long enough.
 func (m *Machine) checkFinal() bool {

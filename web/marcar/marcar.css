@@ -212,6 +212,7 @@ dialog h2 b { font-weight: 800; }
 .sets-linha, .feitos { display: none; }
 body.sets .sets-linha { display: grid; }
 body.sets .faltas, body.sets .relogio, body.sets .acerto, body.sets .seta { display: none; }
+body.nofouls .faltas { display: none; }
 body.sets .somar { grid-template-columns: 1fr; }
 body.sets .somar button:nth-child(n + 2) { display: none; }
 body.sets .periodo { grid-template-columns: 1fr; }

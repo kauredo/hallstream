@@ -137,6 +137,7 @@
     const r = (st && st.game && st.game.rules) || {};
     return {
       periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5,
+      foulMarks: r.foul_marks ?? 5, sixth: r.foul_penalty === 'sixth', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
       lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2,
     };
@@ -148,8 +149,8 @@
     if (away >= target && away - home >= r.winBy) return 'away';
     return '';
   }
-  function periodName(p, periods) {
-    return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
+  function periodName(p, periods, word) {
+    return p <= periods ? (word === 'half' ? t('marcar.parte', { n: `<b>${p}</b>` }) : t('marcar.periodo', { n: `<b>${p}</b>` })) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
   // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
   const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : `${h}–${a}`);
@@ -192,13 +193,14 @@
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
     const rules = rulesOf();
-    const { periods, half, timeouts, bonus, sets } = rules;
+    const { periods, half, timeouts, bonus, sets, foulMarks, word, sixth } = rules;
     document.body.classList.toggle('sets', sets);
+    document.body.classList.toggle('nofouls', foulMarks === 0);
     // A sets sport has the same timeouts in every set.
     const maxTO = sets || period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
-      marks($(`[data-marks="${tx}Fouls"]`), f, bonus);
+      marks($(`[data-marks="${tx}Fouls"]`), f, foulMarks);
       marks($(`[data-marks="${tx}Timeouts"]`), to, maxTO);
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
@@ -207,7 +209,10 @@
       ring.classList.toggle('on', serving);
       const word = serving ? t('marcar.a_servir') : t('marcar.servico');
       if (ring.textContent !== word) ring.textContent = word;
-      $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
+      const fouls = $(`.equipa[data-team="${tx}"] .faltas`);
+      fouls.toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
+      const warning = fouls.querySelector('.aviso'), penaltyWord = sixth ? t('marcar.livre') : t('marcar.bonus');
+      if (warning.textContent !== penaltyWord) warning.textContent = penaltyWord;
     }
     // The finished sets, as small scores in the middle strip.
     const finished = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
@@ -226,7 +231,7 @@
     const manual = input === 'manual';
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
-    $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods);
+    $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods, word);
     const running = !!(manual && score && score.running);
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
@@ -333,9 +338,9 @@
       return;
     }
     const next = what === 'period_next';
-    const { periods } = rulesOf();
+    const { periods, word } = rulesOf();
     if (!next && period <= 1) return;
-    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, periods) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, periods) });
+    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, periods, word) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, periods, word) });
     $('#confirmarDica').textContent = next ? t('marcar.confirmar.seguinte_dica') : t('marcar.confirmar.anterior_dica');
     $('#confirmarSim').textContent = next ? t('marcar.confirmar.passar') : t('marcar.confirmar.voltar');
     $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.periodo')); };
@@ -343,14 +348,20 @@
   }
   $('#confirmarNao').addEventListener('click', () => $('#confirmar').close());
 
+  // The length of the period on now: an overtime runs the sport's overtime length when it sets one.
+  function periodLength() {
+    const { periods, overtimeLength } = rulesOf();
+    return score.period > periods && overtimeLength > 0 ? overtimeLength : score.length;
+  }
+
   // A tap on the clock opens the steps; each one applies at once.
   $('#relogio').addEventListener('click', () => {
     if (!score) return;
-    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(score.length) });
+    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodLength()) });
     $('#acertar').showModal();
     render();
   });
-  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: score.length }, t('marcar.ultimo.relogio')));
+  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodLength() }, t('marcar.ultimo.relogio')));
   $('#acertarFechar').addEventListener('click', () => $('#acertar').close());
 
   // ---------- start ----------

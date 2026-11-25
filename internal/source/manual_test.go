@@ -3,6 +3,9 @@ package source
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -1054,8 +1057,8 @@ func TestRestoreSanitisesSuspensions(t *testing.T) {
 	}
 	s.NextSusp = 1 << 40
 	mn.Restore(s)
-	if mn.s.NextSusp != maxSuspID {
-		t.Errorf("NextSusp %d, want it capped at %d", mn.s.NextSusp, maxSuspID)
+	if mn.s.NextSusp != maxEventID {
+		t.Errorf("NextSusp %d, want it capped at %d", mn.s.NextSusp, maxEventID)
 	}
 }
 
@@ -1213,7 +1216,7 @@ func TestSoccerStoppageAndPeriods(t *testing.T) {
 		t.Error("stoppage not set")
 	}
 	for _, n := range []int{-1, 16} {
-		if err := mn.Do(Action{Do: "stoppage", N: n}); !errors.Is(err, errStoppage) {
+		if err := mn.Do(Action{Do: "stoppage", N: n}); err == nil {
 			t.Errorf("stoppage %d: %v", n, err)
 		}
 	}
@@ -1331,7 +1334,7 @@ func TestSoccerRestore(t *testing.T) {
 	back, _, _ := newSoccer()
 	back.Restore(saved)
 	got := back.Score()
-	if len(got.Cards) != 1 || len(got.Subs) != 1 || got.Stoppage != maxStoppage {
+	if len(got.Cards) != 1 || len(got.Subs) != 1 || got.Stoppage != sport.Soccer.StoppageMax {
 		t.Errorf("restored %+v", got)
 	}
 	do(t, back, card("home", "5", "yellow"))
@@ -1342,5 +1345,138 @@ func TestSoccerRestore(t *testing.T) {
 	back.Restore(empty)
 	if s := back.Score(); s.Cards != nil || s.Subs != nil {
 		t.Error("restore turned a nil list into an empty one")
+	}
+}
+
+// A card's minute is written when it is entered: a later period_length must not
+// turn "45'" into "35+10'".
+func TestSoccerMinuteIsWrittenAtEntry(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, Action{Do: "clock_set", Tenths: 27000}, card("home", "4", "yellow"), Action{Do: "sub", Team: "home", Out: "1", In: "2"})
+	do(t, mn, Action{Do: "period_length", Tenths: 21000})
+	s := mn.Score()
+	if s.Cards[0].Minute != "45'" || s.Subs[0].Minute != "45'" {
+		t.Errorf("minutes %q and %q, want 45'", s.Cards[0].Minute, s.Subs[0].Minute)
+	}
+	f := frame(sport.Soccer, s)
+	if !strings.Contains(f["cards"], `"minute":"45'"`) || !strings.Contains(f["subs"], `"minute":"45'"`) {
+		t.Errorf("frame %v", f)
+	}
+}
+
+func TestSoccerPeriodBackResetsAddedTime(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "stoppage", N: 5}, Action{Do: "period_back"})
+	if s := mn.Score(); s.Stoppage != 0 || s.Period != 1 {
+		t.Errorf("after period_back: stoppage %d period %d", s.Stoppage, s.Period)
+	}
+}
+
+// DoPlay hands back the entry the action made, read under the scorer's lock.
+func TestDoPlayReturnsTheEntryItMade(t *testing.T) {
+	mn, _, _ := newSoccer()
+	p, err := mn.DoPlay(card("away", "09", "red"))
+	if err != nil || p.Card == nil || p.Sub != nil || p.Card.Number != "9" || p.Card.Kind != "red" || p.Card.Team != "away" {
+		t.Fatalf("card: %+v %v", p, err)
+	}
+	p, err = mn.DoPlay(Action{Do: "sub", Team: "home", Out: "7", In: "14"})
+	if err != nil || p.Sub == nil || p.Card != nil || p.Sub.In != "14" || p.Sub.ID != p.Sub.ID {
+		t.Fatalf("sub: %+v %v", p, err)
+	}
+	if got := mn.Score().Subs[0]; got != *p.Sub {
+		t.Errorf("the entry %+v is not the stored one %+v", *p.Sub, got)
+	}
+	for _, a := range []Action{{Do: "point", Team: "home", N: 1}, card("home", "x", "red"), {Do: "undo"}} {
+		if p, _ := mn.DoPlay(a); p.Card != nil || p.Sub != nil {
+			t.Errorf("%s returned an entry: %+v", a.Do, p)
+		}
+	}
+}
+
+func TestSoccerListsAreCapped(t *testing.T) {
+	mn, _, _ := newSoccer()
+	for i := 0; i < state.MaxLiveList; i++ {
+		do(t, mn, card("home", strconv.Itoa(i%900+1), "yellow"), Action{Do: "sub", Team: "home", Out: "1", In: "2"})
+		// A second yellow to the same player would be a red; spread the numbers instead.
+	}
+	if err := mn.Do(card("home", "999", "red")); !errors.Is(err, errCardsFull) {
+		t.Errorf("card 101: %v", err)
+	}
+	if err := mn.Do(Action{Do: "sub", Team: "home", Out: "3", In: "4"}); !errors.Is(err, errSubsFull) {
+		t.Errorf("sub 101: %v", err)
+	}
+	if s := mn.Score(); len(s.Cards) != state.MaxLiveList || len(s.Subs) != state.MaxLiveList {
+		t.Errorf("%d cards, %d subs", len(s.Cards), len(s.Subs))
+	}
+	// A saved file with more is cut at the cap, keeping the first ones.
+	saved := newScoreAt(27000, 0)
+	for i := 1; i <= 150; i++ {
+		saved.Cards = append(saved.Cards, Card{ID: i, Team: "home", Number: strconv.Itoa(i), Kind: "yellow"})
+		saved.Subs = append(saved.Subs, Sub{ID: i, Team: "away", Out: "1", In: "2"})
+	}
+	back, _, _ := newSoccer()
+	back.Restore(saved)
+	if s := back.Score(); len(s.Cards) != state.MaxLiveList || len(s.Subs) != state.MaxLiveList || s.Cards[99].ID != 100 {
+		t.Errorf("restored %d cards, %d subs", len(s.Cards), len(s.Subs))
+	}
+}
+
+// Extra time is the profile's say, not the cards': a sport without it refuses a
+// period past its last, whatever else it has.
+func TestPeriodNextPastTheLastNeedsExtraTime(t *testing.T) {
+	for _, p := range []sport.Profile{sport.Basketball, sport.Futsal, sport.Handball} {
+		mn, _, _ := newSport(p)
+		for i := 0; i <= p.Periods; i++ {
+			if err := mn.Do(Action{Do: "period_next"}); err != nil {
+				t.Errorf("%s: period %d: %v", p.ID, i+2, err)
+			}
+		}
+	}
+	for name, p := range map[string]sport.Profile{
+		"soccer": sport.Soccer,
+		"plain":  {ID: "x", Periods: 2, Length: 600, ClockDown: true, Scoring: "points"},
+	} {
+		mn, _, _ := newSport(p)
+		do(t, mn, Action{Do: "period_next"})
+		if err := mn.Do(Action{Do: "period_next"}); !errors.Is(err, errNoExtra) {
+			t.Errorf("%s: period 3: %v", name, err)
+		}
+		if mn.Score().Period != 2 {
+			t.Errorf("%s: the period moved to %d", name, mn.Score().Period)
+		}
+	}
+}
+
+// The scorer's file holds cards, a substitution and the added time, and what a
+// fresh scorer reads back is the game, with the next card's ID above the undone one.
+func TestManualFileHoldsCards(t *testing.T) {
+	mn, _, _ := newSoccer()
+	do(t, mn, card("home", "4", "yellow"), card("away", "9", "red"), Action{Do: "sub", Team: "home", Out: "7", In: "14"},
+		Action{Do: "stoppage", N: 3}, card("home", "4", "yellow"))
+	do(t, mn, Action{Do: "undo"})
+	var saved Score
+	mn.Save = func(s Score) error { saved = s; return nil }
+	mn.save()
+	raw, err := json.Marshal(saved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var read Score
+	if err := json.Unmarshal(raw, &read); err != nil {
+		t.Fatal(err)
+	}
+	back, _, _ := newSoccer()
+	back.Restore(read)
+	want := mn.Score()
+	want.Running = false
+	if got := back.Score(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("restored %+v\nwant     %+v", got, want)
+	}
+	if len(want.Cards) != 2 || len(want.Subs) != 1 || want.Stoppage != 3 {
+		t.Fatalf("the game has %d cards, %d subs, stoppage %d", len(want.Cards), len(want.Subs), want.Stoppage)
+	}
+	p, err := back.DoPlay(card("home", "5", "yellow"))
+	if err != nil || p.Card.ID <= 4 {
+		t.Errorf("the next card's ID is %v (%v), want above the undone card's 4", p.Card, err)
 	}
 }

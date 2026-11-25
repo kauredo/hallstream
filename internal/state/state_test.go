@@ -3,6 +3,7 @@ package state
 import (
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -908,5 +909,62 @@ func TestNoHoldWhenFinalHoldIsZero(t *testing.T) {
 	m.Tick()
 	if s := m.Snapshot(); s.Screen.Current == "final" || len(s.Periods) != 0 {
 		t.Errorf("screen %q periods %v: a hold ended a sport with no hold", s.Screen.Current, s.Periods)
+	}
+}
+
+// A new game numbers from 1 again: once the last game's entries are gone from the
+// live state, a card with ID 1 is news again.
+func TestResetPeriodsNumbersCardsAndSubsFromOneAgain(t *testing.T) {
+	m, _ := soccer()
+	got := cardEvents(m)
+	m.ApplyConsole(cframe("1", "["+c1+","+c2+","+c3+"]", "["+s1+"]"))
+	if len(*got) != 4 {
+		t.Fatalf("events %v", *got)
+	}
+	m.ResetPeriods()
+	m.ApplyConsole(cframe("1", "[]", "[]"))
+	one := `{"id":1,"team":"away","number":"3","kind":"red","minute":"2'"}`
+	m.ApplyConsole(cframe("1", "["+one+"]", `[{"id":1,"team":"away","out":"1","in":"2","minute":"3'"}]`))
+	if len(*got) != 6 || (*got)[4] != "card:away3red2'" || (*got)[5] != "sub:1>23'" {
+		t.Errorf("events %v: the new game's first card and sub were not told", *got)
+	}
+	// Until the old entries are gone, an ID below the mark is not news.
+	m.ApplyConsole(cframe("1", "["+one+"]", "[]"))
+	if len(*got) != 6 {
+		t.Errorf("events %v", *got)
+	}
+}
+
+func TestLiveOfBoundsTheCardAndSubLists(t *testing.T) {
+	var cards, subs []string
+	for i := 1; i <= 150; i++ {
+		cards = append(cards, `{"id":`+strconv.Itoa(i)+`,"team":"home","number":"4","kind":"yellow","minute":"1'"}`)
+		subs = append(subs, `{"id":`+strconv.Itoa(i)+`,"team":"home","out":"1","in":"2","minute":"1'"}`)
+	}
+	l := LiveOf(map[string]string{"cards": "[" + strings.Join(cards, ",") + "]", "subs": "[" + strings.Join(subs, ",") + "]"})
+	if len(l.Cards) != MaxLiveList || len(l.Subs) != MaxLiveList {
+		t.Errorf("%d cards, %d subs, want %d", len(l.Cards), len(l.Subs), MaxLiveList)
+	}
+}
+
+func TestDecodeListAndNews(t *testing.T) {
+	team := func(x Card) string { return x.Team }
+	got := decodeList(`[{"id":1,"team":"home"},{"id":2,"team":"cat"},{"id":3,"team":"away"}]`, team, 5)
+	if len(got) != 2 || got[0].ID != 1 || got[1].ID != 3 {
+		t.Errorf("decodeList %+v", got)
+	}
+	if decodeList(`nope`, team, 5) != nil || len(decodeList(`[{"id":1,"team":"home"},{"id":2,"team":"home"}]`, team, 1)) != 1 {
+		t.Error("decodeList does not read bad JSON as none or cap the list")
+	}
+	var k told
+	live := []Card{{ID: 4}, {ID: 5}}
+	if f := news(&k, live, cardID); len(f) != 2 || k.high != 5 {
+		t.Errorf("first: %+v mark %d", f, k.high)
+	}
+	if f := news(&k, live[:1], cardID); len(f) != 0 || k.high != 5 {
+		t.Errorf("after an undo: %+v mark %d", f, k.high)
+	}
+	if f := news(&k, []Card{{ID: 6}}, cardID); len(f) != 1 || k.high != 6 {
+		t.Errorf("a new one: %+v mark %d", f, k.high)
 	}
 }

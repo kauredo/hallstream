@@ -322,3 +322,76 @@ func TestPanelOpensOnAFreshFolder(t *testing.T) {
 		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
 	}
 }
+
+// Soccer on the scoreboard and in the lower thirds: each team's yellow and red
+// counts (a second yellow is both), the added time under the clock, and the
+// lower third under the tab of the team the card is for.
+func TestOverlaySoccerCards(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	messages := chromedp.Console(tab)
+	load := func(fx string) {
+		t.Helper()
+		if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&state=/overlay/fixtures/soccer/"+fx+".json")); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, `document.documentElement.dataset.screen !== undefined`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(js string) string {
+		t.Helper()
+		got, err := chromedp.Run(tab, chromedp.Evaluate[string](js))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	counts := func(team string) string {
+		return read(`[...document.querySelectorAll('[data-cds="` + team + `"] .cd')].map((e) => e.className.replace('cd ', '') + e.textContent).join(' ')`)
+	}
+
+	load("marcador-cartoes")
+	if got := read(`document.documentElement.dataset.penalties`); got != "cards" {
+		t.Errorf("data-penalties %q, want cards", got)
+	}
+	// Home: yellow 4, yellow 9, second yellow 9, red 2 = 3 yellows and 2 reds; away: one yellow.
+	if got := counts("home"); got != "y3 r2" {
+		t.Errorf("home counts %q, want \"y3 r2\"", got)
+	}
+	if got := counts("away"); got != "y1" {
+		t.Errorf("away counts %q, want \"y1\" (a red at 0 is not drawn)", got)
+	}
+	if got := read(`(document.querySelector('[data-add]').classList.contains('blank') ? '' : document.querySelector('[data-add] b').textContent)`); got != "90+4'" {
+		t.Errorf("added time %q, want 90+4'", got)
+	}
+	load("marcador")
+	if got := counts("home") + counts("away"); got != "" {
+		t.Errorf("counts with no cards: %q", got)
+	}
+	if got := read(`document.querySelector('[data-add]').classList.contains('blank') ? 'blank' : 'shown'`); got != "blank" {
+		t.Errorf("added time without stoppage is %s", got)
+	}
+
+	// A home card draws the home tab, an away card the visitor's.
+	load("rodape-cartao")
+	if got := read(`document.querySelector('.lt-team').textContent + '|' + document.querySelector('.lt-tc').dataset.tile + '|' + document.querySelector('#lt').className`); !strings.HasPrefix(got, "CASA|home|") || !strings.Contains(got, "segundo") {
+		t.Errorf("home card tab %q", got)
+	}
+	load("rodape-cartao-fora")
+	if err := until(tab, `document.querySelector('.lt-team').textContent === "VISITANTE"`); err != nil {
+		t.Fatalf("the away card's tab names %q: %v", read(`document.querySelector('.lt-team').textContent`), err)
+	}
+	got := read(`document.querySelector('.lt-tc').dataset.tile + '|' + document.querySelector('.lt-tc .ini').textContent + '|' + getComputedStyle(document.querySelector('.lt-tc')).backgroundColor + '|' + document.querySelector('.lt-label').textContent + '|' + document.querySelector('.lt-big').textContent`)
+	away := strings.Split(got, "|")
+	home := read(`getComputedStyle(document.querySelector('.tile[data-tile="home"]')).backgroundColor`)
+	if len(away) != 5 || away[0] != "away" || away[1] != "VIS" || away[2] == home || away[3] != "CARTÃO VERMELHO" || away[4] != "VISITANTE" {
+		t.Errorf("away card: tile %q (home tile %q)", got, home)
+	}
+	if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool {
+		return m.Type == chromedp.ConsoleError || m.IsException()
+	}); len(errs) > 0 {
+		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
+	}
+}

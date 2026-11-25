@@ -297,6 +297,7 @@
   "manual.set_por_acabar": "The set isn't over yet.",
   "manual.tempo": "The time must be between 0:00 and 99:59.",
   "manual.um_de_cada_vez": "Fouls and timeouts change one at a time.",
+  "manual.um_ponto": "In this sport each point is worth 1.",
   "marcar.a_servir": "Serving",
   "marcar.acertar.repor": "Reset {tempo}",
   "marcar.acertar.titulo": "Adjust the clock",

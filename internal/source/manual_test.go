@@ -597,7 +597,7 @@ func TestSetLength(t *testing.T) {
 	if s := mn.Score(); !s.Running || s.Clock != 5900 || s.Length != 6000 {
 		t.Errorf("a running clock was touched: %+v", s)
 	}
-	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "point", Team: "home", N: 2})
+	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "point", Team: "home", N: 1})
 	if err := mn.SetLength(4800); err != nil {
 		t.Fatal(err)
 	}
@@ -637,5 +637,40 @@ func TestFutsalExtraTimeTimeoutIsNotRefused(t *testing.T) {
 	do(t, mn, Action{Do: "timeout", Team: "home", N: 1})
 	if s := mn.Score(); s.Period != 3 || s.HomeTimeouts != 1 {
 		t.Errorf("the tap was not counted: %+v", s)
+	}
+}
+
+// How much one score action can add follows the profile: basketball takes up to
+// 3, a goal in futsal is 1, and volleyball's +1 only stays as it was.
+func TestMaxPointByProfile(t *testing.T) {
+	for _, c := range []struct {
+		p      sport.Profile
+		n      int
+		accept bool
+	}{
+		{sport.Basketball, 3, true}, {sport.Basketball, -3, true}, {sport.Basketball, 4, false},
+		{sport.Futsal, 1, true}, {sport.Futsal, -1, true}, {sport.Futsal, 2, false}, {sport.Futsal, 3, false}, {sport.Futsal, 0, false},
+		{sport.Volleyball, 1, true}, {sport.Volleyball, 2, false}, {sport.Volleyball, -2, false},
+	} {
+		mn, _, _ := newSport(c.p)
+		if c.n < 0 {
+			do(t, mn, Action{Do: "point", Team: "home", N: 1}, Action{Do: "point", Team: "home", N: 1}, Action{Do: "point", Team: "home", N: 1})
+			if c.p.Sets() {
+				continue
+			}
+		}
+		err := mn.Do(Action{Do: "point", Team: "home", N: c.n})
+		if (err == nil) != c.accept {
+			t.Errorf("%s point %d: err %v, want accepted %v", c.p.ID, c.n, err, c.accept)
+		}
+	}
+	mn, _, _ := newSport(sport.Futsal)
+	foulsTo(t, mn, 2, 0) // futsal keeps its fouls
+	if s := mn.Score(); s.HomeFouls != 2 {
+		t.Errorf("futsal fouls %d, want 2", s.HomeFouls)
+	}
+	before := mn.Score()
+	if mn.Do(Action{Do: "point", Team: "home", N: 2}) == nil || mn.Score() != before {
+		t.Error("a refused +2 changed the score")
 	}
 }

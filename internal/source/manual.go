@@ -102,6 +102,7 @@ var (
 	errUndo   error = i18n.Key("manual.nada_para_desfazer")
 
 	errNoFouls  error = i18n.Key("manual.sem_faltas")
+	errOnePoint error = i18n.Key("manual.um_ponto")
 	errSetOpen  error = i18n.Key("manual.set_por_acabar")
 	errGameOver error = i18n.Key("manual.jogo_acabou")
 	errNoClock  error = i18n.Key("manual.sem_relogio")
@@ -273,7 +274,7 @@ func (m *Manual) Do(a Action) error {
 	}
 	switch a.Do {
 	case "point", "foul", "timeout":
-		p, err := m.count(a)
+		p, err := m.count(r, a)
 		if err != nil {
 			return err
 		}
@@ -407,7 +408,7 @@ func (m *Manual) Undo() (Action, bool) {
 }
 
 // count is the number a point, foul or timeout action changes.
-func (m *Manual) count(a Action) (*int, error) {
+func (m *Manual) count(r sport.Profile, a Action) (*int, error) {
 	if a.Team != "home" && a.Team != "away" {
 		return nil, errTeam
 	}
@@ -416,6 +417,10 @@ func (m *Manual) count(a Action) (*int, error) {
 	case "point":
 		if a.N == 0 || a.N < -3 || a.N > 3 {
 			return nil, errPoints
+		}
+		// A profile with no MaxPoint (a test's own) takes up to 3, as basketball does.
+		if most := r.MaxPoint; most > 0 && (a.N < -most || a.N > most) {
+			return nil, errOnePoint
 		}
 		if home {
 			return &m.s.Home, nil

@@ -139,7 +139,7 @@
       periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5,
       foulMarks: r.foul_marks ?? 5, freeKick: r.foul_penalty === 'free_kick', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
-      lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2,
+      lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2, maxPoint: r.max_point ?? 3,
     };
   }
   // The same rule as sport.SetWon: the side that has the set's points with the lead, else ''.
@@ -195,10 +195,11 @@
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
     const rules = rulesOf();
-    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick } = rules;
+    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick, maxPoint } = rules;
     const penaltyWord = freeKick ? t('marcar.livre') : t('marcar.bonus');
     document.body.classList.toggle('sets', sets);
     document.body.classList.toggle('nofouls', foulMarks === 0);
+    document.body.classList.toggle('um', maxPoint === 1); // one +1, as a sets sport has
     // A sets sport has the same timeouts in every set.
     const maxTO = sets || period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {

@@ -297,6 +297,7 @@
   "manual.set_por_acabar": "O set ainda não acabou.",
   "manual.tempo": "O tempo tem de ficar entre 0:00 e 99:59.",
   "manual.um_de_cada_vez": "As faltas e os descontos mudam de um em um.",
+  "manual.um_ponto": "Nesta modalidade cada ponto vale 1.",
   "marcar.a_servir": "A servir",
   "marcar.acertar.repor": "Repor {tempo}",
   "marcar.acertar.titulo": "Acertar o relógio",

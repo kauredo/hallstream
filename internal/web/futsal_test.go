@@ -62,6 +62,10 @@ func TestMarcarPageFutsal(t *testing.T) {
 	if err := until(tab, `document.querySelectorAll('[data-marks="homeFouls"] i').length === 5`); err != nil {
 		t.Fatalf("not five foul marks: %v", err)
 	}
+	// A goal is 1: the page shows only +1, and the server refuses a bigger one.
+	if err := until(tab, `[...document.querySelectorAll('.casa .somar button')].filter((b) => getComputedStyle(b).display !== 'none').length === 1`); err != nil {
+		t.Fatalf("futsal shows more than +1: %v", err)
+	}
 	fouls(t, s, "home", 5)
 	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "5" && !document.querySelector('.casa .faltas').hasAttribute("data-bonus")`); err != nil {
 		t.Fatalf("at five fouls: %v", err)
@@ -106,6 +110,9 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 	tab := chrome(t)
 	if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/marcar")); err != nil {
 		t.Fatal(err)
+	}
+	if err := until(tab, `[...document.querySelectorAll('.casa .somar button')].filter((b) => getComputedStyle(b).display !== 'none').length === 3`); err != nil {
+		t.Fatalf("basketball lost its +2 or +3: %v", err)
 	}
 	fouls(t, s, "home", 5)
 	if err := until(tab, `document.querySelector('.casa .faltas').hasAttribute("data-bonus") && document.querySelector('.casa .aviso').textContent === "Bónus"`); err != nil {

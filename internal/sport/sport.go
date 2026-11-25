@@ -24,6 +24,7 @@ type Profile struct {
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
+	MaxPoint      int    `json:"max_point"`       // the most one score action can add: basketball 3, a goal or a set point 1
 	Scoring       string `json:"scoring"`         // "points" (basketball) or "sets"
 	SetPoints     int    `json:"set_points"`      // points to win a set (25); 0 when Scoring is "points"
 	LastSetPoints int    `json:"last_set_points"` // points to win the deciding set (15)
@@ -34,12 +35,12 @@ type Profile struct {
 // Basketball is FIBA.
 var Basketball = Profile{ID: "basketball", Periods: 4, Half: 2, Length: 6000, ClockDown: true,
 	FoulsReset: true, FoulWarn: 4, FoulBonus: 5, ShotClock: true, FinalHold: 600,
-	TimeoutsBy: [3]int{2, 3, 1}, Scoring: "points", OvertimeLength: 3000, PeriodWord: "quarter",
+	TimeoutsBy: [3]int{2, 3, 1}, Scoring: "points", MaxPoint: 3, OvertimeLength: 3000, PeriodWord: "quarter",
 	FoulMarks: 5, FoulPenalty: "bonus"}
 
 // Volleyball: best of 5, sets to 25 (15 in the 5th), win by 2, no clock,
 // 2 timeouts per team per set.
-var Volleyball = Profile{ID: "volleyball", Scoring: "sets", SetPoints: 25, LastSetPoints: 15,
+var Volleyball = Profile{ID: "volleyball", MaxPoint: 1, Scoring: "sets", SetPoints: 25, LastSetPoints: 15,
 	SetsToWin: 3, WinBy: 2, TimeoutsBy: [3]int{2, 2, 2}, PeriodWord: "set"}
 
 // Futsal is FIFA: two halves of 20:00 on a stopped clock, accumulated fouls
@@ -48,7 +49,7 @@ var Volleyball = Profile{ID: "volleyball", Scoring: "sets", SetPoints: 25, LastS
 // periods of 5:00.
 var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown: true,
 	FoulsReset: true, FoulsCarry: true, FoulWarn: 5, FoulBonus: 6, FinalHold: 600,
-	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", OvertimeLength: 3000, PeriodWord: "half",
+	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", MaxPoint: 1, OvertimeLength: 3000, PeriodWord: "half",
 	FoulMarks: 5, FoulPenalty: "free_kick"}
 
 // Get returns the profile for id; an unknown or empty id is basketball.

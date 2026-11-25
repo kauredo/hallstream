@@ -142,6 +142,33 @@ func TestOverlayStyles(t *testing.T) {
 	}
 }
 
+// SYSTEM-R8 took the strips from under the emblem tiles; the scoreboard rows
+// left a grey stub under the visitor's in every look.
+func TestOverlayScoreboardTilesHaveNoStrip(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	for _, style := range store.Styles {
+		t.Run(style, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador.json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, `document.documentElement.dataset.style === "`+style+`" && document.querySelector('.sb-row .tile[data-tile="away"]') !== null`); err != nil {
+				t.Fatal(err)
+			}
+			for _, side := range []string{"home", "away"} {
+				display, err := chromedp.Run(tab, chromedp.Evaluate[string](`getComputedStyle(document.querySelector('.sb-row .tile[data-tile="`+side+`"]'), '::after').display`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if display != "none" {
+					t.Errorf("the %s tile has a strip: display %s", side, display)
+				}
+			}
+		})
+	}
+}
+
 // The overlay names the game's sport on <html>, and only basketball gets the court-lined stand-in hall.
 func TestOverlaySportArt(t *testing.T) {
 	tab := chrome(t)

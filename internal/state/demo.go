@@ -5,6 +5,8 @@ import (
 	"math/rand/v2"
 	"strconv"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // SetDemo turns the fake game on or off. While it runs, box frames are ignored.
@@ -98,7 +100,7 @@ func playDemo(r *rand.Rand, show func(Live), hold func(int) bool, newGame func()
 	points := func() int { return []int{1, 2, 2, 2, 3}[r.IntN(5)] }
 	for {
 		newGame()
-		l := Live{HomeName: "CASA", AwayName: "VISITANTE", Sport: "basketball"}
+		l := Live{HomeName: i18n.T("jogo.casa"), AwayName: i18n.T("jogo.visitante"), Sport: "basketball"}
 		for p := 1; ; p++ {
 			length := 600
 			if p > 4 {

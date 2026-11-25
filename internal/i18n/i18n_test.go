@@ -48,6 +48,18 @@ func TestLanguageFallsBackToPortuguese(t *testing.T) {
 	}
 }
 
+func TestLanguagesNameThemselves(t *testing.T) {
+	got := Languages()
+	if len(got) < 2 || got[0].Code != Default {
+		t.Fatalf("Languages() = %v, want pt first and at least one more", got)
+	}
+	for _, l := range got {
+		if l.Name == "" {
+			t.Errorf("%s.json has no data.nome", l.Code)
+		}
+	}
+}
+
 // keysInOrder reads a catalog with its keys in file order.
 func keysInOrder(t *testing.T, path string) []string {
 	t.Helper()

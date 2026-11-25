@@ -20,7 +20,7 @@ Hallstream is an open-source game-day tool for basketball clubs. Volunteers doub
 
 ## Constraints
 
-- All copy is European Portuguese for volunteers. That includes log lines, since volunteers read `dados/marcador.log`. Every string lives in `web/i18n/pt.json`, read with `i18n.T` in Go and `t()` or `data-i18n` in the pages ("Words" in the contract); `go test ./internal/i18n` fails on a missing key or Portuguese left in the code. The program speaks in the first person ("Não consegui…") and instructs in the imperative ("Carregue…"). Code and comments stay in English.
+- All copy is written first in European Portuguese for volunteers, then in British English in `web/i18n/en.json` with the same keys. That includes log lines, since volunteers read `dados/marcador.log`. Every string lives in `web/i18n/pt.json`, read with `i18n.T` in Go and `t()` or `data-i18n` in the pages ("Words" in the contract); `go test ./internal/i18n` fails on a missing key, a key `en.json` lacks, or Portuguese left in the code. The program speaks in the first person ("Não consegui…") and instructs in the imperative ("Carregue…"). Code and comments stay in English.
 - The program works offline after one FPB load. Read the FPB API through `fpb.Client.Get`, which keeps a disk copy of every answer and paces requests under the calendar's limit.
 - `web/` ships embedded exactly as it is in the repo, with no npm, no build step and nothing loaded from a CDN.
 - The overlay stays on air in OBS for hours, so a state it does not expect must still draw. Every screen has fixtures in `web/overlay/fixtures/` and the Chrome test loads each one. Add a fixture with any new screen or state.

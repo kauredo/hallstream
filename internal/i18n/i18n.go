@@ -7,7 +7,10 @@ package i18n
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -100,6 +103,34 @@ func SetLang(lang string) string {
 
 // Lang is the language in use.
 func Lang() string { return current().lang }
+
+// Language is a catalog the program ships: its code, and its name in its own
+// words (the catalog's data.nome).
+type Language struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// Languages is every web/i18n/<lang>.json, Portuguese first, then by code.
+func Languages() []Language {
+	files, _ := fs.Glob(web.FS, "i18n/*.json")
+	var out []Language
+	for _, f := range files {
+		code := strings.TrimSuffix(path.Base(f), ".json")
+		m, err := load(code)
+		if err != nil || code != Clean(code) {
+			continue
+		}
+		out = append(out, Language{Code: code, Name: m["data.nome"]})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if (out[i].Code == Default) != (out[j].Code == Default) {
+			return out[i].Code == Default
+		}
+		return out[i].Code < out[j].Code
+	})
+	return out
+}
 
 // Words is every key with its string in the language in use, for the browser.
 // The map is shared: callers must not change it.

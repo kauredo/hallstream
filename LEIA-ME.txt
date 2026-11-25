@@ -1,8 +1,15 @@
 Hallstream para OBS
 
-O programa lê a consola do marcador pela SL Stream Box, por Bluetooth,
-guarda os plantéis e os patrocinadores de cada escalão, e mostra os
-grafismos no OBS numa só fonte de navegador.
+O programa marca basquetebol, futsal, andebol, voleibol e futebol.
+Lê a consola do marcador pela SL Stream Box, por Bluetooth, ou recebe
+o resultado de um telemóvel. Guarda os plantéis e os patrocinadores de
+cada escalão, e mostra os grafismos no OBS numa só fonte de navegador.
+
+A marcação pelo telemóvel funciona nas cinco modalidades. A consola só
+foi testada em basquetebol. Em futsal, andebol, voleibol e futebol a
+consola não está testada, até alguém gravar um jogo a sério. Se a
+experimentar, diga-nos como correu. A importação da FPB serve só para
+basquetebol português.
 
 Precisa de Windows 10 ou mais recente, com Bluetooth. Use o
 "Hallstream.exe". O "Hallstream (32-bit).exe" é só para Windows de

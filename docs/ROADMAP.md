@@ -1,6 +1,6 @@
 # Roadmap
 
-Hallstream started as a game-day tool built for one Portuguese basketball club. The goal is a free tool that any club can use to stream its games, in any country, at any level from youth and amateur to professional, and in the club's own language:
+Hallstream started as a game-day tool built for one Portuguese basketball club. It now scores basketball, futsal, handball, volleyball and soccer from a phone, and reads a Stramatel console for basketball. The goal is a free tool that any club can use to stream its games, in any country, at any level from youth and amateur to professional, and in the club's own language:
 
 - the score read from the hall's console, or kept by hand on a phone
 - several cameras through OBS

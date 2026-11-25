@@ -1,6 +1,6 @@
 # Hallstream
 
-Hallstream is an open-source game-day tool for basketball clubs. Volunteers double-click a Windows exe on game day. It reads the Stramatel scoreboard over Bluetooth and serves the OBS overlay and the control panel. It has to keep working with no internet and nobody technical in the room.
+Hallstream is an open-source game-day tool for clubs that score basketball, futsal, handball, volleyball or soccer. Volunteers double-click a Windows exe on game day. It reads a Stramatel scoreboard over Bluetooth, or takes the score from a phone, and serves the OBS overlay and the control panel. It has to keep working with no internet and nobody technical in the room.
 
 ## Commands
 

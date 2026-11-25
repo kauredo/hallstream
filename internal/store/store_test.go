@@ -326,3 +326,69 @@ func TestDefaultClub(t *testing.T) {
 		t.Errorf("default club %+v", c)
 	}
 }
+
+func TestGroupSportMigration(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"club":{"name":"VALE","short":"VAL","sport":"basketball"}}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "groups.json"), []byte(`[{"id":"sub16","name":"Sub 16","players":[],"sponsors":[]},{"id":"fut","name":"Fut","sport":"futsal","players":[],"sponsors":[]}]`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, _ := s.Group("sub16"); g.Sport != "basketball" {
+		t.Errorf("old escalão sport %q, want basketball", g.Sport)
+	}
+	if g, _ := s.Group("fut"); g.Sport != "futsal" {
+		t.Errorf("saved sport %q, want futsal", g.Sport)
+	}
+	g, err := s.AddGroup("Sub 14")
+	if err != nil || g.Sport != "basketball" {
+		t.Errorf("new escalão sport %q (%v), want the club's", g.Sport, err)
+	}
+}
+
+// A club that saved no sport either leaves its escalões as basketball.
+func TestGroupSportMigrationEmptyClubSport(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"club":{"name":"VALE","short":"VAL","sport":""}}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "groups.json"), []byte(`[{"id":"sub16","name":"Sub 16","players":[],"sponsors":[]}]`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, _ := s.Group("sub16"); g.Sport != "basketball" {
+		t.Errorf("old escalão sport %q, want basketball", g.Sport)
+	}
+	if g, err := s.AddGroup("Sub 14"); err != nil || g.Sport != "basketball" {
+		t.Errorf("new escalão sport %q (%v), want basketball", g.Sport, err)
+	}
+}
+
+func TestSportOf(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, _ := s.AddGroup("Seniores")
+	if _, err := s.UpdateGroup(g.ID, func(g *Group) error { g.Sport = "futsal"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	s.UpdateGroup(Shared, func(g *Group) error { g.Sport = "futsal"; return nil })
+	for _, c := range []struct{ id, want string }{
+		{g.ID, "futsal"},
+		{"", "basketball"},
+		{"nonexistent", "basketball"},
+		{Shared, "basketball"}, // the shared group follows the club
+	} {
+		if got := s.SportOf(c.id); got != c.want {
+			t.Errorf("SportOf(%q) = %q, want %q", c.id, got, c.want)
+		}
+	}
+	if got := s.GameSport(); got != "basketball" {
+		t.Errorf("GameSport with no escalão = %q", got)
+	}
+	s.SaveGame(Game{GroupID: g.ID})
+	if got := s.GameSport(); got != "futsal" {
+		t.Errorf("GameSport on the futsal escalão = %q", got)
+	}
+}

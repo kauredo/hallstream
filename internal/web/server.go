@@ -306,15 +306,26 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // fpbGate answers 404 on the routes that only make sense for a club the FPB
 // covers (Portuguese basketball), so no other club reaches the FPB at all.
+// The escalão routes also need the escalão itself to be basketball, except
+// for the shared group, which follows the club.
 func (s *Server) fpbGate(w http.ResponseWriter, r *http.Request) bool {
 	p := r.URL.Path
-	fpbOnly := strings.HasPrefix(p, "/api/fpb/") || p == "/api/club/setup" ||
-		strings.HasPrefix(p, "/api/groups/") && (strings.HasSuffix(p, "/players/import") || strings.HasSuffix(p, "/players/from-fpb") || strings.HasSuffix(p, "/link"))
-	if fpbOnly && !s.fpbOffered() {
-		fail(w, http.StatusNotFound, noFPB.Error())
-		return false
+	offered := true
+	switch {
+	case strings.HasPrefix(p, "/api/fpb/") || p == "/api/club/setup":
+		offered = s.fpbOffered()
+	case strings.HasPrefix(p, "/api/groups/") && (strings.HasSuffix(p, "/players/import") || strings.HasSuffix(p, "/players/from-fpb") || strings.HasSuffix(p, "/link")):
+		id, _, _ := strings.Cut(strings.TrimPrefix(p, "/api/groups/"), "/")
+		if g, err := s.Store.Group(id); id == store.Shared {
+			offered = s.fpbOffered()
+		} else if err == nil { // else the handler answers its own 404
+			offered = s.fpbOfferedFor(g)
+		}
 	}
-	return true
+	if !offered {
+		fail(w, http.StatusNotFound, noFPB.Error())
+	}
+	return offered
 }
 
 // allowed applies the PIN rule: /api/* from other devices needs the PIN

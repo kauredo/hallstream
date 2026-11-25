@@ -32,6 +32,7 @@ type fakeClub struct {
 	busy    bool
 	teams   []byte
 	rosters map[string]string
+	hits    int // requests received, whatever the answer
 	// onRoster runs before a roster is served.
 	onRoster func(id string)
 }
@@ -57,6 +58,7 @@ func clubFPB(t *testing.T, s *Server) *fakeClub {
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		f.hits++
 		if f.down {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return

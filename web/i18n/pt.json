@@ -31,6 +31,8 @@
   "api.destino.so_no_pc": "O destino da transmissão muda-se no computador do clube.",
   "api.ecra_desconhecido": "Ecrã desconhecido: {ecra}",
   "api.equipa_invalida": "Equipa inválida.",
+  "api.escalao.desporto": "Escolha uma modalidade disponível para este escalão.",
+  "api.escalao.desporto_fpb": "Este escalão está ligado a uma equipa da FPB, que é de basquetebol. Desligue-o primeiro.",
   "api.escalao_desconhecido": "Escalão desconhecido.",
   "api.escalao_sem_fpb": "Este escalão ainda não está ligado a uma equipa da FPB.",
   "api.falta_ficheiro": "Falta o ficheiro (até 10 MB).",

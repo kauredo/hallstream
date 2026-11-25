@@ -246,7 +246,7 @@ func (s *Server) setupTeam(t clubTeamPlan, res *setupResult, deadline time.Time)
 	}
 	var g store.Group
 	for _, x := range groups {
-		if x.ID != store.Shared && x.FPBTeamID == 0 && store.Plain(x.Name) == store.Plain(t.name) {
+		if x.ID != store.Shared && x.FPBTeamID == 0 && s.fpbOfferedFor(x) && store.Plain(x.Name) == store.Plain(t.name) {
 			g = x
 			break
 		}

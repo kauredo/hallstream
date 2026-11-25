@@ -44,18 +44,30 @@ type Provider interface {
 	Fixtures(g store.Group) ([]Fixture, error)
 }
 
-// FPBOffered reports whether the FPB covers the club: Portuguese basketball.
-func FPBOffered(c store.Club) bool {
-	return (c.Country == "" || c.Country == "PT") && (c.Sport == "" || c.Sport == "basketball")
+// FPBOffered reports whether the FPB covers the club: Portuguese, and
+// basketball as its main sport or in any escalão (geral aside).
+func FPBOffered(c store.Club, groups []store.Group) bool {
+	if !portuguese(c) {
+		return false
+	}
+	if c.Sport == "" || c.Sport == "basketball" {
+		return true
+	}
+	for _, g := range groups {
+		if g.ID != store.Shared && (g.Sport == "" || g.Sport == "basketball") {
+			return true
+		}
+	}
+	return false
 }
 
-// For lists the providers for the club, the club's own games last.
-func For(c store.Club, fpb Provider) []Provider {
-	if fpb != nil && FPBOffered(c) {
-		return []Provider{fpb, Manual{}}
-	}
-	return []Provider{Manual{}}
+// FPBOfferedFor reports whether the FPB covers this escalão: a Portuguese
+// club and a basketball escalão.
+func FPBOfferedFor(c store.Club, g store.Group) bool {
+	return portuguese(c) && (g.Sport == "" || g.Sport == "basketball")
 }
+
+func portuguese(c store.Club) bool { return c.Country == "" || c.Country == "PT" }
 
 // Manual is the games the club entered itself (store.Group.Fixtures).
 type Manual struct{}

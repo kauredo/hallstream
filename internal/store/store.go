@@ -3,6 +3,7 @@
 package store
 
 import (
+	"cmp"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -300,6 +301,8 @@ type Group struct {
 	// CalendarURL is the escalão's calendar link (an .ics feed, http, https
 	// or webcal); its games add to the others. "" = none.
 	CalendarURL string `json:"calendar_url"`
+	// Sport is an id from club.Sports; Open and AddGroup never leave it empty.
+	Sport string `json:"sport"`
 }
 
 // Fixture is one game the club entered by hand.
@@ -393,8 +396,28 @@ func Open(dir string) (*Store, error) {
 	if _, i := s.find(Shared); i < 0 {
 		s.groups = append(s.groups, Group{ID: Shared, Name: i18n.T("store.grupo_geral")})
 	}
+	// Escalões saved before each had its own sport take the club's.
+	for i := range s.groups {
+		if s.groups[i].Sport == "" {
+			s.groups[i].Sport = cmp.Or(s.settings.Club.Sport, "basketball")
+		}
+	}
 	return s, nil
 }
+
+// SportOf is the sport of an escalão, else the club's main sport (no escalão,
+// an unknown one, or the shared group).
+func (s *Store) SportOf(groupID string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if g, i := s.find(groupID); i >= 0 && g.ID != Shared && g.Sport != "" {
+		return g.Sport
+	}
+	return s.settings.Club.Sport
+}
+
+// GameSport is the sport of the game's escalão, else the club's.
+func (s *Store) GameSport() string { return s.SportOf(s.Game().GroupID) }
 
 // oldHome moves home_name and home_short, from a settings.json written before
 // the club profile, into the club. The next save drops the old keys.
@@ -575,7 +598,7 @@ func (s *Store) AddGroup(name string) (Group, error) {
 		}
 		id = base + "-" + strconv.Itoa(n)
 	}
-	g := Group{ID: id, Name: name, Players: []Player{}, Sponsors: []Sponsor{}}
+	g := Group{ID: id, Name: name, Players: []Player{}, Sponsors: []Sponsor{}, Sport: cmp.Or(s.settings.Club.Sport, "basketball")}
 	s.groups = append(s.groups, g)
 	if err := s.writeJSON("groups.json", s.groups); err != nil {
 		s.groups = s.groups[:len(s.groups)-1]

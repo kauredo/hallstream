@@ -182,7 +182,7 @@ func (s *Server) SyncGame() {
 	if crest == "" {
 		crest = store.DefaultCrest
 	}
-	sp, _ := club.SportOf(cl.Sport)
+	sp, _ := club.SportOf(s.Store.SportOf(g.GroupID))
 	out := state.Game{
 		Home:        state.Team{Name: cl.Name, Short: cl.Short, CrestURL: &crest, Color: cl.Primary, Initials: cl.Short},
 		Sport:       sp.ID,

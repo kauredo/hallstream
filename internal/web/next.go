@@ -103,7 +103,7 @@ func (s *Server) findNext(g store.Game, now time.Time) fixtures {
 	// when the others have nothing either.
 	var games []provider.Fixture
 	note := ""
-	for _, p := range s.providers() {
+	for _, p := range s.providers(grp) {
 		list, err := p.Fixtures(grp)
 		switch {
 		case errors.Is(err, fpb.ErrNotFound):

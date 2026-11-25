@@ -83,7 +83,7 @@ func (s *Server) SyncAll(maxAge time.Duration) {
 	}
 	deadline := time.Now().Add(maxRun)
 	for _, g := range s.Store.Groups() {
-		if g.FPBTeamID == 0 || g.NeedsTeam {
+		if g.FPBTeamID == 0 || g.NeedsTeam || !s.fpbOfferedFor(g) {
 			continue
 		}
 		if t, err := time.Parse(time.RFC3339, g.LastSync); err == nil && time.Since(t) < maxAge {
@@ -182,7 +182,7 @@ func (s *Server) moveSeason(plan []clubTeamPlan, clubTeams []int64) {
 	}
 	offered := map[int64]bool{} // candidates of an escalão left to the volunteer
 	for _, g := range groups {
-		if g.FPBTeamID == 0 || current[g.FPBTeamID] {
+		if g.FPBTeamID == 0 || current[g.FPBTeamID] || !s.fpbOfferedFor(g) {
 			continue
 		}
 		// Only escalões linked to a club team; one linked by hand to any
@@ -243,8 +243,10 @@ func teamLabel(t fpb.TeamInfo) string {
 	return t.Name + " · " + strings.TrimSpace(t.Age+" "+genderLabel(t.Gender))
 }
 
+// linkTeam links g to an FPB team; the FPB plays basketball, so g does too.
 func linkTeam(g *store.Group, t fpb.TeamInfo) {
 	g.FPBTeamID, g.FPBTeamName, g.FPBTeamKey, g.NeedsTeam = t.ID, teamLabel(t), escalaoName(t), false
+	g.Sport = "basketball"
 }
 
 var errTeamChanged error = i18n.Key("log.fpb.mudou_equipa")

@@ -9,6 +9,7 @@ import (
 	"github.com/chromedp/chromedp"
 
 	"github.com/kauredo/hallstream/internal/source"
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/store"
 	assets "github.com/kauredo/hallstream/web"
 )
@@ -216,5 +217,64 @@ func TestMarcarPageScores(t *testing.T) {
 	}
 	if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool { return m.Type == chromedp.ConsoleError || m.IsException() }); len(errs) > 0 {
 		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
+	}
+}
+
+// A card or a substitution from the scorer goes on air as a lower third: a home
+// player by name from the game's squad, an away player by number only.
+func TestMarcarCardAndSubLowerThirds(t *testing.T) {
+	s := newServer(t)
+	s.Log = func(string) {}
+	s.Manual = source.NewManual(&source.Manual{Rules: func() sport.Profile { return sport.Get(s.Store.GameSport()) }})
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Seniores"}, nil)
+	if _, err := s.Store.UpdateGroup("seniores", func(g *store.Group) error { g.Sport = "soccer"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	var squad []map[string]string
+	for _, p := range [][2]string{{"Rui Costa Lima", "9"}, {"Tomé", "14"}, {"Diogo Alves", "7"}} {
+		var pl store.Player
+		call(t, s, "POST", "/api/groups/seniores/players", map[string]string{"display_name": p[0], "number": p[1]}, &pl)
+		squad = append(squad, map[string]string{"player_id": pl.ID})
+	}
+	game := map[string]any{"group_id": "seniores", "squad": squad, "away": map[string]string{"name": "VISITANTE", "short": "VIS"}, "start": "2026-11-15T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	onManual(t, s)
+	if got := s.State.Snapshot().Game.Squad; len(got) != 3 || s.State.Snapshot().Game.Rules.ID != "soccer" {
+		t.Fatalf("game %+v", s.State.Snapshot().Game)
+	}
+	post := func(a source.Action) int { return call(t, s, "POST", "/api/marcar", a, nil) }
+
+	if code := post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"}); code != 200 {
+		t.Fatalf("card: %d", code)
+	}
+	lt := s.State.Snapshot().LowerThird
+	if !lt.Visible || lt.Type != "cartao" || lt.Card != "yellow" || lt.Number != "9" || lt.FirstName != "Rui" || lt.LastName != "Costa Lima" {
+		t.Errorf("home card: %+v", lt)
+	}
+	post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"})
+	if lt := s.State.Snapshot().LowerThird; lt.Card != "second_yellow" {
+		t.Errorf("second yellow: %+v", lt)
+	}
+	post(source.Action{Do: "card", Team: "away", Number: "9", Kind: "red"})
+	if lt := s.State.Snapshot().LowerThird; lt.Card != "red" || lt.Number != "9" || lt.FirstName != "" || lt.LastName != "" || lt.PhotoURL != "" {
+		t.Errorf("away card must show the number only: %+v", lt)
+	}
+	post(source.Action{Do: "sub", Team: "home", Out: "7", In: "14"})
+	lt = s.State.Snapshot().LowerThird
+	if lt.Type != "substituicao" || lt.Number != "14" || lt.FirstName != "Tomé" || lt.OutNumber != "7" || lt.OutName != "Diogo Alves" {
+		t.Errorf("home sub: %+v", lt)
+	}
+	post(source.Action{Do: "sub", Team: "away", Out: "3", In: "4"})
+	if lt := s.State.Snapshot().LowerThird; lt.Number != "4" || lt.FirstName != "" || lt.OutNumber != "3" || lt.OutName != "" {
+		t.Errorf("away sub: %+v", lt)
+	}
+	before := s.State.Snapshot().LowerThird
+	if code := post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "red"}); code != 400 {
+		t.Errorf("a card for a sent-off player: %d", code)
+	}
+	if s.State.Snapshot().LowerThird != before {
+		t.Error("a refused card changed the lower third")
 	}
 }

@@ -3,10 +3,12 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/source"
+	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 	"rsc.io/qr"
 )
@@ -89,7 +91,49 @@ func (s *Server) marcarDo(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if a.Do == "card" || a.Do == "sub" {
+		s.showPlay(a.Do)
+	}
 	s.marcarReply(w, "manual")
+}
+
+// playSeconds is how long a card's or a substitution's lower third stays up.
+const playSeconds = 8
+
+// showPlay puts the card or substitution the scorer just entered on air as a
+// lower third. A home player is named from the game's squad; the opponent's
+// squad is not known, so an away player shows the shirt number only.
+func (s *Server) showPlay(do string) {
+	score := s.Manual.Score()
+	squad := s.State.Snapshot().Game.Squad
+	who := func(team, number string) (first, last, photo string) {
+		if team != "home" {
+			return
+		}
+		for _, p := range squad {
+			if strings.TrimLeft(p.Number, "0") == strings.TrimLeft(number, "0") {
+				first, last, _ = strings.Cut(strings.TrimSpace(p.Name), " ")
+				return first, strings.TrimSpace(last), p.PhotoURL
+			}
+		}
+		return
+	}
+	var lt state.LowerThird
+	switch {
+	case do == "card" && len(score.Cards) > 0:
+		c := score.Cards[len(score.Cards)-1]
+		first, last, photo := who(c.Team, c.Number)
+		lt = state.LowerThird{Type: "cartao", Card: c.Kind, Number: c.Number, FirstName: first, LastName: last, PhotoURL: photo}
+	case do == "sub" && len(score.Subs) > 0:
+		x := score.Subs[len(score.Subs)-1]
+		first, last, photo := who(x.Team, x.In)
+		outFirst, outLast, _ := who(x.Team, x.Out)
+		lt = state.LowerThird{Type: "substituicao", Number: x.In, FirstName: first, LastName: last, PhotoURL: photo,
+			OutNumber: x.Out, OutName: strings.TrimSpace(outFirst + " " + outLast)}
+	default:
+		return
+	}
+	s.State.ShowLowerThird(lt, playSeconds*time.Second)
 }
 
 // marcarQR draws the scorer page's address on the club's network, for a

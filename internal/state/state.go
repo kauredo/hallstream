@@ -62,6 +62,13 @@ type Live struct {
 	// Suspensions are the 2-minute suspensions running, home first (the phone
 	// scorer sends them; the console sends none).
 	Suspensions []Suspension `json:"suspensions"`
+	// Soccer (the phone scorer sends these when the sport has cards). Over is
+	// the scorer's "Fim do jogo"; Stoppage the minutes of added time announced
+	// for this half; Cards and Subs are the game's, in the order they happened.
+	Over     bool   `json:"over"`
+	Stoppage int    `json:"stoppage"`
+	Cards    []Card `json:"cards"`
+	Subs     []Sub  `json:"subs"`
 	// setCounts is true when the frame carried home_sets or away_sets.
 	setCounts bool
 }
@@ -73,6 +80,25 @@ type Suspension struct {
 	ID     int    `json:"id"`
 	Number string `json:"number"`
 	Left   string `json:"left"`
+}
+
+// Card is one card shown: Kind is "yellow", "second_yellow" or "red", Minute
+// the match minute as written ("23'", "45+2'"). ID is never reused in a run.
+type Card struct {
+	ID     int    `json:"id"`
+	Team   string `json:"team"` // "home" or "away"
+	Number string `json:"number"`
+	Kind   string `json:"kind"`
+	Minute string `json:"minute"`
+}
+
+// Sub is one substitution; Out and In are shirt numbers.
+type Sub struct {
+	ID     int    `json:"id"`
+	Team   string `json:"team"`
+	Out    string `json:"out"`
+	In     string `json:"in"`
+	Minute string `json:"minute"`
 }
 
 // SetScore is one finished set of a sets sport (volleyball). A set seeded
@@ -206,6 +232,11 @@ type LowerThird struct {
 	Label     string     `json:"label"`
 	PhotoURL  string     `json:"photo_url"`
 	Until     *time.Time `json:"until"`
+	// Soccer: Card is the kind of a "cartao" lower third; OutNumber and OutName
+	// are the player going off in a "substituicao" one.
+	Card      string `json:"card"`
+	OutNumber string `json:"out_number"`
+	OutName   string `json:"out_name"`
 }
 
 // PromoClip is a club video as the overlay plays it.
@@ -384,6 +415,8 @@ type seen struct {
 	periods    int
 	sets       int
 	susp       int // the highest suspension ID told so far; it only goes up, until a new game
+	cards      int // the highest card ID told so far; it only goes up
+	subs       int // the highest substitution ID told so far; it only goes up
 	demo       bool
 }
 
@@ -393,13 +426,32 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.liveSusp(), m.s.Demo}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.liveSusp(), m.liveCards(), m.liveSubs(), m.s.Demo}
 }
 
 // liveSusp is the highest suspension ID in the live state.
 func (m *Machine) liveSusp() int {
 	n := 0
 	for _, x := range m.s.Live.Suspensions {
+		n = max(n, x.ID)
+	}
+	return n
+}
+
+// liveCards and liveSubs are the highest card and substitution IDs in the live
+// state. The scorer never gives an ID out twice in a run, so an undo followed by
+// a new card still counts as news.
+func (m *Machine) liveCards() int {
+	n := 0
+	for _, x := range m.s.Live.Cards {
+		n = max(n, x.ID)
+	}
+	return n
+}
+
+func (m *Machine) liveSubs() int {
+	n := 0
+	for _, x := range m.s.Live.Subs {
 		n = max(n, x.ID)
 	}
 	return n
@@ -427,6 +479,7 @@ func (m *Machine) emit() {
 	}
 	old, cur, auto := m.seen, m.seenNow(), m.autoSwitch
 	cur.susp = max(old.susp, cur.susp)
+	cur.cards, cur.subs = max(old.cards, cur.cards), max(old.subs, cur.subs)
 	m.seen, m.autoSwitch = cur, false
 	if m.OnEvent == nil || old.demo || cur.demo {
 		return
@@ -452,6 +505,16 @@ func (m *Machine) emit() {
 	for _, x := range m.s.Live.Suspensions {
 		if x.ID > old.susp {
 			m.OnEvent("suspension", map[string]any{"team": x.Team, "number": x.Number})
+		}
+	}
+	for _, x := range m.s.Live.Cards {
+		if x.ID > old.cards {
+			m.OnEvent("card", map[string]any{"team": x.Team, "number": x.Number, "kind": x.Kind, "minute": x.Minute})
+		}
+	}
+	for _, x := range m.s.Live.Subs {
+		if x.ID > old.subs {
+			m.OnEvent("sub", map[string]any{"team": x.Team, "out": x.Out, "in": x.In, "minute": x.Minute})
 		}
 	}
 }
@@ -769,9 +832,13 @@ func (m *Machine) saver(reset bool) func() {
 // maxLiveSusp is the most suspensions a frame can carry (three a team).
 const maxLiveSusp = 6
 
+// maxLiveList is the most cards, and the most substitutions, a frame can carry.
+const maxLiveList = 100
+
 // LiveOf reads one frame's values (the keys ApplyConsole documents) into a Live.
-// A suspensions list that is not JSON reads as none; entries beyond the sixth
-// and entries for a team that is neither home nor away are dropped.
+// A suspensions, cards or subs list that is not JSON reads as none; entries
+// beyond the sixth suspension (the hundredth card or sub) and entries for a team
+// that is neither home nor away are dropped.
 func LiveOf(v map[string]string) Live {
 	num := func(k string) int { n, _ := strconv.Atoi(v[k]); return n }
 	l := Live{
@@ -789,6 +856,23 @@ func LiveOf(v map[string]string) Live {
 		for _, x := range list {
 			if (x.Team == "home" || x.Team == "away") && len(l.Suspensions) < maxLiveSusp {
 				l.Suspensions = append(l.Suspensions, x)
+			}
+		}
+	}
+	l.Over, l.Stoppage = v["over"] == "1", num("stoppage")
+	var cards []Card
+	if json.Unmarshal([]byte(v["cards"]), &cards) == nil {
+		for _, x := range cards {
+			if (x.Team == "home" || x.Team == "away") && len(l.Cards) < maxLiveList {
+				l.Cards = append(l.Cards, x)
+			}
+		}
+	}
+	var subs []Sub
+	if json.Unmarshal([]byte(v["subs"]), &subs) == nil {
+		for _, x := range subs {
+			if (x.Team == "home" || x.Team == "away") && len(l.Subs) < maxLiveList {
+				l.Subs = append(l.Subs, x)
 			}
 		}
 	}
@@ -933,7 +1017,40 @@ func (m *Machine) setLive(l Live) bool {
 	} else {
 		m.zeroSince = time.Time{}
 	}
+	if r.Cards && m.over(l, newP) {
+		recorded = true
+	}
 	return m.checkFinal() || recorded
+}
+
+// over is setLive's rule for a sport whose scorer ends the game itself (soccer):
+// "Fim do jogo" shows "final" and records the last period, once. Taking it back
+// (an undo, the clock started again, a period back) puts "marcador" on again and
+// drops the period it recorded, so ending the game again records it once. It
+// reports whether the recorded periods changed.
+func (m *Machine) over(l Live, p int) bool {
+	switch {
+	case l.Over && m.finalDone != p:
+		m.finalDone = p
+		m.auto("final")
+		return m.record(p, l.Home, l.Away)
+	case !l.Over && m.finalDone != 0:
+		last := m.finalDone
+		m.finalDone = 0
+		if m.s.Screen.Current == "final" {
+			m.auto("marcador")
+		}
+		kept := make([]Period, 0, len(m.s.Periods))
+		for _, x := range m.s.Periods {
+			if x.Period != last {
+				kept = append(kept, x)
+			}
+		}
+		dropped := len(kept) != len(m.s.Periods)
+		m.s.Periods = kept
+		return dropped
+	}
+	return false
 }
 
 // holding reports whether the clock sits at the end of the game: a countdown
@@ -1032,7 +1149,7 @@ func (m *Machine) rules() sport.Profile {
 func (m *Machine) checkFinal() bool {
 	p, _ := strconv.Atoi(m.s.Live.Period)
 	r := m.rules()
-	if m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < time.Duration(r.FinalHold)*100*time.Millisecond {
+	if r.FinalHold == 0 || m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < time.Duration(r.FinalHold)*100*time.Millisecond {
 		return false
 	}
 	m.finalDone = p

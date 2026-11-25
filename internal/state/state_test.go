@@ -704,3 +704,193 @@ func TestLiveOfBoundsTheSuspensionList(t *testing.T) {
 		t.Errorf("a team that is neither home nor away got through: %+v", got)
 	}
 }
+
+func soccer() (*Machine, *fakeClock) {
+	m, c := newTest()
+	m.SetGame(Game{Sport: "soccer", Rules: sport.Soccer}, true)
+	return m, c
+}
+
+func sframe(period, clock string, home, away int, over bool) map[string]string {
+	f := map[string]string{"period": period, "clock": clock, "period_end": "54000",
+		"home": strconv.Itoa(home), "away": strconv.Itoa(away), "over": ""}
+	if over {
+		f["over"] = "1"
+	}
+	return f
+}
+
+// The clock runs past 90:00 and nothing but "Fim do jogo" ends the game.
+func TestSoccerNoHoldPastTheEnd(t *testing.T) {
+	m, c := soccer()
+	m.ApplyConsole(sframe("1", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "45:01", 1, 0, false))
+	m.ApplyConsole(sframe("2", "92:30", 1, 0, false))
+	c.t = c.t.Add(5 * time.Minute)
+	m.Tick()
+	m.ApplyConsole(sframe("2", "92:30", 1, 0, false))
+	c.t = c.t.Add(5 * time.Minute)
+	m.Tick()
+	if s := m.Snapshot(); s.Screen.Current == "final" || len(s.Periods) != 1 {
+		t.Errorf("screen %q, periods %v: a stopped clock past 90:00 ended the game", s.Screen.Current, s.Periods)
+	}
+}
+
+func TestSoccerOverBothWays(t *testing.T) {
+	m, _ := soccer()
+	var saved [][]Period
+	m.SavePeriods = func(ps []Period) { saved = append(saved, ps) }
+	m.ApplyConsole(sframe("1", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "46:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "90:05", 2, 1, true))
+	m.ApplyConsole(sframe("2", "90:05", 2, 1, true))
+	s := m.Snapshot()
+	if s.Screen.Current != "final" || len(s.Periods) != 2 || s.Periods[1].Period != 2 || s.Periods[1].Home != 2 {
+		t.Fatalf("after Over: screen %q periods %+v", s.Screen.Current, s.Periods)
+	}
+	n := len(saved)
+	m.ApplyConsole(sframe("2", "90:05", 2, 1, false))
+	s = m.Snapshot()
+	if s.Screen.Current != "marcador" || len(s.Periods) != 1 {
+		t.Fatalf("after taking it back: screen %q periods %+v", s.Screen.Current, s.Periods)
+	}
+	if len(saved) <= n || len(saved[len(saved)-1]) != 1 {
+		t.Errorf("SavePeriods did not get the list without period 2: %+v", saved)
+	}
+	restored, _ := soccer()
+	restored.RestorePeriods(saved[len(saved)-1])
+	if len(restored.Snapshot().Periods) != 1 {
+		t.Error("a restart brings the dropped period back")
+	}
+	m.ApplyConsole(sframe("2", "90:05", 2, 1, true))
+	m.ApplyConsole(sframe("2", "90:05", 2, 1, true))
+	if s := m.Snapshot(); s.Screen.Current != "final" || len(s.Periods) != 2 {
+		t.Errorf("ending again: screen %q periods %+v", s.Screen.Current, s.Periods)
+	}
+}
+
+// Going back a half after the end takes the final back too.
+func TestSoccerPeriodBackAfterOver(t *testing.T) {
+	m, _ := soccer()
+	m.ApplyConsole(sframe("1", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "45:00", 1, 0, false))
+	m.ApplyConsole(sframe("2", "90:00", 1, 0, true))
+	m.ApplyConsole(sframe("1", "45:00", 1, 0, false))
+	if s := m.Snapshot(); s.Screen.Current == "final" || len(s.Periods) != 1 || s.Periods[0].Period != 1 {
+		t.Errorf("screen %q periods %+v", s.Screen.Current, s.Periods)
+	}
+}
+
+// Over never touches the other sports: a basketball final stays recorded.
+func TestOverIsIgnoredWithoutCards(t *testing.T) {
+	m, c := newTest()
+	m.SetGame(Game{Sport: "basketball", Rules: sport.Basketball}, true)
+	run(t, m, c, []step{
+		{0, "4", "0.0", 5, 4, "marcador", 0},
+		{1, "4", "0.0", 5, 4, "marcador", 0},
+		{60, "4", "0.0", 5, 4, "final", 1},
+		{1, "4", "0.0", 5, 4, "final", 1},
+	})
+}
+
+func cframe(period string, cards, subs string) map[string]string {
+	f := sframe(period, "10:00", 0, 0, false)
+	f["cards"], f["subs"] = cards, subs
+	return f
+}
+
+const (
+	c1 = `{"id":1,"team":"home","number":"4","kind":"yellow","minute":"23'"}`
+	c2 = `{"id":2,"team":"home","number":"4","kind":"second_yellow","minute":"45+2'"}`
+	c3 = `{"id":3,"team":"away","number":"9","kind":"red","minute":"60'"}`
+	s1 = `{"id":4,"team":"home","out":"7","in":"14","minute":"60'"}`
+)
+
+func TestCardsAndSubsFromAFrame(t *testing.T) {
+	m, _ := soccer()
+	m.ApplyConsole(cframe("1", "["+c1+","+c3+"]", "["+s1+"]"))
+	l := m.Snapshot().Live
+	if len(l.Cards) != 2 || l.Cards[0] != (Card{1, "home", "4", "yellow", "23'"}) || len(l.Subs) != 1 || l.Subs[0].In != "14" {
+		t.Errorf("live %+v", l)
+	}
+	m.ApplyConsole(cframe("1", "not json", "{"))
+	if l := m.Snapshot().Live; len(l.Cards) != 0 || len(l.Subs) != 0 {
+		t.Errorf("a bad list: %+v", l)
+	}
+	m.ApplyConsole(cframe("1", `[{"id":9,"team":"cat","number":"1","kind":"red","minute":"1'"}]`, "[]"))
+	if l := m.Snapshot().Live; len(l.Cards) != 0 {
+		t.Errorf("a card for another team: %+v", l.Cards)
+	}
+	m.ApplyConsole(sframe("1", "10:01", 0, 0, false))
+	if l := m.Snapshot().Live; len(l.Cards) != 0 || l.Over {
+		t.Errorf("a frame with none: %+v", l)
+	}
+}
+
+func cardEvents(m *Machine) *[]string {
+	var got []string
+	m.OnEvent = func(e string, f map[string]any) {
+		switch e {
+		case "card":
+			got = append(got, "card:"+f["team"].(string)+f["number"].(string)+f["kind"].(string)+f["minute"].(string))
+		case "sub":
+			got = append(got, "sub:"+f["out"].(string)+">"+f["in"].(string)+f["minute"].(string))
+		}
+	}
+	return &got
+}
+
+func TestCardAndSubEvents(t *testing.T) {
+	m, _ := soccer()
+	got := cardEvents(m)
+	m.ApplyConsole(cframe("1", "[]", "[]"))
+	m.ApplyConsole(cframe("1", "["+c1+"]", "[]"))
+	m.ApplyConsole(cframe("1", "["+c1+"]", "[]"))
+	m.ApplyConsole(cframe("1", "["+c1+","+c2+"]", "["+s1+"]"))
+	want := []string{"card:home4yellow23'", "card:home4second_yellow45+2'", "sub:7>1460'"}
+	if !reflect.DeepEqual(*got, want) {
+		t.Fatalf("events %v, want %v", *got, want)
+	}
+	// An undo shrinks the list and tells nothing; the next card has a higher ID.
+	m.ApplyConsole(cframe("1", "["+c1+"]", "[]"))
+	m.ApplyConsole(cframe("1", "["+c1+","+c3+"]", "[]"))
+	if len(*got) != 4 || (*got)[3] != "card:away9red60'" {
+		t.Errorf("events %v", *got)
+	}
+	// An ID lower than one already told is never news again.
+	m.ApplyConsole(cframe("1", "["+c1+","+c2+","+c3+"]", "["+s1+"]"))
+	if len(*got) != 4 {
+		t.Errorf("an ID told before came back as news: %v", *got)
+	}
+}
+
+func TestCardEventsMutedInTheDemo(t *testing.T) {
+	m, _ := soccer()
+	got := cardEvents(m)
+	m.mu.Lock()
+	m.s.Demo = true
+	m.mu.Unlock()
+	m.update(Live{Period: "1", Clock: "05:00", Cards: []Card{{1, "home", "4", "red", "5'"}}}, true)
+	if len(*got) != 0 {
+		t.Errorf("the demo told %v", *got)
+	}
+}
+
+// After a restart the scorer holds 2 cards and a sub, already told: Prime and
+// the SetGame that runs before its first frame must not make them news.
+func TestPrimeKeepsRestoredCardsQuiet(t *testing.T) {
+	m, _ := newTest()
+	got := cardEvents(m)
+	m.Prime(LiveOf(cframe("1", "["+c1+","+c2+"]", "["+s1+"]")))
+	m.SetGame(Game{Sport: "soccer", Rules: sport.Soccer}, true)
+	m.ApplyConsole(cframe("1", "["+c1+","+c2+"]", "["+s1+"]"))
+	if len(*got) != 0 {
+		t.Fatalf("restored cards were told as new: %v", *got)
+	}
+	m.ApplyConsole(cframe("1", "["+c1+","+c2+","+c3+"]", "["+s1+"]"))
+	if len(*got) != 1 {
+		t.Errorf("events %v, want one for the card after the restart", *got)
+	}
+}

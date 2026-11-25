@@ -31,6 +31,8 @@ jobs:
     env:
       # Public releases never upload game logs: the website promises it.
       HALLSTREAM_UPLOAD_TOKEN: ""
+      # The feedback worker (worker/README.md); empty leaves only the GitHub link.
+      HALLSTREAM_FEEDBACK_URL: ${{ vars.HALLSTREAM_FEEDBACK_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

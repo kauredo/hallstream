@@ -44,6 +44,10 @@ var version = "dev"
 // server; set by build.sh from HALLSTREAM_UPLOAD_TOKEN. Empty never sends.
 var uploadToken = ""
 
+// feedbackURL is the feedback worker's address (worker/README.md), set at
+// build time; "" leaves only the GitHub link in Ajuda.
+var feedbackURL = ""
+
 // logOut gets every message: dados/marcador.log, and the console when there
 // is one.
 var logOut io.Writer = os.Stdout
@@ -223,6 +227,7 @@ func main() {
 		OBSApp:    obsapp.System(),
 
 		UploadToken: uploadToken,
+		FeedbackURL: feedbackURL,
 		Timeline:    tl,
 		UseInput:    inputs.Use,
 		Manual:      manual,

@@ -60,6 +60,9 @@ type Server struct {
 	Manual *source.Manual
 	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
 	UpdateURL string
+	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
+	// GitHub link in Ajuda.
+	FeedbackURL string
 
 	mux        *http.ServeMux
 	failMu     sync.Mutex
@@ -205,6 +208,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) { reply(w, forCaller(s.Store.Settings(), r)) })
 	m.HandleFunc("PUT /api/settings", s.putSettings)
 	m.HandleFunc("PUT /api/stream", s.putStream)
+	m.HandleFunc("POST /api/feedback", s.feedback)
 	m.HandleFunc("POST /api/screen", s.screen)
 	m.HandleFunc("POST /api/lower-third", s.lowerThird)
 	m.HandleFunc("DELETE /api/lower-third", func(w http.ResponseWriter, r *http.Request) {
@@ -472,6 +476,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		"club_setup":  s.progress(),
 		"langs":       i18n.Languages(),
 		"update":      s.newerRelease(),
+		"feedback":    s.FeedbackURL != "",
 		"data_dir":    s.Store.Dir,
 		// The panel offers the desktop shortcut on the PC itself only.
 		"shortcut":  s.Shortcut != nil && isLoopback(r.RemoteAddr),

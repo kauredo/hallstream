@@ -519,6 +519,9 @@
     v.homeBig = v.sets ? v.homeSets : v.homeScore;
     v.awayBig = v.sets ? v.awaySets : v.awayScore;
     v.periodShort = periodShort(pn, live.period || '', v);
+    // The bug's time cell, which lists the finished sets in a sets sport, is headed "PARCIAIS"
+    // (the head above the names carries the set's own number).
+    v.bugPeriod = v.sets && setList.length ? t('overlay.set.parciais') : v.periodShort;
     v.periodLong = periodLong(pn, live.period || '', v);
     v.compRound = joinDot(game.competition, game.round);
     v.venue = game.venue || '';
@@ -600,8 +603,9 @@
     for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', hot);
   }
 
-  // The bug's time cell for a sets sport: the finished sets as "25-20" lines, or, before the first
-  // one ends, the points that win the set.
+  // The bug's time cell for a sets sport: each team's points in the finished sets on its own row,
+  // under the team's row of the bug, the set it lost dimmed; or, before the first set ends, the
+  // points that win the set.
   let setListKey = null;
   function renderSetList(v) {
     const key = JSON.stringify([v.sets, v.setList, v.setTarget]);
@@ -609,24 +613,23 @@
     setListKey = key;
     for (const box of $$('[data-setlist]')) {
       box.textContent = '';
-      const line = (cls, text) => {
+      const line = (parent, cls, text) => {
         const d = document.createElement('div');
         d.className = cls;
         d.textContent = text;
-        box.append(d);
+        parent.append(d);
+        return d;
       };
       if (!v.setList.length) {
-        line('to', t('overlay.set.ate'));
-        line('goal', v.setTarget);
+        line(box, 'to', t('overlay.set.ate'));
+        line(box, 'goal', v.setTarget);
         continue;
       }
-      for (const s of v.setList.slice(-4)) {
-        const d = document.createElement('div');
-        d.className = 'ln';
-        const k = document.createElement('i');
-        k.textContent = s.set;
-        d.append(k, setScoreText(s.home, s.away));
-        box.append(d);
+      for (const tx of ['home', 'away']) {
+        const row = line(box, 'sr', '');
+        for (const s of v.setList.slice(-4)) {
+          line(row, s.winner === tx ? 'w' : 'l', s.home === 0 && s.away === 0 ? '–' : s[tx]);
+        }
       }
     }
   }
@@ -638,10 +641,14 @@
     periodsKey = key;
     // A sets sport lists its finished sets in the same table; the last column is the sets won.
     if (v.sets) periods = v.setList.map((s) => ({ period: s.set, home_points: s.home, away_points: s.away, winner: s.winner }));
-    const n = periods.length;
+    // Sets that only a console ended have no points: a grid of dashes says nothing, and the big
+    // score already shows the sets won, so there is no table.
+    const noPoints = v.sets && periods.length > 0 && periods.every((p) => p.home_points === 0 && p.away_points === 0);
+    const shown = noPoints ? [] : periods;
+    const n = shown.length;
     for (const tab of periodTables) {
       tab.textContent = '';
-      setClass(tab, 'none', n === 0);
+      setClass(tab, 'none', periods.length === 0 || noPoints);
       tab.style.setProperty('--cols', n);
       // Overtime adds columns: they narrow so the names keep about 250px.
       tab.style.setProperty('--colw', Math.min(112, Math.floor(594 / Math.max(n, 1))) + 'px');
@@ -653,7 +660,7 @@
         return d;
       };
       cell('hd', '');
-      for (const p of periods) {
+      for (const p of shown) {
         if (v.sets) cell('hd', t('overlay.periodos.set', { n: p.period }));
         else if (p.period <= v.regulationPeriods) cell('hd', t('overlay.periodos.n', { n: p.period }));
         else cell('hd ot', p.period === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - v.regulationPeriods }));
@@ -663,7 +670,7 @@
         const name = cell('tn', '');
         name.dataset.fit = '26';
         setText(name, v[tx + 'Name']);
-        for (const p of periods) {
+        for (const p of shown) {
           const pts = p[tx + '_points'] ?? 0;
           if (v.sets) {
             // A set the console ended has no points: both cells are a dash, the loser's dimmed.
@@ -1149,7 +1156,7 @@
     const cur = {
       home: +v.homeScore || 0, away: +v.awayScore || 0,
       homeF: Math.min(+v.homeFouls || 0, 4), awayF: Math.min(+v.awayFouls || 0, 4),
-      per: v.periodShort, urgent: shotUrgent(v.shot),
+      per: v.bugPeriod, urgent: shotUrgent(v.shot),
     };
     const was = last;
     last = cur;
@@ -1168,7 +1175,7 @@
       }
     }
     if (cur.per !== was.per) {
-      for (const el of $$('[data-b="periodShort"], [data-b="periodLong"]', scr)) nudge(el, rise(10), { dur: T.quick + 50 });
+      for (const el of $$('[data-b="periodShort"], [data-b="periodLong"], [data-b="bugPeriod"]', scr)) nudge(el, rise(10), { dur: T.quick + 50 });
     }
     // One gentle pulse as the 24 s drops under 5; the gold stays while it is under.
     if (cur.urgent && !was.urgent && shownScreen === 'marcador') {
@@ -1247,7 +1254,11 @@
     setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
     root.dataset.scoring = v.sets ? 'sets' : 'points';
-    for (const tx of ['home', 'away']) setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);
+    for (const tx of ['home', 'away']) {
+      setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);
+      // The side behind on sets is dimmed, as the lower of two is in the set table.
+      for (const el of binds[tx + 'Sets'] || []) setClass(el, 'trail', v.sets && v[tx + 'Sets'] < v[(tx === 'home' ? 'away' : 'home') + 'Sets']);
+    }
     renderSetList(v);
 
     const hs = +v.homeBig, as = +v.awayBig;

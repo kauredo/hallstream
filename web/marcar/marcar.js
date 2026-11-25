@@ -203,13 +203,20 @@
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
       setV(tx + 'Sets', +l[tx + '_sets'] || 0);
-      $(`.equipa[data-team="${tx}"] .servico`).classList.toggle('on', sets && l.serve === tx);
+      const serving = sets && l.serve === tx, ring = $(`.equipa[data-team="${tx}"] .servico`);
+      ring.classList.toggle('on', serving);
+      const word = serving ? t('marcar.a_servir') : t('marcar.servico');
+      if (ring.textContent !== word) ring.textContent = word;
       $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
     }
     // The finished sets, as small scores in the middle strip.
     const finished = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
     finished.hidden = !sets;
-    finished.replaceChildren(...done.map((x, i) => {
+    // Heads for the two columns, in the order the scores are written (home first).
+    const head = document.createElement('span');
+    head.className = 'cab';
+    head.textContent = `${sigla('home')} – ${sigla('away')}`;
+    finished.replaceChildren(...(done.length ? [head] : []), ...done.map((x, i) => {
       const row = document.createElement('span'), k = document.createElement('i');
       k.textContent = x.set ?? i + 1;
       row.append(k, setScoreText(x.home, x.away));
@@ -232,6 +239,15 @@
     // The set can end once a side has the points with the lead; the button lights up to say so.
     const setOver = sets && !!setWon(rules, period, +l.home || 0, +l.away || 0) && (+l.home_sets || 0) < rules.setsToWin && (+l.away_sets || 0) < rules.setsToWin;
     go.classList.toggle('pronto', manual && setOver);
+    // Why "Set seguinte" waits: the points the leading side still needs, with the lead the set takes.
+    const why = $('#falta'), won = (+l.home_sets || 0) >= rules.setsToWin || (+l.away_sets || 0) >= rules.setsToWin;
+    why.hidden = !(sets && manual);
+    if (sets && manual) {
+      const h = +l.home || 0, a = +l.away || 0;
+      const target = period === 2 * rules.setsToWin - 1 ? rules.lastSetPoints : rules.setPoints;
+      const need = Math.max(target - Math.max(h, a), rules.winBy - Math.abs(h - a), 1);
+      why.textContent = won ? t('marcar.jogo_acabado') : setOver ? t('marcar.set_pronto') : need === 1 ? t('marcar.set_falta_um') : t('marcar.set_falta', { n: need });
+    }
     if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; delete go.dataset.ask; go.disabled = false; }
     else if (sets) { go.textContent = t('marcar.set_seguinte'); go.dataset.do = ''; go.dataset.ask = 'set_next'; go.disabled = !setOver; }
     else if (atZero) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - zeroSince < 2000; }

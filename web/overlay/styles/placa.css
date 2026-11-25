@@ -50,7 +50,9 @@ html[data-style="placa"] .sb-white,
 html[data-style="placa"] .sb-red { display: none; }
 /* The short name and sport repeat the name plate; the head row stays as the plate's top margin. */
 html[data-style="placa"] .sb-head { background: transparent; }
-html[data-style="placa"] .sb-head > span:first-child { display: none; }
+html[data-style="placa"] .sb-head > span:first-child > :not(span.only-sets) { display: none; }
+/* A sets sport names its set here (the head is otherwise empty in this look). */
+html[data-style="placa"] .sb-head .only-sets[data-b="periodShort"] { color: var(--en-grey); font-weight: 700; font-size: 20px; letter-spacing: 1.5px; padding-left: 4px; }
 html[data-style="placa"] .sb-row .tile { background: transparent; }
 html[data-style="placa"] .sb-row .tile[data-strip]::after { display: none; }
 html[data-style="placa"] .sb-row .tile .ini { color: var(--en-ink); font-weight: 800; font-stretch: 72%; }

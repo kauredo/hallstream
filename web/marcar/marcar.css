@@ -219,12 +219,24 @@ body.sets .periodo { grid-template-columns: 1fr; }
 body.sets .sets-linha { grid-template-columns: auto 1fr auto auto; }
 .linha .servico { display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 15px; font-weight: 700; font-stretch: var(--estreito); }
 .servico::before { content: ""; flex: none; width: 18px; height: 18px; border: 3px solid currentColor; border-radius: 50%; }
-.servico.on { background: var(--lampada); color: var(--carvao); }
+/* Off: an outline. On: the paper fill and a filled ring, the brightest thing on its half. */
+.linha .servico { background: transparent; color: var(--sobre); box-shadow: inset 0 0 0 2px currentColor; }
+.linha .servico:active { background: var(--marcador); color: var(--sobre); }
+.linha .servico.on { background: var(--sobre); color: var(--cor); box-shadow: none; }
 .servico.on::before { background: currentColor; }
 .feitos { margin: 0; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; font-size: 24px; line-height: 1.1; color: var(--soalho); }
 body.sets .feitos:not([hidden]) { display: flex; }
 .feitos i { font-style: normal; font-size: 16px; font-weight: 700; margin-right: 8px; color: color-mix(in srgb, var(--soalho) 70%, transparent); }
+/* Heads of the two columns of the finished sets, and why the next set waits. */
+.feitos .cab { font-size: 16px; font-weight: 700; letter-spacing: .02em; color: color-mix(in srgb, var(--soalho) 70%, transparent); margin-bottom: 4px; }
+.falta { display: none; margin: 0; text-align: center; font-size: 17px; font-stretch: var(--estreito); font-weight: 600; line-height: 1.2; color: var(--soalho); }
+body.sets .falta:not([hidden]) { display: block; }
+/* The set number is the state the table watches: bigger than the period's in basketball. */
+body.sets .periodo { padding: 6px 0; font-size: 20px; }
+body.sets .periodo b { font-size: 44px; line-height: 1; }
+body.sets .estado { font-size: 17px; }
+body.sets .rotulo { font-size: 17px; }
 /* The set can end: the button lights, as the clock's does while it runs. */
 .arrancar.pronto { background: var(--lampada); color: var(--carvao); }
-body.sets .mesa-centro { grid-template-rows: auto auto auto 1fr auto auto; }
+body.sets .mesa-centro { grid-template-rows: auto auto auto 1fr auto auto auto; }

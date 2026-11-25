@@ -216,11 +216,16 @@ html.off .sb-dot { opacity: 1; }
 html:not([data-scoring="sets"]) .only-sets, html[data-scoring="sets"] .only-pts { display: none !important; }
 /* The serve: a gold dot at the end of the serving team's name. */
 .sb-row .nm { position: relative; }
-.sb-row.serving .nm::after { content: ""; position: absolute; right: 8px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 1.5px rgba(var(--ink-rgb),0.4); }
+.sb-row.serving .nm::after { content: ""; position: absolute; right: 10px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--navy); }
 html[data-scoring="sets"] .sb-f b.only-sets { font-size: 34px; }
 .sb-setlist { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
-.sb-setlist .ln { font-weight: 800; font-size: 21px; line-height: 21px; white-space: nowrap; }
-.sb-setlist .ln i { font-style: normal; font-weight: 700; font-size: 18px; color: var(--muted); margin-right: 8px; }
+.sb-setlist .sr { width: 100%; height: 48px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; line-height: 1; white-space: nowrap; }
+.sb-setlist .sr > div { padding: 0 5px; }
+.sb-setlist .sr > div + div { border-left: 1px solid rgba(255,255,255,0.18); }
+.sb-setlist .sr + .sr { border-top: 2px solid rgba(255,255,255,0.14); }
+.sb-setlist .sr .l { color: rgba(255,255,255,0.7); }
+.sb-f b.only-sets.trail { color: rgba(255,255,255,0.6); }
+html[data-scoring="sets"] .sb-tbox { padding: 0; }
 .sb-setlist .to { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1.5px; color: var(--muted); }
 .sb-setlist .goal { font-weight: 800; font-size: 44px; line-height: 46px; }
 /* The dot between two parts of a line; a style may draw it its own way. */

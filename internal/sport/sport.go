@@ -26,6 +26,7 @@ type Profile struct {
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
+	Cards       bool `json:"cards"`       // the sport has cards, substitutions, added time and an explicit end of game (soccer)
 	StopAtEnd   bool `json:"stop_at_end"` // a count-up clock stops at the end of the period; false runs on (soccer)
 	Suspensions int  `json:"suspensions"` // tenths a suspension lasts; 0 = the sport has none
 
@@ -64,6 +65,14 @@ var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, Clock
 	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points", MaxPoint: 1,
 	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200}
 
+// Soccer is IFAB: two halves of 45:00 on a clock that counts up and runs on
+// into added time, cards and substitutions per player, no fouls, timeouts or
+// suspensions, no extra time. The game ends on the scorer's "Fim do jogo", so
+// FinalHold is 0.
+var Soccer = Profile{ID: "soccer", Periods: 2, Half: 1, Length: 27000, ClockDown: false,
+	StopAtEnd: false, FinalHold: 0, TimeoutsBy: [3]int{0, 0, 0}, Scoring: "points", MaxPoint: 1,
+	PeriodWord: "half", Cards: true}
+
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {
 	if p, ok := profiles[id]; ok {
@@ -77,6 +86,7 @@ var profiles = map[string]Profile{
 	Volleyball.ID: Volleyball,
 	Futsal.ID:     Futsal,
 	Handball.ID:   Handball,
+	Soccer.ID:     Soccer,
 }
 
 // Sets reports whether the sport is scored in sets.

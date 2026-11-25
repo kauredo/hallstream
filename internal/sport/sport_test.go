@@ -172,3 +172,23 @@ func TestCountdownStartAndEnd(t *testing.T) {
 		}
 	}
 }
+
+func TestSoccerStartAndEnd(t *testing.T) {
+	s := Soccer
+	if !s.CountUp() || s.StopAtEnd || s.FinalHold != 0 || !s.Cards || s.MaxPoint != 1 || s.FoulMarks != 0 {
+		t.Errorf("soccer profile wrong: %+v", s)
+	}
+	if Get("soccer") != Soccer || Handball.Cards || Basketball.Cards || Futsal.Cards || Volleyball.Cards {
+		t.Error("only soccer has cards, and Get finds it")
+	}
+	for _, c := range []struct{ p, length, start, end int }{
+		{1, 27000, 0, 27000}, {2, 27000, 27000, 54000}, {2, 21000, 21000, 42000},
+	} {
+		if got := s.Start(c.p, c.length); got != c.start {
+			t.Errorf("Start(%d, %d) = %d, want %d", c.p, c.length, got, c.start)
+		}
+		if got := s.End(c.p, c.length); got != c.end {
+			t.Errorf("End(%d, %d) = %d, want %d", c.p, c.length, got, c.end)
+		}
+	}
+}

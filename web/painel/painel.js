@@ -1410,7 +1410,7 @@
       html += '<p class="cx-cap"><code>' + esc(c.file) + '</code><br>' +
         t('painel.captura.tamanho', { tamanho: mb(c.bytes), max: mb(c.max) }) + ' · ' + t('painel.captura.frames', { n: c.frames }) +
         (c.dropped ? ' · ' + t('painel.captura.perdidos', { n: c.dropped }) : '') + '</p>';
-      if (stopped) html += '<p class="msg err" role="status">' + stopped + (c.error ? ' ' + esc(c.error) : '') + '</p>';
+      if (stopped) html += '<p class="msg err" role="status">' + stopped + '</p>';
     }
     html += '<div class="row" style="align-items:center"><button class="btn" data-act="cx-cap-folder">' + t('painel.captura.abrir_pasta') + '</button>' +
       '<button class="btn quiet" data-act="cx-cap-help">' + t('painel.captura.enviar') + '</button><span class="msg"></span></div>';

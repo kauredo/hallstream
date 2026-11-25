@@ -24,8 +24,9 @@ import (
 //	0 77004d004f004e00...
 //	1042 33303734352...
 //
-// The first line is the header (the club's name and everything else
-// personal stay out of it). Every other line is the time offset in ms since
+// The first line is the header: the program's version, the box's Bluetooth
+// name, the club's sport and the start time. The frames carry the team names
+// typed into the console, which are often the club's name. Every other line is the time offset in ms since
 // the start, a space, and the frame in hex. Lines starting with # are
 // comments.
 
@@ -34,6 +35,22 @@ const CaptureMagic = "# hallstream capture 1"
 
 // DefaultCaptureMax is the size at which a recording stops.
 const DefaultCaptureMax = 50 << 20
+
+// DefaultFolderMax is the size of the capture folder past which a new
+// recording is refused.
+const DefaultFolderMax = 300 << 20
+
+// ErrFolderFull is Start's answer when the folder is over its limit.
+var ErrFolderFull error = i18n.Key("api.captura.pasta_cheia")
+
+// What ReadCapture accepts: a file no bigger than a recording plus its
+// header, a bounded number of frames, and offsets under a week.
+var maxCaptureFrames = 2_000_000
+
+const (
+	maxCaptureOffset = 7 * 24 * time.Hour
+	headerSlack      = 4096
+)
 
 // Frame is one recorded notification.
 type Frame struct {
@@ -44,7 +61,8 @@ type Frame struct {
 // ReadCapture parses a capture file. It rejects a file without the header
 // and any line that is not "<ms> <hex>".
 func ReadCapture(r io.Reader) ([]Frame, error) {
-	sc := bufio.NewScanner(r)
+	lr := &io.LimitedReader{R: r, N: DefaultCaptureMax + headerSlack + 1}
+	sc := bufio.NewScanner(lr)
 	sc.Buffer(make([]byte, 0, 4096), 1<<20)
 	var out []Frame
 	for n := 1; sc.Scan(); n++ {
@@ -67,10 +85,19 @@ func ReadCapture(r io.Reader) ([]Frame, error) {
 		if err != nil || len(b) == 0 {
 			return nil, fmt.Errorf("line %d: the frame is not hex", n)
 		}
+		if at > maxCaptureOffset.Milliseconds() {
+			return nil, fmt.Errorf("line %d: offset %d ms is over 7 days", n, at)
+		}
+		if len(out) >= maxCaptureFrames {
+			return nil, fmt.Errorf("more than %d frames", maxCaptureFrames)
+		}
 		out = append(out, Frame{At: time.Duration(at) * time.Millisecond, Data: b})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, err
+	}
+	if lr.N <= 0 {
+		return nil, errors.New("the file is bigger than any recording the program makes")
 	}
 	return out, nil
 }
@@ -100,8 +127,8 @@ type CaptureStatus struct {
 	Max     int64  `json:"max"`     // size that stops a recording
 	// Stopped says why the last recording ended: "" while on or before the
 	// first, then "off", "cap", "box" (it disconnected) or "error".
+	// The disk's own message is in the log: it names folders.
 	Stopped string `json:"stopped"`
-	Error   string `json:"error,omitempty"`
 }
 
 // Recorder writes the raw frames to a file without ever holding the reader
@@ -112,9 +139,11 @@ type Recorder struct {
 	App   string        // the program's version, for the header
 	Sport func() string // the club's sport, for the header; may be nil
 	Max   int64         // bytes at which it stops; 0 is DefaultCaptureMax
-	Slots int           // frames waiting for the writer; 0 is 4096
-	Now   func() time.Time
-	Log   func(string)
+	// FolderMax is the size of Dir past which Start refuses; 0 is DefaultFolderMax.
+	FolderMax int64
+	Slots     int // frames waiting for the writer; 0 is 4096
+	Now       func() time.Time
+	Log       func(string)
 	// Create opens a new file; nil makes it in Dir, and the folder too.
 	Create func(path string) (io.WriteCloser, error)
 
@@ -125,16 +154,16 @@ type Recorder struct {
 }
 
 type session struct {
-	ch      chan []byte // each frame already carries its line
-	quit    chan struct{}
-	done    chan struct{}
+	ch      chan []byte   // each frame already carries its line
+	quit    chan struct{} // closed once, by finish
+	done    chan struct{} // closed when the writer is out
+	once    sync.Once
 	started time.Time
 	name    string
 
 	frames, bytes, dropped atomic.Int64
 	mu                     sync.Mutex
 	stopped                string
-	err                    error
 }
 
 func (r *Recorder) max() int64 {
@@ -186,6 +215,9 @@ func (r *Recorder) Start(box string, run func(name string, fn func())) (CaptureS
 	if r.cur.Load() != nil {
 		return r.statusLocked(), nil
 	}
+	if r.folderSize() > r.folderMax() {
+		return r.statusLocked(), ErrFolderFull
+	}
 	utc := r.now().UTC()
 	name := "captura-" + r.now().Format("2006-01-02_15-04-05") + ".txt"
 	w, name, err := r.create(name)
@@ -217,6 +249,25 @@ func (r *Recorder) Start(box string, run func(name string, fn func())) (CaptureS
 	r.log(i18n.T("log.captura.comecou", "ficheiro", name))
 	run(i18n.T("log.tarefa.captura"), func() { r.write(s, w, bw) })
 	return r.statusLocked(), nil
+}
+
+func (r *Recorder) folderMax() int64 {
+	if r.FolderMax > 0 {
+		return r.FolderMax
+	}
+	return DefaultFolderMax
+}
+
+// folderSize is what the recordings in Dir take; a missing folder is empty.
+func (r *Recorder) folderSize() int64 {
+	var n int64
+	files, _ := os.ReadDir(r.Dir)
+	for _, f := range files {
+		if info, err := f.Info(); err == nil && !f.IsDir() {
+			n += info.Size()
+		}
+	}
+	return n
 }
 
 func cmpSlots(n int) int {
@@ -254,9 +305,15 @@ func (r *Recorder) create(name string) (io.WriteCloser, string, error) {
 // write is the writer goroutine: it takes lines off the channel until the
 // recording is stopped, the file is full or the disk fails.
 func (r *Recorder) write(s *session, w io.WriteCloser, bw *bufio.Writer) {
-	defer close(s.done)
-	defer w.Close()
-	defer bw.Flush() // runs first: whatever is buffered reaches the file
+	defer close(s.done) // last: the status is final before anyone hears it
+	defer func() {
+		if p := recover(); p != nil { // a panic in the file must not leave the panel on
+			r.finish(s, "error", fmt.Errorf("writer panic: %v", p))
+		}
+		// Whatever is buffered reaches the file; a writer that panics once may again.
+		func() { defer func() { recover() }(); bw.Flush() }()
+		func() { defer func() { recover() }(); w.Close() }()
+	}()
 	limit := r.max()
 	put := func(line []byte) bool {
 		if s.bytes.Load()+int64(len(line)) > limit {
@@ -310,9 +367,10 @@ func (r *Recorder) finish(s *session, why string, err error) {
 		s.mu.Unlock()
 		return
 	}
-	s.stopped, s.err = why, err
+	s.stopped = why
 	s.mu.Unlock()
 	r.cur.CompareAndSwap(s, nil)
+	s.once.Do(func() { close(s.quit) })
 	switch why {
 	case "cap":
 		r.log(i18n.T("log.captura.limite", "mb", r.max()>>20, "ficheiro", s.name))
@@ -328,23 +386,33 @@ func (r *Recorder) finish(s *session, why string, err error) {
 	}
 }
 
-// Stop ends the recording and waits a moment for the file to close. why is
-// "off" for the switch and "box" for a lost link. Nothing recording is a no-op.
+// StopNoWait ends the recording without waiting for the file: the writer
+// closes it in its own time. The Bluetooth reader uses this one.
+func (r *Recorder) StopNoWait(why string) {
+	if r == nil {
+		return
+	}
+	if s := r.cur.Load(); s != nil {
+		r.finish(s, why, nil)
+	}
+}
+
+// Stop ends the recording and waits up to 2 s for the file to close. why is
+// "off" for the switch and "box" for a lost link. Nothing recording is a
+// no-op. It holds no lock while it waits, so Status and Start never sit
+// behind a stuck disk.
 func (r *Recorder) Stop(why string) CaptureStatus {
 	if r == nil {
 		return CaptureStatus{}
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if s := r.cur.Load(); s != nil {
 		r.finish(s, why, nil)
-		close(s.quit)
 		select {
 		case <-s.done:
 		case <-time.After(2 * time.Second): // a stuck disk must not hold the caller
 		}
 	}
-	return r.statusLocked()
+	return r.Status()
 }
 
 // Status is the panel's view of the recording.
@@ -366,9 +434,6 @@ func (r *Recorder) statusLocked() CaptureStatus {
 	st.File, st.Bytes, st.Frames, st.Dropped = s.name, s.bytes.Load(), s.frames.Load(), s.dropped.Load()
 	s.mu.Lock()
 	st.Stopped = s.stopped
-	if s.err != nil {
-		st.Error = s.err.Error()
-	}
 	s.mu.Unlock()
 	st.On = r.cur.Load() == s
 	return st

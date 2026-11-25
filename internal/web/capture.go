@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 	"path/filepath"
 
@@ -48,8 +49,20 @@ func (s *Server) captureRoutes() {
 			return
 		}
 		st, err := rec.Start(name, s.once)
+		if errors.Is(err, ble.ErrFolderFull) {
+			fail(w, http.StatusConflict, err.Error())
+			return
+		}
 		if err != nil {
-			fail(w, http.StatusInternalServerError, i18n.T("api.captura.nao_gravei", "err", err))
+			// The disk's message names folders: the log gets it, the panel does not.
+			s.Log(i18n.T("log.captura.nao_gravei", "err", err))
+			fail(w, http.StatusInternalServerError, i18n.T("api.captura.nao_gravei"))
+			return
+		}
+		// The link may have dropped while the file was being made.
+		if linked, _ := s.BLE.Linked(); !linked {
+			rec.Stop("box")
+			fail(w, http.StatusConflict, i18n.T("api.captura.sem_caixa"))
 			return
 		}
 		reply(w, st)
@@ -64,7 +77,8 @@ func (s *Server) captureRoutes() {
 			return
 		}
 		if err := s.OpenFolder(s.captureDir()); err != nil {
-			fail(w, http.StatusInternalServerError, i18n.T("api.captura.nao_abri_pasta", "err", err))
+			s.Log(i18n.T("log.captura.nao_abri_pasta", "err", err))
+			fail(w, http.StatusInternalServerError, i18n.T("api.captura.nao_abri_pasta"))
 			return
 		}
 		ok(w)

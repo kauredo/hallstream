@@ -557,9 +557,9 @@ func (r *Reader) follow(addr string, link Link) *request {
 		r.link = nil
 		r.mu.Unlock()
 		link.Disconnect()
-		r.Capture.Stop("box")
 		r.Connected(false)
 		r.setScan(func(s *state.Scan) { s.Address, s.Name, s.Message = "", "", "" })
+		r.Capture.StopNoWait("box") // after the link is told, and never waiting on a disk
 	}
 	for {
 		select {

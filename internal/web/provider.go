@@ -53,16 +53,23 @@ func (p fpbGames) Fixtures(g store.Group) ([]provider.Fixture, error) {
 
 // providers are the sources of the club's games, FPB first where it covers the
 // club, then the games typed or imported, then the escalão's calendar link.
-func (s *Server) providers() []provider.Provider {
+func (s *Server) providers(g store.Group) []provider.Provider {
 	var f provider.Provider
 	if s.FPB != nil {
 		f = fpbGames{s.FPB}
 	}
-	return append(provider.For(s.Store.Settings().Club, f), s.calendar())
+	return append(provider.For(f, s.fpbFor(g)), s.calendar())
 }
 
 var noFPB error = i18n.Key("api.fpb.nao_disponivel")
 
-// fpbOffered reports whether the FPB covers this club (Portuguese basketball);
-// every FPB route and job checks it.
-func (s *Server) fpbOffered() bool { return provider.FPBOffered(s.Store.Settings().Club) }
+// fpbOffered reports whether the FPB covers this club (Portuguese, with a
+// basketball team); every FPB route and job checks it.
+func (s *Server) fpbOffered() bool {
+	return provider.FPBOffered(s.Store.Settings().Club, s.Store.Groups())
+}
+
+// fpbFor reports whether the FPB covers this escalão: a basketball one.
+func (s *Server) fpbFor(g store.Group) bool {
+	return provider.FPBOfferedFor(s.Store.Settings().Club, g)
+}

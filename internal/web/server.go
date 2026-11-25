@@ -306,11 +306,22 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // fpbGate answers 404 on the routes that only make sense for a club the FPB
 // covers (Portuguese basketball), so no other club reaches the FPB at all.
+// The escalão routes also need the escalão itself to be basketball.
 func (s *Server) fpbGate(w http.ResponseWriter, r *http.Request) bool {
 	p := r.URL.Path
-	fpbOnly := strings.HasPrefix(p, "/api/fpb/") || p == "/api/club/setup" ||
-		strings.HasPrefix(p, "/api/groups/") && (strings.HasSuffix(p, "/players/import") || strings.HasSuffix(p, "/players/from-fpb") || strings.HasSuffix(p, "/link"))
-	if fpbOnly && !s.fpbOffered() {
+	if strings.HasPrefix(p, "/api/groups/") && (strings.HasSuffix(p, "/players/import") || strings.HasSuffix(p, "/players/from-fpb") || strings.HasSuffix(p, "/link")) {
+		id, _, _ := strings.Cut(strings.TrimPrefix(p, "/api/groups/"), "/")
+		g, err := s.Store.Group(id)
+		if err != nil {
+			return true // the handler answers its own 404
+		}
+		if !s.fpbFor(g) {
+			fail(w, http.StatusNotFound, noFPB.Error())
+			return false
+		}
+		return true
+	}
+	if (strings.HasPrefix(p, "/api/fpb/") || p == "/api/club/setup") && !s.fpbOffered() {
 		fail(w, http.StatusNotFound, noFPB.Error())
 		return false
 	}

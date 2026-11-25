@@ -27,6 +27,61 @@ func TestPutGroupSport(t *testing.T) {
 	}
 }
 
+// The FPB routes of an escalão answer 404 unless that escalão is basketball.
+func TestFPBGateSportPerEscalao(t *testing.T) {
+	s := newServer(t)
+	var bb, fut store.Group
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Seniores"}, &bb)
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Seniores futsal"}, &fut)
+	if _, err := s.Store.UpdateGroup(fut.ID, func(g *store.Group) error { g.Sport = "futsal"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id   string
+		want int
+	}{{fut.ID, http.StatusNotFound}, {bb.ID, http.StatusOK}, {"nonexistent", http.StatusNotFound}} {
+		var e struct{ Error string }
+		code := call(t, s, "POST", "/api/groups/"+c.id+"/players/import", map[string]any{}, &e)
+		gated := e.Error == noFPB.Error()
+		if c.id == fut.ID && !gated || c.id != fut.ID && gated {
+			t.Errorf("%s: gate answered %d %q", c.id, code, e.Error)
+		}
+		if c.id == "nonexistent" && code != http.StatusNotFound {
+			t.Errorf("nonexistent: %d", code)
+		}
+	}
+}
+
+// Club setup reuses an escalão by name only when it is basketball.
+func TestSetupTeamSportMatch(t *testing.T) {
+	s := newServer(t)
+	clubFPB(t, s)
+	var fut store.Group
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sénior Masculino"}, &fut)
+	if _, err := s.Store.UpdateGroup(fut.ID, func(g *store.Group) error { g.Sport = "futsal"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	var res setupResult
+	if code := call(t, s, "POST", "/api/club/setup", nil, &res); code != http.StatusOK || len(res.Errors) != 0 {
+		t.Fatalf("setup: %d %+v", code, res)
+	}
+	if kept, _ := s.Store.Group(fut.ID); kept.FPBTeamID != 0 || kept.Sport != "futsal" {
+		t.Errorf("futsal escalão reused: %+v", kept)
+	}
+	n := 0
+	for _, g := range clubGroups(s) {
+		if g.Name == "Sénior Masculino" && g.ID != fut.ID {
+			n++
+			if g.FPBTeamID != 63135 || g.Sport != "basketball" {
+				t.Errorf("created escalão %+v", g)
+			}
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d basketball escalões created for the team, want 1", n)
+	}
+}
+
 func TestPutGroupSportFPBLink(t *testing.T) {
 	s := newServer(t)
 	var g store.Group

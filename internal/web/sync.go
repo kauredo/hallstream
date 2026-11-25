@@ -83,7 +83,7 @@ func (s *Server) SyncAll(maxAge time.Duration) {
 	}
 	deadline := time.Now().Add(maxRun)
 	for _, g := range s.Store.Groups() {
-		if g.FPBTeamID == 0 || g.NeedsTeam {
+		if g.FPBTeamID == 0 || g.NeedsTeam || !s.fpbFor(g) {
 			continue
 		}
 		if t, err := time.Parse(time.RFC3339, g.LastSync); err == nil && time.Since(t) < maxAge {

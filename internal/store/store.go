@@ -80,7 +80,23 @@ type Settings struct {
 	Lang string `json:"lang"`
 	// Input is where the score comes from: one of Inputs.
 	Input string `json:"input"`
+	// Stream is where OBS sends the picture; only PUT /api/stream changes it.
+	Stream Stream `json:"stream"`
 }
+
+// Stream is where OBS sends the picture: the YouTube stream the program
+// manages, or a custom RTMP server with its key.
+type Stream struct {
+	Service string `json:"service"` // ServiceYouTube or ServiceRTMP
+	Server  string `json:"server"`  // rtmp:// or rtmps://, for ServiceRTMP
+	Key     string `json:"key"`     // the stream key, for ServiceRTMP
+}
+
+// The values of Stream.Service.
+const (
+	ServiceYouTube = "youtube"
+	ServiceRTMP    = "rtmp"
+)
 
 // Inputs are the values of Settings.Input, the default first: the box over
 // Bluetooth, or the score kept by hand on a phone.

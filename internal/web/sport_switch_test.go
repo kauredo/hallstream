@@ -284,7 +284,7 @@ func TestSportSwitchFreshInstallStartsOnTheSportLength(t *testing.T) {
 		{"futsal", 12000, 12000},
 		{"handball", 18000, 0},
 		{"soccer", 27000, 0},
-		{"basketball", 6000, 6000},
+		{"basketball", 6000, 6000}, // control: basketball is already the scorer's start, so nothing moves
 	} {
 		t.Run(c.sport, func(t *testing.T) {
 			s := newServer(t)
@@ -327,5 +327,35 @@ func TestSportSwitchSavedScorerKeepsItsLengthOnFutsal(t *testing.T) {
 	_, m := firstStart(t, s, &saved)
 	if sc := m.Score(); sc.Length != 6000 || sc.Clock != 6000 {
 		t.Errorf("a saved scorer was moved: %+v, want 6000", sc)
+	}
+}
+
+// The whole day-one chain: a fresh futsal club starts on 20:00, its first
+// change saves manual.json, and a restart keeps the length the volunteer set.
+func TestSportSwitchFreshInstallThenARestart(t *testing.T) {
+	s := newServer(t)
+	if _, err := s.Store.UpdateSettings(func(v *store.Settings) { v.Club.Sport = "futsal" }); err != nil {
+		t.Fatal(err)
+	}
+	if s.Store.HasManual() {
+		t.Fatal("setup: manual.json exists on a fresh store")
+	}
+	s1, m := firstStart(t, s, nil)
+	if sc := m.Score(); sc.Length != 12000 {
+		t.Fatalf("fresh futsal start: %+v, want length 12000", sc)
+	}
+	if !s1.Store.HasManual() {
+		t.Error("the first sync moved the length but saved no manual.json")
+	}
+	if err := m.Do(source.Action{Do: "period_length", Tenths: 4800}); err != nil {
+		t.Fatal(err)
+	}
+	var saved source.Score
+	if err := s.Store.LoadManual(&saved); err != nil {
+		t.Fatal(err)
+	}
+	_, m2 := firstStart(t, s, &saved)
+	if sc := m2.Score(); sc.Length != 4800 || sc.Clock != 4800 {
+		t.Errorf("after a restart: %+v, want 4800", sc)
 	}
 }

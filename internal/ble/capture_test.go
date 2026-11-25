@@ -272,3 +272,212 @@ func TestReaderOffersRawFrames(t *testing.T) {
 	}
 	New(&Reader{}).onFrame(make([]byte, 20)) // no recorder at all
 }
+
+// timedLink reports its drop on the first Connected() call after down is
+// closed, and notes when.
+type timedLink struct {
+	down      chan struct{}
+	mu        sync.Mutex
+	droppedAt time.Time
+}
+
+func (l *timedLink) Listen(func([]byte)) error { return nil }
+func (l *timedLink) Disconnect()               {}
+func (l *timedLink) Connected() bool {
+	select {
+	case <-l.down:
+		l.mu.Lock()
+		if l.droppedAt.IsZero() {
+			l.droppedAt = time.Now()
+		}
+		l.mu.Unlock()
+		return false
+	default:
+		return true
+	}
+}
+
+type timedRadio struct {
+	stop chan struct{}
+	link *timedLink
+}
+
+func (f *timedRadio) Enable() error                { return nil }
+func (f *timedRadio) Scan(func(Advert)) error      { <-f.stop; return nil }
+func (f *timedRadio) StopScan() error              { f.stop <- struct{}{}; return nil }
+func (f *timedRadio) Connect(string) (Link, error) { return f.link, nil }
+
+// A disk that never answers must not delay what the reader does when the
+// link drops.
+func TestLinkDropIsNotDelayedByAStuckWriter(t *testing.T) {
+	g := &gate{release: make(chan struct{})}
+	defer close(g.release)
+	rec := &Recorder{Slots: 8, Create: func(string) (io.WriteCloser, error) { return g, nil }}
+	link := &timedLink{down: make(chan struct{})}
+	told := make(chan time.Time, 4)
+	r := New(&Reader{Radio: &timedRadio{stop: make(chan struct{}), link: link}, Capture: rec,
+		Connected: func(on bool) {
+			if !on {
+				told <- time.Now()
+			}
+		}})
+	go r.Run()
+	if err := r.Try("AA"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rec.Start("box", inline); err != nil {
+		t.Fatal(err)
+	}
+	rec.Offer(make([]byte, 20)) // the writer is now stuck in Write
+	time.Sleep(50 * time.Millisecond)
+	close(link.down)
+	select {
+	case at := <-told:
+		link.mu.Lock()
+		lag := at.Sub(link.droppedAt)
+		link.mu.Unlock()
+		if lag > time.Second {
+			t.Errorf("Connected(false) came %v after the drop was seen", lag)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Connected(false) never came")
+	}
+	if st := rec.Status(); st.On || st.Stopped != "box" {
+		t.Errorf("status after the drop: %+v", st)
+	}
+}
+
+// Status and Start answer while another caller waits on a stuck writer.
+func TestStopDoesNotHoldTheLock(t *testing.T) {
+	release := make(chan struct{})
+	defer close(release)
+	r := &Recorder{Create: func(string) (io.WriteCloser, error) { return &gate{release: release}, nil }}
+	r.Start("box", inline)
+	r.Offer(make([]byte, 20))
+	time.Sleep(50 * time.Millisecond)
+	go r.Stop("off") // waits up to 2 s on the stuck writer
+	time.Sleep(100 * time.Millisecond)
+	answered := make(chan struct{})
+	go func() {
+		r.Status()
+		r.Start("box", inline)
+		close(answered)
+	}()
+	select {
+	case <-answered:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Status or Start waited behind Stop")
+	}
+	r.StopNoWait("off")
+}
+
+func TestConcurrentStops(t *testing.T) {
+	for i := 0; i < 50; i++ {
+		r := newRecorder(t)
+		if _, err := r.Start("box", inline); err != nil {
+			t.Fatal(err)
+		}
+		cur := r.cur.Load()
+		var wg sync.WaitGroup
+		for j := 0; j < 3; j++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				r.finish(cur, "off", nil) // every caller holding the session at once
+				r.Stop("off")
+				r.StopNoWait("box")
+			}()
+		}
+		wg.Wait()
+		if st := r.Status(); st.On || st.Stopped != "off" && st.Stopped != "box" {
+			t.Fatalf("status %+v", st)
+		}
+	}
+}
+
+// panicker fails the second write, the first being the header.
+type panicker struct{ n int }
+
+func (p *panicker) Write(b []byte) (int, error) {
+	if p.n++; p.n > 1 {
+		panic("disk exploded")
+	}
+	return len(b), nil
+}
+func (p *panicker) Close() error { return nil }
+
+func TestWriterPanicEndsTheRecording(t *testing.T) {
+	var logged []string
+	var mu sync.Mutex
+	r := &Recorder{Create: func(string) (io.WriteCloser, error) { return &panicker{}, nil },
+		Log: func(s string) { mu.Lock(); logged = append(logged, s); mu.Unlock() }}
+	if _, err := r.Start("box", inline); err != nil {
+		t.Fatal(err)
+	}
+	r.Offer(make([]byte, 20))
+	deadline := time.Now().Add(2 * time.Second)
+	for r.Status().On && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if st := r.Status(); st.On || st.Stopped != "error" {
+		t.Fatalf("status after a writer panic: %+v", st)
+	}
+	r.Stop("off") // returns at once: the writer is out
+}
+
+func TestFolderFullRefusesToStart(t *testing.T) {
+	r := newRecorder(t)
+	r.FolderMax = 1000
+	if err := os.MkdirAll(r.Dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(r.Dir, "old.txt"), make([]byte, 2000), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Start("box", inline); err != ErrFolderFull {
+		t.Fatalf("Start in a full folder = %v, want ErrFolderFull", err)
+	}
+	if st := r.Status(); st.On || st.File != "" {
+		t.Errorf("a refused start left %+v", st)
+	}
+	os.Remove(filepath.Join(r.Dir, "old.txt"))
+	if _, err := r.Start("box", inline); err != nil {
+		t.Fatalf("after clearing the folder: %v", err)
+	}
+	r.Stop("off")
+}
+
+// endless is a header, then comment lines for ever.
+type endless struct{ head *strings.Reader }
+
+func (e *endless) Read(p []byte) (int, error) {
+	if n, _ := e.head.Read(p); n > 0 {
+		return n, nil
+	}
+	n := copy(p, strings.Repeat("#", 99)+"\n")
+	return n, nil
+}
+
+func TestReadCaptureLimits(t *testing.T) {
+	head := CaptureMagic + "\n"
+	if _, err := ReadCapture(&endless{strings.NewReader(head)}); err == nil || !strings.Contains(err.Error(), "bigger") {
+		t.Errorf("an endless file: %v", err)
+	}
+	for _, off := range []string{"604800001", "99999999999999999999", "9223372036854775807"} {
+		if _, err := ReadCapture(strings.NewReader(head + off + " 33\n")); err == nil {
+			t.Errorf("offset %s accepted", off)
+		}
+	}
+	if _, err := ReadCapture(strings.NewReader(head + "604800000 33\n")); err != nil {
+		t.Errorf("an offset of exactly 7 days: %v", err)
+	}
+	old := maxCaptureFrames
+	maxCaptureFrames = 3
+	defer func() { maxCaptureFrames = old }()
+	if _, err := ReadCapture(strings.NewReader(head + "0 33\n1 33\n2 33\n")); err != nil {
+		t.Errorf("exactly the cap: %v", err)
+	}
+	if _, err := ReadCapture(strings.NewReader(head + "0 33\n1 33\n2 33\n3 33\n")); err == nil {
+		t.Error("one frame over the cap accepted")
+	}
+}

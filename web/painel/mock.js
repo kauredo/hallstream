@@ -393,6 +393,7 @@
       if (m === 'PUT') { player.display_name = b.display_name; player.number = b.number; return reply(200, player); }
       if (m === 'DELETE') { list.splice(list.indexOf(player), 1); return reply(204); }
     }
+    if (/^\/api\/groups\/[^/]+\/(fixtures|calendar)$/.test(p) && m === 'GET') return reply(200, []);
     if ((r = /^\/api\/groups\/([^/]+)\/sponsors(?:\/([^/]+))?$/.exec(p))) {
       var sg = decodeURIComponent(r[1]), sl = db.sponsors[sg] || (db.sponsors[sg] = []);
       if (r[2] && m === 'DELETE') { db.sponsors[sg] = sl.filter(function (s) { return s.id !== r[2]; }); return reply(204); }

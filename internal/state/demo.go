@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
+	"github.com/kauredo/hallstream/internal/sport"
 )
 
 // SetDemo turns the fake game on or off. While it runs, box frames are ignored.
@@ -68,12 +69,13 @@ func demoEvent(x float64, comeback bool) int {
 	return nothing
 }
 
-// demo plays a basketball game at 10x speed: four 10-minute periods (one
-// real minute each), short breaks, a longer half-time, overtime on a tie,
-// then the clock sits at 0 until the final screen shows, and a new game starts.
+// demo plays the game's sport at a compressed pace, each sport on its own
+// scripted timeline (basketball: playDemo; the others: demo_sports.go). It
+// follows the game's sport: if that changes while it runs, the next frame
+// starts that sport's game.
 func (m *Machine) demo(stop <-chan struct{}) {
 	r := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 7))
-	tick := time.NewTicker(100 * time.Millisecond) // one game second
+	tick := time.NewTicker(100 * time.Millisecond) // one tick
 	defer tick.Stop()
 	hold := func(n int) bool {
 		for range n {
@@ -93,7 +95,30 @@ func (m *Machine) demo(stop <-chan struct{}) {
 		}
 		m.mu.Unlock()
 	}
-	playDemo(r, func(l Live) { m.update(l, true) }, hold, newGame)
+	for {
+		m.mu.Lock()
+		id := m.rules().ID
+		m.mu.Unlock()
+		same := func(n int) bool {
+			if !hold(n) {
+				return false
+			}
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			return m.rules().ID == id
+		}
+		show := func(l Live) { m.update(l, true) }
+		if id == sport.Basketball.ID {
+			playDemo(r, show, same, newGame)
+		} else {
+			playSport(sport.Get(id), show, same, newGame)
+		}
+		select {
+		case <-stop:
+			return
+		default:
+		}
+	}
 }
 
 // playDemo runs demo games until hold says stop; hold(n) waits n game seconds.

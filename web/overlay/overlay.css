@@ -231,6 +231,17 @@ html[data-scoring="sets"] .sb-f b.only-sets { font-size: 34px; }
 html[data-scoring="sets"] .sb-tbox { padding: 0; }
 .sb-setlist .to { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1.5px; color: var(--muted); }
 .sb-setlist .goal { font-weight: 800; font-size: 44px; line-height: 46px; }
+/* Handball: html[data-penalties] swaps the fouls cell for the suspensions running, up to three chips a
+   team: the time left, then the shirt number on a gold plate once the scorer has typed it. The cell is
+   wider than the fouls one, so handball's bug is wider than basketball's; the others do not move. */
+html:not([data-penalties]) .only-susp { display: none !important; }
+html[data-penalties] .sb-f b[data-hot], html[data-penalties] .sb-f .pips, html[data-penalties] .sb-f .bonus,
+html[data-penalties] .sb-lbl.only-pts, html[data-penalties] .to-f { display: none !important; }
+html[data-penalties] .sb-fouls { width: 324px; }
+.susp { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.susp .chip { display: flex; align-items: stretch; height: 30px; box-sizing: border-box; background: rgba(255,255,255,0.14); font-weight: 700; font-size: 24px; line-height: 1; }
+.susp time { display: flex; align-items: center; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.susp .chip b { display: flex; align-items: center; justify-content: center; min-width: 32px; padding: 0 4px; box-sizing: border-box; background: var(--gold); color: var(--navy); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; }
 /* The dot between two parts of a line; a style may draw it its own way. */
 i.sep { font-style: normal; }
 /* BÓNUS: 5 team fouls or more in the period; the fouls cell turns gold. */

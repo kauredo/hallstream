@@ -510,6 +510,9 @@
     v.foulBonus = rules.foul_bonus ?? 5;
     v.periodWord = rules.period_word ?? 'quarter';
     v.freeKick = rules.foul_penalty === 'free_kick';
+    // Handball: the fouls cells show the suspensions running instead (a missing or null list is none).
+    v.penalties = (rules.suspensions ?? 0) > 0 ? 'suspensions' : '';
+    v.suspensions = v.penalties && Array.isArray(live.suspensions) ? live.suspensions : [];
     // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
     v.sets = rules.scoring === 'sets';
     const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];
@@ -622,6 +625,37 @@
       setClass(p, 'hot', hot);
     }
     for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', hot);
+  }
+
+  // The suspensions running, a chip each (the time left, the shirt number once the scorer has it),
+  // home and away on their own row, at most three. The key keeps the chips from being rebuilt each frame.
+  let suspKey = null;
+  function renderSuspensions(v) {
+    const key = JSON.stringify(v.suspensions);
+    if (key === suspKey) return;
+    suspKey = key;
+    for (const team of ['home', 'away']) {
+      const mine = v.suspensions.filter((x) => x && x.team === team).slice(0, 3);
+      for (const box of $$(`[data-susp="${team}"]`)) {
+        box.textContent = '';
+        for (const x of mine) {
+          const chip = document.createElement('span');
+          chip.className = 'chip';
+          const time = document.createElement('time');
+          time.textContent = x.left || '';
+          chip.append(time);
+          const no = String(x.number || '');
+          if (no) {
+            const b = document.createElement('b');
+            b.textContent = no;
+            chip.append(b);
+          }
+          chip.setAttribute('role', 'img');
+          chip.setAttribute('aria-label', t('overlay.exclusao', { numero: no, tempo: x.left || '' }));
+          box.append(chip);
+        }
+      }
+    }
   }
 
   // The bug's time cell for a sets sport: each team's points in the finished sets on its own row,
@@ -1277,6 +1311,9 @@
     setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
     root.dataset.scoring = v.sets ? 'sets' : 'points';
+    if (v.penalties) root.dataset.penalties = v.penalties;
+    else delete root.dataset.penalties;
+    renderSuspensions(v);
     root.dataset.sport = (st.game && st.game.sport) || 'basketball';
     for (const tx of ['home', 'away']) {
       setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);

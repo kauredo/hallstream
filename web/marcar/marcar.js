@@ -127,7 +127,12 @@
     [...el.children].forEach((e, i) => e.classList.toggle('on', i < n));
     el.setAttribute('aria-hidden', 'true');
   }
+  // A clock counting up shows whole seconds played, as state.ClockTextUp does; a countdown as state.ClockText.
   const clockText = (tenths) => {
+    if (rulesOf().countUp) {
+      const s = Math.floor(Math.max(tenths, 0) / 10);
+      return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
     if (tenths < 600) return `${Math.floor(tenths / 10)}.${tenths % 10}`;
     const s = Math.ceil(tenths / 10);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -140,7 +145,26 @@
       foulMarks: r.foul_marks ?? 5, freeKick: r.foul_penalty === 'free_kick', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
       lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2, maxPoint: r.max_point ?? 3,
+      countUp: !!r.count_up, suspensions: r.suspensions ?? 0,
     };
+  }
+  // Where the clock starts and ends in period p, from game.rules and score.length, as sport.Profile.Start and
+  // End do. A countdown starts at its length (an overtime's own when the sport sets one) and has no end (0);
+  // a count-up starts at the time played before p.
+  function bounds(p) {
+    const r = rulesOf(), length = score ? score.length : 0;
+    const len = (n) => (n > r.periods && r.overtimeLength > 0 ? r.overtimeLength : length);
+    if (!r.countUp) return { start: len(p), end: 0 };
+    let start = 0;
+    for (let n = 1; n < p; n++) start += len(n);
+    return { start, end: start + len(p) };
+  }
+  // The tenths in a clock text, "MM:SS" or "S.T"; -1 when there is none.
+  function clockTenths(text) {
+    let m = /^(\d+):(\d+)$/.exec(text || '');
+    if (m) return (+m[1] * 60 + +m[2]) * 10;
+    m = /^(\d+)\.(\d)$/.exec(text || '');
+    return m ? +m[1] * 10 + +m[2] : -1;
   }
   // The same rule as sport.SetWon: the side that has the set's points with the lead, else ''.
   function setWon(r, n, home, away) {
@@ -166,6 +190,7 @@
       case 'foul': return a.n > 0 ? t('marcar.ultimo.falta', { sigla: s }) : t('marcar.ultimo.falta_menos', { sigla: s });
       case 'timeout': return a.n > 0 ? t('marcar.ultimo.desconto', { sigla: s }) : t('marcar.ultimo.desconto_menos', { sigla: s });
       case 'serve': return t('marcar.ultimo.servico', { sigla: s });
+      case 'suspension': case 'suspension_number': case 'suspension_end': return t('marcar.ultimo.exclusao', { sigla: s });
       case 'set_next': return t('marcar.ultimo.set');
       case 'period_next': case 'period_back': return t('marcar.ultimo.periodo');
       case 'clock_set': case 'clock_add': return t('marcar.ultimo.relogio');
@@ -195,11 +220,13 @@
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
     const rules = rulesOf();
-    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick, maxPoint } = rules;
+    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick, maxPoint, countUp, suspensions } = rules;
     const penaltyWord = freeKick ? t('marcar.livre') : t('marcar.bonus');
     document.body.classList.toggle('sets', sets);
     document.body.classList.toggle('nofouls', foulMarks === 0);
     document.body.classList.toggle('um', maxPoint === 1); // one +1, as a sets sport has
+    document.body.classList.toggle('susp', suspensions > 0);
+    const susp = Array.isArray(l.suspensions) ? l.suspensions : [];
     // A sets sport has the same timeouts in every set.
     const maxTO = sets || period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {
@@ -209,6 +236,7 @@
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
       setV(tx + 'Sets', +l[tx + '_sets'] || 0);
+      renderChips(tx, suspensions > 0 ? susp.filter((x) => x && x.team === tx).slice(0, 3) : []);
       const serving = sets && l.serve === tx, ring = $(`.equipa[data-team="${tx}"] .servico`);
       ring.classList.toggle('on', serving);
       const serveText = serving ? t('marcar.a_servir') : t('marcar.servico');
@@ -236,11 +264,15 @@
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
     $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods, word);
-    const running = !!(manual && score && score.running);
+    // A count-up clock is at the end of its period when the live clock has got there (it stops itself).
+    const liveT = clockTenths(l.clock);
+    const upEnd = !!(manual && score && countUp && (liveT >= 0 ? liveT : score.clock) >= bounds(period).end);
+    const running = !!(manual && score && score.running) && !upEnd;
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
-    // At 0:00 the button waits two seconds before it offers the next period, so a late Parar does nothing.
-    const atZero = manual && score && !score.running && score.clock === 0;
+    // At 0:00 (a count-up: at the period's end) the button waits two seconds before it offers the next
+    // period, so a late Parar does nothing.
+    const atZero = upEnd || (manual && score && !countUp && !score.running && score.clock === 0);
     if (atZero && !zeroSince) { zeroSince = Date.now(); setTimeout(render, 2100); }
     if (!atZero) zeroSince = 0;
     const go = $('#arrancar');
@@ -352,20 +384,65 @@
   }
   $('#confirmarNao').addEventListener('click', () => $('#confirmar').close());
 
-  // The length of the period on now: an overtime runs the sport's overtime length when it sets one.
-  function periodLength() {
-    const { periods, overtimeLength } = rulesOf();
-    return score.period > periods && overtimeLength > 0 ? overtimeLength : score.length;
+  // The clock "Repor" sets: the start of the period on now (the length of a countdown's period, an
+  // overtime's own when the sport sets one; the time already played before a count-up's period).
+  const periodStart = () => bounds(score.period).start;
+
+  // A running suspension is a chip with its time left and, once typed, the shirt number. The chips are
+  // rebuilt only when the set of suspensions changes, so a tap in progress never lands on a new button.
+  function renderChips(tx, list) {
+    const box = $(`[data-susp="${tx}"]`), key = list.map((x) => x.id).join();
+    if (box.dataset.key !== key) {
+      box.dataset.key = key;
+      box.replaceChildren(...list.map((x) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'exc';
+        b.dataset.team = tx;
+        b.dataset.id = x.id;
+        b.append(document.createElement('span'), document.createElement('b'));
+        b.disabled = input !== 'manual';
+        return b;
+      }));
+    }
+    list.forEach((x, i) => {
+      const b = box.children[i], [time, no] = b.children;
+      if (time.textContent !== x.left) time.textContent = x.left || '';
+      no.hidden = !x.number;
+      if (no.textContent !== String(x.number || '')) no.textContent = x.number || '';
+      b.dataset.number = x.number || '';
+      b.dataset.left = x.left || '';
+    });
   }
+  // A tap on a chip opens its number and its "Acabou".
+  let suspOpen = 0;
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.exc');
+    if (!b || b.disabled) return;
+    suspOpen = +b.dataset.id;
+    $('#exclusaoTitulo').textContent = `${sigla(b.dataset.team)} · ${b.dataset.left}`;
+    $('#exclusaoNumero').value = b.dataset.number;
+    $('#exclusao').dataset.number = b.dataset.number;
+    $('#exclusao').showModal();
+  });
+  $('#exclusaoFeito').addEventListener('click', () => {
+    const box = $('#exclusao'), number = $('#exclusaoNumero').value.trim();
+    box.close();
+    if (number !== box.dataset.number) send({ do: 'suspension_number', id: suspOpen, number }, t('marcar.exclusao_numero'));
+  });
+  $('#exclusaoAcabou').addEventListener('click', () => {
+    $('#exclusao').close();
+    send({ do: 'suspension_end', id: suspOpen }, t('marcar.exclusao_acabou'));
+  });
 
   // A tap on the clock opens the steps; each one applies at once.
   $('#relogio').addEventListener('click', () => {
     if (!score) return;
-    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodLength()) });
+    $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart()) });
     $('#acertar').showModal();
     render();
   });
-  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodLength() }, t('marcar.ultimo.relogio')));
+  $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart() }, t('marcar.ultimo.relogio')));
   $('#acertarFechar').addEventListener('click', () => $('#acertar').close());
 
   // ---------- start ----------

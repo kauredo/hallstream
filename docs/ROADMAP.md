@@ -70,7 +70,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 1. Add `internal/sport`. Basketball moves into it unchanged, and the existing tests prove it.
 2. Sports and their rules:
    - Futsal: the clock counts down from 20:00, 5 accumulated fouls. Done: scored from the phone; console untested.
-   - Handball: the clock counts up, 2×30, 2-minute suspensions.
+   - Handball: the clock counts up, 2×30, 2-minute suspensions. Done: scored from the phone, with suspensions; console untested.
    - Volleyball: sets to 25 (15 in the last), the serving side. Done from the phone scorer. The console decodes volleyball frames but is untested until a recorded game passes.
    - Soccer: the clock counts up, 2×45 plus stoppage time, cards and substitutions. Scored by hand.
 3. The Stramatel decoder already reads the handball, volleyball and hockey codes (`internal/ble/decode.go`). A sport is only listed as supported after it has been tested on a recorded game.

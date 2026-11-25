@@ -110,6 +110,14 @@ html[data-style="placa"] .pips i::after { border-radius: 2px; box-shadow: inset 
 html[data-style="placa"] .sb-f.bonus { background: transparent; }
 html[data-style="placa"] .sb-f .bonus { padding: 4px 6px 2px; font-weight: 800; font-size: 19px; letter-spacing: 0; font-stretch: 78%; }
 html[data-style="placa"] .sb-f.bonus b[data-hot] { color: var(--en-ink); }
+/* Handball: the suspensions plate is wider than the fouls one, and its chips sit on ink-edged white. */
+html[data-style="placa"][data-penalties] .sb-fouls::before { width: 324px; }
+html[data-style="placa"][data-penalties] .sb-fouls::after { width: 318px; }
+html[data-style="placa"][data-penalties] .sb-f.sep { background-size: 300px 2px; }
+html[data-style="placa"] .susp .chip { background: var(--en-rule); color: var(--en-ink); border-radius: 3px; overflow: clip; }
+html[data-style="placa"] .susp .chip b { color: var(--en-ink); box-shadow: inset 0 0 0 2px var(--en-ink); border-radius: 3px; }
+html[data-style="placa"] .susp { gap: 4px; }
+html[data-style="placa"] .susp time { padding: 0 4px; font-weight: 800; font-stretch: 70%; font-size: 26px; }
 html[data-style="placa"] .sb-time { position: relative; background: var(--red); color: var(--on-red); border-radius: 7px; }
 html[data-style="placa"] .sb-time::before {
   content: ""; position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border: 2px solid var(--on-red); border-radius: 4px; opacity: 0.85; pointer-events: none;

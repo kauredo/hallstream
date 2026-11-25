@@ -205,6 +205,7 @@ dialog .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 dialog .passos button { min-height: 48px; border: 2px solid var(--marcador); border-radius: var(--raio); background: transparent; color: var(--marcador); font-weight: 700; font-stretch: var(--estreito); font-size: 17px; }
 dialog .passos button:active { background: var(--marcador); color: var(--soalho-claro); }
 dialog h2 b { font-weight: 800; }
+#exclusao input { letter-spacing: .2em; }
 
 /* ---------- a sets sport (volleyball) ----------
    body.sets: one big +1, no fouls, no clock, no period arrows. Each half gets a sets row with a serve
@@ -215,6 +216,22 @@ body.sets .faltas, body.sets .relogio, body.sets .acerto, body.sets .seta { disp
 body.nofouls .faltas { display: none; }
 body.sets .somar, body.um .somar { grid-template-columns: 1fr; }
 body.sets .somar button:nth-child(n + 2), body.um .somar button:nth-child(n + 2) { display: none; }
+/* ---------- a count-up sport with suspensions (handball) ----------
+   body.susp: a suspensions row per half, the +2' on
+   the label's line and the running suspensions as chips under it, each one a button for its number. */
+body.susp .somar button { min-height: 48px; }
+.exclusoes { display: none; }
+body.susp .exclusoes { display: grid; grid-template-columns: 1fr 64px; row-gap: 0; align-content: center; }
+.exclusoes .chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.exclusoes .chips:not(:empty) { margin: 2px 0 6px; }
+.linha .exc { display: flex; align-items: stretch; height: 44px; padding: 0; overflow: hidden;
+  background: transparent; color: var(--sobre); box-shadow: inset 0 0 0 2px currentColor;
+  font-weight: 800; font-stretch: var(--estreito); font-size: 22px; font-variant-numeric: tabular-nums; }
+.linha .exc:active { background: var(--marcador); color: var(--sobre); }
+.exc span { display: flex; align-items: center; padding: 0 10px; }
+/* The shirt number is the lit part, on the paper fill like a serve that is on. */
+.exc b { display: flex; align-items: center; padding: 0 10px; background: var(--sobre); color: var(--cor); font-size: 22px; }
+.exc b[hidden] { display: none; }
 body.sets .periodo { grid-template-columns: 1fr; }
 /* The serve is a ring on the team's own colour; lit in Lâmpada on the side that has it. */
 body.sets .sets-linha { grid-template-columns: auto 1fr auto auto; }

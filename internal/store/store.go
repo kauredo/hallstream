@@ -706,6 +706,13 @@ func (s *Store) SaveManual(v any) error {
 // LoadManual reads manual.json into v. A missing file leaves v alone.
 func (s *Store) LoadManual(v any) error { return s.load("manual.json", v) }
 
+// HasManual reports whether manual.json exists, so a first start can tell a
+// fresh install from a restart.
+func (s *Store) HasManual() bool {
+	_, err := os.Stat(filepath.Join(s.Dir, "manual.json"))
+	return err == nil
+}
+
 func (s *Store) load(name string, v any) error {
 	b, err := os.ReadFile(filepath.Join(s.Dir, name))
 	if errors.Is(err, os.ErrNotExist) {

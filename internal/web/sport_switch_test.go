@@ -260,3 +260,72 @@ func TestSportSwitchClearsSuspensionsOnAFreshScore(t *testing.T) {
 		t.Errorf("suspensions survived a switch on a fresh score: %+v", sc)
 	}
 }
+
+// firstStart builds a second server on the store, the way a program start
+// does: the scorer is attached before the first sync.
+func firstStart(t *testing.T, s *Server, restore *source.Score) (*Server, *source.Manual) {
+	t.Helper()
+	s2 := New(&Server{Store: s.Store, State: state.New(time.Now), Files: s.Files, Version: "test", Port: 8765})
+	m := withScorer(s2)
+	if restore != nil {
+		m.Restore(*restore)
+	}
+	s2.SyncGame()
+	return s2, m
+}
+
+// With no manual.json the scorer has never been used, so a futsal or handball
+// club does not start on basketball's 10:00.
+func TestSportSwitchFreshInstallStartsOnTheSportLength(t *testing.T) {
+	for _, c := range []struct {
+		sport         string
+		length, clock int
+	}{
+		{"futsal", 12000, 12000},
+		{"handball", 18000, 0},
+		{"soccer", 27000, 0},
+		{"basketball", 6000, 6000},
+	} {
+		t.Run(c.sport, func(t *testing.T) {
+			s := newServer(t)
+			if _, err := s.Store.UpdateSettings(func(v *store.Settings) { v.Club.Sport = c.sport }); err != nil {
+				t.Fatal(err)
+			}
+			_, m := firstStart(t, s, nil)
+			if sc := m.Score(); sc.Length != c.length || sc.Clock != c.clock {
+				t.Errorf("%s on a fresh install: %+v, want length %d and clock %d", c.sport, sc, c.length, c.clock)
+			}
+		})
+	}
+}
+
+// The escalão's sport counts too, not only the club's.
+func TestSportSwitchFreshInstallFollowsTheEscalao(t *testing.T) {
+	s := newServer(t)
+	fut := gameIn(t, s, "Futsal", "futsal")
+	gm := s.Store.Game()
+	gm.GroupID = fut
+	if err := s.Store.SaveGame(gm); err != nil {
+		t.Fatal(err)
+	}
+	_, m := firstStart(t, s, nil)
+	if sc := m.Score(); sc.Length != 12000 || sc.Clock != 12000 {
+		t.Errorf("futsal escalão on a fresh install: %+v, want 12000", sc)
+	}
+}
+
+// A saved manual.json wins over the sport, even when the length is basketball's.
+func TestSportSwitchSavedScorerKeepsItsLengthOnFutsal(t *testing.T) {
+	s := newServer(t)
+	if _, err := s.Store.UpdateSettings(func(v *store.Settings) { v.Club.Sport = "futsal" }); err != nil {
+		t.Fatal(err)
+	}
+	saved := source.Score{Length: 6000, Clock: 6000, Period: 1}
+	if err := s.Store.SaveManual(saved); err != nil {
+		t.Fatal(err)
+	}
+	_, m := firstStart(t, s, &saved)
+	if sc := m.Score(); sc.Length != 6000 || sc.Clock != 6000 {
+		t.Errorf("a saved scorer was moved: %+v, want 6000", sc)
+	}
+}

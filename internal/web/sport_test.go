@@ -82,6 +82,28 @@ func TestSetupTeamSportMatch(t *testing.T) {
 	}
 }
 
+func TestGameSportFollowsEscalao(t *testing.T) {
+	s := newServer(t)
+	if got := GameSport(s.Store); got != "basketball" {
+		t.Errorf("no escalão picked: %q, want the club's", got)
+	}
+	var g store.Group
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sub 16"}, &g)
+	call(t, s, "PUT", "/api/game", map[string]any{"group_id": g.ID}, nil)
+	setClub(t, s, "futsal", "PT")
+	if got := GameSport(s.Store); got != "basketball" {
+		t.Errorf("GameSport %q, want the escalão's basketball", got)
+	}
+	s.SyncGame()
+	if game := s.State.Snapshot().Game; game.Sport != "basketball" || game.Rules.ID != "basketball" {
+		t.Errorf("game sport %q, rules %q", game.Sport, game.Rules.ID)
+	}
+	call(t, s, "PUT", "/api/game", map[string]any{"group_id": ""}, nil)
+	if got := GameSport(s.Store); got != "futsal" {
+		t.Errorf("no escalão again: %q, want the club's futsal", got)
+	}
+}
+
 func TestPutGroupSportFPBLink(t *testing.T) {
 	s := newServer(t)
 	var g store.Group

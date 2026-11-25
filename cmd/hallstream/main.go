@@ -32,6 +32,7 @@ import (
 	"github.com/kauredo/hallstream/internal/obsapp"
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/source"
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/web"
@@ -188,7 +189,8 @@ func main() {
 	// (console) or the phone (manual). The Bluetooth reader runs either way,
 	// and the server answers /api/ble with it; it starts last.
 	console := source.NewConsole(&source.Console{Raw: w.frame})
-	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say})
+	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say,
+		Rules: func() sport.Profile { return sport.Get(web.GameSport(st)) }})
 	restoreManual(st, manual)
 	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader

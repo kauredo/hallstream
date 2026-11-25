@@ -13,6 +13,16 @@ import (
 	"github.com/kauredo/hallstream/internal/store"
 )
 
+// GameSport is the sport of the game's escalão, else the club's main sport.
+func GameSport(st *store.Store) string {
+	if id := st.Game().GroupID; id != "" && id != store.Shared {
+		if g, err := st.Group(id); err == nil && g.Sport != "" {
+			return g.Sport
+		}
+	}
+	return st.Settings().Club.Sport
+}
+
 func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {
 	var g store.Game
 	if !decode(w, r, &g) {
@@ -182,7 +192,7 @@ func (s *Server) SyncGame() {
 	if crest == "" {
 		crest = store.DefaultCrest
 	}
-	sp, _ := club.SportOf(cl.Sport)
+	sp, _ := club.SportOf(GameSport(s.Store))
 	out := state.Game{
 		Home:        state.Team{Name: cl.Name, Short: cl.Short, CrestURL: &crest, Color: cl.Primary, Initials: cl.Short},
 		Sport:       sp.ID,

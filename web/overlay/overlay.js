@@ -470,8 +470,13 @@
     const game = st.game || {};
     const home = game.home || {};
     const away = game.away || {};
+    const rules = game.rules || {};
     const pn = periodNum(live.period);
     const v = {};
+    v.regPeriods = rules.periods ?? 4;
+    v.half = rules.half ?? 2;
+    v.foulWarn = rules.foul_warn ?? 4;
+    v.foulBonus = rules.foul_bonus ?? 5;
     v.homeName = home.name || live.home_name || '';
     v.homeShort = home.short || v.homeName;
     v.awayName = away.name || live.away_name || '';
@@ -484,8 +489,8 @@
     v.shot = live.shot ?? '';
     v.homeFouls = live.home_fouls ?? 0;
     v.awayFouls = live.away_fouls ?? 0;
-    v.periodShort = pn == null ? (live.period || '') : pn <= 4 ? t('overlay.periodo.curto', { n: pn }) : pn === 5 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - 4 });
-    v.periodLong = pn == null ? (live.period || '') : pn <= 4 ? t('overlay.periodo.longo', { n: pn }) : pn === 5 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - 4 });
+    v.periodShort = pn == null ? (live.period || '') : pn <= v.regPeriods ? t('overlay.periodo.curto', { n: pn }) : pn === v.regPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - v.regPeriods });
+    v.periodLong = pn == null ? (live.period || '') : pn <= v.regPeriods ? t('overlay.periodo.longo', { n: pn }) : pn === v.regPeriods + 1 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - v.regPeriods });
     v.compRound = joinDot(game.competition, game.round);
     v.venue = game.venue || '';
     const coach = splitName((game.group && game.group.coach) || '');
@@ -522,7 +527,7 @@
     v.inPlay = !!(st.box && st.box.connected) && (v.homeScore > 0 || v.awayScore > 0 || (st.periods || []).length > 0);
 
     const periods = Array.isArray(st.periods) ? st.periods : [];
-    const lastDone = periods.length ? periods[periods.length - 1].period : 2;
+    const lastDone = periods.length ? periods[periods.length - 1].period : v.half;
     v.halfLine = t('overlay.intervalo.a_seguir', { n: lastDone + 1 });
     v.periods = periods;
     v.home = home;
@@ -555,13 +560,13 @@
     }
   }
 
-  function renderPips(team, n) {
+  function renderPips(team, n, warn) {
     for (const p of $$(`[data-pips="${team}"]`)) {
       const on = Math.min(n, 4);
       [...p.children].forEach((i, k) => setClass(i, 'on', k < on));
-      setClass(p, 'hot', n >= 4);
+      setClass(p, 'hot', warn > 0 && n >= warn);
     }
-    for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', n >= 4);
+    for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', warn > 0 && n >= warn);
   }
 
   // The points of each completed period, from Go, the lower of the two dimmed; the total is the score now.
@@ -585,8 +590,8 @@
       };
       cell('hd', '');
       for (const p of periods) {
-        if (p.period <= 4) cell('hd', t('overlay.periodos.n', { n: p.period }));
-        else cell('hd ot', p.period === 5 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - 4 }));
+        if (p.period <= v.regPeriods) cell('hd', t('overlay.periodos.n', { n: p.period }));
+        else cell('hd ot', p.period === v.regPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - v.regPeriods }));
       }
       cell('hd tot', t('overlay.periodos.total'));
       for (const [tx, o] of [['home', 'away'], ['away', 'home']]) {
@@ -1156,12 +1161,12 @@
     }
 
     const hf = +v.homeFouls || 0, af = +v.awayFouls || 0;
-    renderPips('home', hf);
-    renderPips('away', af);
+    renderPips('home', hf, v.foulWarn);
+    renderPips('away', af, v.foulWarn);
     // FIBA: from the 5th team foul of the period the other side shoots free throws.
     for (const [tx, n] of [['home', hf], ['away', af]]) {
-      setClass(bonusCells[tx], 'bonus', n >= 5);
-      setClass(bugRows[tx], 'bonus', n >= 5);
+      setClass(bonusCells[tx], 'bonus', v.foulBonus > 0 && n >= v.foulBonus);
+      setClass(bugRows[tx], 'bonus', v.foulBonus > 0 && n >= v.foulBonus);
     }
 
     const shotEl = binds.shot[0];

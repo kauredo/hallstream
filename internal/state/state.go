@@ -114,6 +114,8 @@ type Game struct {
 	// Sport is the club's sport id; SportLabel the word on air ("BASKET").
 	Sport      string `json:"sport"`
 	SportLabel string `json:"sport_label"`
+	// Rules is the sport's profile; the pages read the numbers from it.
+	Rules sport.Profile `json:"rules"`
 	// Theme is the overlay's colours from the club's, keyed by CSS custom
 	// property name without the dashes (club.Theme).
 	Theme map[string]string `json:"theme"`

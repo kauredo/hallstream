@@ -132,8 +132,8 @@
     const s = Math.ceil(tenths / 10);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
-  function periodName(p) {
-    return p <= 4 ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === 5 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - 4}</b>` });
+  function periodName(p, periods) {
+    return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
   const sigla = (team) => ((st && st.game && st.game[team]) || {}).short || '';
   // What undo takes back, in the words of the tap.
@@ -155,7 +155,7 @@
   function render() {
     if (!st) return;
     $('#mesa').hidden = false;
-    const g = st.game || {}, l = st.live || {}, home = g.home || {}, away = g.away || {}, th = g.theme || {};
+    const g = st.game || {}, rules = g.rules || {}, l = st.live || {}, home = g.home || {}, away = g.away || {}, th = g.theme || {};
     const root = document.documentElement.style;
     const hc = th.red || home.color || '#2F4B7C', ac = awayColour(hc, away.color);
     root.setProperty('--casa', hc);
@@ -171,20 +171,21 @@
     setV('home', l.home ?? 0);
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
-    const maxTO = period <= 2 ? 2 : period <= 4 ? 3 : 1;
+    const periods = rules.periods ?? 4, half = rules.half ?? 2, tos = rules.timeouts ?? [2, 3, 1], bonus = rules.foul_bonus ?? 5;
+    const maxTO = period <= half ? tos[0] : period <= periods ? tos[1] : tos[2];
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
-      marks($(`[data-marks="${tx}Fouls"]`), f, 5);
+      marks($(`[data-marks="${tx}Fouls"]`), f, bonus);
       marks($(`[data-marks="${tx}Timeouts"]`), to, maxTO);
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
-      $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', f >= 5);
+      $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
     }
 
     const manual = input === 'manual';
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
-    $('#periodo').innerHTML = periodName(period);
+    $('#periodo').innerHTML = periodName(period, periods);
     const running = !!(manual && score && score.running);
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
@@ -269,8 +270,9 @@
   function ask(what) {
     const box = $('#confirmar'), period = (st && +st.live?.period) || (score && score.period) || 1;
     const next = what === 'period_next';
+    const regular = (st && st.game && st.game.rules && st.game.rules.periods) ?? 4;
     if (!next && period <= 1) return;
-    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1) });
+    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, regular) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, regular) });
     $('#confirmarDica').textContent = next ? t('marcar.confirmar.seguinte_dica') : t('marcar.confirmar.anterior_dica');
     $('#confirmarSim').textContent = next ? t('marcar.confirmar.passar') : t('marcar.confirmar.voltar');
     $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.periodo')); };

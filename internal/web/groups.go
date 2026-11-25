@@ -98,7 +98,7 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 			}
 			g.Sport = *req.Sport
 		}
-		// The FPB plays basketball only.
+		// FPB teams play basketball.
 		if (req.Sport != nil || req.FPBTeamID != nil) && g.FPBTeamID != 0 && g.Sport != "" && g.Sport != "basketball" {
 			return userError(i18n.T("api.escalao.desporto_fpb"))
 		}

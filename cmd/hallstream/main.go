@@ -190,7 +190,7 @@ func main() {
 	// and the server answers /api/ble with it; it starts last.
 	console := source.NewConsole(&source.Console{Raw: w.frame})
 	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say,
-		Rules: func() sport.Profile { return sport.Get(web.GameSport(st)) }})
+		Rules: func() sport.Profile { return sport.Get(st.GameSport()) }})
 	restoreManual(st, manual)
 	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader

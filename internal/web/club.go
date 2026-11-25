@@ -246,7 +246,7 @@ func (s *Server) setupTeam(t clubTeamPlan, res *setupResult, deadline time.Time)
 	}
 	var g store.Group
 	for _, x := range groups {
-		if x.ID != store.Shared && x.FPBTeamID == 0 && s.fpbFor(x) && store.Plain(x.Name) == store.Plain(t.name) {
+		if x.ID != store.Shared && x.FPBTeamID == 0 && s.fpbOfferedFor(x) && store.Plain(x.Name) == store.Plain(t.name) {
 			g = x
 			break
 		}
@@ -261,7 +261,6 @@ func (s *Server) setupTeam(t clubTeamPlan, res *setupResult, deadline time.Time)
 	}
 	_, err := s.Store.UpdateGroup(g.ID, func(g *store.Group) error {
 		linkTeam(g, t.TeamInfo)
-		g.Sport = "basketball" // an FPB team always plays basketball
 		return nil
 	})
 	if err != nil {

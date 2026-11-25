@@ -48,12 +48,12 @@
     var g = S.groups.filter(function (x) { return x.id === id; })[0];
     return g ? groupLabel(g) : '';
   }
-  // The name, plus the sport when another escalão has the same name.
+  function groupSport(g) { return g.sport || 'basketball'; }
   function groupLabel(g) {
     var key = String(g.name).trim().toLowerCase();
-    var twin = S.groups.some(function (x) { return x !== g && x.id !== g.id && String(x.name).trim().toLowerCase() === key; });
+    var twin = S.groups.some(function (x) { return x.id !== g.id && String(x.name).trim().toLowerCase() === key; });
     if (!twin) return g.name;
-    var sp = SPORTS.filter(function (x) { return x[0] === (g.sport || 'basketball'); })[0];
+    var sp = SPORTS.filter(function (x) { return x[0] === groupSport(g); })[0];
     return g.name + ' · ' + (sp ? sp[1] : g.sport);
   }
   function groupById(id) { return S.groups.filter(function (x) { return x.id === id; })[0] || null; }
@@ -452,7 +452,7 @@
       '<div class="row"><button class="btn primary" type="button" data-act="game-newer">' + t('painel.jogo.usar_guardado') + '</button></div></div>';
     html += '<div class="card"><div class="row">' +
       '<label class="field grow"><span>' + t('painel.jogo.escalao') + '</span><select id="jGroup">' + (d.group_id ? '' : '<option value="">' + t('painel.escolha') + '</option>') + opts + '</select></label>' +
-      (fpbForGroup(g) ? '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>' + t('painel.jogo.escolher_fpb') + '</button>' : '') +
+      ((g ? fpbForGroup(g) : fpbOffered()) ? '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>' + t('painel.jogo.escolher_fpb') + '</button>' : '') +
       '<button class="btn" data-act="manual">' + t('painel.jogo.manual') + '</button>' +
       '</div>';
     if (g && !g.fpb_team_id && fpbForGroup(g)) html += '<p class="hint" style="margin-top:10px">' + t('painel.jogo.sem_fpb') + '</p>';
@@ -1499,7 +1499,7 @@
       '<label class="field"><span>' + t('painel.nome') + '</span><input id="pGName" value="' + esc(g.name) + '"></label>' +
       '<label class="field"><span>' + t('painel.plantel.treinador') + '</span><input id="pCoach" value="' + esc(g.coach || '') + '" placeholder="' + t('painel.plantel.treinador_ex') + '"></label>' +
       '<label class="field"><span>' + t('painel.clube.modalidade') + '</span><select id="pGSport">' + SPORTS.map(function (x) {
-        return '<option value="' + x[0] + '"' + (x[2] ? '' : ' disabled') + ((g.sport || 'basketball') === x[0] ? ' selected' : '') + '>' + (x[2] ? x[1] : t('painel.clube.em_breve', { modalidade: x[1] })) + '</option>';
+        return '<option value="' + x[0] + '"' + (x[2] ? '' : ' disabled') + (groupSport(g) === x[0] ? ' selected' : '') + '>' + (x[2] ? x[1] : t('painel.clube.em_breve', { modalidade: x[1] })) + '</option>';
       }).join('') + '</select></label>' +
       '<div class="row"><button class="btn primary" data-act="save-group">' + t('painel.guardar') + '</button><span class="msg"></span><span style="flex:1"></span>' +
       '<button class="btn quiet" data-act="del-group">' + t('painel.plantel.apagar_escalao') + '</button></div></div></div>';
@@ -2165,10 +2165,10 @@
     ['BR', t('painel.pais.br')], ['AO', t('painel.pais.ao')], ['CV', t('painel.pais.cv')], ['MZ', t('painel.pais.mz')]];
   // The FPB import is for Portuguese basketball clubs only.
   function anyBasketballGroup() {
-    return (S.groups || []).some(function (g) { return g.id !== 'geral' && (g.sport || 'basketball') === 'basketball'; });
+    return (S.groups || []).some(function (g) { return g.id !== 'geral' && groupSport(g) === 'basketball'; });
   }
   function fpbFor(c) { c = c || {}; return (c.country || 'PT') === 'PT' && ((c.sport || 'basketball') === 'basketball' || anyBasketballGroup()); }
-  function fpbForGroup(g) { return !!g && ((S.settings && S.settings.club && S.settings.club.country) || 'PT') === 'PT' && (g.sport || 'basketball') === 'basketball'; }
+  function fpbForGroup(g) { return !!g && ((S.settings && S.settings.club && S.settings.club.country) || 'PT') === 'PT' && groupSport(g) === 'basketball'; }
   function fpbOffered() { return fpbFor(S.settings && S.settings.club); }
   // Every zone the browser knows, after "from the country"; the club's saved zone stays listed even if it doesn't.
   function zoneOptions(cur) {

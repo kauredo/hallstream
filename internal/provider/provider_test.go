@@ -6,31 +6,6 @@ import (
 	"github.com/kauredo/hallstream/internal/store"
 )
 
-type fake struct{}
-
-func (fake) ID() string                              { return "fpb" }
-func (fake) Fixtures(store.Group) ([]Fixture, error) { return nil, nil }
-
-func TestForOffersTheFPBOnlyToPortugueseBasketball(t *testing.T) {
-	for _, c := range []struct {
-		club store.Club
-		want int
-	}{
-		{store.Club{Sport: "basketball", Country: "PT"}, 2},
-		{store.Club{}, 2}, // an old settings file: the defaults
-		{store.Club{Sport: "futsal", Country: "PT"}, 1},
-		{store.Club{Sport: "basketball", Country: "ES"}, 1},
-	} {
-		got := For(fake{}, FPBOfferedFor(c.club, store.Group{Sport: c.club.Sport}))
-		if len(got) != c.want || got[len(got)-1].ID() != "manual" {
-			t.Errorf("%+v: %d providers", c.club, len(got))
-		}
-	}
-	if got := For(nil, true); len(got) != 1 {
-		t.Errorf("no FPB client: %d providers", len(got))
-	}
-}
-
 func TestFPBOfferedSportPerEscalao(t *testing.T) {
 	bb, fut := store.Group{ID: "a", Sport: "basketball"}, store.Group{ID: "b", Sport: "futsal"}
 	geral := store.Group{ID: store.Shared, Sport: "basketball"}

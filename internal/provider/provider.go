@@ -69,15 +69,6 @@ func FPBOfferedFor(c store.Club, g store.Group) bool {
 
 func portuguese(c store.Club) bool { return c.Country == "" || c.Country == "PT" }
 
-// For lists the providers for an escalão, the club's own games last; the
-// caller passes whether the FPB covers it (FPBOfferedFor).
-func For(fpb Provider, fpbOffered bool) []Provider {
-	if fpb != nil && fpbOffered {
-		return []Provider{fpb, Manual{}}
-	}
-	return []Provider{Manual{}}
-}
-
 // Manual is the games the club entered itself (store.Group.Fixtures).
 type Manual struct{}
 

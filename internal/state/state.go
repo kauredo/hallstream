@@ -396,14 +396,20 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	susp := 0
-	for _, x := range m.s.Live.Suspensions {
-		susp = max(susp, x.ID)
-	}
+	susp := m.liveSusp()
 	if m.restored.pending {
 		susp = max(susp, m.restored.susp)
 	}
 	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), susp, m.s.Demo}
+}
+
+// liveSusp is the highest suspension ID in the live state.
+func (m *Machine) liveSusp() int {
+	n := 0
+	for _, x := range m.s.Live.Suspensions {
+		n = max(n, x.ID)
+	}
+	return n
 }
 
 // EmitCurrent tells OnEvent the screen, lower third and box as they are now
@@ -844,8 +850,10 @@ func (m *Machine) update(l Live, fromDemo bool) {
 	}
 	recorded := m.setLive(l)
 	m.changed()
-	if !fromDemo {
-		m.restored.pending = false // this frame's diff has respected the floor
+	if !fromDemo && m.restored.pending {
+		// This frame's diff has respected the floor; from here on the timeline
+		// goes by what is live, so an ID below the floor counts as new.
+		m.restored.pending, m.seen.susp = false, m.liveSusp()
 	}
 	snap := m.snapshot()
 	save := m.recordedSaver(recorded)

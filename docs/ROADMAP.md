@@ -71,7 +71,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 2. Sports and their rules:
    - Futsal: the clock counts down from 20:00, 5 accumulated fouls.
    - Handball: the clock counts up, 2×30, 2-minute suspensions.
-   - Volleyball: sets to 25 (15 in the last), the serving side.
+   - Volleyball: sets to 25 (15 in the last), the serving side. Done from the phone scorer. The console decodes volleyball frames but is untested until a recorded game passes.
    - Soccer: the clock counts up, 2×45 plus stoppage time, cards and substitutions. Scored by hand.
 3. The Stramatel decoder already reads the handball, volleyball and hockey codes (`internal/ble/decode.go`). A sport is only listed as supported after it has been tested on a recorded game.
 4. Overlay fixtures go in `web/overlay/fixtures/<sport>/` for each sport, and the Chrome test loads them all.

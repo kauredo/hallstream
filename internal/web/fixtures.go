@@ -22,6 +22,7 @@ func (s *Server) manualRoutes(m *http.ServeMux) {
 	m.HandleFunc("POST /api/groups/{id}/players/{pid}/photo", s.playerPhoto)
 	m.HandleFunc("DELETE /api/groups/{id}/players/{pid}/photo", s.removePlayerPhoto)
 	m.HandleFunc("GET /api/groups/{id}/fixtures", s.listFixtures)
+	m.HandleFunc("GET /api/groups/{id}/calendar", s.calendarFixtures)
 	m.HandleFunc("POST /api/groups/{id}/fixtures", s.addFixture)
 	m.HandleFunc("POST /api/groups/{id}/fixtures/csv", s.fixturesCSV)
 	m.HandleFunc("PUT /api/groups/{id}/fixtures/{fid}", s.putFixture)

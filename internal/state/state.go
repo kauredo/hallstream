@@ -346,6 +346,7 @@ type Machine struct {
 	autoSwitch bool // the program picked the screen, not the volunteer
 	// What the timeline has told of the suspensions, cards and substitutions.
 	toldSusp, toldCards, toldSubs told
+	realTold                      [3]told // the game's marks while the demo plays
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"

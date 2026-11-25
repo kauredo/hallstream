@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -154,9 +155,16 @@ func TestMarcarPageHandball(t *testing.T) {
 		t.Fatalf("Acabou left the chip: %v", err)
 	}
 	// Four taps: three chips and the full-toast text.
-	for i := 0; i < 4; i++ {
+	// Each chip is waited for before the next tap: the page's 350 ms guard against a
+	// double tap starts at the server's reply, which a slow runner delays.
+	for i := 1; i <= 3; i++ {
 		tap(`.casa [data-do="suspension"]`)
+		if err := until(tab, fmt.Sprintf(`document.querySelectorAll('.casa .exc').length === %d`, i)); err != nil {
+			t.Fatalf("tap %d: %v", i, err)
+		}
+		time.Sleep(400 * time.Millisecond)
 	}
+	tap(`.casa [data-do="suspension"]`)
 	if err := until(tab, `document.querySelectorAll('.casa .exc').length === 3 && !document.querySelector('#faixa').hidden && document.querySelector('#faixa').textContent.includes("3 exclusões")`); err != nil {
 		t.Fatalf("four taps: %v (chips %d, toast %q)", err, len(s.Manual.Score().HomeSusp), textOf(t, tab, `#faixa`))
 	}

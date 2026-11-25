@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"os/exec"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -139,6 +141,40 @@ func TestOverlayStyles(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// SYSTEM-R8 took the strips from under the emblem tiles; the scoreboard rows
+// left a grey stub under the visitor's in every look.
+func TestOverlayScoreboardTilesHaveNoStrip(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	for _, style := range store.Styles {
+		t.Run(style, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador.json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, `document.documentElement.dataset.style === "`+style+`" && document.querySelector('.sb-row .tile[data-tile="away"]') !== null`); err != nil {
+				t.Fatal(err)
+			}
+			for _, side := range []string{"home", "away"} {
+				marked, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('.sb-row .tile[data-tile="`+side+`"]').hasAttribute('data-strip')`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !marked {
+					t.Fatalf("the %s tile has no data-strip, so the check below would pass for nothing", side)
+				}
+				display, err := chromedp.Run(tab, chromedp.Evaluate[string](`getComputedStyle(document.querySelector('.sb-row .tile[data-tile="`+side+`"]'), '::after').display`))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if display != "none" {
+					t.Errorf("the %s tile has a strip: display %s", side, display)
+				}
+			}
+		})
 	}
 }
 
@@ -393,5 +429,60 @@ func TestOverlaySoccerCards(t *testing.T) {
 		return m.Type == chromedp.ConsoleError || m.IsException()
 	}); len(errs) > 0 {
 		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
+	}
+}
+
+// A web font loads when text first uses it, so a state that arrives after
+// document.fonts.ready resolved asks for fonts that land later. Names fitted with the fallback font must be
+// fitted again, or two renders of the same state differ by the load order.
+func TestOverlayRefitsNamesWhenAFontLandsLate(t *testing.T) {
+	tab := chrome(t)
+	for _, style := range []string{"classico", "cor", "pavilhao"} {
+		t.Run(style, func(t *testing.T) {
+			// A new server per look, so the fonts are fetched again. The state
+			// is held back until the first font has been served, then a beat
+			// longer, so it always lands after fonts.ready.
+			s := newServerFiles(t, assets.FS)
+			var once sync.Once
+			fontServed := make(chan struct{})
+			var stateServed atomic.Bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case strings.HasSuffix(r.URL.Path, ".woff2"):
+					time.Sleep(300 * time.Millisecond)
+					s.ServeHTTP(w, r)
+					once.Do(func() { close(fontServed) })
+					return
+				case strings.Contains(r.URL.Path, "fixtures"):
+					select {
+					case <-fontServed:
+					case <-time.After(10 * time.Second):
+					}
+					time.Sleep(300 * time.Millisecond)
+					defer stateServed.Store(true)
+				}
+				s.ServeHTTP(w, r)
+			}))
+			t.Cleanup(srv.Close)
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador-edge.json")); err != nil {
+				t.Fatal(err)
+			}
+			const fitted = `document.fonts.status === "loaded" && document.documentElement.dataset.screen === "marcador" && [...document.querySelectorAll("[data-fit]")].filter(e => e.textContent).every(e => {
+				const size = parseFloat(e.style.fontSize), min = Math.round(e.dataset.fit * 0.55);
+				const fits = e.scrollWidth <= e.clientWidth + 0.5;
+				e.style.fontSize = (size + 1) + "px";
+				const roomLeft = e.scrollWidth <= e.clientWidth + 0.5;
+				e.style.fontSize = size + "px";
+				return (fits || size <= min) && (!roomLeft || size >= e.dataset.fit);
+			})`
+			for deadline := time.Now().Add(15 * time.Second); !stateServed.Load(); time.Sleep(20 * time.Millisecond) {
+				if time.Now().After(deadline) {
+					t.Fatal("the page never asked for the state")
+				}
+			}
+			if err := until(tab, fitted); err != nil {
+				t.Errorf("a name is not fitted to the fonts that landed after the state: %v", err)
+			}
+		})
 	}
 }

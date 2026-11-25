@@ -254,13 +254,21 @@ func (s *Server) SyncGame() {
 
 // switchSport gives a fresh scorer game the new sport's period length when
 // the game's sport changes. lastSport starts empty, so the first sync after a
-// start only records the sport. An empty id is basketball, as sport.Get has
-// it. Called with syncMu held.
+// start only records the sport, unless no manual.json exists yet: a fresh
+// install starts from basketball's length, so it moves to the sport's. A saved
+// scorer keeps its length across a restart. An empty id is basketball, as
+// sport.Get has it. Called with syncMu held.
 func (s *Server) switchSport(id string) {
 	id = sport.Get(id).ID
 	prev := s.lastSport
 	s.lastSport = id
-	if prev == "" || prev == id || s.Manual == nil {
+	if s.Manual == nil {
+		return
+	}
+	if prev == "" && !s.Store.HasManual() {
+		prev = sport.Get("").ID
+	}
+	if prev == "" || prev == id {
 		return
 	}
 	if l := sport.Get(id).Length; l > 0 {

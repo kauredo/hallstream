@@ -1580,7 +1580,7 @@
     html += '<div class="card"><h2>' + t('painel.plantel.jogadores') + (list ? ' <span class="count">' + list.length + '</span>' : '') + '</h2>';
     html += '<div class="row photo-sw"><label class="switch"><input type="checkbox" data-photo="squad"' + (ph.squad ? ' checked' : '') + '><i></i>' + t('painel.plantel.fotos_plantel') + '</label>' +
       '<label class="switch"><input type="checkbox" data-photo="lower_third"' + (ph.lower_third ? ' checked' : '') + '><i></i>' + t('painel.plantel.foto_rodape') + '</label><span class="msg"></span></div>' +
-      '<p class="hint" style="margin-bottom:12px">' + (fpb ? t('painel.plantel.fotos_dica') : t('painel.plantel.fotos_dica_sem_fpb')) + '</p>';
+      '<p class="hint" style="margin-bottom:12px">' + (fpbForGroup(g) ? t('painel.plantel.fotos_dica') : t('painel.plantel.fotos_dica_sem_fpb')) + '</p>';
     if (!list) html += '<p class="hint">' + t('painel.a_carregar') + '</p>';
     else {
       html += '<table class="players"><thead><tr><th>' + t('painel.plantel.numero_curto') + '</th><th>' + t('painel.nome') + '</th><th></th></tr></thead><tbody>' + list.map(function (p) {
@@ -1595,10 +1595,10 @@
             (p.fpb_player_id ? '<button class="btn quiet small" data-act="unlink">' + t('painel.desligar') + '</button>' : '') +
             '<button class="btn danger small" data-act="del-player">' + t('painel.apagar') + '</button></td></tr>';
       }).join('') + '</tbody></table>';
-      if (!list.length) html += '<p class="hint">' + (g.fpb_team_id ? t('painel.plantel.sem_jogadores_fpb') : t('painel.plantel.sem_jogadores')) + '</p>';
+      if (!list.length) html += '<p class="hint">' + (g.fpb_team_id && fpbForGroup(g) ? t('painel.plantel.sem_jogadores_fpb') : t('painel.plantel.sem_jogadores')) + '</p>';
       if (gone.length) {
         html += '<details style="margin-top:16px"><summary>' + t('painel.plantel.ja_nao_estao') + ' <span class="count">' + gone.length + '</span></summary>' +
-          '<p class="hint" style="margin:8px 0">' + t('painel.plantel.ja_nao_estao_dica') + '</p>' +
+          '<p class="hint" style="margin:8px 0">' + (fpbForGroup(g) ? t('painel.plantel.ja_nao_estao_dica') : t('painel.plantel.ja_nao_estao_dica_sem_fpb')) + '</p>' +
           gone.map(function (p) {
             return '<div class="row" data-pid="' + esc(p.id) + '" style="margin-top:8px"><span class="grow">' + esc((p.number ? p.number + ' · ' : '') + p.display_name) + '</span>' +
               '<button class="btn small" data-act="unhide">' + t('painel.plantel.voltar_mostrar') + '</button><span class="msg"></span></div>';

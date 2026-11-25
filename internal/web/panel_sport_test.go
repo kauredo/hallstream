@@ -88,6 +88,19 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	if has(fpbCard) {
 		t.Error("a futsal escalão shows the FPB card")
 	}
+	if has(`document.querySelector("#plantel .photo-sw + .hint").textContent.includes("FPB")`) {
+		t.Error("a futsal escalão tells the photos come from the FPB")
+	}
+	// The futsal escalão still carries a stale FPB link and a hidden player.
+	if err := until(tab, `[...document.querySelectorAll("#plantel .hint")].some(h => h.textContent.startsWith("Sem jogadores"))`); err != nil {
+		t.Errorf("the futsal escalão shows no empty-squad line: %v", err)
+	}
+	if has(`[...document.querySelectorAll("#plantel .hint")].some(h => h.textContent.includes("FPB"))`) {
+		t.Error("a futsal escalão names the FPB in a hint")
+	}
+	if !has(`[...document.querySelectorAll("#plantel details .hint")].some(h => h.textContent === "Não estão no plantel desta época, por isso não aparecem nos jogos.")`) {
+		t.Error("a hidden futsal player does not get the neutral hint")
+	}
 	if has(`document.querySelector('#pGSport option[value="futsal"]').disabled`) {
 		t.Error("futsal is playable now, but the option is disabled")
 	}
@@ -100,6 +113,15 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	pick("pGroup", "seniores-basquetebol")
 	if err := until(tab, `document.querySelector("#pGroup").value === "seniores-basquetebol" && `+fpbCard); err != nil {
 		t.Errorf("a basketball escalão shows no FPB card: %v", err)
+	}
+	if !has(`document.querySelector("#plantel .photo-sw + .hint").textContent.includes("FPB")`) {
+		t.Error("a basketball escalão does not tell the photos come from the FPB")
+	}
+	if err := until(tab, `[...document.querySelectorAll("#plantel .hint")].some(h => h.textContent.startsWith("Sem jogadores") && h.textContent.includes("FPB"))`); err != nil {
+		t.Errorf("a basketball escalão linked to the FPB does not offer the import in its empty-squad line: %v", err)
+	}
+	if !has(`[...document.querySelectorAll("#plantel details .hint")].some(h => h.textContent.includes("FPB"))`) {
+		t.Error("a hidden basketball player does not get the FPB hint")
 	}
 
 	// Guardar sends the sport with the name and the coach.

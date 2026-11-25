@@ -33,8 +33,8 @@
     groups: [
       { id: 'senior-m', name: 'Sénior Masculino', coach: 'Jorge Matos Lima', fpb_team_id: 64791, fpb_team_name: 'Clube Exemplo · Sénior', sport: 'basketball' },
       { id: 'sub16-m', name: 'Sub 16', coach: 'Ana Lopes', fpb_team_id: null, fpb_team_name: '', sport: 'basketball' },
-      { id: 'seniores-basquetebol', name: 'Seniores', coach: '', fpb_team_id: null, fpb_team_name: '', sport: 'basketball' },
-      { id: 'seniores-futsal', name: 'Seniores', coach: '', fpb_team_id: null, fpb_team_name: '', sport: 'futsal' }
+      { id: 'seniores-basquetebol', name: 'Seniores', coach: '', fpb_team_id: 64792, fpb_team_name: 'Clube Exemplo · Seniores', sport: 'basketball' },
+      { id: 'seniores-futsal', name: 'Seniores', coach: '', fpb_team_id: 64793, fpb_team_name: 'Clube Exemplo · Seniores', sport: 'futsal' }
     ],
     players: {
       'senior-m': [
@@ -47,8 +47,8 @@
       'sub16-m': [
         ['3', 'Tomás Leal'], ['5', 'Afonso Brito'], ['8', 'Martim Rocha'], ['11', 'Santiago Dias'], ['14', 'Vasco Pires'], ['20', 'Lourenço Matos']
       ].map(function (r, i) { return { id: 'j' + (i + 1), number: r[0], display_name: r[1], fpb_player_id: null, fpb_name: null, photo_url: '' }; }),
-      'seniores-basquetebol': [],
-      'seniores-futsal': []
+      'seniores-basquetebol': [{ id: 'x1', number: '9', display_name: 'Ex Jogador', fpb_player_id: null, fpb_name: null, photo_url: '', inactive: true }],
+      'seniores-futsal': [{ id: 'x1', number: '9', display_name: 'Ex Jogador', fpb_player_id: null, fpb_name: null, photo_url: '', inactive: true }]
     },
     sponsors: {
       geral: [

@@ -94,8 +94,8 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	if has(`document.querySelector('#pGSport option[value="handball"]').disabled`) {
 		t.Error("handball is playable now, but the option is disabled")
 	}
-	if !has(`document.querySelector('#pGSport option[value="soccer"]').disabled`) {
-		t.Error("soccer can be picked, but no plan makes it playable yet")
+	if has(`document.querySelector('#pGSport option[value="soccer"]').disabled`) {
+		t.Error("soccer is playable now, but the option is disabled")
 	}
 	pick("pGroup", "seniores-basquetebol")
 	if err := until(tab, `document.querySelector("#pGroup").value === "seniores-basquetebol" && `+fpbCard); err != nil {

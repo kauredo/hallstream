@@ -1,0 +1,196 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "CASA",
+    "away_name": "VISITANTE",
+    "home": 2,
+    "away": 1,
+    "clock": "58:03",
+    "period": "2",
+    "home_fouls": 0,
+    "away_fouls": 0,
+    "shot": "",
+    "sport": "soccer",
+    "home_timeouts": 0,
+    "away_timeouts": 0,
+    "period_end": 54000,
+    "suspensions": [],
+    "cards": [
+      {
+        "id": 1,
+        "team": "home",
+        "number": "9",
+        "kind": "yellow",
+        "minute": "33'"
+      },
+      {
+        "id": 2,
+        "team": "home",
+        "number": "9",
+        "kind": "second_yellow",
+        "minute": "58'"
+      }
+    ],
+    "subs": [],
+    "over": false,
+    "stoppage": 0
+  },
+  "periods": [
+    {
+      "period": 1,
+      "home": 1,
+      "away": 1,
+      "home_points": 1,
+      "away_points": 1
+    }
+  ],
+  "game": {
+    "group": {
+      "id": "futebol-m",
+      "name": "Sénior Futebol",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "CASA",
+      "short": "CAS",
+      "crest_url": "/assets/crest.png",
+      "color": "#BD1522",
+      "initials": "CAS"
+    },
+    "away": {
+      "name": "VISITANTE",
+      "short": "VIS",
+      "crest_url": null,
+      "color": "#5C6170",
+      "initials": "VIS"
+    },
+    "start": "2026-11-15T18:00:00+00:00",
+    "venue": "Pavilhão Municipal do Vale",
+    "competition": "Campeonato Regional",
+    "round": "Jornada 5",
+    "squad": [
+      {
+        "number": "1",
+        "name": "Rúben Cabral"
+      },
+      {
+        "number": "2",
+        "name": "Tiago Meireles"
+      },
+      {
+        "number": "4",
+        "name": "Caio Rebelo"
+      },
+      {
+        "number": "5",
+        "name": "Mauro Pestana"
+      },
+      {
+        "number": "7",
+        "name": "Nuno Valadares"
+      },
+      {
+        "number": "9",
+        "name": "Filipe Arruda"
+      },
+      {
+        "number": "10",
+        "name": "Abel Quintas Mota"
+      },
+      {
+        "number": "11",
+        "name": "Igor Seabra"
+      },
+      {
+        "number": "14",
+        "name": "Joel Sarmento"
+      },
+      {
+        "number": "17",
+        "name": "Dário Neves"
+      }
+    ],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4
+    },
+    "sport": "soccer",
+    "sport_label": "FUTEBOL",
+    "rules": {
+      "id": "soccer",
+      "periods": 2,
+      "half": 1,
+      "length": 27000,
+      "clock_down": false,
+      "fouls_reset": false,
+      "foul_warn": 0,
+      "foul_bonus": 0,
+      "shot_clock": false,
+      "final_hold": 0,
+      "timeouts": [
+        0,
+        0,
+        0
+      ],
+      "overtime_length": 0,
+      "fouls_carry": false,
+      "period_word": "half",
+      "foul_marks": 0,
+      "foul_penalty": "",
+      "cards": true,
+      "extra_time": false,
+      "stoppage_max": 15,
+      "stop_at_end": false,
+      "suspensions": 0,
+      "max_point": 1,
+      "scoring": "points",
+      "set_points": 0,
+      "last_set_points": 0,
+      "sets_to_win": 0,
+      "win_by": 0,
+      "count_up": true
+    }
+  },
+  "screen": {
+    "current": "marcador",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": true,
+    "type": "cartao",
+    "card": "second_yellow",
+    "number": "9",
+    "first_name": "Filipe",
+    "last_name": "Arruda",
+    "label": "CASA",
+    "photo_url": "",
+    "out_number": "",
+    "out_name": "",
+    "team": "",
+    "until": null
+  },
+  "demo": false
+}

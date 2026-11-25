@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestManualFileHoldsSuspensions(t *testing.T) {
 
 	back := source.NewManual(&source.Manual{Rules: hb})
 	restoreManual(st, back)
-	if got, want := back.Score(), played.Score(); got != want {
+	if got, want := back.Score(), played.Score(); !reflect.DeepEqual(got, want) {
 		t.Errorf("restored %+v, want %+v", got, want)
 	}
 

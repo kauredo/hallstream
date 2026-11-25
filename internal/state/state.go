@@ -62,6 +62,13 @@ type Live struct {
 	// Suspensions are the 2-minute suspensions running, home first (the phone
 	// scorer sends them; the console sends none).
 	Suspensions []Suspension `json:"suspensions"`
+	// Soccer (the phone scorer sends these when the sport has cards). Over is
+	// the scorer's "Fim do jogo"; Stoppage the minutes of added time announced
+	// for this half; Cards and Subs are the game's, in the order they happened.
+	Over     bool   `json:"over"`
+	Stoppage int    `json:"stoppage"`
+	Cards    []Card `json:"cards"`
+	Subs     []Sub  `json:"subs"`
 	// setCounts is true when the frame carried home_sets or away_sets.
 	setCounts bool
 }
@@ -73,6 +80,25 @@ type Suspension struct {
 	ID     int    `json:"id"`
 	Number string `json:"number"`
 	Left   string `json:"left"`
+}
+
+// Card is one card shown: Kind is "yellow", "second_yellow" or "red", Minute
+// the match minute as written ("23'", "45+2'"). ID is never reused in a run.
+type Card struct {
+	ID     int    `json:"id"`
+	Team   string `json:"team"` // "home" or "away"
+	Number string `json:"number"`
+	Kind   string `json:"kind"`
+	Minute string `json:"minute"`
+}
+
+// Sub is one substitution; Out and In are shirt numbers.
+type Sub struct {
+	ID     int    `json:"id"`
+	Team   string `json:"team"`
+	Out    string `json:"out"`
+	In     string `json:"in"`
+	Minute string `json:"minute"`
 }
 
 // SetScore is one finished set of a sets sport (volleyball). A set seeded
@@ -206,6 +232,14 @@ type LowerThird struct {
 	Label     string     `json:"label"`
 	PhotoURL  string     `json:"photo_url"`
 	Until     *time.Time `json:"until"`
+	// Soccer: Card is the kind of a "cartao" lower third; OutNumber and OutName
+	// are the player going off in a "substituicao" one.
+	Card      string `json:"card"`
+	OutNumber string `json:"out_number"`
+	OutName   string `json:"out_name"`
+	// Team is "away" for an opponent's card or substitution, which the overlay
+	// draws under that team's tab; "" is the home team, as for every other type.
+	Team string `json:"team"`
 }
 
 // PromoClip is a club video as the overlay plays it.
@@ -310,9 +344,8 @@ type Machine struct {
 	OnEvent    func(event string, fields map[string]any)
 	seen       seen
 	autoSwitch bool // the program picked the screen, not the volunteer
-	// suspRenumber: a new game began while suspensions of the last one were still
-	// live, so seen.susp holds at their ID until they are gone, and then goes to 0.
-	suspRenumber bool
+	// What the timeline has told of the suspensions, cards and substitutions.
+	toldSusp, toldCards, toldSubs told
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"
@@ -383,7 +416,6 @@ type seen struct {
 	box        bool
 	periods    int
 	sets       int
-	susp       int // the highest suspension ID told so far; it only goes up, until a new game
 	demo       bool
 }
 
@@ -393,17 +425,54 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.liveSusp(), m.s.Demo}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.s.Demo}
 }
 
-// liveSusp is the highest suspension ID in the live state.
-func (m *Machine) liveSusp() int {
+// told is the highest ID of one list (suspensions, cards or substitutions) the
+// timeline has told. It only goes up, so an ID that goes away and comes back (an
+// undo) is not news twice. A new game numbers from 1 again, which restart
+// allows once the old game's entries are gone from the live state.
+type told struct {
+	high     int
+	renumber bool
+}
+
+func suspID(x Suspension) int { return x.ID }
+func cardID(x Card) int       { return x.ID }
+func subID(x Sub) int         { return x.ID }
+
+// highestID is the highest ID in list, 0 when it is empty.
+func highestID[T any](list []T, id func(T) int) int {
 	n := 0
-	for _, x := range m.s.Live.Suspensions {
-		n = max(n, x.ID)
+	for _, x := range list {
+		n = max(n, id(x))
 	}
 	return n
 }
+
+// news is the entries of live above the mark, and moves the mark up to the
+// highest ID live holds. The scorer never gives an ID out twice in a run, so a
+// card entered after an undo is news.
+func news[T any](k *told, live []T, id func(T) int) []T {
+	top := highestID(live, id)
+	if k.renumber && top < k.high {
+		k.high, k.renumber = 0, false
+	}
+	var fresh []T
+	for _, x := range live {
+		if id(x) > k.high {
+			fresh = append(fresh, x)
+		}
+	}
+	k.high = max(k.high, top)
+	return fresh
+}
+
+// restart is a new game: what the live state holds still is the last game's.
+func (k *told) restart(top int) { k.high, k.renumber = top, top > 0 }
+
+// prime marks what a restored scorer holds as told.
+func (k *told) prime(top int) { k.high, k.renumber = top, false }
 
 // EmitCurrent tells OnEvent the screen, lower third and box as they are now
 // (with initial true), so a stream's timeline starts from them.
@@ -422,11 +491,11 @@ func (m *Machine) EmitCurrent() {
 // emit tells OnEvent what changed since the last call. The demo is no game,
 // so nothing is told while it runs.
 func (m *Machine) emit() {
-	if m.suspRenumber && m.liveSusp() < m.seen.susp {
-		m.seen.susp, m.suspRenumber = 0, false
-	}
+	live := m.s.Live
+	newSusp := news(&m.toldSusp, live.Suspensions, suspID)
+	newCards := news(&m.toldCards, live.Cards, cardID)
+	newSubs := news(&m.toldSubs, live.Subs, subID)
 	old, cur, auto := m.seen, m.seenNow(), m.autoSwitch
-	cur.susp = max(old.susp, cur.susp)
 	m.seen, m.autoSwitch = cur, false
 	if m.OnEvent == nil || old.demo || cur.demo {
 		return
@@ -449,10 +518,14 @@ func (m *Machine) emit() {
 		s := m.s.Sets[i]
 		m.OnEvent("set", map[string]any{"set": s.Set, "home": s.Home, "away": s.Away})
 	}
-	for _, x := range m.s.Live.Suspensions {
-		if x.ID > old.susp {
-			m.OnEvent("suspension", map[string]any{"team": x.Team, "number": x.Number})
-		}
+	for _, x := range newSusp {
+		m.OnEvent("suspension", map[string]any{"team": x.Team, "number": x.Number})
+	}
+	for _, x := range newCards {
+		m.OnEvent("card", map[string]any{"team": x.Team, "number": x.Number, "kind": x.Kind, "minute": x.Minute})
+	}
+	for _, x := range newSubs {
+		m.OnEvent("sub", map[string]any{"team": x.Team, "out": x.Out, "in": x.In, "minute": x.Minute})
 	}
 }
 
@@ -705,9 +778,15 @@ func (m *Machine) ResetPeriods() {
 	m.s.Periods, m.realPeriods = []Period{}, nil
 	m.s.Sets, m.realSets = []SetScore{}, nil
 	m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
+	// The last game's final is not this game's: a program-picked screen goes back to the scoreboard.
+	if m.s.Screen.Current == "final" {
+		m.auto("marcador")
+	}
 	// A new game numbers its suspensions from 1 again.
-	m.seen.susp = m.liveSusp()
-	m.suspRenumber = m.seen.susp > 0
+	l := m.s.Live
+	m.toldSusp.restart(highestID(l.Suspensions, suspID))
+	m.toldCards.restart(highestID(l.Cards, cardID))
+	m.toldSubs.restart(highestID(l.Subs, subID))
 	m.changed()
 	save := m.saver(true)
 	m.mu.Unlock()
@@ -730,6 +809,9 @@ func (m *Machine) Prime(l Live) {
 	m.mu.Lock()
 	m.s.Live = l
 	m.seen = m.seenNow()
+	m.toldSusp.prime(highestID(l.Suspensions, suspID))
+	m.toldCards.prime(highestID(l.Cards, cardID))
+	m.toldSubs.prime(highestID(l.Subs, subID))
 	m.mu.Unlock()
 }
 
@@ -769,9 +851,29 @@ func (m *Machine) saver(reset bool) func() {
 // maxLiveSusp is the most suspensions a frame can carry (three a team).
 const maxLiveSusp = 6
 
+// MaxLiveList is the most cards, and the most substitutions, a frame can carry
+// (the scorer refuses more).
+const MaxLiveList = 100
+
+// decodeList reads a JSON list out of a frame's value, keeping up to limit entries
+// whose team is home or away. A value that is not JSON reads as none.
+func decodeList[T any](raw string, team func(T) string, limit int) []T {
+	var list, out []T
+	if json.Unmarshal([]byte(raw), &list) != nil {
+		return nil
+	}
+	for _, x := range list {
+		if t := team(x); (t == "home" || t == "away") && len(out) < limit {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
 // LiveOf reads one frame's values (the keys ApplyConsole documents) into a Live.
-// A suspensions list that is not JSON reads as none; entries beyond the sixth
-// and entries for a team that is neither home nor away are dropped.
+// A suspensions, cards or subs list that is not JSON reads as none; entries
+// beyond the sixth suspension (the hundredth card or sub) and entries for a team
+// that is neither home nor away are dropped.
 func LiveOf(v map[string]string) Live {
 	num := func(k string) int { n, _ := strconv.Atoi(v[k]); return n }
 	l := Live{
@@ -784,14 +886,10 @@ func LiveOf(v map[string]string) Live {
 		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"], Sets: v["sets"],
 		PeriodEnd: num("period_end"),
 	}
-	var list []Suspension
-	if json.Unmarshal([]byte(v["suspensions"]), &list) == nil {
-		for _, x := range list {
-			if (x.Team == "home" || x.Team == "away") && len(l.Suspensions) < maxLiveSusp {
-				l.Suspensions = append(l.Suspensions, x)
-			}
-		}
-	}
+	l.Suspensions = decodeList(v["suspensions"], func(x Suspension) string { return x.Team }, maxLiveSusp)
+	l.Over, l.Stoppage = v["over"] == "1", num("stoppage")
+	l.Cards = decodeList(v["cards"], func(x Card) string { return x.Team }, MaxLiveList)
+	l.Subs = decodeList(v["subs"], func(x Sub) string { return x.Team }, MaxLiveList)
 	_, hasHome := v["home_sets"]
 	_, hasAway := v["away_sets"]
 	l.setCounts = hasHome || hasAway
@@ -933,7 +1031,40 @@ func (m *Machine) setLive(l Live) bool {
 	} else {
 		m.zeroSince = time.Time{}
 	}
+	if r.Cards && m.over(l, newP) {
+		recorded = true
+	}
 	return m.checkFinal() || recorded
+}
+
+// over is setLive's rule for a sport whose scorer ends the game itself (soccer):
+// "Fim do jogo" shows "final" and records the last period, once. Taking it back
+// (an undo, the clock started again, a period back) puts "marcador" on again and
+// drops the period it recorded, so ending the game again records it once. It
+// reports whether the recorded periods changed.
+func (m *Machine) over(l Live, p int) bool {
+	switch {
+	case l.Over && m.finalDone != p:
+		m.finalDone = p
+		m.auto("final")
+		return m.record(p, l.Home, l.Away)
+	case !l.Over && m.finalDone != 0:
+		last := m.finalDone
+		m.finalDone = 0
+		if m.s.Screen.Current == "final" {
+			m.auto("marcador")
+		}
+		kept := make([]Period, 0, len(m.s.Periods))
+		for _, x := range m.s.Periods {
+			if x.Period != last {
+				kept = append(kept, x)
+			}
+		}
+		dropped := len(kept) != len(m.s.Periods)
+		m.s.Periods = kept
+		return dropped
+	}
+	return false
 }
 
 // holding reports whether the clock sits at the end of the game: a countdown
@@ -1032,7 +1163,7 @@ func (m *Machine) rules() sport.Profile {
 func (m *Machine) checkFinal() bool {
 	p, _ := strconv.Atoi(m.s.Live.Period)
 	r := m.rules()
-	if m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < time.Duration(r.FinalHold)*100*time.Millisecond {
+	if r.FinalHold == 0 || m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < time.Duration(r.FinalHold)*100*time.Millisecond {
 		return false
 	}
 	m.finalDone = p

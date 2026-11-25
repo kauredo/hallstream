@@ -23,6 +23,9 @@
   --tint-dim: #2F4B7C;
   --navy: #1C1A17;      /* club secondary, darkened for white text */
   --gold: #D6BD2F;     /* the accent: bonus, the points just scored, a running-out shot clock */
+  --card-y: #F5C400;   /* the referee's cards: the same in every look and on every ground */
+  --card-r: #D7261E;
+  --card-edge: rgba(0,0,0,0.35);
   --hall: url(/assets/pavilhao-demo.jpg); /* the hall photo behind the full screens; a club may upload its own */
   --grey: #ECEAE6;
   --muted: rgba(255,255,255,0.78);
@@ -247,6 +250,23 @@ html[data-penalties="suspensions"] .sb-fouls { width: var(--susp-w); }
 .susp time { font-weight: 700; font-size: 24px; }
 .susp time.soon { color: var(--gold); }
 .susp .no { font-weight: 700; font-size: 22px; }
+/* Soccer: the fouls cell holds each team's cards at the fouls cell's width, so the bug is no wider than basketball's;
+   the added time takes the shot clock's place under the clock. */
+html:not([data-penalties="cards"]) .only-cards { display: none !important; }
+html[data-penalties="cards"] .sb-f b[data-hot], html[data-penalties="cards"] .sb-f .pips,
+html[data-penalties="cards"] .sb-f .bonus, html[data-penalties="cards"] .sb-lbl.only-pts,
+html[data-penalties="cards"] .to-f { display: none !important; }
+/* Generated, not bound, so the figures get their tabular rule here. */
+.cds { display: flex; align-items: center; gap: 10px; min-width: 0; font-variant-numeric: tabular-nums; }
+.cds .cd { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cds .cd i { flex: none; width: 14px; height: 20px; border-radius: 2px; box-shadow: inset 0 0 0 1px var(--card-edge); }
+.cds .cd.y i { background: var(--card-y); }
+.cds .cd.r i { background: var(--card-r); }
+.cds .cd b { min-width: 0; }
+.sb-add b { font-variant-numeric: tabular-nums; }
+html[data-penalties="cards"] .sb-shot.sb-add b { font-size: 28px; white-space: nowrap; }
+html[data-penalties="cards"] .sb-shot.sb-add:not(.blank) { display: flex; }
+html:not([data-penalties="cards"]) .sb-add { display: none !important; }
 /* The dot between two parts of a line; a style may draw it its own way. */
 i.sep { font-style: normal; }
 /* BÓNUS: 5 team fouls or more in the period; the fouls cell turns gold. */
@@ -486,6 +506,15 @@ html[data-bug-y="bottom"] .pop.away { bottom: auto; top: -26px; } /* the frame e
 .lt.comentador .lt-crest { display: flex; }
 .lt.jogador .lt-label { display: none; }
 .lt.jogador .lt-text { gap: 6px; }
+/* A card or a substitution is a player's lower third with its third line shown. */
+.lt.jogador.cartao .lt-label { display: flex; align-items: center; font-size: 28px; font-weight: 800; }
+.lt.cartao .lt-label::before { content: ""; flex: none; width: 20px; height: 26px; margin-right: 14px; border-radius: 2px; background: var(--card-y); box-shadow: inset 0 0 0 1px var(--card-edge); }
+.lt.cartao.vermelho .lt-label::before { background: var(--card-r); }
+.lt.cartao.segundo .lt-label::before { margin-right: 28px; box-shadow: inset 0 0 0 1px var(--card-edge), 14px 0 0 var(--card-r); }
+.lt.jogador.substituicao .lt-label { display: block; }
+.lt.substituicao .lt-big::before, .lt.substituicao .lt-label::before { content: ""; display: inline-block; width: 0.55em; height: 0.48em; margin-right: 0.3em; background: currentColor; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.lt.substituicao .lt-label::before { transform: rotate(180deg); }
+.lt.substituicao .lt-label { font-variant-numeric: tabular-nums; }
 /* Player photo: from the navy band's diagonal to the name panel; the bar grows 110px. */
 .lt-photo { left: 176px; top: 0; width: 138px; height: 128px; display: none; overflow: hidden; background: var(--grey); clip-path: polygon(27.2px 0,100% 0,100% 100%,0 100%); }
 .lt-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }

@@ -2,6 +2,9 @@ package source
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,16 +28,44 @@ type Score struct {
 	HomeTimeouts int  `json:"home_timeouts"`
 	AwayTimeouts int  `json:"away_timeouts"`
 
-	// Handball. Fixed arrays keep a Score comparable with ==; three
-	// suspensions per team run at most. NextSusp is the last ID given out.
+	// Handball. Three suspensions per team run at most. NextSusp is the last ID given out.
 	HomeSusp [maxSusp]Suspension `json:"home_susp"`
 	AwaySusp [maxSusp]Suspension `json:"away_susp"`
 	NextSusp int                 `json:"next_susp"`
 
-	// Volleyball. Sets is an array, not a slice, so a Score stays comparable
-	// with ==; a played set has a Winner, an empty slot has none.
+	// Soccer. The lists stay nil until the first entry, never an empty slice,
+	// because sameScore (reflect.DeepEqual) tells the two apart. Whatever keeps
+	// a Score for later clones them (cloned).
+	Cards    []Card `json:"cards"`
+	Subs     []Sub  `json:"subs"`
+	Stoppage int    `json:"stoppage"` // minutes of added time announced for this period
+	Over     bool   `json:"over"`     // the scorer ended the game
+	// NextID is Manual.ids as the file holds it, so a restart goes on from it; it is 0 in a live Score.
+	NextID int `json:"next_id"`
+
+	// Volleyball. A played set has a Winner, an empty slot has none.
 	Sets  [maxSets]state.SetScore `json:"sets"`  // finished sets, in order
 	Serve string                  `json:"serve"` // "home", "away" or ""
+}
+
+// Card and Sub are the state's own types: what the scorer keeps is what goes on
+// air. ID is never reused in a run, not even after an undo (Manual.ids), so the
+// timeline can tell a new card from one that came back; Minute is written when
+// the card is entered ("23'", "45+2'"), so a later period_length can't change it.
+type (
+	Card = state.Card
+	Sub  = state.Sub
+)
+
+// sameScore reports whether two scores are the same; == can't compare Score
+// because of its lists.
+func sameScore(a, b Score) bool { return reflect.DeepEqual(a, b) }
+
+// cloned is s with its own copies of the lists, so an append to one score never
+// writes into another's backing array. A nil list stays nil.
+func (s Score) cloned() Score {
+	s.Cards, s.Subs = slices.Clone(s.Cards), slices.Clone(s.Subs)
+	return s
 }
 
 // maxSets is the most sets a match can have (best of 5).
@@ -43,8 +74,8 @@ const maxSets = 5
 // maxSusp is the most suspensions a team can have running.
 const maxSusp = 3
 
-// maxSuspID bounds the IDs a saved score may hold.
-const maxSuspID = 1_000_000
+// maxEventID bounds the suspension, card and substitution IDs a saved score may hold.
+const maxEventID = 1_000_000
 
 // Suspension is one running suspension; an empty slot has ID 0.
 type Suspension struct {
@@ -129,6 +160,16 @@ func newScoreAt(length, start int) Score { return Score{Period: 1, Clock: start,
 //     free slot (three at most); it runs on the game clock, so it stops with it
 //   - "suspension_number": the shirt Number (1 to 3 digits, or "" to clear) of suspension ID
 //   - "suspension_end": ends suspension ID early
+//   - "card": Kind "yellow" or "red" for the player with shirt Number (1 to 3
+//     digits) of Team; a yellow to a player who has one is stored as
+//     "second_yellow"; refused for a player already sent off
+//   - "sub": Out and In (shirt numbers 1 to 99, different) for Team
+//   - "stoppage": N (0 to 15) minutes of added time for this period
+//   - "game_end": the game is over (last period only); the clock stops, and
+//     starting it again or going back a period takes it back
+//
+// card, sub, stoppage and game_end are for a sport with cards (soccer), which
+// also has no extra time, so period_next past its last period is refused.
 //
 // A sets sport (volleyball) takes only +1 or -1 point, which also gives the
 // serve to the team that scored; it refuses fouls, the clock and the period
@@ -139,7 +180,10 @@ type Action struct {
 	N      int    `json:"n"`
 	Tenths int    `json:"tenths"`
 	ID     int    `json:"id"`     // a suspension's ID
-	Number string `json:"number"` // a suspension's shirt number
+	Number string `json:"number"` // a shirt number: a suspension's or a card's
+	Kind   string `json:"kind"`   // a card's colour
+	Out    string `json:"out"`    // a substitution's shirt numbers
+	In     string `json:"in"`
 }
 
 var (
@@ -159,6 +203,16 @@ var (
 	errExclusaoSport  error = i18n.Key("manual.exclusao_modalidade")
 	errExclusaoGone   error = i18n.Key("manual.exclusao_desconhecida")
 	errExclusaoNumber error = i18n.Key("manual.exclusao_numero")
+
+	errNoCards   error = i18n.Key("manual.sem_cartoes")
+	errCard      error = i18n.Key("manual.cartao")
+	errSentOff   error = i18n.Key("manual.ja_expulso")
+	errSub       error = i18n.Key("manual.substituicao")
+	errStoppage  error = i18n.Key("manual.compensacao")
+	errEndEarly  error = i18n.Key("manual.fim_cedo")
+	errNoExtra   error = i18n.Key("manual.sem_prolongamento")
+	errCardsFull error = i18n.Key("manual.cartoes_cheios")
+	errSubsFull  error = i18n.Key("manual.substituicoes_cheias")
 )
 
 // Manual is the score kept by hand on a phone (the /marcar page). The page
@@ -179,9 +233,18 @@ type Manual struct {
 	seen       time.Time // the phone's last call
 	out        func(map[string]string)
 	connected  func(bool)
+	ids        int   // the last card or substitution ID given out; never goes back, not even on undo
+	made       Play  // the card or substitution the action in progress created
 	runs       int   // Run calls so far; the newest one owns out and connected
 	sent       Score // the score out last got
 	saveFailed bool
+}
+
+// Play is the card or substitution an action created, for the caller that puts
+// it on air; both nil for every other action.
+type Play struct {
+	Card *Card
+	Sub  *Sub
 }
 
 type undone struct {
@@ -223,7 +286,7 @@ func (m *Manual) Restore(s Score) {
 	highest := 0
 	for _, side := range s.sides() {
 		for i, x := range side {
-			if x.ID <= 0 || x.ID > maxSuspID {
+			if x.ID <= 0 || x.ID > maxEventID {
 				side[i] = Suspension{}
 				continue
 			}
@@ -234,10 +297,86 @@ func (m *Manual) Restore(s Score) {
 			highest = max(highest, x.ID)
 		}
 	}
-	s.NextSusp = min(max(s.NextSusp, highest), maxSuspID)
+	s.NextSusp = min(max(s.NextSusp, highest), maxEventID)
+	s.Stoppage = min(max(s.Stoppage, 0), m.Rules().StoppageMax)
+	ids := max(restoreLists(&s), min(max(s.NextID, 0), maxEventID))
+	s.NextID = 0
 	m.mu.Lock()
 	m.s, m.undo = s, nil
+	m.ids = max(m.ids, ids)
 	m.mu.Unlock()
+}
+
+// restoreLists drops the cards and substitutions of a saved score that make no
+// sense (it can be edited or damaged) and any past the cap, keeps an emptied
+// list nil, and returns the highest ID left.
+func restoreLists(s *Score) int {
+	high := 0
+	var cards []Card
+	for _, c := range s.Cards {
+		c, ok := cleanCard(c)
+		if !ok || c.ID <= 0 || c.ID > maxEventID || len(cards) == state.MaxLiveList {
+			continue
+		}
+		cards = append(cards, c)
+		high = max(high, c.ID)
+	}
+	var subs []Sub
+	for _, x := range s.Subs {
+		x, ok := cleanSub(x)
+		if !ok || x.ID <= 0 || x.ID > maxEventID || len(subs) == state.MaxLiveList {
+			continue
+		}
+		subs = append(subs, x)
+		high = max(high, x.ID)
+	}
+	s.Cards, s.Subs = cards, subs
+	return high
+}
+
+// cleanCard is c with its number written the one way, or false when it makes no sense.
+func cleanCard(c Card) (Card, bool) {
+	n, ok := shirt(c.Number, 999)
+	if !validTeam(c.Team) || !ok || (c.Kind != "yellow" && c.Kind != "second_yellow" && c.Kind != "red") {
+		return c, false
+	}
+	c.Number, c.Minute = n, tidyMinute(c.Minute)
+	return c, true
+}
+
+// cleanSub is x with both numbers written the one way (1 to 99, different), or
+// false when it makes no sense.
+func cleanSub(x Sub) (Sub, bool) {
+	out, okOut := shirt(x.Out, 99)
+	in, okIn := shirt(x.In, 99)
+	if !validTeam(x.Team) || !okOut || !okIn || out == in || out == "0" || in == "0" {
+		return x, false
+	}
+	x.Out, x.In, x.Minute = out, in, tidyMinute(x.Minute)
+	return x, true
+}
+
+// tidyMinute keeps a minute as written ("45+2'") and drops anything longer than a saved one can be.
+func tidyMinute(m string) string {
+	if len(m) > 12 {
+		return ""
+	}
+	return m
+}
+
+func validTeam(t string) bool { return t == "home" || t == "away" }
+
+// shirt is a shirt number written the one way: 1 to 3 digits, at most limit, no
+// leading zeros ("07" is "7"). The bool is false for anything else.
+func shirt(n string, limit int) (string, bool) {
+	if n == "" || !validNumber(n) {
+		return "", false
+	}
+	v, err := strconv.Atoi(n)
+	if err != nil || v > limit {
+		return "", false
+	}
+	return strconv.Itoa(v), true
 }
 
 // Seed starts from the score on air, when the scorer takes over from the
@@ -289,7 +428,7 @@ func (m *Manual) seedSets(l state.Live) {
 func (m *Manual) Score() Score {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.current(m.Rules())
+	return m.current(m.Rules()).cloned()
 }
 
 // Heartbeat is the scorer's page calling in. It counts as connected for Seen.
@@ -332,7 +471,7 @@ func (m *Manual) SetLengthFrom(was sport.Profile, tenths int) error {
 		m.s.HomeSusp, m.s.AwaySusp = [maxSusp]Suspension{}, [maxSusp]Suspension{}
 	}
 	m.s.Length = tenths
-	if m.s != prev {
+	if !sameScore(m.s, prev) {
 		m.changed()
 	}
 	return nil
@@ -340,20 +479,41 @@ func (m *Manual) SetLengthFrom(was sport.Profile, tenths int) error {
 
 // Do applies one action from the scorer's page; it counts as a heartbeat too.
 func (m *Manual) Do(a Action) error {
+	_, err := m.DoPlay(a)
+	return err
+}
+
+// DoPlay is Do that also returns the card or substitution the action created,
+// read under the same lock, so the caller never reads a later one.
+func (m *Manual) DoPlay(a Action) (Play, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.made = Play{}
+	err := m.do(a)
+	return m.made, err
+}
+
+// do is Do with mu held.
+func (m *Manual) do(a Action) error {
 	m.seen = m.Now()
 	m.tellBox()
 	r := m.Rules()
 	m.s = m.current(r)
-	prev, clock := m.s, false
+	prev, clock := m.s.cloned(), false
 	s := &m.s
 	sets := r.Sets()
 	if err := refused(a, sets); err != nil {
 		return err
 	}
-	if a.Do == "foul" && r.FoulMarks == 0 {
-		return errNoFouls
+	switch a.Do {
+	case "foul":
+		if r.FoulMarks == 0 {
+			return errNoFouls
+		}
+	case "card", "sub", "stoppage", "game_end":
+		if !r.Cards {
+			return errNoCards
+		}
 	}
 	switch a.Do {
 	case "point", "foul", "timeout":
@@ -400,6 +560,7 @@ func (m *Manual) Do(a Action) error {
 	case "clock_start":
 		if !s.Running && clockCanStart(r, s) {
 			s.Running, m.from, m.fromClock = true, m.Now(), s.Clock
+			s.Over = false
 		}
 	case "clock_stop":
 		s.Running = false
@@ -424,7 +585,11 @@ func (m *Manual) Do(a Action) error {
 		m.from, m.fromClock, clock = m.Now(), s.Clock, true
 		s.Running = s.Running && clockCanStart(r, s)
 	case "period_next":
+		if r.Periods > 0 && !r.ExtraTime && s.Period >= r.Periods {
+			return errNoExtra
+		}
 		s.Period++
+		s.Stoppage = 0
 		s.Clock, s.Running, clock = r.Start(s.Period, s.Length), false, true
 		if r.ResetsFouls(s.Period) {
 			s.HomeFouls, s.AwayFouls = 0, 0
@@ -436,7 +601,7 @@ func (m *Manual) Do(a Action) error {
 		if r.CountUp() && s.Period > 1 {
 			s.Clock = r.End(s.Period-1, s.Length)
 		}
-		s.Period, s.Running, clock = max(s.Period-1, 1), false, true
+		s.Period, s.Stoppage, s.Running, s.Over, clock = max(s.Period-1, 1), 0, false, false, true
 	case "period_length":
 		if a.Tenths <= 0 || a.Tenths > MaxClock {
 			return errClock
@@ -480,10 +645,39 @@ func (m *Manual) Do(a Action) error {
 			return errExclusaoNumber
 		}
 		x.Number = a.Number
+	case "card":
+		c, err := m.card(r, s, a)
+		if err != nil {
+			return err
+		}
+		s.Cards = append(s.Cards, c)
+		m.made.Card = &c
+	case "sub":
+		x, ok := cleanSub(Sub{Team: a.Team, Out: a.Out, In: a.In})
+		if !ok {
+			return errSub
+		}
+		if len(s.Subs) >= state.MaxLiveList {
+			return errSubsFull
+		}
+		m.ids++
+		x.ID, x.Minute = m.ids, minute(r, s.Length, s.Period, s.Clock)
+		s.Subs = append(s.Subs, x)
+		m.made.Sub = &x
+	case "stoppage":
+		if a.N < 0 || a.N > r.StoppageMax {
+			return i18n.Err("manual.compensacao", "max", r.StoppageMax)
+		}
+		s.Stoppage = a.N
+	case "game_end":
+		if s.Period < r.Periods {
+			return errEndEarly
+		}
+		s.Over, s.Running = true, false
 	default:
 		return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
 	}
-	if *s == prev {
+	if sameScore(*s, prev) {
 		return nil
 	}
 	if a.Do != "clock_start" && a.Do != "clock_stop" {
@@ -494,6 +688,33 @@ func (m *Manual) Do(a Action) error {
 	}
 	m.changed()
 	return nil
+}
+
+// card is the card a "card" action gives: a second yellow to a player who has
+// one, nothing to a player already sent off. It takes the next ID only once it
+// has said yes.
+func (m *Manual) card(r sport.Profile, s *Score, a Action) (Card, error) {
+	c, ok := cleanCard(Card{Team: a.Team, Number: a.Number, Kind: a.Kind})
+	if !ok || a.Kind == "second_yellow" {
+		return Card{}, errCard
+	}
+	n, kind := c.Number, a.Kind
+	for _, c := range s.Cards {
+		if c.Team != a.Team || c.Number != n {
+			continue
+		}
+		if c.Kind != "yellow" {
+			return Card{}, errSentOff
+		}
+		if kind == "yellow" {
+			kind = "second_yellow"
+		}
+	}
+	if len(s.Cards) >= state.MaxLiveList {
+		return Card{}, errCardsFull
+	}
+	m.ids++
+	return Card{ID: m.ids, Team: a.Team, Number: n, Kind: kind, Minute: minute(r, s.Length, s.Period, s.Clock)}, nil
 }
 
 // clockCanStart reports whether a stopped clock may start: a countdown above
@@ -761,7 +982,9 @@ func (m *Manual) changed() {
 }
 
 func (m *Manual) save() {
-	err := m.Save(m.s)
+	saved := m.s
+	saved.NextID = m.ids
+	err := m.Save(saved)
 	if err != nil && !m.saveFailed {
 		m.Log(i18n.T("log.nao_guardei_marcacao", "err", err))
 	}
@@ -772,7 +995,7 @@ func (m *Manual) emit() {
 	if m.out == nil {
 		return
 	}
-	m.sent = m.s
+	m.sent = m.s.cloned()
 	m.out(frame(m.Rules(), m.s))
 }
 
@@ -814,13 +1037,45 @@ func frame(r sport.Profile, s Score) map[string]string {
 	if r.Suspensions > 0 {
 		susp = suspensionsJSON(s)
 	}
-	return map[string]string{
+	v := map[string]string{
 		"home": n(s.Home), "away": n(s.Away),
 		"clock": clockText(r, s.Clock), "period": n(s.Period), "period_end": end,
 		"home_fouls": n(s.HomeFouls), "away_fouls": n(s.AwayFouls),
 		"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
 		"shot_clock": "", "suspensions": susp,
 	}
+	if r.Cards {
+		v["over"] = ""
+		if s.Over {
+			v["over"] = "1"
+		}
+		v["stoppage"] = n(s.Stoppage)
+		v["cards"], v["subs"] = listJSON(s.Cards), listJSON(s.Subs)
+	}
+	return v
+}
+
+// minute is the clock of a card or substitution as the match report writes it,
+// for an event at clock in period (written when it is entered, so a later
+// period_length leaves it alone): up to the period's end the minute being
+// played ("23'" at 22:10, "45'" at exactly 45:00.0), after it the added time
+// ("45+1'" from 45:00.1, "45+3'" at 47:12).
+func minute(r sport.Profile, length, period, clock int) string {
+	end := r.End(period, length)
+	if clock <= end {
+		return strconv.Itoa(min(clock/600+1, end/600)) + "'"
+	}
+	return fmt.Sprintf("%d+%d'", end/600, (clock-end+599)/600)
+}
+
+// listJSON is a card or substitution list for the state, in the order they
+// happened, "[]" when there are none.
+func listJSON[T any](list []T) string {
+	if list == nil {
+		list = []T{}
+	}
+	b, _ := json.Marshal(list) // strings and ints always marshal
+	return string(b)
 }
 
 // tellBox reports whether the phone called in within Seen, while manual runs.

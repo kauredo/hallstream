@@ -1,14 +1,20 @@
 package web
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/chromedp/chromedp"
 
+	"github.com/kauredo/hallstream/internal/club"
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/source"
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/store"
 	assets "github.com/kauredo/hallstream/web"
 )
@@ -215,6 +221,291 @@ func TestMarcarPageScores(t *testing.T) {
 		t.Errorf("state: input %q, home %d", st.Input, st.Live.Home)
 	}
 	if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool { return m.Type == chromedp.ConsoleError || m.IsException() }); len(errs) > 0 {
+		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
+	}
+}
+
+// A card or a substitution from the scorer goes on air as a lower third: a home
+// player by name from the game's squad, an away player by number only.
+func TestMarcarCardAndSubLowerThirds(t *testing.T) {
+	s := newServer(t)
+	s.Log = func(string) {}
+	s.Manual = source.NewManual(&source.Manual{Rules: func() sport.Profile { return sport.Get(s.Store.GameSport()) }})
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Seniores"}, nil)
+	if _, err := s.Store.UpdateGroup("seniores", func(g *store.Group) error { g.Sport = "soccer"; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	var squad []map[string]string
+	for _, p := range [][2]string{{"Rui Costa Lima", "9"}, {"Tomé", "14"}, {"Diogo Alves", "7"}, {"Sem Número", ""}} {
+		var pl store.Player
+		call(t, s, "POST", "/api/groups/seniores/players", map[string]string{"display_name": p[0], "number": p[1]}, &pl)
+		squad = append(squad, map[string]string{"player_id": pl.ID})
+	}
+	game := map[string]any{"group_id": "seniores", "squad": squad, "away": map[string]string{"name": "VISITANTE", "short": "VIS"}, "start": "2026-11-15T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	onManual(t, s)
+	if got := s.State.Snapshot().Game.Squad; len(got) != 4 || s.State.Snapshot().Game.Rules.ID != "soccer" {
+		t.Fatalf("game %+v", s.State.Snapshot().Game)
+	}
+	post := func(a source.Action) int { return call(t, s, "POST", "/api/marcar", a, nil) }
+
+	if code := post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"}); code != 200 {
+		t.Fatalf("card: %d", code)
+	}
+	lt := s.State.Snapshot().LowerThird
+	if !lt.Visible || lt.Type != "cartao" || lt.Card != "yellow" || lt.Number != "9" || lt.FirstName != "Rui" || lt.LastName != "Costa Lima" || lt.Label == "" || lt.Team != "" {
+		t.Errorf("home card: %+v", lt)
+	}
+	post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"})
+	if lt := s.State.Snapshot().LowerThird; lt.Card != "second_yellow" {
+		t.Errorf("second yellow: %+v", lt)
+	}
+	post(source.Action{Do: "card", Team: "away", Number: "9", Kind: "red"})
+	if lt := s.State.Snapshot().LowerThird; lt.Card != "red" || lt.Number != "9" || lt.FirstName != "" || lt.LastName != "" || lt.PhotoURL != "" || lt.Label != "VISITANTE" || lt.Team != "away" {
+		t.Errorf("away card must show the number only: %+v", lt)
+	}
+	post(source.Action{Do: "sub", Team: "home", Out: "7", In: "14"})
+	lt = s.State.Snapshot().LowerThird
+	if lt.Type != "substituicao" || lt.Number != "14" || lt.FirstName != "Tomé" || lt.OutNumber != "7" || lt.OutName != "Diogo Alves" {
+		t.Errorf("home sub: %+v", lt)
+	}
+	post(source.Action{Do: "sub", Team: "away", Out: "3", In: "4"})
+	if lt := s.State.Snapshot().LowerThird; lt.Number != "4" || lt.FirstName != "" || lt.OutNumber != "3" || lt.OutName != "" {
+		t.Errorf("away sub: %+v", lt)
+	}
+	// A card for #0 never matches a squad player that has no number.
+	post(source.Action{Do: "card", Team: "home", Number: "0", Kind: "yellow"})
+	if lt := s.State.Snapshot().LowerThird; lt.Number != "0" || lt.FirstName != "" || lt.LastName != "" {
+		t.Errorf("a card for #0 named a numberless player: %+v", lt)
+	}
+	before := s.State.Snapshot().LowerThird
+	if code := post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "red"}); code != 400 {
+		t.Errorf("a card for a sent-off player: %d", code)
+	}
+	if s.State.Snapshot().LowerThird != before {
+		t.Error("a refused card changed the lower third")
+	}
+}
+
+// Picking another game after a soccer game was ended: no final screen, no cards,
+// no substitutions and no recorded periods carry over.
+func TestNextGameAfterASoccerGameStartsClean(t *testing.T) {
+	s := sportServer(t, newServerFiles(t, assets.FS), "soccer")
+	eventually(t, func() bool { return s.State.Snapshot().Live.Period != "" }, "the scorer's first frame")
+	for _, a := range []source.Action{
+		{Do: "period_length", Tenths: 27000}, {Do: "new_game"},
+		{Do: "point", Team: "home", N: 1},
+		{Do: "card", Team: "home", Number: "4", Kind: "yellow"},
+		{Do: "sub", Team: "away", Out: "7", In: "14"},
+		{Do: "stoppage", N: 2},
+		{Do: "period_next"}, {Do: "game_end"},
+	} {
+		if err := s.Manual.Do(a); err != nil {
+			t.Fatalf("%+v: %v", a, err)
+		}
+	}
+	eventually(t, func() bool {
+		st := s.State.Snapshot()
+		return st.Screen.Current == "final" && len(st.Periods) == 2 && len(st.Live.Cards) == 1 && st.Live.Over
+	}, "the game is over on air")
+
+	game := map[string]any{"group_id": "seniores", "away": map[string]string{"name": "OUTRO", "short": "OUT"}, "start": "2026-11-22T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	eventually(t, func() bool { return !s.State.Snapshot().Live.Over }, "the next frame")
+	st := s.State.Snapshot()
+	if st.Screen.Current == "final" || len(st.Periods) != 0 || len(st.Live.Cards) != 0 || len(st.Live.Subs) != 0 || st.Live.Over || st.Live.Stoppage != 0 {
+		t.Errorf("after: screen %q, periods %v, live %+v", st.Screen.Current, st.Periods, st.Live)
+	}
+	if sc := s.Manual.Score(); sc.Over || sc.Cards != nil || sc.Subs != nil || sc.Stoppage != 0 || sc.Period != 1 || sc.Home != 0 {
+		t.Errorf("the scorer still holds %+v", sc)
+	}
+}
+
+// A soccer scorer with only goals on it starts the next soccer game at 0-0 too.
+func TestNextSoccerGameStartsAtNilNil(t *testing.T) {
+	s := sportServer(t, newServerFiles(t, assets.FS), "soccer")
+	if err := s.Manual.Do(source.Action{Do: "point", Team: "home", N: 1}); err != nil {
+		t.Fatal(err)
+	}
+	game := map[string]any{"group_id": "seniores", "away": map[string]string{"name": "OUTRO", "short": "OUT"}, "start": "2026-11-22T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	if sc := s.Manual.Score(); sc.Home != 0 {
+		t.Errorf("the next game starts %d-%d", sc.Home, sc.Away)
+	}
+}
+
+// A soccer scorer's leftovers go with the game even when the next game is another sport.
+func TestNextGameInAnotherSportDropsSoccerLeftovers(t *testing.T) {
+	s := sportServer(t, newServerFiles(t, assets.FS), "soccer")
+	for _, a := range []source.Action{{Do: "new_game"}, {Do: "card", Team: "home", Number: "4", Kind: "red"}} {
+		if err := s.Manual.Do(a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var g store.Group
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Basquete"}, &g)
+	call(t, s, "PUT", "/api/groups/"+g.ID, map[string]string{"sport": "basketball"}, nil)
+	game := map[string]any{"group_id": g.ID, "away": map[string]string{"name": "OUTRO", "short": "OUT"}, "start": "2026-11-22T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	if sc := s.Manual.Score(); sc.Cards != nil || sc.Over {
+		t.Errorf("a basketball game starts with soccer's cards: %+v", sc)
+	}
+}
+
+// The guard that keeps a sport nobody can score yet out of the club and escalão
+// settings stays, though every listed sport is playable now.
+func TestAnInactiveSportIsRefused(t *testing.T) {
+	saved := club.Sports
+	club.Sports = append(slices.Clone(saved), club.Sport{ID: "curling", Name: "CURLING", Short: "CURLING", Active: false})
+	t.Cleanup(func() { club.Sports = saved })
+	s := newServer(t)
+	var g store.Group
+	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sub 16"}, &g)
+	var e struct{ Error string }
+	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "curling"}, &e); code != http.StatusBadRequest || e.Error != i18n.T("api.escalao.desporto") {
+		t.Errorf("escalão: %d %q", code, e.Error)
+	}
+	if code, _ := putClub(t, s, map[string]any{"sport": "curling"}); code != http.StatusBadRequest {
+		t.Errorf("club: %d", code)
+	}
+	if code, _ := putClub(t, s, map[string]any{"sport": "soccer"}); code != http.StatusOK {
+		t.Errorf("an active sport: %d", code)
+	}
+}
+
+// eventually waits for the scorer's frames to reach the state, which they do on
+// their own goroutine.
+func eventually(t *testing.T, cond func() bool, what string) {
+	t.Helper()
+	for i := 0; i < 100; i++ {
+		if cond() {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("never reached: %s", what)
+}
+
+// soccerScorer is a server whose game is a soccer escalão with a three-player squad, scored from the phone.
+func soccerScorer(t *testing.T) *Server {
+	t.Helper()
+	s := sportServer(t, newServerFiles(t, assets.FS), "soccer")
+	var squad []map[string]string
+	for _, p := range [][2]string{{"Rui Costa Lima", "9"}, {"Tomé", "14"}, {"Diogo Alves", "7"}} {
+		var pl store.Player
+		call(t, s, "POST", "/api/groups/seniores/players", map[string]string{"display_name": p[0], "number": p[1]}, &pl)
+		squad = append(squad, map[string]string{"player_id": pl.ID})
+	}
+	game := map[string]any{"group_id": "seniores", "squad": squad, "away": map[string]string{"name": "VISITANTE", "short": "VIS"}, "start": "2026-11-15T18:00:00+00:00"}
+	if code := call(t, s, "PUT", "/api/game", game, nil); code != 200 {
+		t.Fatalf("PUT game: %d", code)
+	}
+	for _, a := range []source.Action{{Do: "period_length", Tenths: 27000}, {Do: "new_game"}} {
+		if err := s.Manual.Do(a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return s
+}
+
+// The scorer's page for soccer: the stepper for added time, the shirt-number
+// picker for cards and substitutions with a chip under the right team, the
+// button for the next half and then "Fim do jogo" behind a confirmation.
+func TestMarcarSoccerPage(t *testing.T) {
+	s := soccerScorer(t)
+	srv := httptest.NewServer(s)
+	t.Cleanup(srv.Close)
+	tab := chrome(t)
+	messages := chromedp.Console(tab)
+	if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/marcar")); err != nil {
+		t.Fatal(err)
+	}
+	run := func(js string) error { _, err := chromedp.Run(tab, chromedp.Evaluate[bool](js)); return err }
+	tap := func(sel string) {
+		t.Helper()
+		if err := run("document.querySelector(`" + sel + "`).click(), true"); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(400 * time.Millisecond) // the page ignores the same tap again for 350 ms after its reply
+	}
+	must := func(expr, what string) {
+		t.Helper()
+		if err := until(tab, expr); err != nil {
+			t.Fatalf("%s: %v", what, err)
+		}
+	}
+	must(`!document.querySelector("#mesa").hidden && document.body.classList.contains("cartoes")`, "the page has no cards row")
+	hidden := `getComputedStyle(document.querySelector('#fecho')).visibility === 'hidden'`
+
+	// First half, 0:00: no button for the next half. Added time starts at +0'.
+	must(hidden, "the end button shows at the start of the game")
+	must(`document.querySelector('#compensacao').textContent === "+0'"`, "added time at the start")
+	tap(`[data-stoppage="1"]`)
+	must(`document.querySelector('#compensacao').textContent === "+1'"`, "the stepper did not move")
+
+	// A home yellow from the squad, an away red by typing the number.
+	tap(`.casa [data-pick="yellow"]`)
+	must(`document.querySelector('#numero').open && document.querySelectorAll('#camisolas button').length === 3`, "the picker has no squad")
+	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "9").click(), true`); err != nil {
+		t.Fatal(err)
+	}
+	must(`!document.querySelector('#numero').open && document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelectorAll('.fora [data-registo] .reg').length === 0`, "the yellow is not a chip under the home team")
+	tap(`.fora [data-pick="red"]`)
+	must(`document.querySelector('#numero').open && !document.querySelector('#numeroCampo').hidden && document.querySelector('#camisolas').hidden`, "the away picker is not a typed number")
+	if err := run(`(document.querySelector('#numeroCampo').value = "6", document.querySelector('#numeroFeito').click(), true)`); err != nil {
+		t.Fatal(err)
+	}
+	must(`document.querySelectorAll('.fora [data-registo] .reg').length === 1 && document.querySelector('.fora [data-registo] .reg').textContent === "6" && document.querySelectorAll('.casa [data-registo] .reg').length === 1`, "the red is not a chip under the away team")
+	// A substitution: off 7, on 14.
+	tap(`.casa [data-pick="sub"]`)
+	must(`document.querySelector('#numero').open && document.querySelector('#numeroTitulo').textContent.includes("Sai")`, "the substitution does not ask who goes off")
+	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "7").click(), true`); err != nil {
+		t.Fatal(err)
+	}
+	must(`document.querySelector('#numero').open && document.querySelector('#numeroTitulo').textContent.includes("Entra")`, "the substitution does not ask who comes on")
+	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "14").click(), true`); err != nil {
+		t.Fatal(err)
+	}
+	must(`!document.querySelector('#numero').open && [...document.querySelectorAll('.casa [data-registo] .reg')].some((e) => e.textContent === "7→14")`, "the substitution is not a chip under the home team")
+	if sc := s.Manual.Score(); len(sc.Cards) != 2 || len(sc.Subs) != 1 || sc.Stoppage != 1 {
+		t.Errorf("the scorer holds %d cards, %d subs, stoppage %d", len(sc.Cards), len(sc.Subs), sc.Stoppage)
+	}
+
+	// From 45:00 the first half offers the next one.
+	if err := s.Manual.Do(source.Action{Do: "clock_set", Tenths: 27000}); err != nil {
+		t.Fatal(err)
+	}
+	must(`getComputedStyle(document.querySelector('#fecho')).visibility === 'visible' && document.querySelector('#fecho').textContent === "Parte seguinte"`, "no next half at 45:00")
+	must(`document.querySelector('#arrancar').textContent === "Iniciar"`, "the clock button changed at 45:00")
+
+	// Second half: no arrow for another period; "Fim do jogo" asks first, then ends the game.
+	if err := s.Manual.Do(source.Action{Do: "period_next"}); err != nil {
+		t.Fatal(err)
+	}
+	must(`getComputedStyle(document.querySelector('.seta[data-ask="period_next"]')).visibility === 'hidden'`, "the arrow for a third period is there")
+	must(`getComputedStyle(document.querySelector('#fecho')).visibility === 'visible' && document.querySelector('#fecho').textContent === "Fim do jogo"`, "no Fim do jogo in the second half")
+	tap(`#fecho`)
+	must(`document.querySelector('#confirmar').open && document.querySelector('#confirmarTitulo').textContent === "Acabar o jogo?"`, "no confirmation")
+	if s.Manual.Score().Over {
+		t.Fatal("the game ended before the confirmation")
+	}
+	if err := run(`document.querySelector('#confirmarSim').click(), true`); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool { return s.State.Snapshot().Live.Over }, "live.over")
+	must(`document.querySelector('#fecho').disabled === true`, "the end button stays live after the game ended")
+
+	if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool {
+		return m.Type == chromedp.ConsoleError || m.IsException()
+	}); len(errs) > 0 {
 		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
 	}
 }

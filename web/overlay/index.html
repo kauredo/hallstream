@@ -69,8 +69,9 @@
         <div class="sb-lbl only-pts" data-i18n="overlay.faltas"></div>
         <div class="sb-lbl only-sets" data-i18n="overlay.sets"></div>
         <div class="sb-lbl only-susp" data-i18n="overlay.exclusoes"></div>
-        <div class="sb-f" data-bonus="home"><b class="only-pts" data-b="homeFouls" data-hot="home"></b><b class="only-sets" data-b="homeSets"></b><span class="pips only-pts" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus"></span><span class="susp only-susp" data-susp="home"></span></div>
-        <div class="sb-f sep" data-bonus="away"><b class="only-pts" data-b="awayFouls" data-hot="away"></b><b class="only-sets" data-b="awaySets"></b><span class="pips only-pts" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus"></span><span class="susp only-susp" data-susp="away"></span></div>
+        <div class="sb-lbl only-cards" data-i18n="overlay.cartoes"></div>
+        <div class="sb-f" data-bonus="home"><b class="only-pts" data-b="homeFouls" data-hot="home"></b><b class="only-sets" data-b="homeSets"></b><span class="pips only-pts" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus"></span><span class="susp only-susp" data-susp="home"></span><span class="cds only-cards" data-cds="home"></span></div>
+        <div class="sb-f sep" data-bonus="away"><b class="only-pts" data-b="awayFouls" data-hot="away"></b><b class="only-sets" data-b="awaySets"></b><span class="pips only-pts" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus"></span><span class="susp only-susp" data-susp="away"></span><span class="cds only-cards" data-cds="away"></span></div>
       </div>
       <div class="sb-div"></div>
       <div class="sb-time">
@@ -78,6 +79,7 @@
         <div class="sb-tbox">
           <div class="sb-clock only-pts" data-b="clock"></div>
           <div class="sb-shot only-pts"><span>24s</span><b data-b="shot" data-hotshot></b></div>
+          <div class="sb-shot sb-add blank" data-add><b data-b="addTime"></b></div>
           <div class="sb-setlist only-sets" data-setlist></div>
         </div>
       </div>
@@ -268,7 +270,7 @@
 
 <!-- Lower third: bottom-left under a top-left bug, bottom-right under a bottom-left one -->
 <div class="lt" id="lt">
-  <div class="lt-tab"><div class="lt-tc tile" data-tile="home"></div><div class="lt-team" data-b="homeName"></div></div>
+  <div class="lt-tab"><div class="lt-tc tile" data-tile="home"></div><div class="lt-team"></div></div>
   <div class="lt-body">
     <div class="lt-left">
       <div class="lt-tile"></div>

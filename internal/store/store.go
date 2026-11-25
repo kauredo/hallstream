@@ -297,6 +297,9 @@ type Group struct {
 	// Fixtures are the games the club typed or imported for this escalão;
 	// with an FPB team linked they add to the FPB's list.
 	Fixtures []Fixture `json:"fixtures"`
+	// CalendarURL is the escalão's calendar link (an .ics feed, http, https
+	// or webcal); its games add to the others. "" = none.
+	CalendarURL string `json:"calendar_url"`
 }
 
 // Fixture is one game the club entered by hand.

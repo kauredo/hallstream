@@ -51,13 +51,14 @@ func (p fpbGames) Fixtures(g store.Group) ([]provider.Fixture, error) {
 	return out, nil
 }
 
-// providers are the sources of the club's games, FPB first where it covers the club.
+// providers are the sources of the club's games, FPB first where it covers the
+// club, then the games typed or imported, then the escalão's calendar link.
 func (s *Server) providers() []provider.Provider {
 	var f provider.Provider
 	if s.FPB != nil {
 		f = fpbGames{s.FPB}
 	}
-	return provider.For(s.Store.Settings().Club, f)
+	return append(provider.For(s.Store.Settings().Club, f), s.calendar())
 }
 
 var noFPB error = i18n.Key("api.fpb.nao_disponivel")

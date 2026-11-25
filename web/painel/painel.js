@@ -493,10 +493,17 @@
 
   // Calendário: the escalão's games typed or imported by the club (any club, with or without the FPB).
   // A game picked here fills the game of the day, as one picked from the FPB does.
+  // With a calendar link, its games join the list (cal: true), read-only.
   function loadFixtures(gid) {
-    return api('GET', '/api/groups/' + encodeURIComponent(gid) + '/fixtures').then(function (list) {
+    var g = groupById(gid), enc = encodeURIComponent(gid);
+    S.calErr = S.calErr || {};
+    var cal = g && g.calendar_url ? api('GET', '/api/groups/' + enc + '/calendar').then(function (l) { S.calErr[gid] = ''; return l || []; },
+      function (err) { S.calErr[gid] = err.message; return []; }) : Promise.resolve([]);
+    return Promise.all([api('GET', '/api/groups/' + enc + '/fixtures'), cal]).then(function (r) {
+      var list = (r[0] || []).concat(r[1].map(function (f) { return Object.assign({ cal: true }, f); }));
+      list.sort(function (a, b) { return new Date(a.start) - new Date(b.start); });
       S.fixtures = S.fixtures || {};
-      S.fixtures[gid] = list || [];
+      S.fixtures[gid] = list;
       if (S.tab === 'jogo') renderJogo();
     }, function (err) { S.fixtures = S.fixtures || {}; S.fixtures[gid] = []; showError(err); });
   }
@@ -515,8 +522,8 @@
         '<span class="when">' + t('painel.jogo.fpb_data', { dia_semana: DOW[d.getDay()], dia: d.getDate(), mes: MON[d.getMonth()] }) + '<small>' + hhmm(d) + '</small></span>' +
         '<span class="who">' + esc(o.name) + '<small>' + esc([f.competition, /^\d{1,3}$/.test(f.round || '') ? t('jogo.jornada', { n: f.round }) : f.round].filter(Boolean).join(', ')) + '</small>' +
         '<span class="where">' + esc(f.venue || '') + '</span></span>' +
-        '<span class="ha">' + (f.home ? t('painel.topo.casa') : t('painel.topo.fora')) + '</span></button>' +
-        '<button class="btn quiet small" data-act="del-fixture" data-fid="' + esc(f.id) + '" aria-label="' + t('painel.calendario.apagar_jogo', { adversario: esc(o.name) }) + '">' + t('painel.apagar') + '</button></div>';
+        '<span class="ha">' + (f.home ? t('painel.topo.casa') : t('painel.topo.fora')) + (f.cal ? '<small>' + t('painel.calendario.do_link') + '</small>' : '') + '</span></button>' +
+        (f.cal ? '' : '<button class="btn quiet small" data-act="del-fixture" data-fid="' + esc(f.id) + '" aria-label="' + t('painel.calendario.apagar_jogo', { adversario: esc(o.name) }) + '">' + t('painel.apagar') + '</button>') + '</div>';
     }).join('') + '</div>';
     html += '<details class="fx-add"' + (all.length ? '' : ' open') + '><summary>' + t('painel.calendario.juntar') + '</summary>' +
       '<form id="fxForm" class="stack" style="margin-top:12px"><div class="cols">' +
@@ -530,6 +537,12 @@
         '<label class="field"><span>' + t('painel.calendario.emblema') + '</span><input type="file" id="fxCrest" accept="image/png,image/jpeg,image/svg+xml"></label>' +
       '</div><div class="row"><button class="btn primary" type="submit">' + t('painel.calendario.guardar_jogo') + '</button><span class="msg"></span></div></form></details>';
     html += csvRow('fxCsv', 'jogos.csv', t('painel.csv.modelo_jogos'), t('painel.csv.dica_jogos')) + csvResult('fixtures', g.id);
+    var calErr = (S.calErr || {})[g.id];
+    html += '<details class="fx-add"' + (g.calendar_url ? ' open' : '') + '><summary>' + t('painel.calendario.link') + '</summary>' +
+      '<p class="hint" style="margin-top:8px">' + t('painel.calendario.link_dica') + '</p>' +
+      '<div class="row" style="align-items:center"><input id="fxCal" type="url" style="flex:1;min-width:240px" placeholder="https://… .ics" value="' + esc(g.calendar_url || '') + '" aria-label="' + t('painel.calendario.link') + '">' +
+      '<button class="btn" type="button" data-act="cal-save">' + t('painel.calendario.link_guardar') + '</button>' +
+      '<span class="msg' + (calErr ? ' err' : '') + '" role="status">' + esc(calErr || '') + '</span></div></details>';
     return html + '</div>';
   }
   function pickFixture(f, btn) {
@@ -628,6 +641,17 @@
       });
     });
     jogo.addEventListener('click', function (e) {
+      var cs = e.target.closest('[data-act="cal-save"]');
+      if (cs) {
+        var cgid = S.draft.group_id;
+        busy(cs, function () {
+          return api('PUT', '/api/groups/' + encodeURIComponent(cgid), { calendar_url: $('#fxCal').value.trim() }).then(function (g) {
+            S.groups = S.groups.map(function (x) { return x.id === g.id ? g : x; });
+            return loadFixtures(cgid);
+          });
+        }, t('painel.marcar.guardado'));
+        return;
+      }
       var b = e.target.closest('[data-act="pick-fixture"], [data-act="del-fixture"]'); if (!b) return;
       var gid = S.draft.group_id, list = (S.fixtures && S.fixtures[gid]) || [];
       var f = list.filter(function (x) { return x.id === b.dataset.fid; })[0]; if (!f) return;

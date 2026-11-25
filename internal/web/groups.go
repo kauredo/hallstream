@@ -52,10 +52,19 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 		FPBTeamID   *int64  `json:"fpb_team_id"`
 		FPBTeamName *string `json:"fpb_team_name"`
 		// FPBTeam is the team picked, so the escalão can follow it into next season.
-		FPBTeam *fpb.TeamInfo `json:"fpb_team"`
+		FPBTeam     *fpb.TeamInfo `json:"fpb_team"`
+		CalendarURL *string       `json:"calendar_url"`
 	}
 	if !decode(w, r, &req) {
 		return
+	}
+	if req.CalendarURL != nil {
+		u, err := calendarURL(*req.CalendarURL)
+		if err != nil {
+			fail(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		req.CalendarURL = &u
 	}
 	search := s.Store.Settings().ClubSearch // not inside UpdateGroup: same lock
 	g, err := s.Store.UpdateGroup(r.PathValue("id"), func(g *store.Group) error {
@@ -68,6 +77,9 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.Name != nil {
 			g.Name = strings.TrimSpace(*req.Name)
+		}
+		if req.CalendarURL != nil {
+			g.CalendarURL = *req.CalendarURL
 		}
 		if req.Coach != nil {
 			g.Coach = strings.TrimSpace(*req.Coach)
@@ -82,7 +94,7 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 	})
 	if s.save(w, err) {
 		reply(w, g)
-		if req.FPBTeamID != nil && g.ID == s.Store.Game().GroupID {
+		if (req.FPBTeamID != nil || req.CalendarURL != nil) && g.ID == s.Store.Game().GroupID {
 			s.refreshNextInBackground()
 		}
 	}

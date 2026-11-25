@@ -326,3 +326,23 @@ func TestDefaultClub(t *testing.T) {
 		t.Errorf("default club %+v", c)
 	}
 }
+
+func TestGroupSportMigration(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"club":{"name":"VALE","short":"VAL","sport":"basketball"}}`), 0o644)
+	os.WriteFile(filepath.Join(dir, "groups.json"), []byte(`[{"id":"sub16","name":"Sub 16","players":[],"sponsors":[]},{"id":"fut","name":"Fut","sport":"futsal","players":[],"sponsors":[]}]`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, _ := s.Group("sub16"); g.Sport != "basketball" {
+		t.Errorf("old escalão sport %q, want basketball", g.Sport)
+	}
+	if g, _ := s.Group("fut"); g.Sport != "futsal" {
+		t.Errorf("saved sport %q, want futsal", g.Sport)
+	}
+	g, err := s.AddGroup("Sub 14")
+	if err != nil || g.Sport != "basketball" {
+		t.Errorf("new escalão sport %q (%v), want the club's", g.Sport, err)
+	}
+}

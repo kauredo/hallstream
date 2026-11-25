@@ -300,6 +300,8 @@ type Group struct {
 	// CalendarURL is the escalão's calendar link (an .ics feed, http, https
 	// or webcal); its games add to the others. "" = none.
 	CalendarURL string `json:"calendar_url"`
+	// Sport is an id from club.Sports; never "" after Open.
+	Sport string `json:"sport"`
 }
 
 // Fixture is one game the club entered by hand.
@@ -392,6 +394,13 @@ func Open(dir string) (*Store, error) {
 	}
 	if _, i := s.find(Shared); i < 0 {
 		s.groups = append(s.groups, Group{ID: Shared, Name: i18n.T("store.grupo_geral")})
+	}
+	// Escalões saved before each had its own sport take the club's.
+	// Escalões saved before each had its own sport take the club's.
+	for i := range s.groups {
+		if s.groups[i].Sport == "" {
+			s.groups[i].Sport = s.settings.Club.Sport
+		}
 	}
 	return s, nil
 }
@@ -575,7 +584,7 @@ func (s *Store) AddGroup(name string) (Group, error) {
 		}
 		id = base + "-" + strconv.Itoa(n)
 	}
-	g := Group{ID: id, Name: name, Players: []Player{}, Sponsors: []Sponsor{}}
+	g := Group{ID: id, Name: name, Players: []Player{}, Sponsors: []Sponsor{}, Sport: s.settings.Club.Sport}
 	s.groups = append(s.groups, g)
 	if err := s.writeJSON("groups.json", s.groups); err != nil {
 		s.groups = s.groups[:len(s.groups)-1]

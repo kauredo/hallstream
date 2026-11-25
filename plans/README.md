@@ -1,21 +1,29 @@
 # Implementation Plans
 
-Started 2026-11-25. Run them in this order unless the dependencies say otherwise. Executors: read the whole plan before you start, honour its STOP conditions, and update your row when you're done.
+Started 2026-11-25. Run them in the order below (Phase C first, owner's decision), not by number, unless the dependencies say otherwise. Executors: read the whole plan before you start, honour its STOP conditions, and update your row when you're done.
 
 ## Execution order & status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | An escalão can link to a network data source, and Nevobo is the first one | P2 | L | Phase C volleyball | TODO |
+| 002 | Basketball's rules live in one `internal/sport` profile, with no change in behaviour | P1 | M | none | TODO |
+| 003 | Each escalão has its own sport | P1 | M | 002 | TODO |
+| 004 | Volleyball | P1 | L | 002, 003 | TODO |
+| 001 | An escalão can link to a network data source, and Nevobo is the first one | P2 | L | 004 | TODO |
+| 005 | Futsal | P2 | M | 002, 003, 004 | TODO |
+| 006 | Handball | P2 | L | 002, 003, 004 | TODO |
+| 007 | Soccer | P2 | L | 002, 003, 004, 006 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
 ## Decision records
 
-- `phase-c-decisions.md`: the owner's answers for ROADMAP Phase C (sport profiles), 2026-11-25. Volleyball first, sport per escalão, a separate sets list, per-player soccer cards and substitutions. Write the Phase C plan from it.
+- `phase-c-decisions.md`: the owner's answers for ROADMAP Phase C (sport profiles), 2026-11-25. Volleyball first, sport per escalão, a separate sets list, per-player soccer cards and substitutions. Plans 002 to 007 are written from it.
 
 ## Dependency notes
 
+- 003 needs 002's `sport.Profile` and `game.rules`. 004 needs both, and adds the per-sport fixture folder and the `same()` score comparison that 005 to 007 build on.
+- 007 reuses 006's count-up clock.
 - 001 needs ROADMAP Phase C to ship volleyball first, because Nevobo is a volleyball source. The owner chose Phase C before Phase E on 2026-11-25.
 - Later Phase E plans, not written yet: own-key sources (BallDontLie, TheSportsDB, API-Sports; API-Sports only if its terms allow caching on a desktop app), FPV through Data Project (after Phase C volleyball), PlayHQ (only if a project key is free), Wikidata colours and labels.
 

@@ -1156,6 +1156,7 @@
   "painel.plantel.importar_fpb": "Importar da FPB",
   "painel.plantel.ja_nao_estao": "Já não estão na equipa",
   "painel.plantel.ja_nao_estao_dica": "Não estão no plantel da FPB desta época, por isso não aparecem nos jogos.",
+  "painel.plantel.ja_nao_estao_dica_sem_fpb": "Não estão no plantel desta época, por isso não aparecem nos jogos.",
   "painel.plantel.jogadores": "Jogadores",
   "painel.plantel.lead": "Jogadores e treinador de cada escalão.",
   "painel.plantel.ligado_a": "<span class=\"badge\">FPB</span> Ligado a {equipa}",

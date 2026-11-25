@@ -1156,6 +1156,7 @@
   "painel.plantel.importar_fpb": "Import from the FPB",
   "painel.plantel.ja_nao_estao": "No longer in the team",
   "painel.plantel.ja_nao_estao_dica": "They are not in the FPB squad for this season, so they don't appear in games.",
+  "painel.plantel.ja_nao_estao_dica_sem_fpb": "They are not in the squad for this season, so they don't appear in games.",
   "painel.plantel.jogadores": "Players",
   "painel.plantel.lead": "Players and coach for each age group.",
   "painel.plantel.ligado_a": "<span class=\"badge\">FPB</span> Linked to {equipa}",

@@ -88,6 +88,9 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	if has(fpbCard) {
 		t.Error("a futsal escalão shows the FPB card")
 	}
+	if has(`document.querySelector("#plantel .photo-sw + .hint").textContent.includes("FPB")`) {
+		t.Error("a futsal escalão tells the photos come from the FPB")
+	}
 	if has(`document.querySelector('#pGSport option[value="futsal"]').disabled`) {
 		t.Error("futsal is playable now, but the option is disabled")
 	}
@@ -100,6 +103,9 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	pick("pGroup", "seniores-basquetebol")
 	if err := until(tab, `document.querySelector("#pGroup").value === "seniores-basquetebol" && `+fpbCard); err != nil {
 		t.Errorf("a basketball escalão shows no FPB card: %v", err)
+	}
+	if !has(`document.querySelector("#plantel .photo-sw + .hint").textContent.includes("FPB")`) {
+		t.Error("a basketball escalão does not tell the photos come from the FPB")
 	}
 
 	// Guardar sends the sport with the name and the coach.

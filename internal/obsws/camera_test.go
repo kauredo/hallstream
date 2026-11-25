@@ -198,10 +198,14 @@ func TestPortraitWindow(t *testing.T) {
 // where it is and ends in the window, without jumping.
 func TestRetarget(t *testing.T) {
 	r := newRig(t, 1920, 1080)
+	// The tween runs on the wall clock, so a starved CI runner skips frames and the
+	// next one lands further on. A slower tween keeps a late tick well under the
+	// 60 px bound, while a snap to either end still breaks it.
+	r.c.Dur = 600 * time.Millisecond
 	r.c.Follow("desconto")
-	time.Sleep(60 * time.Millisecond)
+	time.Sleep(240 * time.Millisecond)
 	r.c.Follow("marcador")
-	time.Sleep(30 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 	r.c.Follow("desconto")
 	r.wait(t)
 	sets := r.f.transforms()

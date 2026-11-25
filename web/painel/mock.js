@@ -353,7 +353,7 @@
       if (!grp) return err(404, 'Escalão não encontrado.');
       if (m === 'PUT') {
         // The server's two refusals, so the panel's error path can be tried.
-        if (b && b.sport !== undefined && b.sport !== 'basketball') return err(400, 'Escolha uma modalidade disponível para este escalão.');
+        if (b && b.sport !== undefined && ['basketball', 'volleyball'].indexOf(b.sport) < 0) return err(400, 'Escolha uma modalidade disponível para este escalão.');
         var after = Object.assign({}, grp, b);
         if ((b && (b.sport !== undefined || b.fpb_team_id !== undefined)) && after.fpb_team_id && after.sport !== 'basketball') {
           return err(400, 'Este escalão está ligado a uma equipa da FPB, que é de basquetebol. Desligue-o primeiro.');

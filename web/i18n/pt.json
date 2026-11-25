@@ -23,7 +23,7 @@
   "api.clube.parei_a_meio": "Parei a meio porque a FPB estava a demorar demasiado. Carregue outra vez para continuar.",
   "api.clube.sem_jogadores": "{equipa}: não consegui trazer os jogadores ({err}).",
   "api.clube.sigla": "A sigla tem de ter entre 1 e 4 letras.",
-  "api.clube.so_basquetebol": "Por agora só há basquetebol. As outras modalidades chegam em breve.",
+  "api.clube.so_basquetebol": "Esta modalidade ainda não está disponível. Chega em breve.",
   "api.copia_so_no_pc": "A cópia só se guarda no próprio computador.",
   "api.destino.chave": "Falta a chave da transmissão.",
   "api.destino.servico": "Destino desconhecido: {servico}",

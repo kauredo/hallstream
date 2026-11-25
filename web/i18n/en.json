@@ -23,7 +23,7 @@
   "api.clube.parei_a_meio": "I stopped halfway because the FPB was taking too long. Press again to continue.",
   "api.clube.sem_jogadores": "{equipa}: I couldn't fetch the players ({err}).",
   "api.clube.sigla": "The short name must be 1 to 4 letters.",
-  "api.clube.so_basquetebol": "For now there is only basketball. The other sports are coming soon.",
+  "api.clube.so_basquetebol": "This sport is not available yet. It is coming soon.",
   "api.copia_so_no_pc": "The backup can only be saved on the computer itself.",
   "api.destino.chave": "The stream key is missing.",
   "api.destino.servico": "Unknown destination: {servico}",

@@ -87,13 +87,12 @@ func (s *Server) marcarDo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Manual.Heartbeat()
-	if err := s.Manual.Do(a); err != nil {
+	play, err := s.Manual.DoPlay(a)
+	if err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if a.Do == "card" || a.Do == "sub" {
-		s.showPlay(a.Do)
-	}
+	s.showPlay(play)
 	s.marcarReply(w, "manual")
 }
 
@@ -103,11 +102,13 @@ const playSeconds = 8
 // showPlay puts the card or substitution the scorer just entered on air as a
 // lower third. A home player is named from the game's squad; the opponent's
 // squad is not known, so an away player shows the shirt number only. Label is
-// the team's name, which the overlay shows when there is no player's name.
-func (s *Server) showPlay(do string) {
-	score := s.Manual.Score()
+// the team's name, which the overlay shows when there is no player's name, and
+// Team makes it draw that team's tab.
+func (s *Server) showPlay(play source.Play) {
+	if play.Card == nil && play.Sub == nil {
+		return
+	}
 	game := s.State.Snapshot().Game
-	squad := game.Squad
 	teamName := func(team string) string {
 		if team == "home" {
 			return game.Home.Name
@@ -118,28 +119,31 @@ func (s *Server) showPlay(do string) {
 		if team != "home" {
 			return
 		}
-		for _, p := range squad {
-			if strings.TrimLeft(p.Number, "0") == strings.TrimLeft(number, "0") {
+		for _, p := range game.Squad {
+			if p.Number != "" && strings.TrimLeft(p.Number, "0") == strings.TrimLeft(number, "0") {
 				first, last, _ = strings.Cut(strings.TrimSpace(p.Name), " ")
 				return first, strings.TrimSpace(last), p.PhotoURL
 			}
 		}
 		return
 	}
+	side := func(team string) string {
+		if team == "away" {
+			return team
+		}
+		return ""
+	}
 	var lt state.LowerThird
-	switch {
-	case do == "card" && len(score.Cards) > 0:
-		c := score.Cards[len(score.Cards)-1]
+	if c := play.Card; c != nil {
 		first, last, photo := who(c.Team, c.Number)
-		lt = state.LowerThird{Type: "cartao", Card: c.Kind, Number: c.Number, FirstName: first, LastName: last, PhotoURL: photo, Label: teamName(c.Team)}
-	case do == "sub" && len(score.Subs) > 0:
-		x := score.Subs[len(score.Subs)-1]
+		lt = state.LowerThird{Type: "cartao", Card: c.Kind, Number: c.Number, FirstName: first, LastName: last, PhotoURL: photo,
+			Label: teamName(c.Team), Team: side(c.Team)}
+	} else {
+		x := play.Sub
 		first, last, photo := who(x.Team, x.In)
 		outFirst, outLast, _ := who(x.Team, x.Out)
 		lt = state.LowerThird{Type: "substituicao", Number: x.In, FirstName: first, LastName: last, PhotoURL: photo,
-			OutNumber: x.Out, OutName: strings.TrimSpace(outFirst + " " + outLast), Label: teamName(x.Team)}
-	default:
-		return
+			OutNumber: x.Out, OutName: strings.TrimSpace(outFirst + " " + outLast), Label: teamName(x.Team), Team: side(x.Team)}
 	}
 	s.State.ShowLowerThird(lt, playSeconds*time.Second)
 }

@@ -124,6 +124,8 @@
   const lt = $('#lt');
   const ltBody = $('.lt-body', lt);
   const ltTab = $('.lt-tab', lt);
+  const ltTc = $('.lt-tc', lt);
+  const ltTeam = $('.lt-team', lt);
   const ltNum = $('[data-lt="number"]');
   const ltSmall = $('[data-lt="small"]');
   const ltBig = $('[data-lt="big"]');
@@ -496,6 +498,15 @@
   // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
   const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : h + '–' + a);
 
+  // The referee's cards: the class a card's lower third wears, what each adds to a team's counts on the
+  // scoreboard (a second yellow is a yellow and a red) and its label.
+  const CARD = {
+    yellow: { css: 'amarelo', yellows: 1, reds: 0, label: () => t('overlay.cartao.amarelo') },
+    second_yellow: { css: 'segundo', yellows: 1, reds: 1, label: () => t('overlay.cartao.segundo') },
+    red: { css: 'vermelho', yellows: 0, reds: 1, label: () => t('overlay.cartao.vermelho') },
+  };
+  const CARD_CLASSES = Object.values(CARD).map((x) => x.css);
+
   // ---------- derive what every screen shows ----------
   function view(st) {
     const live = st.live || {};
@@ -510,21 +521,19 @@
     v.foulBonus = rules.foul_bonus ?? 5;
     v.periodWord = rules.period_word ?? 'quarter';
     v.freeKick = rules.foul_penalty === 'free_kick';
-    // Handball: the fouls cells show the suspensions running instead (a missing or null list is none).
-    // Soccer: they show each team's cards, and the added time, instead (a missing or null list is none).
+    // Handball shows the suspensions running in the fouls cells, soccer each team's cards (a missing or null list is none).
     v.penalties = (rules.suspensions ?? 0) > 0 ? 'suspensions' : rules.cards ? 'cards' : '';
     v.suspensions = v.penalties === 'suspensions' && Array.isArray(live.suspensions) ? live.suspensions : [];
-    // Every yellow shown counts, a second yellow included; a red counts with the second yellow.
     v.cards = { home: { y: 0, r: 0 }, away: { y: 0, r: 0 } };
     for (const c of v.penalties === 'cards' && Array.isArray(live.cards) ? live.cards : []) {
-      const n = c && v.cards[c.team];
-      if (!n) continue;
-      if (c.kind === 'yellow' || c.kind === 'second_yellow') n.y++;
-      if (c.kind === 'red' || c.kind === 'second_yellow') n.r++;
+      const n = c && v.cards[c.team], kind = c && CARD[c.kind];
+      if (!n || !kind) continue;
+      n.y += kind.yellows;
+      n.r += kind.reds;
     }
     // "90+4'": the half's end minute and the minutes the referee announced.
-    const added = v.penalties === 'cards' ? Math.max(0, Math.min(+live.stoppage || 0, 15)) : 0;
-    v.addTime = added ? t('overlay.compensacao', { fim: (+live.period_end || 0) > 0 ? Math.round(live.period_end / 600) : '', n: added }) : '';
+    const added = v.penalties === 'cards' ? Math.max(0, Math.min(+live.stoppage || 0, rules.stoppage_max ?? 0)) : 0;
+    v.addTime = added ? t('overlay.compensacao', { fim: (+live.period_end || 0) > 0 ? Math.floor(live.period_end / 600) : '', n: added }) : '';
     // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
     v.sets = rules.scoring === 'sets';
     const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];
@@ -882,28 +891,42 @@
       num: l.number,
       label: l.label || t('overlay.rodape.comentario'),
       kind: '',
+      team: l.team === 'away' ? 'away' : 'home',
     };
-    // Soccer. Both are a player's lower third with a third line. l.label is the team's name, which stands in
-    // for the player's name when only the shirt number is known (the opponent's squad).
+    // A card or a substitution is a player's lower third with a third line. l.label is the team's name, which
+    // stands in for the player's name when only the shirt number is known (the opponent's squad).
     if (l.type === 'cartao') {
-      c.kind = { yellow: 'amarelo', second_yellow: 'segundo', red: 'vermelho' }[l.card] || 'amarelo';
+      const card = CARD[l.card] || CARD.yellow;
+      c.kind = card.css;
       c.big = l.last_name || l.label || '';
-      c.label = { amarelo: t('overlay.cartao.amarelo'), segundo: t('overlay.cartao.segundo'), vermelho: t('overlay.cartao.vermelho') }[c.kind];
+      c.label = card.label();
     } else if (l.type === 'substituicao') {
       c.kind = 'substituicao';
       c.small = t('overlay.substituicao');
       c.big = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.label || '';
       c.label = [l.out_number, l.out_name].filter(Boolean).join(' ');
     }
-    c.who = JSON.stringify([c.com, c.big, c.small, c.num, c.label, c.kind]);
+    c.who = JSON.stringify([c.com, c.big, c.small, c.num, c.label, c.kind, c.team]);
     c.key = c.who + c.photo;
     return c;
+  }
+  // The team whose tab the lower third shows, and the last view, so the tab can be drawn the moment it changes.
+  let ltSide = 'home';
+  let curView = null;
+  function drawLtTab(v) {
+    if (!v) return;
+    ltTc.dataset.tile = ltSide;
+    renderTile(ltTc, ltSide === 'away' ? { ...v.away, name: v.awayName } : { ...v.home, name: v.homeName });
+    setText(ltTeam, ltSide === 'away' ? v.awayName : v.homeName);
   }
   function ltFill(c) {
     setClass(lt, 'comentador', c.com);
     setClass(lt, 'jogador', !c.com);
-    for (const k of ['amarelo', 'segundo', 'vermelho', 'substituicao']) setClass(lt, k, c.kind === k);
-    setClass(lt, 'cartao', ['amarelo', 'segundo', 'vermelho'].includes(c.kind));
+    for (const k of [...CARD_CLASSES, 'substituicao']) setClass(lt, k, c.kind === k);
+    setClass(lt, 'cartao', CARD_CLASSES.includes(c.kind));
+    // The tab names the team the card or substitution is for.
+    ltSide = c.team;
+    drawLtTab(curView);
     if (c.photo && ltImg.getAttribute('src') !== c.photo) ltImg.src = c.photo;
     setClass(lt, 'photo', !!c.photo);
     if (c.com) {
@@ -1337,6 +1360,7 @@
     if (!state) return;
     const st = state;
     const v = view(st);
+    curView = v;
     for (const [k, els] of Object.entries(binds)) {
       if (!(k in v)) continue;
       for (const el of els) {
@@ -1362,6 +1386,7 @@
     }
     setClass(root, 'off', lost || (st.box && st.box.connected === false));
 
+    drawLtTab(v);
     for (const tx of tiles) {
       const k = tx.dataset.tile;
       renderTile(tx, k === 'home' ? { ...v.home, name: v.homeName } : k === 'next' ? (v.next && v.next.opponent) || {} : { ...v.away, name: v.awayName });

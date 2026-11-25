@@ -263,10 +263,7 @@ body.susp .exclusoes { display: grid; grid-template-columns: 1fr 64px; row-gap: 
 .exc b[hidden] { display: none; }
 
 /* ---------- cards and substitutions (soccer) ----------
-   body.cartoes: under the +1, one row of three buttons (yellow, red, substitution) opens a shirt number, and a
-   line of small chips lists that team's cards and substitutions. In the middle strip the added-time stepper
-   takes the place of the second-by-second nudges (the clock's own steps are one tap away), and "Fim do jogo"
-   (or the next half, past the half's minutes) sits under the clock button. */
+   The added-time stepper takes the place of the one-second nudges (the clock's own steps are one tap away on the clock). */
 .linha.cartoes, .registo, .compensacao { display: none; }
 body.cartoes .linha.cartoes { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 6px; }
 .linha.cartoes button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 8px;
@@ -290,7 +287,6 @@ body.cartoes .compensacao { display: grid; grid-template-columns: 44px 1fr 44px;
 .compensacao output b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--soalho); }
 body.consola .compensacao button { opacity: .35; }
 #fecho { min-height: 44px; font-size: 17px; }
-/* A shirt number: the squad's numbers as big buttons. */
 .camisolas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
 .camisolas button { min-height: 48px; border: 2px solid var(--marcador); border-radius: var(--raio); background: transparent; color: var(--marcador);
   font: 800 22px/1 var(--letra); font-stretch: var(--estreito); font-variant-numeric: tabular-nums; }

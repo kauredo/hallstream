@@ -250,9 +250,8 @@ html[data-penalties="suspensions"] .sb-fouls { width: var(--susp-w); }
 .susp time { font-weight: 700; font-size: 24px; }
 .susp time.soon { color: var(--gold); }
 .susp .no { font-weight: 700; font-size: 22px; }
-/* Soccer: html[data-penalties="cards"] swaps the fouls cell for each team's cards, a yellow count and a red
-   count, each hidden at 0. The cell keeps the fouls cell's width, so the scoreboard is as wide as basketball's.
-   The added time takes the shot clock's place under the clock ("90+4'"). */
+/* Soccer: the fouls cell holds each team's cards at the fouls cell's width, so the bug is no wider than basketball's;
+   the added time takes the shot clock's place under the clock. */
 html:not([data-penalties="cards"]) .only-cards { display: none !important; }
 html[data-penalties="cards"] .sb-f b[data-hot], html[data-penalties="cards"] .sb-f .pips,
 html[data-penalties="cards"] .sb-f .bonus, html[data-penalties="cards"] .sb-lbl.only-pts,
@@ -507,8 +506,7 @@ html[data-bug-y="bottom"] .pop.away { bottom: auto; top: -26px; } /* the frame e
 .lt.comentador .lt-crest { display: flex; }
 .lt.jogador .lt-label { display: none; }
 .lt.jogador .lt-text { gap: 6px; }
-/* Soccer: a card or a substitution is a player's lower third with its third line shown. The card's swatch
-   (a second yellow shows a red one behind the yellow) or the in and out marks sit before that line. */
+/* A card or a substitution is a player's lower third with its third line shown. */
 .lt.jogador.cartao .lt-label { display: flex; align-items: center; font-size: 28px; font-weight: 800; }
 .lt.cartao .lt-label::before { content: ""; flex: none; width: 20px; height: 26px; margin-right: 14px; border-radius: 2px; background: var(--card-y); box-shadow: inset 0 0 0 1px var(--card-edge); }
 .lt.cartao.vermelho .lt-label::before { background: var(--card-r); }

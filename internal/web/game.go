@@ -17,10 +17,16 @@ import (
 // newGameState forgets the game that was played: the periods and sets the
 // state machine recorded and, for a sets sport, the sets the phone scorer
 // still holds (it would send them again and the machine would record them).
-// The scorer's new_game cannot fail on a sets sport, so its error is dropped.
+// The scorer's new_game cannot fail on a sets or soccer game, so its error is dropped.
 func (s *Server) newGameState() {
 	s.State.ResetPeriods()
-	if s.Manual != nil && sport.Get(s.Store.GameSport()).Sets() {
+	if s.Manual == nil {
+		return
+	}
+	// A soccer scorer's cards, substitutions, added time and end of game belong to
+	// the last game too, whatever sport the next one is.
+	r, held := sport.Get(s.Store.GameSport()), s.Manual.Score()
+	if r.Sets() || r.Cards || held.Over || held.Stoppage > 0 || held.Cards != nil || held.Subs != nil {
 		_ = s.Manual.Do(source.Action{Do: "new_game"})
 	}
 }

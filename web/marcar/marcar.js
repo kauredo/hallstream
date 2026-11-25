@@ -145,7 +145,7 @@
       foulMarks: r.foul_marks ?? 5, freeKick: r.foul_penalty === 'free_kick', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
       lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2, maxPoint: r.max_point ?? 3,
-      countUp: !!r.count_up, suspensions: r.suspensions ?? 0, cards: !!r.cards, stopAtEnd: !!r.stop_at_end,
+      countUp: !!r.count_up, suspensions: r.suspensions ?? 0, cards: !!r.cards, stopAtEnd: !!r.stop_at_end, stoppageMax: r.stoppage_max ?? 0,
     };
   }
   // Where the clock starts in period p, from game.rules and score.length; Go is the source (sport.Profile.Start).
@@ -205,6 +205,7 @@
   const maxTOOf = (r, sets, p) => (sets || p <= r.half ? r.timeouts[0] : p <= r.periods ? r.timeouts[1] : r.timeouts[2]);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+  const SHIRT = /^\d{1,3}$/;
   let endSince = 0;
   function render() {
     if (!st) return;
@@ -274,8 +275,7 @@
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
     $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods, word);
-    // A count-up clock may stop itself at the end of its period (handball); the scorer sends the end as live.period_end.
-    // Soccer's runs on into added time: pastEnd says the period's minutes are over, upEnd that the clock has stopped.
+    // Handball's count-up clock stops at the end of its period (live.period_end); soccer's runs on into added time.
     const liveT = clockTenths(l.clock);
     const pastEnd = !!(manual && score && countUp && l.period_end > 0 && (liveT >= 0 ? liveT : score.clock) >= l.period_end);
     const upEnd = pastEnd && stopAtEnd;
@@ -315,14 +315,12 @@
   }
 
   // ---------- soccer: added time, full time, cards and substitutions ----------
-  // The added-time stepper, the button for the next half or the end of the game, and each team's cards and
-  // substitutions as small chips under its buttons. Nothing here shows unless the sport has cards.
   function renderSoccer(l, period, manual, { periods, pastEnd, cards }) {
     const lastHalf = period >= periods;
     const added = Math.max(0, +l.stoppage || 0);
     const text = `+${added}'`;
     if ($('#compensacao').textContent !== text) $('#compensacao').textContent = text;
-    // The arrow for the next half has no place in the last one: the game ends there, and soccer here has no extra time.
+    // No arrow for a next half in the last one: the game ends there.
     for (const el of $$('.seta[data-ask="period_next"]')) el.style.visibility = cards && lastHalf ? 'hidden' : '';
     const end = $('#fecho');
     // The space stays reserved while it waits, so Iniciar never moves under the thumb.
@@ -334,7 +332,7 @@
     const list = (a, tx) => (Array.isArray(a) ? a : []).filter((x) => x && x.team === tx);
     for (const tx of ['home', 'away']) renderRegisto(tx, cards ? list(l.cards, tx) : [], cards ? list(l.subs, tx) : []);
   }
-  // Rebuilt only when the lists change, so a tap never lands on a chip that was just replaced.
+  // Rebuilt only when the lists change.
   function renderRegisto(tx, cards, subs) {
     const box = $(`[data-registo="${tx}"]`), key = JSON.stringify([cards, subs]);
     if (box.dataset.key === key) return;
@@ -351,13 +349,12 @@
       ...subs.map((x) => { const s = chip(x.minute); s.append(num(x.out), '→', num(x.in)); return s; }),
     );
   }
-  // Which shirt: the squad's numbers for the home team as big buttons, any number typed for the rest. Resolves
-  // with the number, or '' when the scorer backs out.
+  // The squad's numbers as big buttons for the home team, a typed number for the rest. Resolves with the number, '' when the scorer backs out.
   function pickNumber(team, title) {
     return new Promise((resolve) => {
       const box = $('#numero'), field = $('#numeroCampo'), grid = $('#camisolas'), other = $('#numeroOutro');
       const squad = team === 'home' && st && st.game && Array.isArray(st.game.squad)
-        ? st.game.squad.filter((p) => p && /^\d{1,3}$/.test(p.number)).sort((a, b) => a.number - b.number) : [];
+        ? st.game.squad.filter((p) => p && SHIRT.test(p.number)).sort((a, b) => a.number - b.number) : [];
       let answer = '';
       const done = (n) => { answer = n; box.close(); };
       $('#numeroTitulo').textContent = title;
@@ -375,34 +372,12 @@
       }));
       $('#numeroFeito').hidden = squad.length > 0;
       other.onclick = () => { field.hidden = false; other.hidden = true; $('#numeroFeito').hidden = false; field.focus(); };
-      $('#numeroFeito').onclick = () => { if (/^\d{1,3}$/.test(field.value.trim())) done(field.value.trim()); };
+      $('#numeroFeito').onclick = () => { if (SHIRT.test(field.value.trim())) done(field.value.trim()); };
       $('#numeroCancelar').onclick = () => box.close();
       box.addEventListener('close', () => resolve(answer), { once: true });
       box.showModal();
     });
   }
-  document.addEventListener('click', async (e) => {
-    const b = e.target.closest('button[data-pick]');
-    if (!b || b.disabled) return;
-    const team = b.closest('.equipa').dataset.team, kind = b.dataset.pick;
-    if (kind === 'sub') {
-      const out = await pickNumber(team, `${sigla(team)} · ${t('marcar.sai')}`);
-      if (!out) return;
-      const on = await pickNumber(team, `${sigla(team)} · ${t('marcar.entra')}`);
-      if (on) send({ do: 'sub', team, out, in: on }, undoLabel({ do: 'sub', team }));
-      return;
-    }
-    const card = kind === 'red' ? t('marcar.cartao_vermelho') : t('marcar.cartao_amarelo');
-    const number = await pickNumber(team, `${sigla(team)} · ${card}`);
-    if (number) send({ do: 'card', team, number, kind }, undoLabel({ do: 'card', team }));
-  });
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-stoppage]');
-    if (!b || b.disabled) return;
-    const n = Math.min(Math.max((+((st && st.live) || {}).stoppage || 0) + +b.dataset.stoppage, 0), 15);
-    send({ do: 'stoppage', n }, t('marcar.ultimo.compensacao'));
-  });
-
   // ---------- taps ----------
   const pending = new Set();
   let tagTimer = 0;
@@ -461,6 +436,29 @@
     if (!b.dataset.do) return;
     const a = actionOf(b, false);
     send(a, undoLabel(a));
+  });
+
+  // Soccer: a card or a substitution asks for the shirt number first; the stepper moves the added time by a minute.
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-pick]');
+    if (!b || b.disabled) return;
+    const team = b.closest('.equipa').dataset.team, kind = b.dataset.pick;
+    if (kind === 'sub') {
+      const out = await pickNumber(team, `${sigla(team)} · ${t('marcar.sai')}`);
+      if (!out) return;
+      const on = await pickNumber(team, `${sigla(team)} · ${t('marcar.entra')}`);
+      if (on) send({ do: 'sub', team, out, in: on }, undoLabel({ do: 'sub', team }));
+      return;
+    }
+    const card = kind === 'red' ? t('marcar.cartao_vermelho') : t('marcar.cartao_amarelo');
+    const number = await pickNumber(team, `${sigla(team)} · ${card}`);
+    if (number) send({ do: 'card', team, number, kind }, undoLabel({ do: 'card', team }));
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-stoppage]');
+    if (!b || b.disabled) return;
+    const n = Math.min(Math.max((+((st && st.live) || {}).stoppage || 0) + +b.dataset.stoppage, 0), rulesOf().stoppageMax);
+    send({ do: 'stoppage', n }, t('marcar.ultimo.compensacao'));
   });
 
   // Changing the period zeroes the team fouls, and a set can only be reopened with undo, so both ask first.

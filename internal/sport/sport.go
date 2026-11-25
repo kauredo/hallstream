@@ -26,9 +26,11 @@ type Profile struct {
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
-	Cards       bool `json:"cards"`       // the sport has cards, substitutions, added time and an explicit end of game (soccer)
-	StopAtEnd   bool `json:"stop_at_end"` // a count-up clock stops at the end of the period; false runs on (soccer)
-	Suspensions int  `json:"suspensions"` // tenths a suspension lasts; 0 = the sport has none
+	Cards       bool `json:"cards"`        // the sport has cards, substitutions, added time and an explicit end of game (soccer)
+	StopAtEnd   bool `json:"stop_at_end"`  // a count-up clock stops at the end of the period; false runs on (soccer)
+	Suspensions int  `json:"suspensions"`  // tenths a suspension lasts; 0 = the sport has none
+	ExtraTime   bool `json:"extra_time"`   // the game can go on past Periods into overtime periods
+	StoppageMax int  `json:"stoppage_max"` // the most minutes of added time the scorer can announce; 0 = the sport has none
 
 	MaxPoint      int    `json:"max_point"`       // the most one score action can add: basketball 3, a goal or a set point 1
 	Scoring       string `json:"scoring"`         // "points" (basketball) or "sets"
@@ -42,7 +44,7 @@ type Profile struct {
 var Basketball = Profile{ID: "basketball", Periods: 4, Half: 2, Length: 6000, ClockDown: true,
 	FoulsReset: true, FoulWarn: 4, FoulBonus: 5, ShotClock: true, FinalHold: 600,
 	TimeoutsBy: [3]int{2, 3, 1}, Scoring: "points", MaxPoint: 3, OvertimeLength: 3000, PeriodWord: "quarter",
-	FoulMarks: 5, FoulPenalty: "bonus"}
+	FoulMarks: 5, FoulPenalty: "bonus", ExtraTime: true}
 
 // Volleyball: best of 5, sets to 25 (15 in the 5th), win by 2, no clock,
 // 2 timeouts per team per set.
@@ -56,14 +58,14 @@ var Volleyball = Profile{ID: "volleyball", MaxPoint: 1, Scoring: "sets", SetPoin
 var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown: true,
 	FoulsReset: true, FoulsCarry: true, FoulWarn: 5, FoulBonus: 6, FinalHold: 600,
 	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", MaxPoint: 1, OvertimeLength: 3000, PeriodWord: "half",
-	FoulMarks: 5, FoulPenalty: "free_kick"}
+	FoulMarks: 5, FoulPenalty: "free_kick", ExtraTime: true}
 
 // Handball is IHF: two halves of 30:00 on a clock that counts up, 2-minute
 // suspensions, no team fouls, two timeouts per team per half shown (three per
 // match is the rule, not enforced), extra time in periods of 5:00.
 var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false,
 	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points", MaxPoint: 1,
-	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200}
+	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200, ExtraTime: true}
 
 // Soccer is IFAB: two halves of 45:00 on a clock that counts up and runs on
 // into added time, cards and substitutions per player, no fouls, timeouts or
@@ -71,7 +73,7 @@ var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, Clock
 // FinalHold is 0.
 var Soccer = Profile{ID: "soccer", Periods: 2, Half: 1, Length: 27000, ClockDown: false,
 	StopAtEnd: false, FinalHold: 0, TimeoutsBy: [3]int{0, 0, 0}, Scoring: "points", MaxPoint: 1,
-	PeriodWord: "half", Cards: true}
+	PeriodWord: "half", Cards: true, StoppageMax: 15}
 
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {

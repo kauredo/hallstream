@@ -153,6 +153,8 @@
       "foul_marks": 0,
       "foul_penalty": "",
       "cards": true,
+      "extra_time": false,
+      "stoppage_max": 15,
       "stop_at_end": false,
       "suspensions": 0,
       "max_point": 1,
@@ -180,6 +182,7 @@
     "photo_url": "",
     "out_number": "7",
     "out_name": "Nuno Valadares",
+    "team": "",
     "until": null
   },
   "demo": false

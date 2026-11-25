@@ -4,3 +4,6 @@ dist/
 .DS_Store
 .ship/
 *.syso
+
+# The feedback worker's dependencies (worker/README.md)
+worker/node_modules/

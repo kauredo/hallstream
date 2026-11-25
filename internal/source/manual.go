@@ -2,6 +2,8 @@ package source
 
 import (
 	"encoding/json"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,10 +33,46 @@ type Score struct {
 	AwaySusp [maxSusp]Suspension `json:"away_susp"`
 	NextSusp int                 `json:"next_susp"`
 
+	// Soccer. The lists stay nil until the first card or substitution, never
+	// an empty slice, so sameScore (reflect.DeepEqual) can't tell two empty
+	// games apart. Anything that keeps a Score for later clones them (cloned).
+	Cards []Card `json:"cards"`
+	Subs  []Sub  `json:"subs"`
+
 	// Volleyball. Sets is an array, not a slice, so a Score stays comparable
 	// with ==; a played set has a Winner, an empty slot has none.
 	Sets  [maxSets]state.SetScore `json:"sets"`  // finished sets, in order
 	Serve string                  `json:"serve"` // "home", "away" or ""
+}
+
+// Card is one card shown. ID is told apart from the others for the timeline
+// and never reused in a run, not even after an undo (Manual.ids).
+type Card struct {
+	ID     int    `json:"id"`
+	Team   string `json:"team"`   // "home" or "away"
+	Number string `json:"number"` // shirt number
+	Kind   string `json:"kind"`   // "yellow", "second_yellow" or "red"
+	Clock  int    `json:"clock"`  // the game clock when it was entered, tenths
+}
+
+// Sub is one substitution.
+type Sub struct {
+	ID    int    `json:"id"`
+	Team  string `json:"team"`
+	Out   string `json:"out"` // shirt numbers
+	In    string `json:"in"`
+	Clock int    `json:"clock"`
+}
+
+// sameScore reports whether two scores are the same; == can't compare Score
+// because of its lists.
+func sameScore(a, b Score) bool { return reflect.DeepEqual(a, b) }
+
+// cloned is s with its own copies of the lists, so an append to one score never
+// writes into another's backing array. A nil list stays nil.
+func (s Score) cloned() Score {
+	s.Cards, s.Subs = slices.Clone(s.Cards), slices.Clone(s.Subs)
+	return s
 }
 
 // maxSets is the most sets a match can have (best of 5).
@@ -289,7 +327,7 @@ func (m *Manual) seedSets(l state.Live) {
 func (m *Manual) Score() Score {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.current(m.Rules())
+	return m.current(m.Rules()).cloned()
 }
 
 // Heartbeat is the scorer's page calling in. It counts as connected for Seen.
@@ -332,7 +370,7 @@ func (m *Manual) SetLengthFrom(was sport.Profile, tenths int) error {
 		m.s.HomeSusp, m.s.AwaySusp = [maxSusp]Suspension{}, [maxSusp]Suspension{}
 	}
 	m.s.Length = tenths
-	if m.s != prev {
+	if !sameScore(m.s, prev) {
 		m.changed()
 	}
 	return nil
@@ -346,7 +384,7 @@ func (m *Manual) Do(a Action) error {
 	m.tellBox()
 	r := m.Rules()
 	m.s = m.current(r)
-	prev, clock := m.s, false
+	prev, clock := m.s.cloned(), false
 	s := &m.s
 	sets := r.Sets()
 	if err := refused(a, sets); err != nil {
@@ -483,7 +521,7 @@ func (m *Manual) Do(a Action) error {
 	default:
 		return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
 	}
-	if *s == prev {
+	if sameScore(*s, prev) {
 		return nil
 	}
 	if a.Do != "clock_start" && a.Do != "clock_stop" {
@@ -772,7 +810,7 @@ func (m *Manual) emit() {
 	if m.out == nil {
 		return
 	}
-	m.sent = m.s
+	m.sent = m.s.cloned()
 	m.out(frame(m.Rules(), m.s))
 }
 

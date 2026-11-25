@@ -84,7 +84,7 @@ func TestBadActions(t *testing.T) {
 			t.Errorf("%+v: want an error", a)
 		}
 	}
-	if s := mn.Score(); s != newScoreAt(DefaultLength, DefaultLength) {
+	if s := mn.Score(); !sameScore(s, newScoreAt(DefaultLength, DefaultLength)) {
 		t.Errorf("bad actions changed the score: %+v", s)
 	}
 }
@@ -264,7 +264,7 @@ func TestSavedScoreComesBackStopped(t *testing.T) {
 	again.Restore(back)
 	c.add(time.Hour) // the program was off
 	want := Score{Away: 2, Period: 2, Clock: 5980, Length: DefaultLength}
-	if got := again.Score(); got != want {
+	if got := again.Score(); !sameScore(got, want) {
 		t.Errorf("restored %+v, want %+v", got, want)
 	}
 	if again.Do(Action{Do: "undo"}) == nil {
@@ -432,7 +432,7 @@ func TestVolleyballSeedAndRestore(t *testing.T) {
 	}
 	again, _, _ := newVolley()
 	again.Restore(back)
-	if got := again.Score(); got != s {
+	if got := again.Score(); !sameScore(got, s) {
 		t.Errorf("restored %+v, want %+v", got, s)
 	}
 }
@@ -446,7 +446,7 @@ func TestSeed(t *testing.T) {
 	}
 	mn.Seed(state.Live{Home: 41, Away: 38, Clock: "07:45", Period: "2", HomeFouls: 2, AwayFouls: 4})
 	want := Score{Home: 41, Away: 38, Period: 2, Clock: 4650, Length: DefaultLength, HomeFouls: 2, AwayFouls: 4}
-	if s := mn.Score(); s != want {
+	if s := mn.Score(); !sameScore(s, want) {
 		t.Errorf("seeded %+v, want %+v", s, want)
 	}
 	if mn.Do(Action{Do: "undo"}) == nil {
@@ -671,7 +671,7 @@ func TestMaxPointByProfile(t *testing.T) {
 		t.Errorf("futsal fouls %d, want 2", s.HomeFouls)
 	}
 	before := mn.Score()
-	if mn.Do(Action{Do: "point", Team: "home", N: 2}) == nil || mn.Score() != before {
+	if mn.Do(Action{Do: "point", Team: "home", N: 2}) == nil || !sameScore(mn.Score(), before) {
 		t.Error("a refused +2 changed the score")
 	}
 }
@@ -805,7 +805,7 @@ func TestSuspensions(t *testing.T) {
 	if err := mn.Do(Action{Do: "suspension", Team: "home"}); err == nil {
 		t.Error("a fourth suspension was taken")
 	}
-	if mn.Score() != before {
+	if !sameScore(mn.Score(), before) {
 		t.Error("a refused suspension changed the score")
 	}
 	if err := mn.Do(Action{Do: "suspension", Team: "away"}); err != nil {
@@ -1079,7 +1079,7 @@ func TestRestoreKeepsSuspensions(t *testing.T) {
 func TestFoulRefusedWhereASportHasNone(t *testing.T) {
 	mn, _, _ := newHandball()
 	before := mn.Score()
-	if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err == nil || mn.Score() != before {
+	if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err == nil || !sameScore(mn.Score(), before) {
 		t.Errorf("handball took a foul: %v", err)
 	}
 	for _, p := range []sport.Profile{sport.Basketball, sport.Futsal} {
@@ -1087,5 +1087,16 @@ func TestFoulRefusedWhereASportHasNone(t *testing.T) {
 		if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err != nil {
 			t.Errorf("%s refused a foul: %v", p.ID, err)
 		}
+	}
+}
+
+func TestSameScoreNilLists(t *testing.T) {
+	a, b := newScoreAt(DefaultLength, DefaultLength), newScoreAt(DefaultLength, DefaultLength)
+	if !sameScore(a, b) {
+		t.Error("two new games differ")
+	}
+	b.Cards = []Card{}
+	if sameScore(a, b) {
+		t.Error("a nil list and an empty one count as the same; lists must stay nil until used")
 	}
 }

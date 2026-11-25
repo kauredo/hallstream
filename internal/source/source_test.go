@@ -110,7 +110,7 @@ func TestSwitchSkipsTheSeedInTheDemo(t *testing.T) {
 	defer m.SetDemo(false)
 	eventually(t, "the demo plays", func() bool { return m.Snapshot().Live.Period != "" })
 	w.Use("manual")
-	if s := manual.Score(); s != newScoreAt(DefaultLength, DefaultLength) {
+	if s := manual.Score(); !sameScore(s, newScoreAt(DefaultLength, DefaultLength)) {
 		t.Errorf("the scorer took the demo's score: %+v", s)
 	}
 }

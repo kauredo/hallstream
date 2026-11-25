@@ -97,7 +97,7 @@ func TestManualFileHoldsSetsAndServe(t *testing.T) {
 	}
 	back := source.NewManual(&source.Manual{Rules: func() sport.Profile { return sport.Volleyball }})
 	restoreManual(st, back)
-	if got, want := back.Score(), played.Score(); got != want {
+	if got, want := back.Score(), played.Score(); !reflect.DeepEqual(got, want) {
 		t.Errorf("restored %+v, want %+v", got, want)
 	}
 

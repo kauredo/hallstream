@@ -211,6 +211,16 @@ html.off .sb-dot { opacity: 1; }
 /* No shot clock (overtime, a sport without one, or hidden by the club): the clock centres in its cell. */
 .sb-shot.blank { display: none; }
 .sb-tbox.solo { justify-content: center; }
+/* A sets sport (volleyball) swaps the fouls cell for the sets won and the time cell for the finished
+   sets; the markup carries both and html[data-scoring] says which one shows. */
+html:not([data-scoring="sets"]) .only-sets, html[data-scoring="sets"] .only-pts { display: none !important; }
+.srv { flex: none; width: 14px; height: 14px; margin: 0 14px 0 auto; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 1.5px rgba(8,8,16,0.4); opacity: 0; transition: opacity var(--t-quick) var(--ease-out); }
+.srv.on { opacity: 1; }
+html[data-scoring="sets"] .sb-f b.only-sets { font-size: 34px; }
+.sb-setlist { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.sb-setlist .ln { font-weight: 800; font-size: 21px; line-height: 21px; white-space: nowrap; }
+.sb-setlist .to { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: 1.5px; color: var(--muted); }
+.sb-setlist .goal { font-weight: 800; font-size: 44px; line-height: 46px; }
 /* The dot between two parts of a line; a style may draw it its own way. */
 i.sep { font-style: normal; }
 /* BÓNUS: 5 team fouls or more in the period; the fouls cell turns gold. */

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
-	"path"
 	"strings"
 	"testing"
 	"time"
@@ -88,8 +87,11 @@ func TestOverlayRendersEveryFixture(t *testing.T) {
 	if err != nil || len(names) == 0 {
 		t.Fatalf("no fixtures: %v", err)
 	}
+	// Sports with their own screens keep their fixtures in a folder.
+	more, _ := fs.Glob(assets.FS, "overlay/fixtures/*/*.json")
+	names = append(names, more...)
 	for _, name := range names {
-		t.Run(strings.TrimSuffix(path.Base(name), ".json"), func(t *testing.T) {
+		t.Run(strings.TrimSuffix(strings.TrimPrefix(name, "overlay/fixtures/"), ".json"), func(t *testing.T) {
 			data, _ := fs.ReadFile(assets.FS, name)
 			var st struct{ Screen struct{ Current string } }
 			if err := json.Unmarshal(data, &st); err != nil || st.Screen.Current == "" {

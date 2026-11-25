@@ -66,16 +66,18 @@
     <div class="sb-stats">
       <div class="sb-gap"></div>
       <div class="sb-fouls">
-        <div class="sb-lbl" data-i18n="overlay.faltas"></div>
-        <div class="sb-f" data-bonus="home"><b data-b="homeFouls" data-hot="home"></b><span class="pips" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span></div>
-        <div class="sb-f sep" data-bonus="away"><b data-b="awayFouls" data-hot="away"></b><span class="pips" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span></div>
+        <div class="sb-lbl only-pts" data-i18n="overlay.faltas"></div>
+        <div class="sb-lbl only-sets" data-i18n="overlay.sets"></div>
+        <div class="sb-f" data-bonus="home"><b class="only-pts" data-b="homeFouls" data-hot="home"></b><b class="only-sets" data-b="homeSets"></b><span class="pips only-pts" data-pips="home"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span><i class="srv only-sets" data-srv="home" data-i18n-attr="title:overlay.servico"></i></div>
+        <div class="sb-f sep" data-bonus="away"><b class="only-pts" data-b="awayFouls" data-hot="away"></b><b class="only-sets" data-b="awaySets"></b><span class="pips only-pts" data-pips="away"><i></i><i></i><i></i><i></i></span><span class="bonus" data-i18n="overlay.bonus"></span><i class="srv only-sets" data-srv="away" data-i18n-attr="title:overlay.servico"></i></div>
       </div>
       <div class="sb-div"></div>
       <div class="sb-time">
         <div class="sb-per" data-b="periodShort"></div>
         <div class="sb-tbox">
-          <div class="sb-clock" data-b="clock"></div>
-          <div class="sb-shot"><span>24s</span><b data-b="shot" data-hotshot></b></div>
+          <div class="sb-clock only-pts" data-b="clock"></div>
+          <div class="sb-shot only-pts"><span>24s</span><b data-b="shot" data-hotshot></b></div>
+          <div class="sb-setlist only-sets" data-setlist></div>
         </div>
       </div>
     </div>
@@ -196,8 +198,8 @@
   <div class="blk iv-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
     <div class="blk-rows">
-      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
-      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
+      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeBig"></div></div>
+      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayBig"></div></div>
     </div>
   </div>
   <div class="ptab iv-pt" data-periods></div>
@@ -210,8 +212,8 @@
   <div class="blk fn-block">
     <div class="blk-edge"><div class="blk-fill"><i class="w"></i><i class="g"></i></div><div class="blk-white"></div><div class="blk-red"></div></div>
     <div class="blk-rows">
-      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><span class="win" data-win="home" data-i18n="overlay.final.vencedor"></span><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeScore"></div></div>
-      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><span class="win" data-win="away" data-i18n="overlay.final.vencedor"></span><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayScore"></div></div>
+      <div class="blk-row home"><div class="tile" data-tile="home"></div><div class="blk-nm"><span class="win" data-win="home" data-i18n="overlay.final.vencedor"></span><div data-b="homeName" data-fit="72"></div></div><div class="blk-sc" data-b="homeBig"></div></div>
+      <div class="blk-row away"><div class="tile" data-tile="away"></div><div class="blk-nm"><span class="win" data-win="away" data-i18n="overlay.final.vencedor"></span><div data-b="awayName" data-fit="72"></div></div><div class="blk-sc" data-b="awayBig"></div></div>
     </div>
   </div>
   <div class="ptab fn-pt" data-periods></div>

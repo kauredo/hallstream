@@ -205,3 +205,23 @@ dialog .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
 dialog .passos button { min-height: 48px; border: 2px solid var(--marcador); border-radius: var(--raio); background: transparent; color: var(--marcador); font-weight: 700; font-stretch: var(--estreito); font-size: 17px; }
 dialog .passos button:active { background: var(--marcador); color: var(--soalho-claro); }
 dialog h2 b { font-weight: 800; }
+
+/* ---------- a sets sport (volleyball) ----------
+   body.sets: one big +1, no fouls, no clock, no period arrows. Each half gets a sets row with a serve
+   mark to tap, and the middle strip lists the finished sets. */
+.sets-linha, .feitos { display: none; }
+body.sets .sets-linha { display: grid; }
+body.sets .faltas, body.sets .relogio, body.sets .acerto, body.sets .seta { display: none; }
+body.sets .somar { grid-template-columns: 1fr; }
+body.sets .somar button:nth-child(n + 2) { display: none; }
+body.sets .periodo { grid-template-columns: 1fr; }
+/* The serve is a ring on the team's own colour; lit in Lâmpada on the side that has it. */
+.servico::before { content: ""; display: block; width: 22px; height: 22px; margin: auto; border: 3px solid currentColor; border-radius: 50%; }
+.servico.on { background: var(--lampada); color: var(--carvao); }
+.servico.on::before { background: currentColor; }
+.feitos { margin: 0; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; font-size: 24px; line-height: 1.1; color: var(--soalho); }
+body.sets .feitos:not([hidden]) { display: flex; }
+/* The set can end: the button lights, as the clock's does while it runs. */
+.arrancar.pronto { background: var(--lampada); color: var(--carvao); }
+body.sets .mesa-centro { grid-template-rows: auto auto auto 1fr auto auto; }

@@ -476,6 +476,16 @@
     v.regulationPeriods = rules.periods ?? 4;
     v.foulWarn = rules.foul_warn ?? 4;
     v.foulBonus = rules.foul_bonus ?? 5;
+    // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
+    v.sets = rules.scoring === 'sets';
+    const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];
+    const setsToWin = rules.sets_to_win ?? 3;
+    v.homeSets = live.home_sets ?? 0;
+    v.awaySets = live.away_sets ?? 0;
+    v.serve = live.serve || '';
+    v.setList = setList;
+    v.setsOver = v.homeSets >= setsToWin || v.awaySets >= setsToWin;
+    v.setTarget = pn === 2 * setsToWin - 1 ? (rules.last_set_points ?? 15) : (rules.set_points ?? 25);
     v.homeName = home.name || live.home_name || '';
     v.homeShort = home.short || v.homeName;
     v.awayName = away.name || live.away_name || '';
@@ -488,8 +498,10 @@
     v.shot = live.shot ?? '';
     v.homeFouls = live.home_fouls ?? 0;
     v.awayFouls = live.away_fouls ?? 0;
-    v.periodShort = pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.curto', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - v.regulationPeriods });
-    v.periodLong = pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.longo', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - v.regulationPeriods });
+    v.homeBig = v.sets ? v.homeSets : v.homeScore;
+    v.awayBig = v.sets ? v.awaySets : v.awayScore;
+    v.periodShort = v.sets && pn != null ? t('overlay.set.curto', { n: pn }) : pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.curto', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - v.regulationPeriods });
+    v.periodLong = v.sets && pn != null ? t('overlay.set.longo', { n: pn }) : pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.longo', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - v.regulationPeriods });
     v.compRound = joinDot(game.competition, game.round);
     v.venue = game.venue || '';
     const coach = splitName((game.group && game.group.coach) || '');
@@ -523,11 +535,12 @@
     v.nextVenue = next ? next.venue || '' : '';
     v.backLine = ((game.overlay || {}).back_line || '').trim();
     // Voltamos já shows the score only while a game is going on.
-    v.inPlay = !!(st.box && st.box.connected) && (v.homeScore > 0 || v.awayScore > 0 || (st.periods || []).length > 0);
+    v.inPlay = !!(st.box && st.box.connected) && (v.homeScore > 0 || v.awayScore > 0 || (st.periods || []).length > 0 || setList.length > 0);
 
     const periods = Array.isArray(st.periods) ? st.periods : [];
     const lastDone = periods.length ? periods[periods.length - 1].period : (rules.half ?? 2);
-    v.halfLine = t('overlay.intervalo.a_seguir', { n: lastDone + 1 });
+    v.halfLine = !v.sets ? t('overlay.intervalo.a_seguir', { n: lastDone + 1 })
+      : v.setsOver ? '' : t('overlay.intervalo.set_seguinte', { n: Math.max(setList.length, v.homeSets + v.awaySets) + 1 });
     v.periods = periods;
     v.home = home;
     v.away = away;
@@ -569,11 +582,37 @@
     for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', hot);
   }
 
+  // The bug's time cell for a sets sport: the finished sets as "25-20" lines, or, before the first
+  // one ends, the points that win the set.
+  let setListKey = null;
+  function renderSetList(v) {
+    const key = JSON.stringify([v.sets, v.setList, v.setTarget]);
+    if (key === setListKey) return;
+    setListKey = key;
+    for (const box of $$('[data-setlist]')) {
+      box.textContent = '';
+      const line = (cls, text) => {
+        const d = document.createElement('div');
+        d.className = cls;
+        d.textContent = text;
+        box.append(d);
+      };
+      if (!v.setList.length) {
+        line('to', t('overlay.set.ate'));
+        line('goal', v.setTarget);
+        continue;
+      }
+      for (const s of v.setList.slice(-4)) line('ln', s.home === 0 && s.away === 0 ? '–' : s.home + '–' + s.away);
+    }
+  }
+
   // The points of each completed period, from Go, the lower of the two dimmed; the total is the score now.
   function renderPeriods(periods, v) {
-    const key = JSON.stringify([periods, v.regulationPeriods, v.homeName, v.awayName, v.homeScore, v.awayScore]);
+    const key = JSON.stringify([periods, v.sets && v.setList, v.regulationPeriods, v.homeName, v.awayName, v.homeBig, v.awayBig]);
     if (key === periodsKey) return;
     periodsKey = key;
+    // A sets sport lists its finished sets in the same table; the last column is the sets won.
+    if (v.sets) periods = v.setList.map((s) => ({ period: s.set, home_points: s.home, away_points: s.away, winner: s.winner }));
     const n = periods.length;
     for (const tab of periodTables) {
       tab.textContent = '';
@@ -590,19 +629,25 @@
       };
       cell('hd', '');
       for (const p of periods) {
-        if (p.period <= v.regulationPeriods) cell('hd', t('overlay.periodos.n', { n: p.period }));
+        if (v.sets) cell('hd', t('overlay.periodos.set', { n: p.period }));
+        else if (p.period <= v.regulationPeriods) cell('hd', t('overlay.periodos.n', { n: p.period }));
         else cell('hd ot', p.period === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: p.period - v.regulationPeriods }));
       }
-      cell('hd tot', t('overlay.periodos.total'));
+      cell('hd tot', v.sets ? t('overlay.periodos.sets') : t('overlay.periodos.total'));
       for (const [tx, o] of [['home', 'away'], ['away', 'home']]) {
         const name = cell('tn', '');
         name.dataset.fit = '26';
         setText(name, v[tx + 'Name']);
         for (const p of periods) {
           const pts = p[tx + '_points'] ?? 0;
-          cell(pts < (p[o + '_points'] ?? 0) ? 'lo' : '', pts);
+          if (v.sets) {
+            // A set the console ended has no points: the winner's cell says so, the other one is a dash.
+            const lost = p.winner === o;
+            const unknown = pts === 0 && (p[o + '_points'] ?? 0) === 0;
+            cell(lost ? 'lo' : '', unknown ? (lost ? '–' : t('overlay.periodos.venceu')) : pts);
+          } else cell(pts < (p[o + '_points'] ?? 0) ? 'lo' : '', pts);
         }
-        cell('tot', v[tx + 'Score']);
+        cell('tot', v[tx + 'Big']);
       }
     }
   }
@@ -1176,7 +1221,11 @@
     setClass(shotEl.parentElement, 'blank', noShot);
     setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
-    const hs = +v.homeScore, as = +v.awayScore;
+    root.dataset.scoring = v.sets ? 'sets' : 'points';
+    for (const el of $$('[data-srv]')) setClass(el, 'on', v.sets && v.serve === el.dataset.srv);
+    renderSetList(v);
+
+    const hs = +v.homeBig, as = +v.awayBig;
     setClass(winners.home, 'on', hs > as);
     setClass(winners.away, 'on', as > hs);
     setClass(coachBox, 'none', !v.coach);

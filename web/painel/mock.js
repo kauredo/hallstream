@@ -547,6 +547,14 @@
       st.periods = [{ period: 1, home: 18, away: 20 }, { period: 2, home: 37, away: 39 }, { period: 3, home: 55, away: 60 }, { period: 4, home: 71, away: 78 }];
     }
     if (c === 'nocrest') { st.game.home.crest_url = null; st.game.away.crest_url = null; st.game.sponsors.principal.url = null; }
+    if (c === 'voleibol') {
+      st.game.sport = 'volleyball'; st.game.sport_label = 'VOLEIBOL';
+      st.game.rules = { id: 'volleyball', periods: 0, half: 0, length: 0, clock_down: false, fouls_reset: false, foul_warn: 0, foul_bonus: 0, shot_clock: false,
+        final_hold: 0, timeouts: [2, 2, 2], scoring: 'sets', set_points: 25, last_set_points: 15, sets_to_win: 3, win_by: 2 };
+      st.live.period = '4'; st.live.clock = ''; st.live.home = 0; st.live.away = 0; st.live.home_sets = 3; st.live.away_sets = 1; st.live.serve = '';
+      st.periods = [];
+      st.sets = [{ set: 1, home: 25, away: 20, winner: 'home' }, { set: 2, home: 18, away: 25, winner: 'away' }, { set: 3, home: 25, away: 22, winner: 'home' }, { set: 4, home: 25, away: 19, winner: 'home' }];
+    }
     if (c === 'intervalo') { st.live.period = '3'; st.live.clock = '10:00'; st.live.home = 44; st.live.away = 40; st.periods = st.periods.slice(0, 2); st.screen.current = 'intervalo'; }
     window.Resultado.render(st).then(function (cv) {
       var img = new Image();

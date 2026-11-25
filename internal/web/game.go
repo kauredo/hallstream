@@ -195,6 +195,7 @@ func (s *Server) SyncGame() {
 		crest = store.DefaultCrest
 	}
 	sp, _ := club.SportOf(s.Store.SportOf(g.GroupID))
+	s.switchSport(sp.ID)
 	out := state.Game{
 		Home:        state.Team{Name: cl.Name, Short: cl.Short, CrestURL: &crest, Color: cl.Primary, Initials: cl.Short},
 		Sport:       sp.ID,
@@ -243,6 +244,21 @@ func (s *Server) SyncGame() {
 	out.Sponsors = sponsors(grp.Sponsors, shared.Sponsors)
 	s.State.SetGame(out, g.Picked())
 	s.timelineGame(g, out)
+}
+
+// switchSport moves the scorer's period length to the new sport's when the
+// game's sport changes and the clock is stopped. The first sync after a
+// start only records the sport, so a length the volunteer set survives a
+// restart. Called with syncMu held.
+func (s *Server) switchSport(id string) {
+	prev := s.lastSport
+	s.lastSport = id
+	if prev == "" || prev == id || s.Manual == nil || s.Manual.Score().Running {
+		return
+	}
+	if l := sport.Get(id).Length; l > 0 {
+		s.Manual.SetLength(l)
+	}
 }
 
 // sponsors puts the group's principal first (else the shared one), then the

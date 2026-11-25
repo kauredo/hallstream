@@ -96,10 +96,11 @@ type Server struct {
 	ytRemoteErr string
 	ytSleep     func(time.Duration) // tests skip the waits
 
-	uploads  *gamelog.Uploader
-	logMu    sync.Mutex
-	logStart time.Time // when the stream on air started; zero off air
-	lastGame string    // the game last put in the timeline (under syncMu)
+	uploads   *gamelog.Uploader
+	logMu     sync.Mutex
+	logStart  time.Time // when the stream on air started; zero off air
+	lastGame  string    // the game last put in the timeline (under syncMu)
+	lastSport string    // the sport SyncGame last saw; "" until the first sync (under syncMu)
 
 	updateNow chan struct{}                  // wakes RunUpdates when the check is switched on
 	newer     atomic.Pointer[update.Release] // a newer release, found by RunUpdates

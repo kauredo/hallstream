@@ -18,8 +18,8 @@ const (
 	DefaultSecondary = "#1C1A17"
 )
 
-// Sport is one sport a club can pick. Only Active ones work today; the rest
-// are listed in the panel as coming soon.
+// Sport is one sport a club can pick. Only Active ones work; an inactive one
+// is listed in the panel as coming soon. All five are active today.
 type Sport struct {
 	ID     string
 	Name   string // BASQUETEBOL

@@ -12,6 +12,12 @@ import (
 
 // SetDemo turns the fake game on or off. While it runs, box frames are ignored.
 func (m *Machine) SetDemo(on bool) {
+	m.setDemo(on, func(stop <-chan struct{}) { go m.demo(stop) })
+}
+
+// setDemo is SetDemo with the start of the loop passed in, for tests that
+// drive it themselves.
+func (m *Machine) setDemo(on bool, start func(stop <-chan struct{})) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if on == m.s.Demo {
@@ -20,16 +26,20 @@ func (m *Machine) SetDemo(on bool) {
 	m.s.Demo = on
 	if on {
 		m.realPeriods, m.realSets = m.s.Periods, m.s.Sets
+		m.realTold = [3]told{m.toldSusp, m.toldCards, m.toldSubs}
 		m.demoStop = make(chan struct{})
-		go m.demo(m.demoStop)
+		start(m.demoStop)
 	} else {
 		close(m.demoStop)
 		// The demo's periods and scores go; the game's periods come back,
-		// and the box's next frame starts the live values afresh.
+		// and the box's next frame starts the live values afresh. So do the
+		// timeline's marks, which the demo's suspensions and cards raised.
 		m.s.Periods = append([]Period{}, m.realPeriods...)
 		m.s.Sets = append([]SetScore{}, m.realSets...)
+		m.toldSusp, m.toldCards, m.toldSubs = m.realTold[0], m.realTold[1], m.realTold[2]
 		m.s.Live = Live{}
 		m.started, m.lastTenths, m.zeroSince = false, -1, time.Time{}
+		m.finalDone, m.matchOver = 0, false
 	}
 	m.changed()
 }
@@ -74,10 +84,9 @@ func demoEvent(x float64, comeback bool) int {
 // follows the game's sport: if that changes while it runs, the next frame
 // starts that sport's game.
 func (m *Machine) demo(stop <-chan struct{}) {
-	r := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 7))
 	tick := time.NewTicker(100 * time.Millisecond) // one tick
 	defer tick.Stop()
-	hold := func(n int) bool {
+	m.demoLoop(stop, func(n int) bool {
 		for range n {
 			select {
 			case <-stop:
@@ -86,32 +95,42 @@ func (m *Machine) demo(stop <-chan struct{}) {
 			}
 		}
 		return true
-	}
+	})
+}
+
+// demoLoop plays demo games until stop closes; wait(n) waits n ticks and
+// reports false once the demo is stopped.
+func (m *Machine) demoLoop(stop <-chan struct{}, wait func(n int) bool) {
+	r := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 7))
 	newGame := func() {
 		m.mu.Lock()
 		if m.s.Demo {
 			m.s.Periods, m.s.Sets = []Period{}, []SetScore{}
 			m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
+			// The last game's final is not this game's.
+			if m.s.Screen.Current == "final" {
+				m.auto("marcador")
+			}
 		}
 		m.mu.Unlock()
 	}
 	for {
 		m.mu.Lock()
-		id := m.rules().ID
+		p := m.rules()
 		m.mu.Unlock()
 		same := func(n int) bool {
-			if !hold(n) {
+			if !wait(n) {
 				return false
 			}
 			m.mu.Lock()
 			defer m.mu.Unlock()
-			return m.rules().ID == id
+			return m.rules().ID == p.ID
 		}
 		show := func(l Live) { m.update(l, true) }
-		if id == sport.Basketball.ID {
+		if p.ID == sport.Basketball.ID || !scriptable(p) {
 			playDemo(r, show, same, newGame)
 		} else {
-			playSport(sport.Get(id), show, same, newGame)
+			playSport(p, show, same, newGame)
 		}
 		select {
 		case <-stop:

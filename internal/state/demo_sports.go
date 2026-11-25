@@ -18,8 +18,21 @@ import (
 // the final screen (a soccer or volleyball game has no hold of its own).
 const demoFinalHold = 700
 
+// scriptable reports whether p has a demo script that fits it: the volleyball
+// match is for a best of 5, a timed script needs a step and at most two halves.
+func scriptable(p sport.Profile) bool {
+	if p.Sets() {
+		return p.SetsToWin == 3
+	}
+	sc, ok := demoScripts[p.ID]
+	return ok && sc.step > 0 && p.Periods >= 1 && p.Periods <= len(sc.goals)
+}
+
 // playSport runs demo games of p until hold says stop; hold(n) waits n ticks.
 func playSport(p sport.Profile, show func(Live), hold func(int) bool, newGame func()) {
+	if !scriptable(p) {
+		return
+	}
 	for {
 		newGame()
 		var ok bool

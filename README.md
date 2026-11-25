@@ -2,7 +2,7 @@
 
 A free tool for amateur clubs that stream their games. Hallstream reads the score from the hall's scoreboard console and puts it on the stream as broadcast graphics. It also sets up OBS and YouTube, so a volunteer can run a game-day stream from one laptop.
 
-> Hallstream is early. It works today for **basketball**, with a **Stramatel** console and its Stream Box over Bluetooth. Its interface is in **European Portuguese**. Other sports, manual scoring, more consoles and multiple cameras are on the [roadmap](docs/ROADMAP.md).
+> Hallstream is early. It works today for **basketball**, with a **Stramatel** console and its Stream Box over Bluetooth. Its interface is in **European Portuguese** and **English**. Other sports, manual scoring, more consoles and multiple cameras are on the [roadmap](docs/ROADMAP.md).
 
 ## What it does
 

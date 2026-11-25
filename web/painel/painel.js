@@ -307,6 +307,8 @@
       if (S.tab === 'ajuda') renderAjudaDir();
       renderShortcutAsk();
       refreshInicio();
+      var dl = $('#dLang');
+      if (dl && s && s.langs && dl.options.length !== s.langs.length) dl.innerHTML = langOptions(s.langs);
       // The PC card needs the status: draw it once it comes in.
       if (S.tab === 'definicoes' && s && s.shortcut && !$('#dShortcut')) renderDefinicoes();
     }, function () {});
@@ -1985,6 +1987,11 @@
   }
 
   /* ================= 6. DEFINIÇÕES ================= */
+  function langOptions(langs) {
+    var cur = S.settings.lang || 'pt';
+    return langs.map(function (l) { return '<option value="' + esc(l.code) + '"' + (l.code === cur ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('');
+  }
+
   function renderDefinicoes() {
     var root = $('#definicoes'), s = S.settings;
     if (!s) { root.innerHTML = '<p class="hint">' + t('painel.a_carregar') + '</p>'; return; }
@@ -1999,6 +2006,12 @@
         : '<div class="row" style="align-items:center"><p class="hint grow">' + t('painel.definicoes.setup_dica') + '</p>' +
           '<button class="btn primary" type="button" data-act="setup-open">' + (Object.keys(fs.steps || {}).length ? t('painel.continuar') : t('painel.comecar')) + '</button></div>') + '</div>';
     }
+    var langs = (S.status && S.status.langs) || [{ code: s.lang || 'pt', name: t('data.nome') }];
+    html += '<div class="card"><h2>' + t('painel.definicoes.idioma') + '</h2>' +
+      '<p class="hint">' + t('painel.definicoes.idioma_dica') + '</p>' +
+      '<div class="row" style="align-items:center"><select id="dLang" style="max-width:420px" aria-label="' + t('painel.definicoes.idioma') + '">' +
+      langOptions(langs) +
+      '</select><span class="msg" role="status"></span></div></div>';
     html += '<div class="card"><h2>' + t('painel.definicoes.obs') + '</h2>' +
       '<p class="hint">' + t('painel.definicoes.obs_dica') + '</p>' +
       '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-act="obs-setup">' + t('painel.configurar_obs') + '</button><span class="msg" id="obsSetupMsg" role="status"></span></div>' +
@@ -2456,6 +2469,14 @@
     root.addEventListener('change', function (e) {
       var tx = e.target;
       if (tx.id === 'dPin') tx.value = tx.value.replace(/\D/g, '').slice(0, 4);
+      if (tx.id === 'dLang') {
+        // Every page reads its words once, from /i18n.js, so a new language means a reload.
+        var lm = tx.closest('.row').querySelector('.msg');
+        tx.disabled = true;
+        api('PUT', '/api/settings', Object.assign({}, S.settings, { lang: tx.value })).then(function () { location.reload(); },
+          function (err) { tx.disabled = false; tx.value = S.settings.lang || 'pt'; lm.className = 'msg err'; lm.textContent = err.message; });
+        return;
+      }
       if (tx.id === 'dSport' || tx.id === 'dCountry') {
         var on = fpbFor({ sport: $('#dSport').value, country: $('#dCountry').value });
         $all('[data-fpb]', root).forEach(function (el) { el.hidden = !on; });

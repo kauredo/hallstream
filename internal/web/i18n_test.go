@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	assets "github.com/kauredo/hallstream/web"
 )
 
@@ -41,12 +42,14 @@ func TestWordsScript(t *testing.T) {
 
 func TestSettingsLang(t *testing.T) {
 	s := newServerFiles(t, assets.FS)
+	t.Cleanup(func() { i18n.SetLang(i18n.Default) })
 	if got := s.Store.Settings().Lang; got != "pt" {
 		t.Errorf("default lang = %q, want pt", got)
 	}
-	for in, want := range map[string]string{"": "pt", "EN": "en", "../pt": "pt"} {
+	put := func(lang string) {
+		t.Helper()
 		set := s.Store.Settings()
-		set.Lang = in
+		set.Lang = lang
 		b, _ := json.Marshal(set)
 		req := httptest.NewRequest("PUT", "/api/settings", strings.NewReader(string(b)))
 		req.Host, req.RemoteAddr = "127.0.0.1:8765", "127.0.0.1:5000"
@@ -54,19 +57,29 @@ func TestSettingsLang(t *testing.T) {
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, req)
 		if w.Code != 200 {
-			t.Fatalf("PUT lang %q: %d %s", in, w.Code, w.Body)
-		}
-		if got := s.Store.Settings().Lang; got != want {
-			t.Errorf("PUT lang %q saved %q, want %q", in, got, want)
+			t.Fatalf("PUT lang %q: %d %s", lang, w.Code, w.Body)
 		}
 	}
-	// No en.json ships: the words stay Portuguese.
-	req := httptest.NewRequest("POST", "/api/screen", strings.NewReader(`{"screen":"xyz"}`))
-	req.Host, req.RemoteAddr = "127.0.0.1:8765", "127.0.0.1:5000"
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	s.ServeHTTP(w, req)
-	if !strings.Contains(w.Body.String(), "Ecrã desconhecido") {
-		t.Errorf("error with lang en and no en.json: %s", w.Body)
+	screenError := func() string {
+		req := httptest.NewRequest("POST", "/api/screen", strings.NewReader(`{"screen":"xyz"}`))
+		req.Host, req.RemoteAddr = "127.0.0.1:8765", "127.0.0.1:5000"
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+		return w.Body.String()
+	}
+	for _, c := range []struct{ in, want string }{{"", "pt"}, {"EN", "en"}, {"../pt", "pt"}, {"xx", "xx"}} {
+		put(c.in)
+		if got := s.Store.Settings().Lang; got != c.want {
+			t.Errorf("PUT lang %q saved %q, want %q", c.in, got, c.want)
+		}
+	}
+	// No xx.json ships: the words stay Portuguese.
+	if got := screenError(); !strings.Contains(got, "Ecrã desconhecido") {
+		t.Errorf("error with lang xx: %s", got)
+	}
+	put("en")
+	if got := screenError(); !strings.Contains(got, "Unknown screen") {
+		t.Errorf("error with lang en: %s", got)
 	}
 }

@@ -206,7 +206,7 @@ func (s *Server) SyncGame() {
 	}
 	s.fixMu.Unlock()
 	if out.Away.Name == "" {
-		out.Away.Name = "VISITANTE"
+		out.Away.Name = i18n.T("jogo.visitante")
 	}
 	if g.Away.CrestURL != "" {
 		c := g.Away.CrestURL

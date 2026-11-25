@@ -36,7 +36,7 @@ Follow phase C in `docs/ROADMAP.md`. Your pull request needs to include:
 
 ## Translations
 
-The string catalogs are planned in phase A. Until they exist, open an issue to say which language you can help with.
+Every string is in `web/i18n/pt.json` (European Portuguese, the source) and `web/i18n/en.json` (British English). A new language is one more file with exactly the same keys, starting from `en.json`: keep every `{placeholder}` and HTML tag, and set `data.nome` to the language's name in its own words. `go test ./internal/i18n` checks the keys. Open an issue first to say which language you are working on.
 
 ## Reporting a problem
 

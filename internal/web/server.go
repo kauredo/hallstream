@@ -462,6 +462,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		"youtube":     s.ytStatus(isLoopback(r.RemoteAddr)),
 		"fpb":         map[string]any{"reachable": reachable, "cached_at": cached},
 		"club_setup":  s.progress(),
+		"langs":       i18n.Languages(),
 		"data_dir":    s.Store.Dir,
 		// The panel offers the desktop shortcut on the PC itself only.
 		"shortcut":  s.Shortcut != nil && isLoopback(r.RemoteAddr),

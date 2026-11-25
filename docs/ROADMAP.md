@@ -23,16 +23,16 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Streaming | YouTube through a verified OAuth client that ships with the app, or the club's own client. A plain RTMP key for any other platform. |
 | Squads and fixtures | A `Provider` interface: squads and fixtures typed or imported from CSV for everyone, then sources that cover more clubs (Phase E). Each source is opt-in, paced, cached for offline use and credited as its terms ask. Crests come from the club's own files, never from a source that does not license them; colours can come from anywhere. Minors' data is kept to shirt number, name and an optional photo. `docs/research/team-data-sources.md` has the sources and their terms. |
 | Club identity | Name, short name, colours, crest, sponsors and sport, all entered in the first-run wizard. Nothing club-specific in the code. |
-| Language | One catalog per language, `web/i18n/<lang>.json`: a flat JSON object of dotted keys (`painel.nav.ecras`, `overlay.final.titulo`, `ble.desligado`) to strings, sorted by key, with `{name}` placeholders. `pt.json` (European Portuguese) is the source. A plural is two keys, `….um` and `….outros`, picked in code; there is no plural engine. `settings.lang` (default `pt`) picks the file, and a missing file or key reads `pt`. A test fails on a key missing from `pt.json`, a key nothing uses, an unsorted file, another language with different keys, or Portuguese left in the code. English comes next. |
+| Language | One catalog per language, `web/i18n/<lang>.json`: a flat JSON object of dotted keys (`painel.nav.ecras`, `overlay.final.titulo`, `ble.desligado`) to strings, sorted by key, with `{name}` placeholders. `pt.json` (European Portuguese) is the source. A plural is two keys, `….um` and `….outros`, picked in code; there is no plural engine. `settings.lang` (default `pt`) picks the file, and a missing file or key reads `pt`. A test fails on a key missing from `pt.json`, a key nothing uses, an unsorted file, another language with different keys, or Portuguese left in the code. `en.json` (British English) ships, picked in Definições. |
 | Privacy | Player photos are off by default. Examples and fixtures use invented people. Nothing is sent anywhere unless the club opts in. Public releases are built without `HALLSTREAM_UPLOAD_TOKEN`, so they never upload game logs; only builds the maintainer makes for their own club carry it. hallstream.com says so. |
 | Releases | Signed GitHub releases (SignPath for Windows), plus a website and an in-app feedback form that opens GitHub issues. |
 
 ## Phase A: any club, manual scoring, onboarding
 
-1. **Club profile.**
+1. **Club profile.** Done.
    - Store the club in `settings.club` (name, short, colours, crest, sport, country).
    - Feed the colours to the overlay and panel as CSS custom properties.
-2. **Translations.**
+2. **Translations.** Done: Portuguese and English, picked in Definições.
    - Move every user-facing string, in the panel, the overlay and the log, into `i18n/<lang>.json`.
    - Add a test that fails on a missing key.
 3. **`Source` interface** (`internal/source`). Done: the console and `manual` sit behind it, switched by `settings.input`; the demo stays in `internal/state`.

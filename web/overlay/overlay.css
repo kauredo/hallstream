@@ -192,7 +192,7 @@ html.off .sb-dot { opacity: 1; }
 .sb-row { height: 48px; display: flex; }
 .sb-row .tile { width: 48px; height: 48px; }
 .sb-row .tile img { width: 36px; height: 36px; }
-.sb-row .tile .ini { font-size: 17px; margin-bottom: 4px; }
+.sb-row .tile .ini { font-size: 17px; }
 .sb-row .nm { width: 180px; height: 48px; box-sizing: border-box; padding: 0 8px 0 12px; display: flex; align-items: center; font-family: Graduate, serif; font-size: 24px; line-height: 1; white-space: nowrap; overflow: hidden; }
 .sb-row .sc { width: 72px; height: 48px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 40px; line-height: 1; }
 .sb-row.home .nm { background: var(--red); color: var(--on-red); }

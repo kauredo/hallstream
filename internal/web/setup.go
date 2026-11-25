@@ -15,7 +15,7 @@ import (
 
 // setupSteps are the ids /api/setup/steps/{id} takes: the steps and the
 // ticks inside them that the program can't check by itself.
-var setupSteps = []string{"youtube", "canal-diretos", "canal-verificado",
+var setupSteps = []string{"idioma", "clube", "entrada", "youtube", "canal-diretos", "canal-verificado",
 	"ensaio-demo", "ensaio-previa", "ensaio-desconto", "ensaio-promo", "ensaio-teste"}
 
 func (s *Server) setupRoutes() {

@@ -19,7 +19,7 @@
 - **Priority**: P2
 - **Effort**: L
 - **Risk**: MED (new clock mode in the scoring path that runs on air)
-- **Depends on**: plans/002-sport-package-basketball.md (`sport.Profile`), plans/003 (sport per escalão), plans/004 (volleyball: the `web/overlay/fixtures/<sport>/` folder and its Chrome-test glob). Not on 005, but if 005 landed first, reuse its `OvertimeLength` and `PeriodWord` fields instead of adding them.
+- **Depends on**: plans/002-sport-package-basketball.md (`sport.Profile`), plans/003 (sport per escalão), plans/004 (volleyball: the `web/overlay/fixtures/<sport>/` folder and its Chrome-test glob), plans/005-futsal.md (`Overtime`, `OvertimeLength`, `PeriodWord`, `FoulMarks`, `ResetsFouls`, `Score.Sport`, `Score.PeriodLength`, and basketball overtime at 5:00).
 - **Category**: direction
 - **Planned at**: commit `4093d0c`, 2026-11-25
 
@@ -48,7 +48,7 @@ From the IHF Rules of the Game (Rule 2, playing time and team timeouts; Rule 16,
 
 ### What earlier plans leave behind (expected, verify)
 
-From plan 002, `internal/sport/sport.go` has `Profile{ID, Periods, Half, Length, ClockDown, FoulsReset, FoulWarn, FoulBonus, ShotClock, FinalHold, TimeoutsBy [3]int}` with `Timeouts`, `ResetsTimeouts` and `Get` (no `Overtime` method: plan 005 adds it; add it here if 005 hasn't landed, `period > Periods`). `ClockDown` is `true` for basketball and `false` for volleyball (plan 004: no clock at all), and no code reads it yet. Plan 004 adds `Scoring`, `SetPoints`, `LastSetPoints`, `SetsToWin`, `WinBy` and `Sets()`, and replaces `if *s == prev` in `internal/source/manual.go` (line 232 at 4093d0c) with `same(a, b Score) bool`, which compares every field: **every field this plan adds to `Score` goes into `same()`**. If plan 005 landed first, it added `Score.Sport`, `Score.PeriodLength`, `OvertimeLength`, `PeriodWord` and `FoulMarks`; reuse them. `state.Game.Rules` sends the profile to the pages as `game.rules`, and `overlay.js` and `marcar.js` read it with basketball fallbacks. From plan 004: `internal/web/overlay_test.go` also globs `overlay/fixtures/*/*.json`.
+From plan 002, `internal/sport/sport.go` has `Profile{ID, Periods, Half, Length, ClockDown, FoulsReset, FoulWarn, FoulBonus, ShotClock, FinalHold, TimeoutsBy [3]int}` with `Timeouts`, `ResetsTimeouts` and `Get`; plan 005 adds `Overtime(p)`, `ResetsFouls(p)`, `OvertimeLength`, `FoulsCarry`, `PeriodWord` and `FoulMarks`, and sets `Basketball.OvertimeLength: 3000` (owner decision: FIBA overtime is 5:00). `ClockDown` is `true` for basketball and `false` for volleyball (plan 004: no clock at all), and no code reads it yet. Plan 004 adds `Scoring`, `SetPoints`, `LastSetPoints`, `SetsToWin`, `WinBy` and `Sets()`, and replaces `if *s == prev` in `internal/source/manual.go` (line 232 at 4093d0c) with `same(a, b Score) bool`, which compares every field: **every field this plan adds to `Score` goes into `same()`**. Plan 005 added `Score.Sport` (a new sport resets `s.Length`), `Score.PeriodLength` (computed after every action and in `Restore`) and the page's "Repor" sending `score.period_length`. `state.Game.Rules` sends the profile to the pages as `game.rules`, and `overlay.js` and `marcar.js` read it with basketball fallbacks. From plan 004: `internal/web/overlay_test.go` also globs `overlay/fixtures/*/*.json`.
 
 ### The scorer's clock today (at 4093d0c)
 
@@ -78,7 +78,7 @@ From plan 002, `internal/sport/sport.go` has `Profile{ID, Periods, Half, Length,
 - `period_next` (after plan 002) sets `s.Clock = s.Length`; `new_game` uses `newScore(s.Length)`; `Restore` and `Seed` (lines 115-145) assume a countdown (`Seed` sets the clock to `s.Length` when the console sent none).
 - line 232: `if *s == prev { return nil }` at 4093d0c; after plan 004 it is `if same(*s, prev)`. New `Score` fields go into `same()`.
 - line 212 (`period_next`) and line 228 (`new_game`) use the scorer's saved `s.Length`, so a custom `period_length` survives. This plan keeps that: count-up starts and ends derive from `s.Length`, never from `Profile.Length`.
-- `emit()` (lines 381-395) sends a `map[string]string` to the state machine (`state.Machine.ApplyConsole`, `internal/state/state.go:666-689`). New values travel in that map.
+- `emit()` (lines 381-395) sends a `map[string]string` to the state machine (`state.Machine.ApplyConsole`, `internal/state/state.go:665-689`). New values travel in that map.
 
 `internal/state/state.go`:
 
@@ -122,6 +122,7 @@ From plan 002, `internal/sport/sport.go` has `Profile{ID, Periods, Half, Length,
 - `internal/source/manual.go`, `internal/source/manual_test.go` (new tests)
 - `internal/state/state.go`, `internal/state/state_test.go` (new tests)
 - `internal/club/club.go` (handball `Active: true`)
+- `cmd/hallstream/main.go` (`restoreManual` and its call only, for the restart guard)
 - `web/marcar/index.html`, `web/marcar/marcar.js`, `web/marcar/marcar.css`
 - `web/overlay/index.html`, `web/overlay/overlay.js`, `web/overlay/overlay.css`
 - `web/overlay/fixtures/handball/*.json` (create)
@@ -145,16 +146,12 @@ From plan 002, `internal/sport/sport.go` has `Profile{ID, Periods, Half, Length,
 
 ### Step 1: The handball profile and the count-up fields
 
-In `internal/sport/sport.go` add, where absent:
+In `internal/sport/sport.go` add (plan 005 already added `OvertimeLength`, `PeriodWord` and `FoulMarks`):
 
 ```go
 	// StopAtEnd stops a count-up clock at the end of the period (handball);
 	// false lets it run on (soccer's stoppage time, plan 007). Countdowns stop at 0.
 	StopAtEnd bool `json:"stop_at_end"`
-	// OvertimeLength is tenths in an overtime period; 0 = the regulation Length.
-	OvertimeLength int `json:"overtime_length"`
-	// PeriodWord picks the period labels: "quarter", "half", "set".
-	PeriodWord string `json:"period_word"`
 	// Suspensions is how long a suspension runs, in tenths; 0 = the sport has none.
 	Suspensions int `json:"suspensions"`
 ```
@@ -178,30 +175,33 @@ Handball:
 ```go
 var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false,
 	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, OvertimeLength: 3000,
-	PeriodWord: "half", Suspensions: 1200}
+	PeriodWord: "half", Suspensions: 1200, FoulMarks: 0}
 ```
 
 No team fouls: `FoulWarn: 0`, `FoulBonus: 0`, `FoulsReset: false`. Timeouts: the counter goes back to 0 at the second half and the page shows 2 marks per half; the 3-per-match total is not enforced (the volunteer at the table knows it). Register in `Get`.
 
 An overtime's length is `OvertimeLength`, or `length` when that is 0.
 
-**Verify**: `go test ./internal/sport/` → pass, with tests (length 18000): handball `Start(1)=0`, `Start(2)=18000`, `Start(3)=36000`, `Start(4)=39000`; `End(1)=18000`, `End(2)=36000`, `End(3)=39000`; with length 15000 (a youth game) `Start(2)=15000`, `End(2)=30000`; basketball (length 6000) `Start(n)=6000` for every n and `End(n)=0`.
+**Verify**: `go test ./internal/sport/` → pass, with tests (length 18000): handball `Start(1)=0`, `Start(2)=18000`, `Start(3)=36000`, `Start(4)=39000`; `End(1)=18000`, `End(2)=36000`, `End(3)=39000`; with length 15000 (a youth game) `Start(2)=15000`, `End(2)=30000`; basketball (length 6000) `Start(1..4)=6000`, `Start(5)=3000` (plan 005's 5:00 overtime) and `End(n)=0`.
 
 ### Step 2: The scorer's clock counts up when the profile says so
 
 In `internal/source/manual.go`, with `r := m.Rules()`:
 
-- **Which sport the score is for** (skip if plan 005 already did this). Add `Sport string \`json:"sport"\`` to `Score` and to `same()`. At the start of `Do`, if `s.Sport != r.ID`, set `s.Length = r.Length` and `s.Sport = r.ID`; otherwise keep `s.Length`, so a volunteer's `period_length` (say 25:00 for a youth game) survives a new game.
+- **Which sport the score is for**: plan 005's `Score.Sport` already resets `s.Length` to the profile's when the sport changes and keeps a volunteer's `period_length` (say 25:00 for a youth game) otherwise. Nothing to add.
+- **Where "Repor" goes.** Add `PeriodStart int \`json:"period_start"\`` to `Score` and to `same()`, computed in the same place plan 005 computes `PeriodLength` (after every action and in `Restore`): `r.Start(s.Period, s.Length)`. For a count-up, `PeriodLength` becomes the period's duration, `r.End(p, s.Length) - r.Start(p, s.Length)`; for a countdown both stay as plan 005 left them (`PeriodStart == PeriodLength`). In `web/marcar/marcar.js:284` and `288`, "Repor" shows and sets `score.period_start` (falling back to `score.period_length`, then `score.length`): 00:00 in the first half of handball, 30:00 in the second, the full or overtime length for a countdown.
+- **`period_length` on a count-up.** The action changes `s.Length`; it moves the clock only when the period hasn't started, i.e. the clock is stopped at the old `r.Start(s.Period, oldLength)`, and then moves it to `r.Start(s.Period, newLength)`. (Today's countdown rule, `!s.Running && s.Clock == s.Length` at line 223, is the same rule for a countdown.)
+- **`Tick`** (line 342) skips a frame when `state.ClockText` of the new and the sent clock match. For a count-up, compare the text `emit()` actually sends (`ClockTextUp`); put the choice in one helper, `m.clockText(t)`, used by both.
 - `current()`: for a count-up, `s.Clock = fromClock + elapsed`; when `r.StopAtEnd`, cap at `r.End(s.Period, s.Length)` and stop there (`Running = false`); otherwise cap at `MaxClock`. Countdown unchanged.
 - `clock_start`: a count-up may start whenever it is below its end (or always, when not `StopAtEnd`). Countdown unchanged (`s.Clock > 0`).
-- `period_next`: `s.Clock = r.Start(s.Period, s.Length)` (after the increment). For basketball this equals today's `s.Length`.
+- `period_next`: `s.Clock = r.Start(s.Period, s.Length)` (after the increment). For basketball this is `s.Length` in regulation and 3000 in overtime, exactly plan 005's rule.
 - `new_game` and `newScore`: start at `r.Start(1, s.Length)` (0 for handball).
 - `Seed`: when the console sent no clock, use `r.Start(p, s.Length)` instead of `s.Length`.
 - `emit()`: also send `"period_end"`, the tenths where the current period ends (`r.End(s.Period, s.Length)`; `""` for a countdown), so the state machine knows the end without knowing `s.Length`.
 - `Restore`: keep the clamp to `[0, MaxClock]`.
 - Update the field comments: `Clock` is "tenths on the clock: left in the period for a countdown, played in the game for a count-up"; `Running` is "the clock is running".
 
-**Verify**: `go test ./internal/source/` → pass, with new tests (fake `Now`, `Rules` returning `sport.Handball`): a new game shows 0; after `clock_start` and 65 s the clock is 650; it stops at 18000 in period 1; `period_next` starts period 2 at 18000; with `period_length` 15000 the second half starts at 15000 and survives `new_game`; basketball tests unchanged.
+**Verify**: `go test ./internal/source/` → pass, with new tests (fake `Now`, `Rules` returning `sport.Handball`): a new game shows 0; after `clock_start` and 65 s the clock is 650; it stops at 18000 in period 1; `period_next` starts period 2 at 18000; with `period_length` 15000 the second half starts at 15000 and survives `new_game`; `PeriodStart` is 0 in period 1 and 18000 in period 2; `period_length` at 0:00 in period 1 leaves the clock at 0, and in period 2 at 30:00 with the clock stopped moves it to the new start; a running clock is never moved; basketball and futsal tests unchanged.
 
 ### Step 3: Clock text and the state machine for a count-up
 
@@ -248,22 +248,23 @@ Timing: the time left is `End - Clock`. Because `End` is a point on the game clo
 ### Step 5: Suspensions in the state
 
 - `state.Live`: add `Suspensions []Suspension \`json:"suspensions"\`` with `type Suspension struct{ Team, Number, Left string; ID int }` and JSON tags `team`, `number`, `left`, `id`.
-- `ApplyConsole` (`state.go:666-689`): decode `v["suspensions"]` with `json.Unmarshal`; on a decode error or an empty value, leave the list empty. Never fail the frame.
+- `ApplyConsole` (`state.go:665-689`): decode `v["suspensions"]` with `json.Unmarshal`; on a decode error or an empty value, leave the list empty. Never fail the frame.
 - Game log: through the `seen` diff in `emit()` (`state.go:330-384`), never from `setLive`. Add `susp int` to `seen` (the highest suspension ID in `Live.Suspensions`, filled in `seenNow`), and in `emit()` call `m.OnEvent("suspension", map[string]any{"team": …, "number": …})` for each suspension whose ID is above `old.susp`, as periods do at lines 380-383. The demo is muted there already (`old.demo || cur.demo`).
+- **Restart guard.** After a restart, `restoreManual` (`cmd/hallstream/main.go:367-374`) puts back a score that may hold running suspensions, and its first frame would log them again. Add `func (m *Machine) RestoreSeen(susp int)` that sets `m.seen.susp` under the lock, as `RestorePeriods` sets `m.seen.periods` (`state.go:638`). In `main.go`, pass the machine to `restoreManual` and call `m.RestoreSeen(<highest ID in the restored HomeSusp and AwaySusp>)` right after `mn.Restore(sc)`. Plan 007 adds its counters to the same method.
 - `docs/CONTRACT.md`: document `live.suspensions`, the three actions, and the timeline event.
 
-**Verify**: `go test ./internal/state/` → pass, with tests: a frame with one suspension fills `Live.Suspensions`; a bad JSON value leaves it empty and the score still updates; a new ID fires one `suspension` event; nothing fires while the demo runs.
+**Verify**: `go test ./internal/state/` → pass, with tests: a frame with one suspension fills `Live.Suspensions`; a bad JSON value leaves it empty and the score still updates; a new ID fires one `suspension` event; nothing fires while the demo runs; after `RestoreSeen` with the highest ID 2, a frame holding suspensions 1 and 2 fires nothing.
 
 ### Step 6: Scorer page and overlay
 
 Go through `build-ui` (extension branch, R8):
 
-- `web/marcar/index.html` and `marcar.js`, when `rules.id === "handball"` (or more generally `rules.suspensions > 0` and `rules.foul_warn === 0`):
+- `web/marcar/index.html` and `marcar.js`, driven by the profile: the fouls row hides when `rules.foul_marks` is 0 (plan 005's rule; Handball has `FoulMarks: 0`), and the suspensions row shows when `rules.suspensions > 0`:
   - points buttons: `+1` only (goals). A long press on it takes one away, as the existing handler at `marcar.js:243-254` does for every `data-long` button; keep `data-long` on it.
-  - hide the fouls row; show a suspensions row per team: a "+2'" button (`data-do="suspension"`), and each running suspension as a chip with its time left and, when tapped, a small number field (`suspension_number`) and an "Acabou" button (`suspension_end`).
+  - a suspensions row per team: a "+2'" button (`data-do="suspension"`), and each running suspension as a chip with its time left and, when tapped, a small number field (`suspension_number`) and an "Acabou" button (`suspension_end`).
   - timeouts row: 2 marks per half from `rules.timeouts`.
   - period word "half" as in plan 005: keys `overlay.periodo.parte_curto` (pt "{n}ª P.", en "H{n}"), `overlay.periodo.parte_longo` (pt "{n}ª PARTE", en "HALF {n}") and `marcar.parte` (pt "{n}ª parte", en "Half {n}"); add them if 005 hasn't landed.
-- `web/overlay/index.html` and `overlay.js`: under each team on the scoreboard, up to 3 suspension chips `2:00 · 7` (number only when set), drawn from `live.suspensions`. No fouls row for handball (hide when `foul_warn` is 0). Check every scoreboard style and the reduced bug.
+- `web/overlay/index.html` and `overlay.js`: under each team on the scoreboard, up to 3 suspension chips `2:00 · 7` (number only when set), drawn from `live.suspensions`. No fouls row for handball (hide when `rules.foul_marks` is 0). Check every scoreboard style and the reduced bug.
 - New keys (pt, en): `marcar.exclusao` ("+2'" / "+2'"), `marcar.exclusao_numero` ("Número" / "Number"), `marcar.exclusao_acabou` ("Acabou" / "Ended"), `marcar.exclusoes` ("Exclusões" / "Suspensions"), `overlay.exclusao` (aria label: "Exclusão {numero} {tempo}" / "Suspension {numero} {tempo}").
 
 **Verify**: in the demo, with an escalão set to handball, `/marcar` shows +1, the suspension row and two timeout marks; three taps start three chips, a fourth shows the error; the overlay shows the chips ticking only while the clock runs.
@@ -317,4 +318,4 @@ Go through `build-ui` (extension branch, R8):
 
 ## Plan review
 
-One cold review, revise; the fixes are in. Settled in review: the period length stays the scorer's `s.Length` (so `Start`/`End` take it as an argument), suspensions store their end on the game clock instead of a running `Left`, timeline events go through `emit()`'s `seen` diff, and `+1` is the only goal button with `-1` on the existing long press. Contested: none.
+Two cold reviews, both revise; the fixes are in. Settled in review: the period length stays the scorer's `s.Length` (so `Start`/`End` take it as an argument), suspensions store their end on the game clock, timeline events go through `emit()`'s `seen` diff with a `RestoreSeen` guard after a restart, "Repor" goes to `PeriodStart`, `period_length` moves a count-up clock only before the period starts, the fouls row hides by `FoulMarks: 0`, and plan 005 counts as landed (basketball overtime 5:00). Contested: none.

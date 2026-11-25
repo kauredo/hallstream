@@ -130,7 +130,7 @@ From plan 004: `Profile` gains `Scoring`, `SetPoints`, `LastSetPoints`, `SetsToW
 **Out of scope**:
 
 - `internal/ble/decode.go` and the console path. The decoder has no futsal code (`internal/ble/decode.go:13-22` lists hockey, basketball, net, timer, tennis, volleyball, handball). Futsal on a console is "untested" (Step 6).
-- Any change to basketball's numbers. Every existing test passes unchanged.
+- Any change to basketball's numbers except overtime at 5:00 (Step 1). Every other existing test passes unchanged.
 - The website support table (website repo, separate PR).
 
 ## Git workflow
@@ -185,7 +185,7 @@ var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown
 	FinalHold: 600, TimeoutsBy: [3]int{1, 1, 0}, OvertimeLength: 3000, PeriodWord: "half", FoulMarks: 5}
 ```
 
-Register it in `Get`. Basketball keeps `OvertimeLength: 0` so its overtime stays at the period length exactly as today (changing basketball's overtime to 5:00 is a separate decision; note it in the PR, don't do it here).
+Register it in `Get`. **Also set `OvertimeLength: 3000` on `sport.Basketball`** (owner decision 2026-11-25: FIBA overtime is 5:00; today the scorer runs overtime at the full period length). This is the one intended basketball behaviour change in Phase C: add a test that basketball's period 5 starts at 5:00, update any existing test that asserts a 10:00 overtime (name it in the PR), state it in `docs/CONTRACT.md` and in the PR description. The demo (`internal/state/demo.go`) already plays a 300 s overtime.
 
 **Verify**: `go test ./internal/sport/` → pass, with new tests: `Get("futsal")` returns `Futsal`; `Overtime(2)` false and `Overtime(3)` true for futsal, `Overtime(4)` false and `Overtime(5)` true for basketball; `Futsal.Timeouts` for periods 1..4 is `1,1,0,0`; `ResetsTimeouts` true for 2; `ResetsFouls` true for 2, false for 3 and 4; basketball `ResetsFouls` true for 2..6; basketball's existing tests unchanged.
 
@@ -253,7 +253,7 @@ Create `web/overlay/fixtures/futsal/` with five files, copying the shape of `web
 - `internal/source/manual_test.go`: Step 2 cases, new test functions only.
 - `internal/state/state_test.go`: Step 3 cases, new test functions only.
 - Overlay: five futsal fixtures loaded by the Chrome test.
-- Basketball: every existing test passes unchanged.
+- Basketball: every existing test passes unchanged, except one asserting a 10:00 overtime, if any; that one changes to 5:00.
 
 ## Done criteria
 
@@ -264,7 +264,7 @@ Create `web/overlay/fixtures/futsal/` with five files, copying the shape of `web
 - [ ] `grep -n '"futsal", "FUTSAL", "FUTSAL", true' internal/club/club.go` matches
 - [ ] `grep -c "<i></i><i></i><i></i><i></i>" web/overlay/index.html` → 0
 - [ ] `git diff --stat 4093d0c..HEAD -- internal/ble` shows no change from this branch
-- [ ] No existing test function edited (`git diff` on `*_test.go` shows additions only)
+- [ ] No existing test function edited (`git diff` on `*_test.go` shows additions only), except a basketball overtime-length assertion moving to 5:00
 - [ ] `plans/README.md` status row updated
 
 ## STOP conditions
@@ -278,7 +278,7 @@ Create `web/overlay/fixtures/futsal/` with five files, copying the shape of `web
 
 ## Maintenance notes
 
-- `OvertimeLength` exists now; basketball's overtime still uses the regulation length because the scorer always did. FIBA overtime is 5:00. Changing basketball is a behaviour change for the owner to decide.
+- `OvertimeLength` exists now, and basketball uses it (5:00, owner decision 2026-11-25). A volunteer can still set the clock by hand in overtime.
 - Handball (plan 006) and soccer (plan 007) count up; they add their own clock fields. Keep `ResetsFouls` as the single place that decides fouls.
 - When a futsal console session is recorded (Phase D capture), add a decoder test and change the CONTRACT note from untested.
 - Reviewers: watch a full demo futsal game to `final`; check the 5th and 6th foul states on every scoreboard style.

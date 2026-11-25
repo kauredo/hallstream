@@ -41,7 +41,7 @@ From the IFAB Laws of the Game (Law 7, duration; Law 3, substitutes; Law 12, cau
 - Half-time after the first half.
 - Added time is announced as whole minutes (+N) near the end of each half.
 - A second yellow card to the same player is a red card (sending-off).
-- Extra time, where a competition needs a winner: two periods of 15:00. Penalty shoot-outs are out of scope.
+- Extra time and penalty shoot-outs are **out of scope**: youth and amateur games rarely have them. So the clock never needs more than 2 × 45 plus added time, and `MaxClock` (99:59, `internal/source/manual.go:31`) is enough.
 - Youth and amateur games often play shorter halves (2 × 30, 2 × 35, 2 × 40): the scorer already lets the volunteer change the period length (`period_length` action).
 
 ## Current state
@@ -49,7 +49,8 @@ From the IFAB Laws of the Game (Law 7, duration; Law 3, substitutes; Law 12, cau
 ### What earlier plans leave behind (expected, verify)
 
 - Plan 002: `internal/sport/sport.go` with `Profile` and `Get`; `state.Game.Rules` sends it as `game.rules`.
-- Plan 006: `Profile.StopAtEnd`, `OvertimeLength`, `PeriodWord`, `Suspensions`; methods `Start(period, length)` and `End(period, length)`, where `length` is the scorer's saved `Score.Length` (count-up: time played before the period, and the end of the period); `Score.Sport` (a new sport resets `s.Length` to the profile's, otherwise the volunteer's `period_length` stays); `state.ClockTextUp`; `Live.PeriodEnd` sent by the scorer as `"period_end"`; the scorer's `current()` counts up when `ClockDown` is false and stops at `End` only when `StopAtEnd`; `setLive` treats a rising clock as "started" for a count-up. Suspensions are fixed arrays in `Score`, compared in `same()`.
+- Plan 005: `OvertimeLength`, `PeriodWord`, `FoulMarks` (0 hides the scorer's fouls row), `Score.Sport`, `Score.PeriodLength`.
+- Plan 006: `Profile.StopAtEnd`, `Suspensions`, `Score.PeriodStart` ("Repor" goes there), `Machine.RestoreSeen`; methods `Start(period, length)` and `End(period, length)`, where `length` is the scorer's saved `Score.Length` (count-up: time played before the period, and the end of the period); `Score.Sport` (a new sport resets `s.Length` to the profile's, otherwise the volunteer's `period_length` stays); `state.ClockTextUp`; `Live.PeriodEnd` sent by the scorer as `"period_end"`; the scorer's `current()` counts up when `ClockDown` is false and stops at `End` only when `StopAtEnd`; `setLive` treats a rising clock as "started" for a count-up. Suspensions are fixed arrays in `Score`, compared in `same()`.
 - Plan 004: replaced `if *s == prev` (`internal/source/manual.go:232` at 4093d0c) with `same(a, b Score) bool`, which compares every field. **Every field this plan adds to `Score` goes into `same()`.**
 - Plan 004: fixtures under `web/overlay/fixtures/<sport>/`, loaded by `internal/web/overlay_test.go`.
 
@@ -115,6 +116,7 @@ From the IFAB Laws of the Game (Law 7, duration; Law 3, substitutes; Law 12, cau
 - `internal/source/manual.go`, `internal/source/manual_test.go` (new tests)
 - `internal/state/state.go`, `internal/state/state_test.go` (new tests)
 - `internal/web/marcar.go`, `internal/web/marcar_test.go` (create or extend)
+- `cmd/hallstream/main.go` (the `RestoreSeen` call in `restoreManual` only)
 - `internal/club/club.go` (soccer `Active: true`)
 - `web/marcar/index.html`, `web/marcar/marcar.js`, `web/marcar/marcar.css`
 - `web/overlay/index.html`, `web/overlay/overlay.js`, `web/overlay/overlay.css`
@@ -128,7 +130,7 @@ From the IFAB Laws of the Game (Law 7, duration; Law 3, substitutes; Law 12, cau
 - The console path and `internal/ble`. Football is scored by hand only; the CONTRACT says so.
 - The opponent's squad: away cards and substitutions take a typed shirt number, no name.
 - Goal scorers, assists, possession, any statistic. Goals are `+1` on the score as in handball.
-- Penalty shoot-outs.
+- Extra time and penalty shoot-outs (see Rules).
 - Handball's behaviour: every handball test passes unchanged.
 
 ## Git workflow
@@ -142,13 +144,13 @@ From the IFAB Laws of the Game (Law 7, duration; Law 3, substitutes; Law 12, cau
 
 ```go
 var Soccer = Profile{ID: "soccer", Periods: 2, Half: 1, Length: 27000, ClockDown: false,
-	StopAtEnd: false, FinalHold: 600, TimeoutsBy: [3]int{0, 0, 0}, OvertimeLength: 9000,
-	PeriodWord: "half"}
+	StopAtEnd: false, FinalHold: 0, TimeoutsBy: [3]int{0, 0, 0}, PeriodWord: "half",
+	FoulMarks: 0, Cards: true}
 ```
 
-No fouls, no timeouts, no suspensions, no shot clock. Add `Cards bool \`json:"cards"\`` to `Profile` (true for soccer) so the pages show the card rows from the profile. Register in `Get`.
+No fouls (`FoulMarks: 0` hides the fouls row, plan 005's rule), no timeouts, no suspensions, no shot clock, no extra time, and `FinalHold: 0`: the game ends on `game_end` (Step 3). Add `Cards bool \`json:"cards"\`` to `Profile` (true for soccer) so the pages show the card rows from the profile. Register in `Get`.
 
-**Verify**: `go test ./internal/sport/` → pass, with tests: `Soccer.Start(2)` is 27000, `End(2)` is 54000, `Start(3)` is 54000, `End(3)` is 63000; handball and basketball tests unchanged.
+**Verify**: `go test ./internal/sport/` → pass, with tests: `Soccer.Start(1, 27000)` is 0, `Soccer.Start(2, 27000)` is 27000, `End(2, 27000)` is 54000, `Soccer.Start(2, 21000)` is 21000 (a 35-minute youth half); handball, futsal and basketball tests unchanged.
 
 ### Step 2: Cards, substitutions and stoppage in the scorer
 
@@ -183,13 +185,13 @@ New actions (add `Kind string \`json:"kind"\``, `Out`, `In`, `Number` to `Action
 - `"card"` with `Team`, `Number` (1 to 3 digits, required) and `Kind` `"yellow"` or `"red"`. A yellow for a number that already has a yellow (same team) is stored as `"second_yellow"`. A card for a number already sent off: `manual.ja_expulso` (pt "Esse jogador já foi expulso.", en "That player has already been sent off."). Bad kind or number: `manual.cartao` (pt "Escolha o cartão e o número.", en "Pick the card and the number.").
 - `"sub"` with `Team`, `Out` and `In` (both required, different): appends a `Sub`. Error `manual.substituicao` (pt "Indique quem sai e quem entra.", en "Say who goes off and who comes on.").
 - `"stoppage"` with `N` from 0 to 15: sets `Stoppage`. Out of range: `manual.descontos_tempo` (pt "O tempo de compensação vai de 0 a 15 minutos.", en "Added time is 0 to 15 minutes.").
-- `"game_end"`: sets `Over = true` and stops the clock. Only in the last regulation period or later (`s.Period >= r.Periods`); otherwise `manual.fim_cedo` (pt "O jogo só pode acabar na última parte.", en "The game can only end in the last half."). Works for every count-up sport without `StopAtEnd`.
+- `"game_end"`: sets `Over = true` and stops the clock. `clock_start` after it sets `Over = false` (the game wasn't over), and undo takes `game_end` back like any action. Only in the last regulation period or later (`s.Period >= r.Periods`); otherwise `manual.fim_cedo` (pt "O jogo só pode acabar na última parte.", en "The game can only end in the last half."). Works for every count-up sport without `StopAtEnd`.
 - `period_next` resets `Stoppage` to 0. `new_game` empties cards and subs and clears `Over`.
 - Undo takes back any of these.
 
 Only accept `card` and `sub` when `m.Rules().Cards` is true; otherwise `manual.sem_cartoes` (pt "Esta modalidade não tem cartões.", en "This sport has no cards.").
 
-`emit()`: send `"over"` (`"1"` or `""`), `"stoppage"` as a number string, `"cards"` and `"subs"` as JSON strings (`"[]"` when empty), with `clock` turned into a minute (`clock/600 + 1`, football's "23'").
+`emit()`: send `"over"` (`"1"` or `""`), `"stoppage"` as a number string, `"cards"` and `"subs"` as JSON strings (`"[]"` when empty), with `clock` turned into the minute as football writes it, a string: inside the period `clock/600 + 1` ("23'"); past the period's end `E = r.End(s.Period, s.Length)`, the half's end minute plus the minutes into added time, rounded up: `fmt.Sprintf("%d+%d'", E/600, (clock-E+599)/600)` ("45+3'" for a card at 47:12 in the first half).
 
 **Verify**: `go test ./internal/source/` → pass, with new tests (`Rules` returning `sport.Soccer`): a yellow then another yellow to home 7 stores `yellow` then `second_yellow`; a card after a red errors; a sub with `Out == In` errors; `stoppage` 4 then `period_next` gives 0; undo of a card removes it and the earlier snapshot's slice is unchanged; `game_end` in period 1 errors, in period 2 sets `Over` and stops the clock; `same()` reports a change when only a card changed; handball and basketball tests unchanged.
 
@@ -201,14 +203,15 @@ Plan 006's count-up with `StopAtEnd: false` lets the clock run past `End`. Check
 - `period_next` from period 1 at 47:12 starts period 2 at `Start(2, s.Length)`: 45:00 with the default length, 35:00 when the volunteer set `period_length` to 35:00 for a youth game.
 - `web/marcar/marcar.js`: the next-period button is offered once the clock is at or past the period's end, without stopping it (soccer); for handball it stays as 006 left it.
 
-In `internal/state/state.go`: add `Over bool \`json:"over"\`` to `Live`, read from `v["over"] == "1"` in `ApplyConsole`. In `setLive`, when `l.Over` turns true and `m.finalDone != p`, set `m.finalDone = p`, `m.auto("final")` and record the period, as `checkFinal` does (`state.go:767-775`). For a count-up profile without `StopAtEnd` there is **no** final hold: make sure plan 006's hold condition never starts one for soccer. `web/marcar`: a "Fim do jogo" button in the last half, behind the existing confirm dialog (`#confirmar`, `index.html:110-117`), sending `game_end`.
+In `internal/state/state.go`: add `Over bool \`json:"over"\`` to `Live`, read from `v["over"] == "1"` in `ApplyConsole`. In `setLive` (its signature after plan 004 is `setLive(l Live, finished []SetScore)`), when `l.Over` turns true and `m.finalDone != p`, set `m.finalDone = p`, `m.auto("final")` and record the period, as `checkFinal` does (`state.go:767-775`). When `l.Over` turns false again (undo of `game_end`, or `clock_start` after it) while `m.finalDone == p`, clear `finalDone` and go back to `marcador` with `m.auto("marcador")`, as plan 004 does for an undo across the match end; drop the recorded last period if it was recorded by the `Over` (so finishing again records it once). **The state machine skips the final hold when `r.FinalHold` is 0**: put that check where the hold starts (`setLive`) and in `checkFinal`, so soccer can only end on `game_end`. `web/marcar`: a "Fim do jogo" button in the last half, behind the existing confirm dialog (`#confirmar`, `index.html:110-117`), sending `game_end`.
 
-**Verify**: `go test ./internal/source/ ./internal/state/` → pass, with tests: the clock runs past 45:00; a frame with `over: "1"` in period 2 shows `final` and records period 2 once; a soccer clock stopped at 92:30 for longer than `FinalHold` without `over` does not show `final`; the half switches to `intervalo` on `period_next`.
+**Verify**: `go test ./internal/source/ ./internal/state/` → pass, with tests: the clock runs past 45:00; a frame with `over: "1"` in period 2 shows `final` and records period 2 once; a soccer clock stopped at 92:30 for 5 minutes without `over` does not show `final`; `over` going back to `""` returns to `marcador`, and `over: "1"` again shows `final` a second time with period 2 recorded once; a card emitted at 47:12 in period 1 carries minute "45+3'"; the half switches to `intervalo` on `period_next`.
 
 ### Step 4: State, lower thirds and the game log
 
-- `state.Live`: add `Stoppage int \`json:"stoppage"\``, `Cards []Card` and `Subs []Sub` (state-side types with the same JSON shape, `minute int` in place of `clock`). `ApplyConsole` decodes `v["cards"]` and `v["subs"]` with `json.Unmarshal`; a bad value leaves them empty and never fails the frame.
+- `state.Live`: add `Stoppage int \`json:"stoppage"\``, `Cards []Card` and `Subs []Sub` (state-side types with the same JSON shape, `minute string` in place of `clock`, e.g. "23'" or "45+3'"). `ApplyConsole` decodes `v["cards"]` and `v["subs"]` with `json.Unmarshal`; a bad value leaves them empty and never fails the frame.
 - Game log, through the `seen` diff: add `cards int` and `subs int` to `seen` (`len(m.s.Live.Cards)`, `len(m.s.Live.Subs)` in `seenNow`). In `emit()`, for each index from `old.cards` to `cur.cards` call `m.OnEvent("card", {"team","number","kind","minute"})`, and the same for `"sub"` (`{"team","out","in","minute"}`). An undo shrinks the list: nothing fires, and `seen` takes the smaller count. The demo is muted there already.
+- **Restart guard.** Extend plan 006's `RestoreSeen` to `RestoreSeen(susp, cards, subs int)` and, in `restoreManual` (`cmd/hallstream/main.go`), pass `len(sc.Cards)` and `len(sc.Subs)` from the restored score, so a restart doesn't log the game's cards and substitutions again. Add `cmd/hallstream/main.go` (that call only) to the files you touch.
 - `state.LowerThird`: add `Card string \`json:"card"\`` (`"yellow"`, `"second_yellow"`, `"red"`) and `OutNumber`, `OutName string` (`json:"out_number"`, `json:"out_name"`) for a substitution.
 - `internal/web/marcar.go`, `marcarDo`: after a successful `card` or `sub` action, build and show a lower third for 8 s:
   - names: for `Team == "home"`, look the number up in `s.State.Snapshot().Game.Squad` (`state.Machine.Snapshot`, `state.go:386`, already used as `s.State.Snapshot().Game` in `internal/web/calendar_test.go:47`; match `SquadPlayer.Number`, read `.Name` and `.PhotoURL`), split first/last as `server.go:665` does. Away: number only, no name, no photo.
@@ -223,8 +226,9 @@ In `internal/state/state.go`: add `Over bool \`json:"over"\`` to `Live`, read fr
 
 Go through `build-ui` (extension branch, R8):
 
-- `web/marcar`, when `rules.cards`:
-  - points `+1` only (goals); no fouls or timeouts rows.
+- `web/marcar`, when `rules.cards` (the fouls row already hides by `rules.foul_marks` 0, the timeouts row by `rules.timeouts` all 0):
+  - points `+1` only (goals), with `-1` on the existing long press (`marcar.js:243-254`).
+  - "Repor" goes to `score.period_start` (plan 006): 00:00 in the first half, 45:00 in the second.
   - a cards row per team: yellow and red buttons that open a number picker. Home: the squad's numbers from `st.game.squad` as large buttons, plus "outro número". Away: a number pad.
   - a substitution button per team: pick out, then in (same pickers).
   - next to the clock: an added-time stepper (0 to 15) sending `stoppage`, shown as "45+2'".
@@ -288,4 +292,4 @@ Go through `build-ui` (extension branch, R8):
 
 ## Plan review
 
-One cold review, revise; the fixes are in. Settled in review: the game ends with a `game_end` action instead of a hold, card counts include second yellows on both sides, added time shows as "45+2'", the period length stays the scorer's `s.Length`, `Score` changes go through plan 004's `same()`, timeline events go through `emit()`'s `seen` diff, and every card or substitution shows a lower third (no on/off setting exists). Contested: none.
+Two cold reviews (revise, then approve-with-fixes); the fixes are in. Settled in review: the game ends with `game_end` and `FinalHold: 0` (the state machine skips the hold at 0), undo of `game_end` or `clock_start` after it returns to `marcador`, extra time and penalties are out of scope, the fouls row hides by `FoulMarks: 0`, card counts include second yellows on both sides, added time shows as "45+2'" and a card in it as "45+3'", "Repor" goes to plan 006's `PeriodStart`, `RestoreSeen` covers cards and subs after a restart, the period length stays the scorer's `s.Length`, and `Score` changes go through plan 004's `same()`. Contested: none.

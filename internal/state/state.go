@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kauredo/hallstream/internal/i18n"
+	"github.com/kauredo/hallstream/internal/sport"
 )
 
 type Box struct {
@@ -267,7 +268,7 @@ type Machine struct {
 	seen       seen
 	autoSwitch bool // the program picked the screen, not the volunteer
 
-	zeroSince  time.Time // clock at 0 in period >= 4 since then
+	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"
 	started    bool      // the clock has run in the current period
 	clockRanAt time.Time // when the clock value last changed; zero before any
@@ -732,12 +733,13 @@ func (m *Machine) setLive(l Live) bool {
 	}
 	oldP, _ := strconv.Atoi(old.Period)
 	newP, _ := strconv.Atoi(l.Period)
+	r := m.rules()
 	recorded := false
 
 	if newP != oldP {
 		if oldP >= 1 && newP == oldP+1 {
 			recorded = m.record(oldP, old.Home, old.Away)
-			if oldP == 2 {
+			if oldP == r.Half {
 				m.auto("intervalo")
 			}
 		}
@@ -748,13 +750,13 @@ func (m *Machine) setLive(l Live) bool {
 	if !m.started && t >= 0 && m.lastTenths > 0 && t < m.lastTenths {
 		m.started = true
 		cur := m.s.Screen.Current
-		if newP >= 3 && (cur == "intervalo" || cur == "final") {
+		if newP > r.Half && (cur == "intervalo" || cur == "final") {
 			m.auto("marcador")
 		}
 	}
 	m.lastTenths = t
 
-	if newP >= 4 && t == 0 {
+	if newP >= r.Periods && t == 0 {
 		if m.zeroSince.IsZero() {
 			m.zeroSince = m.now()
 		}
@@ -764,10 +766,14 @@ func (m *Machine) setLive(l Live) bool {
 	return m.checkFinal() || recorded
 }
 
+// rules is the profile of the game's sport. Call it with the lock held.
+func (m *Machine) rules() sport.Profile { return sport.Get(m.s.Game.Sport) }
+
 // checkFinal fires the end of the game once the clock has sat at 0 long enough.
 func (m *Machine) checkFinal() bool {
 	p, _ := strconv.Atoi(m.s.Live.Period)
-	if m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < FinalHold {
+	r := m.rules()
+	if m.zeroSince.IsZero() || m.finalDone == p || m.now().Sub(m.zeroSince) < time.Duration(r.FinalHold)*100*time.Millisecond {
 		return false
 	}
 	m.finalDone = p

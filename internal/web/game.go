@@ -41,6 +41,7 @@ func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {
 		reply(w, g)
 		if old.GroupID != g.GroupID || !sameGame(old.FPBGameID, g.FPBGameID) || day(old.Start) != day(g.Start) {
 			s.State.ResetPeriods() // another game: last game's periods go
+			s.State.ResetSets()
 		}
 		s.refreshNextInBackground()
 		// A game picked for a linked escalão: bring its squad up to date.

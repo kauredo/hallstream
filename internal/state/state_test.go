@@ -266,6 +266,126 @@ func TestRestoredPeriodsCarryOn(t *testing.T) {
 	}
 }
 
+// volleyball is a machine playing a volleyball game, with the events it told.
+func volleyball() (m *Machine, events *[]string) {
+	m, _ = newTest()
+	m.SetGame(Game{Sport: "volleyball"}, false)
+	events = &[]string{}
+	m.OnEvent = func(ev string, f map[string]any) {
+		switch ev {
+		case "set":
+			*events = append(*events, "set"+strconv.Itoa(f["set"].(int)))
+		case "screen":
+			*events = append(*events, "screen:"+f["name"].(string))
+		}
+	}
+	return m, events
+}
+
+// vframe is one frame of a sets sport: points, sets won and the finished sets.
+func vframe(m *Machine, home, away, hs, as int, sets string) {
+	m.ApplyConsole(map[string]string{"home": strconv.Itoa(home), "away": strconv.Itoa(away),
+		"home_sets": strconv.Itoa(hs), "away_sets": strconv.Itoa(as), "sets": sets, "period": strconv.Itoa(hs + as + 1)})
+}
+
+func TestSetsFromThePhoneScorer(t *testing.T) {
+	m, events := volleyball()
+	vframe(m, 25, 20, 0, 0, "")
+	vframe(m, 0, 0, 1, 0, "25-20")
+	want := []SetScore{{1, 25, 20, "home"}}
+	if got := m.Snapshot().Sets; !reflect.DeepEqual(got, want) {
+		t.Errorf("sets %v, want %v", got, want)
+	}
+	vframe(m, 0, 0, 1, 1, "25-20,18-25")
+	if got := m.Snapshot().Sets; len(got) != 2 || got[1] != (SetScore{2, 18, 25, "away"}) {
+		t.Errorf("sets %v", got)
+	}
+	for _, e := range *events {
+		if e == "screen:intervalo" {
+			t.Error("a set end switched to the intervalo")
+		}
+	}
+	if !reflect.DeepEqual(*events, []string{"set1", "set2"}) {
+		t.Errorf("events %v", *events)
+	}
+}
+
+func TestSetsFromTheConsoleUseTheLastPoints(t *testing.T) {
+	m, _ := volleyball()
+	m.ApplyConsole(map[string]string{"home": "24", "away": "20", "home_sets": "0", "away_sets": "0"})
+	m.ApplyConsole(map[string]string{"home": "25", "away": "20", "home_sets": "0", "away_sets": "0"})
+	m.ApplyConsole(map[string]string{"home": "0", "away": "0", "home_sets": "1", "away_sets": "0"})
+	want := []SetScore{{1, 25, 20, "home"}}
+	if got := m.Snapshot().Sets; !reflect.DeepEqual(got, want) {
+		t.Errorf("sets %v, want %v", got, want)
+	}
+	// Two sets at once (a restart on a console mid-game): winners only.
+	m, _ = volleyball()
+	m.ApplyConsole(map[string]string{"home": "3", "away": "4", "home_sets": "1", "away_sets": "1"})
+	want = []SetScore{{1, 0, 0, "home"}, {2, 0, 0, "away"}}
+	if got := m.Snapshot().Sets; !reflect.DeepEqual(got, want) {
+		t.Errorf("sets %v, want %v", got, want)
+	}
+}
+
+func TestSetsDropOnUndo(t *testing.T) {
+	m, _ := volleyball()
+	vframe(m, 0, 0, 1, 0, "25-20")
+	vframe(m, 25, 20, 0, 0, "")
+	if got := m.Snapshot().Sets; len(got) != 0 {
+		t.Errorf("an undo left %v", got)
+	}
+}
+
+func TestMatchEndsOnceAndAgainAfterUndo(t *testing.T) {
+	m, events := volleyball()
+	vframe(m, 0, 0, 1, 0, "25-20")
+	vframe(m, 0, 0, 2, 0, "25-20,25-18")
+	if m.Snapshot().Screen.Current != "marcador" {
+		t.Errorf("screen %q before the match is won", m.Snapshot().Screen.Current)
+	}
+	vframe(m, 0, 0, 3, 0, "25-20,25-18,25-22")
+	vframe(m, 0, 0, 3, 0, "25-20,25-18,25-22")
+	if m.Snapshot().Screen.Current != "final" {
+		t.Errorf("screen %q, want final", m.Snapshot().Screen.Current)
+	}
+	vframe(m, 25, 22, 2, 0, "25-20,25-18") // undo across the match end
+	if m.Snapshot().Screen.Current != "marcador" {
+		t.Errorf("screen %q after the undo, want marcador", m.Snapshot().Screen.Current)
+	}
+	vframe(m, 0, 0, 3, 0, "25-20,25-18,25-22")
+	finals := 0
+	for _, e := range *events {
+		if e == "screen:final" {
+			finals++
+		}
+	}
+	if finals != 2 || m.Snapshot().Screen.Current != "final" {
+		t.Errorf("final fired %d times (events %v)", finals, *events)
+	}
+}
+
+func TestRestoredSetsCarryOn(t *testing.T) {
+	m, events := volleyball()
+	m.RestoreSets([]SetScore{{1, 25, 20, "home"}, {2, 18, 25, "away"}})
+	vframe(m, 10, 5, 1, 1, "25-20,18-25") // first frame after the restart
+	vframe(m, 0, 0, 2, 1, "25-20,18-25,25-23")
+	if !reflect.DeepEqual(*events, []string{"set3"}) {
+		t.Errorf("events %v, want only set3", *events)
+	}
+}
+
+func TestSavedSetsFollowTheMachine(t *testing.T) {
+	m, _ := volleyball()
+	var saved [][]SetScore
+	m.SaveSets = func(ss []SetScore) { saved = append(saved, ss) }
+	vframe(m, 0, 0, 1, 0, "25-20")
+	m.ResetSets()
+	if len(saved) != 2 || len(saved[0]) != 1 || len(saved[1]) != 0 {
+		t.Errorf("saved %v", saved)
+	}
+}
+
 func TestDemoKeepsTheGamesPeriods(t *testing.T) {
 	m, _ := newTest()
 	saves := 0

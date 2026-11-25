@@ -2,6 +2,7 @@ package source
 
 import (
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +23,38 @@ type Score struct {
 	AwayFouls    int  `json:"away_fouls"`
 	HomeTimeouts int  `json:"home_timeouts"`
 	AwayTimeouts int  `json:"away_timeouts"`
+
+	// Volleyball. Sets is an array, not a slice, so a Score stays comparable
+	// with ==; a played set has a Winner, an empty slot has none.
+	Sets  [maxSets]SetScore `json:"sets"`  // finished sets, in order
+	Serve string            `json:"serve"` // "home", "away" or ""
+}
+
+// maxSets is the most sets a match can have (best of 5).
+const maxSets = 5
+
+// SetScore is one finished set. A set seeded from a console has no points
+// (0-0) and only its Winner.
+type SetScore struct {
+	Home   int    `json:"home"`
+	Away   int    `json:"away"`
+	Winner string `json:"winner"`
+}
+
+// played is how many sets are finished, and how many each side won.
+func (s Score) played() (n, home, away int) {
+	for _, x := range s.Sets {
+		switch x.Winner {
+		case "home":
+			home++
+		case "away":
+			away++
+		default:
+			continue
+		}
+		n++
+	}
+	return
 }
 
 const (
@@ -42,6 +75,10 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //   - "foul", "timeout": N (1 or -1) for Team; never below 0
 //   - "undo": takes back the last action, up to 50, but never the clock's
 //     start and stop, and only takes the clock back for an action that set it
+//   - "serve": the serve to Team (volleyball)
+//   - "set_next": ends the set (volleyball): refused until the points win it;
+//     the score goes into the finished sets, the points and timeouts to 0 and
+//     the serve to nobody; refused once a team has won the match
 //   - "clock_start", "clock_stop"
 //   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps running
 //   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0 and MaxClock
@@ -53,6 +90,10 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //   - "period_length": the period length to Tenths (above 0); a clock
 //     stopped at the old length moves to the new one
 //   - "new_game": 0-0 in period 1, the clock at the period length
+//
+// A sets sport (volleyball) takes only +1 or -1 point, which also gives the
+// serve to the team that scored; it refuses fouls, the clock and the period
+// actions.
 type Action struct {
 	Do     string `json:"do"`
 	Team   string `json:"team"` // "home" or "away"
@@ -66,6 +107,11 @@ var (
 	errOne    error = i18n.Key("manual.um_de_cada_vez")
 	errClock  error = i18n.Key("manual.tempo")
 	errUndo   error = i18n.Key("manual.nada_para_desfazer")
+
+	errNoFouls  error = i18n.Key("manual.sem_faltas")
+	errSetOpen  error = i18n.Key("manual.set_por_acabar")
+	errGameOver error = i18n.Key("manual.jogo_acabou")
+	errNoClock  error = i18n.Key("manual.sem_relogio")
 )
 
 // Manual is the score kept by hand on a phone (the /marcar page). The page
@@ -134,18 +180,43 @@ func (m *Manual) Restore(s Score) {
 // Seed starts from the score on air, when the scorer takes over from the
 // console. A console that never sent a period leaves the scorer's own game.
 func (m *Manual) Seed(l state.Live) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Rules().Sets() {
+		m.seedSets(l)
+		return
+	}
 	p, err := strconv.Atoi(l.Period)
 	if err != nil || p < 1 {
 		return
 	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	s := Score{Home: max(l.Home, 0), Away: max(l.Away, 0), Period: p, Length: m.s.Length,
 		HomeFouls: l.HomeFouls, AwayFouls: l.AwayFouls, HomeTimeouts: l.HomeTimeouts, AwayTimeouts: l.AwayTimeouts}
 	s.Clock = min(state.Tenths(l.Clock), MaxClock)
 	if s.Clock < 0 {
 		s.Clock = s.Length
 	}
+	m.s, m.undo = s, nil
+	m.changed()
+}
+
+// seedSets is Seed for a sets sport. The console sends the sets won, not
+// their scores, so each seeded set has no points, home's wins first. A console
+// that sent nothing leaves the scorer's own game.
+func (m *Manual) seedSets(l state.Live) {
+	if l.HomeSets+l.AwaySets == 0 && l.Home == 0 && l.Away == 0 && l.Serve == "" {
+		return
+	}
+	s := Score{Home: max(l.Home, 0), Away: max(l.Away, 0), Length: m.s.Length, Serve: l.Serve}
+	i := 0
+	for ; i < min(l.HomeSets, maxSets); i++ {
+		s.Sets[i] = SetScore{Winner: "home"}
+	}
+	for j := 0; j < l.AwaySets && i < maxSets; j++ {
+		s.Sets[i] = SetScore{Winner: "away"}
+		i++
+	}
+	s.Clock, s.Period = s.Length, i+1
 	m.s, m.undo = s, nil
 	m.changed()
 }
@@ -174,13 +245,51 @@ func (m *Manual) Do(a Action) error {
 	m.s = m.current()
 	prev, clock := m.s, false
 	s := &m.s
+	r := m.Rules()
+	if r.Sets() {
+		switch a.Do {
+		case "foul":
+			return errNoFouls
+		case "clock_start", "clock_stop", "clock_set", "clock_add", "period_next", "period_back", "period_length":
+			return errNoClock
+		}
+	}
 	switch a.Do {
 	case "point", "foul", "timeout":
+		if r.Sets() && a.Do == "point" && a.N != 1 && a.N != -1 {
+			return errPoints
+		}
 		p, err := m.count(a)
 		if err != nil {
 			return err
 		}
 		*p = max(*p+a.N, 0)
+		if r.Sets() && a.Do == "point" && a.N == 1 {
+			s.Serve = a.Team
+		}
+	case "serve":
+		if !r.Sets() {
+			return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
+		}
+		if a.Team != "home" && a.Team != "away" {
+			return errTeam
+		}
+		s.Serve = a.Team
+	case "set_next":
+		if !r.Sets() {
+			return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
+		}
+		n, hs, as := s.played()
+		if hs >= r.SetsToWin || as >= r.SetsToWin || n >= maxSets {
+			return errGameOver
+		}
+		w := r.SetWon(n+1, s.Home, s.Away)
+		if w == "" {
+			return errSetOpen
+		}
+		s.Sets[n] = SetScore{Home: s.Home, Away: s.Away, Winner: w}
+		s.Home, s.Away, s.HomeTimeouts, s.AwayTimeouts, s.Serve = 0, 0, 0, 0, ""
+		s.Period = n + 2
 	case "undo":
 		if len(m.undo) == 0 {
 			return errUndo
@@ -215,7 +324,6 @@ func (m *Manual) Do(a Action) error {
 		m.from, m.fromClock, clock = m.Now(), s.Clock, true
 		s.Running = s.Running && s.Clock > 0
 	case "period_next":
-		r := m.Rules()
 		s.Period++
 		s.Clock, s.Running, clock = s.Length, false, true
 		if r.FoulsReset {
@@ -395,6 +503,21 @@ func (m *Manual) emit() {
 	s := m.s
 	m.sent = s
 	n := strconv.Itoa
+	if m.Rules().Sets() {
+		played, hs, as := s.played()
+		var done []string
+		for _, x := range s.Sets[:played] {
+			done = append(done, n(x.Home)+"-"+n(x.Away))
+		}
+		m.out(map[string]string{
+			"home": n(s.Home), "away": n(s.Away),
+			"clock": "", "period": n(s.Period),
+			"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
+			"home_sets": n(hs), "away_sets": n(as), "serve": s.Serve,
+			"sets": strings.Join(done, ","), "shot_clock": "",
+		})
+		return
+	}
 	m.out(map[string]string{
 		"home": n(s.Home), "away": n(s.Away),
 		"clock": state.ClockText(s.Clock), "period": n(s.Period),

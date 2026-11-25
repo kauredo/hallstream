@@ -283,6 +283,7 @@ func (s *Server) routes() {
 	m.HandleFunc("POST /api/game/opponent-logo", s.opponentLogo)
 	m.HandleFunc("POST /api/game/reset", func(w http.ResponseWriter, r *http.Request) {
 		s.State.ResetPeriods()
+		s.State.ResetSets()
 		ok(w)
 	})
 }

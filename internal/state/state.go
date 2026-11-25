@@ -48,6 +48,19 @@ type Live struct {
 	// Timeouts taken; only the manual scorer counts them, the console sends 0.
 	HomeTimeouts int `json:"home_timeouts"`
 	AwayTimeouts int `json:"away_timeouts"`
+	// Volleyball: the sets each side has won and who serves ("home", "away" or "").
+	HomeSets int    `json:"home_sets"`
+	AwaySets int    `json:"away_sets"`
+	Serve    string `json:"serve"`
+}
+
+// SetScore is one finished set of a sets sport (volleyball). A set seeded
+// from a console has no points (0-0) and only its winner.
+type SetScore struct {
+	Set    int    `json:"set"`
+	Home   int    `json:"home"`
+	Away   int    `json:"away"`
+	Winner string `json:"winner"`
 }
 
 // Period is one completed period: the score when it ended (Home, Away) and
@@ -202,6 +215,7 @@ type State struct {
 	Box        Box        `json:"box"`
 	Live       Live       `json:"live"`
 	Periods    []Period   `json:"periods"`
+	Sets       []SetScore `json:"sets"`
 	Game       Game       `json:"game"`
 	Screen     Screen     `json:"screen"`
 	LowerThird LowerThird `json:"lower_third"`
@@ -262,9 +276,13 @@ type Machine struct {
 	// reset included, so they can outlive a restart. Never during the demo.
 	SavePeriods func([]Period)
 	realPeriods []Period // the game's periods while the demo plays
-	saveSeq     int      // periods snapshots taken for SavePeriods
-	saveMu      sync.Mutex
-	savedSeq    int // the newest snapshot SavePeriods got
+	// SaveSets runs with SavePeriods, from the same snapshot, so the two
+	// files come from one moment.
+	SaveSets func([]SetScore)
+	realSets []SetScore // the game's sets while the demo plays
+	saveSeq  int        // periods and sets snapshots taken for the save hooks
+	saveMu   sync.Mutex
+	savedSeq int // the newest snapshot the save hooks got
 
 	// OnEvent gets each change the timeline keeps (screen, lower_third, box,
 	// period). It runs with the machine locked, so it must not call it.
@@ -273,7 +291,7 @@ type Machine struct {
 	autoSwitch bool // the program picked the screen, not the volunteer
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
-	finalDone  int       // period whose end already fired "final"
+	finalDone  int       // period whose end already fired "final"; for a sets sport, the sets recorded when the match ended
 	started    bool      // the clock has run in the current period
 	clockRanAt time.Time // when the clock value last changed; zero before any
 	lastTenths int
@@ -290,6 +308,7 @@ func New(now func() time.Time) *Machine {
 		s: State{
 			Box:        Box{Scan: Scan{Bluetooth: "ok"}},
 			Periods:    []Period{},
+			Sets:       []SetScore{},
 			Screen:     Screen{Current: "marcador", Auto: true, Since: now().UTC()},
 			LowerThird: LowerThird{Type: "jogador"},
 			Input:      "console",
@@ -338,6 +357,7 @@ type seen struct {
 	lowerThird string
 	box        bool
 	periods    int
+	sets       int
 	demo       bool
 }
 
@@ -347,7 +367,7 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), m.s.Demo}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.s.Demo}
 }
 
 // EmitCurrent tells OnEvent the screen, lower third and box as they are now
@@ -386,6 +406,10 @@ func (m *Machine) emit() {
 		p := m.s.Periods[i]
 		m.OnEvent("period", map[string]any{"period": p.Period, "home": p.Home, "away": p.Away})
 	}
+	for i := old.sets; i < cur.sets; i++ {
+		s := m.s.Sets[i]
+		m.OnEvent("set", map[string]any{"set": s.Set, "home": s.Home, "away": s.Away})
+	}
 }
 
 // Snapshot returns a copy of the state with the display rules applied.
@@ -398,6 +422,7 @@ func (m *Machine) Snapshot() State {
 func (m *Machine) snapshot() State {
 	s := m.s
 	s.Periods = append([]Period{}, m.s.Periods...)
+	s.Sets = append([]SetScore{}, m.s.Sets...)
 	s.Promo.Clip, s.Promo.Mini = clipCopy(m.s.Promo.Clip), clipCopy(m.s.Promo.Mini)
 	g := m.s.Game
 	if g.Rules.ID == "" {
@@ -639,6 +664,26 @@ func (m *Machine) ResetPeriods() {
 	save()
 }
 
+// ResetSets starts a new game: no recorded sets and the match not over.
+func (m *Machine) ResetSets() {
+	m.mu.Lock()
+	m.s.Sets, m.realSets = []SetScore{}, nil
+	m.finalDone = 0
+	m.changed()
+	save := m.saver(true)
+	m.mu.Unlock()
+	save()
+}
+
+// RestoreSets puts back the sets saved before a restart.
+func (m *Machine) RestoreSets(ss []SetScore) {
+	m.mu.Lock()
+	m.s.Sets = append([]SetScore{}, ss...)
+	m.seen.sets = len(ss) // restored, not recorded now
+	m.changed()
+	m.mu.Unlock()
+}
+
 // RestorePeriods puts back the periods saved before a restart.
 func (m *Machine) RestorePeriods(ps []Period) {
 	m.mu.Lock()
@@ -652,17 +697,22 @@ func (m *Machine) RestorePeriods(ps []Period) {
 // to run after unlocking. Saves race outside the lock, so an older snapshot
 // that arrives after a newer one is dropped. Only a reset saves in the demo.
 func (m *Machine) saver(reset bool) func() {
-	if m.SavePeriods == nil || m.s.Demo && !reset {
+	if m.SavePeriods == nil && m.SaveSets == nil || m.s.Demo && !reset {
 		return func() {}
 	}
 	m.saveSeq++
-	seq, ps := m.saveSeq, append([]Period{}, m.s.Periods...)
+	seq, ps, ss := m.saveSeq, append([]Period{}, m.s.Periods...), append([]SetScore{}, m.s.Sets...)
 	return func() {
 		m.saveMu.Lock()
 		defer m.saveMu.Unlock()
 		if seq > m.savedSeq {
 			m.savedSeq = seq
-			m.SavePeriods(ps)
+			if m.SavePeriods != nil {
+				m.SavePeriods(ps)
+			}
+			if m.SaveSets != nil {
+				m.SaveSets(ss)
+			}
 		}
 	}
 }
@@ -679,6 +729,7 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		HomeFouls: num("home_fouls"), AwayFouls: num("away_fouls"),
 		Shot: v["shot_clock"], Sport: v["sport"],
 		HomeTimeouts: num("home_timeouts"), AwayTimeouts: num("away_timeouts"),
+		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"],
 	}
 	m.mu.Lock()
 	now := m.now().UTC()
@@ -692,10 +743,34 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		m.s.Box.BoxType = v["box_type"]
 	}
 	m.mu.Unlock()
-	m.update(l, false)
+	m.apply(l, false, parseSets(v["sets"]))
 }
 
-func (m *Machine) update(l Live, fromDemo bool) {
+// parseSets reads the phone scorer's finished sets, "25-20,18-25" (home-away).
+// The side with more points won. A part that is not two numbers is skipped.
+func parseSets(s string) []SetScore {
+	var out []SetScore
+	for i, part := range strings.Split(s, ",") {
+		a, b, ok := strings.Cut(part, "-")
+		h, errH := strconv.Atoi(a)
+		w, errW := strconv.Atoi(b)
+		if !ok || errH != nil || errW != nil {
+			continue
+		}
+		win := "home"
+		if w > h {
+			win = "away"
+		}
+		out = append(out, SetScore{Set: i + 1, Home: h, Away: w, Winner: win})
+	}
+	return out
+}
+
+func (m *Machine) update(l Live, fromDemo bool) { m.apply(l, fromDemo, nil) }
+
+// apply applies a frame. finished is the sets the phone scorer sent, nil
+// from the console and the demo.
+func (m *Machine) apply(l Live, fromDemo bool, finished []SetScore) {
 	m.mu.Lock()
 	if m.s.Demo != fromDemo {
 		m.mu.Unlock()
@@ -706,7 +781,7 @@ func (m *Machine) update(l Live, fromDemo bool) {
 		now := m.now().UTC()
 		m.s.Box.Connected, m.s.Box.LastFrameAt = true, &now
 	}
-	recorded := m.setLive(l)
+	recorded := m.setLive(l, finished)
 	m.changed()
 	snap := m.snapshot()
 	save := m.recordedSaver(recorded)
@@ -731,8 +806,8 @@ func (m *Machine) recorded(rec bool, snap State, save func()) {
 }
 
 // setLive applies new live values and runs the period and screen rules.
-// It reports whether a period score was recorded.
-func (m *Machine) setLive(l Live) bool {
+// It reports whether a period or set score was recorded.
+func (m *Machine) setLive(l Live, finished []SetScore) bool {
 	old := m.s.Live
 	m.s.Live = l
 	if old.Clock != "" && old.Clock != l.Clock {
@@ -741,6 +816,9 @@ func (m *Machine) setLive(l Live) bool {
 	oldP, _ := strconv.Atoi(old.Period)
 	newP, _ := strconv.Atoi(l.Period)
 	r := m.rules()
+	if r.Sets() {
+		return m.setSets(old, l, finished)
+	}
 	recorded := false
 
 	if newP != oldP {
@@ -771,6 +849,66 @@ func (m *Machine) setLive(l Live) bool {
 		m.zeroSince = time.Time{}
 	}
 	return m.checkFinal() || recorded
+}
+
+// setSets is setLive for a sets sport: it records a set when the count of sets
+// won rises, drops sets when it falls (an undo) and ends the match when a side
+// has won SetsToWin sets. A frame from the phone scorer carries every finished
+// set's score; the console only sends the counts, so a set it ends is recorded
+// with the points that were on the board before the count rose. Reports whether
+// the recorded sets changed.
+func (m *Machine) setSets(old, l Live, finished []SetScore) bool {
+	r := m.rules()
+	total, have := l.HomeSets+l.AwaySets, len(m.s.Sets)
+	changed := false
+	if total > have {
+		home, away := 0, 0
+		for _, s := range m.s.Sets {
+			if s.Winner == "home" {
+				home++
+			} else {
+				away++
+			}
+		}
+		for n := have + 1; n <= total; n++ {
+			s := SetScore{Set: n}
+			if n <= len(finished) {
+				s = finished[n-1]
+				s.Set = n
+			} else if n == total && total == have+1 {
+				s.Home, s.Away = old.Home, old.Away
+			}
+			if n > len(finished) {
+				if home < l.HomeSets {
+					s.Winner = "home"
+				} else {
+					s.Winner = "away"
+				}
+			}
+			if s.Winner == "home" {
+				home++
+			} else {
+				away++
+			}
+			m.s.Sets = append(m.s.Sets, s)
+		}
+		changed = true
+	} else if total < have {
+		m.s.Sets = append([]SetScore{}, m.s.Sets[:total]...)
+		changed = true
+	}
+	won := l.HomeSets >= r.SetsToWin || l.AwaySets >= r.SetsToWin
+	switch {
+	case won && m.finalDone == 0:
+		m.finalDone = max(len(m.s.Sets), 1)
+		m.auto("final")
+	case !won && m.finalDone != 0:
+		m.finalDone = 0
+		if m.s.Screen.Current == "final" {
+			m.auto("marcador")
+		}
+	}
+	return changed
 }
 
 // rules is the profile of the game's sport. Call it with the lock held.

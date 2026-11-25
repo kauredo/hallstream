@@ -18,7 +18,7 @@ func (m *Machine) SetDemo(on bool) {
 	}
 	m.s.Demo = on
 	if on {
-		m.realPeriods = m.s.Periods
+		m.realPeriods, m.realSets = m.s.Periods, m.s.Sets
 		m.demoStop = make(chan struct{})
 		go m.demo(m.demoStop)
 	} else {
@@ -26,6 +26,7 @@ func (m *Machine) SetDemo(on bool) {
 		// The demo's periods and scores go; the game's periods come back,
 		// and the box's next frame starts the live values afresh.
 		m.s.Periods = append([]Period{}, m.realPeriods...)
+		m.s.Sets = append([]SetScore{}, m.realSets...)
 		m.s.Live = Live{}
 		m.started, m.lastTenths, m.zeroSince = false, -1, time.Time{}
 	}
@@ -87,7 +88,7 @@ func (m *Machine) demo(stop <-chan struct{}) {
 	newGame := func() {
 		m.mu.Lock()
 		if m.s.Demo {
-			m.s.Periods = []Period{}
+			m.s.Periods, m.s.Sets = []Period{}, []SetScore{}
 			m.finalDone, m.zeroSince = 0, time.Time{}
 		}
 		m.mu.Unlock()

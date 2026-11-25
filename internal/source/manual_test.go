@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 )
 
@@ -268,6 +269,158 @@ func TestSavedScoreComesBackStopped(t *testing.T) {
 	}
 	if again.Do(Action{Do: "undo"}) == nil {
 		t.Error("undo crosses a restart")
+	}
+}
+
+// newVolley is newTest for a volleyball game.
+func newVolley() (*Manual, *state.Machine, *fakeClock) {
+	c := &fakeClock{t: time.Date(2026, 11, 15, 18, 0, 0, 0, time.UTC)}
+	m := state.New(c.now)
+	m.SetInput("manual")
+	m.SetGame(state.Game{Sport: "volleyball"}, false)
+	mn := NewManual(&Manual{Now: c.now, Rules: func() sport.Profile { return sport.Volleyball }})
+	mn.attach(m.ApplyConsole, m.SetBox)
+	return mn, m, c
+}
+
+func points(t *testing.T, mn *Manual, team string, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		do(t, mn, Action{Do: "point", Team: team, N: 1})
+	}
+}
+
+func TestVolleyballPointsAndServe(t *testing.T) {
+	mn, m, _ := newVolley()
+	do(t, mn, Action{Do: "point", Team: "home", N: 1})
+	if s := mn.Score(); s.Home != 1 || s.Serve != "home" {
+		t.Errorf("after +1 home: %+v", s)
+	}
+	do(t, mn, Action{Do: "point", Team: "away", N: 1})
+	if s := mn.Score(); s.Serve != "away" {
+		t.Errorf("the serve did not follow the point: %+v", s)
+	}
+	do(t, mn, Action{Do: "point", Team: "home", N: -1})
+	if s := mn.Score(); s.Home != 0 || s.Serve != "away" {
+		t.Errorf("a correction moved the serve: %+v", s)
+	}
+	do(t, mn, Action{Do: "serve", Team: "home"})
+	if s := mn.Score(); s.Serve != "home" {
+		t.Errorf("serve action: %+v", s)
+	}
+	if mn.Do(Action{Do: "serve", Team: "nobody"}) == nil {
+		t.Error("serve for nobody")
+	}
+	for _, a := range []Action{
+		{Do: "point", Team: "home", N: 2}, {Do: "foul", Team: "home", N: 1},
+		{Do: "clock_start"}, {Do: "clock_set", Tenths: 100}, {Do: "period_next"}, {Do: "period_back"}, {Do: "period_length", Tenths: 100},
+	} {
+		if mn.Do(a) == nil {
+			t.Errorf("%+v: want an error", a)
+		}
+	}
+	live := m.Snapshot().Live
+	if live.Serve != "away" && live.Serve != "home" {
+		t.Errorf("serve never reached the state: %+v", live)
+	}
+}
+
+func TestVolleyballSetNext(t *testing.T) {
+	mn, m, _ := newVolley()
+	points(t, mn, "home", 24)
+	points(t, mn, "away", 23)
+	if err := mn.Do(Action{Do: "set_next"}); !errors.Is(err, errSetOpen) {
+		t.Fatalf("set_next at 24-23: %v", err)
+	}
+	do(t, mn, Action{Do: "point", Team: "home", N: 1}, Action{Do: "timeout", Team: "home", N: 1})
+	do(t, mn, Action{Do: "set_next"})
+	s := mn.Score()
+	if s.Sets[0] != (SetScore{25, 23, "home"}) || s.Sets[1].Winner != "" || s.Home != 0 || s.Away != 0 ||
+		s.Serve != "" || s.HomeTimeouts != 0 || s.Period != 2 {
+		t.Errorf("after set_next: %+v", s)
+	}
+	if st := m.Snapshot(); len(st.Sets) != 1 || st.Sets[0].Home != 25 || st.Live.HomeSets != 1 {
+		t.Errorf("state after set_next: sets %v live %+v", st.Sets, st.Live)
+	}
+	// Undo brings the set back.
+	do(t, mn, Action{Do: "undo"})
+	if s := mn.Score(); s.Home != 25 || s.Away != 23 || s.Sets[0].Winner != "" {
+		t.Errorf("after undo: %+v", s)
+	}
+	if st := m.Snapshot(); len(st.Sets) != 0 {
+		t.Errorf("state kept the set after undo: %v", st.Sets)
+	}
+}
+
+func TestVolleyballMatchEnds(t *testing.T) {
+	mn, m, _ := newVolley()
+	for i := 0; i < 3; i++ {
+		points(t, mn, "home", 25)
+		do(t, mn, Action{Do: "set_next"})
+	}
+	if err := mn.Do(Action{Do: "set_next"}); !errors.Is(err, errGameOver) {
+		t.Errorf("set_next after the match: %v", err)
+	}
+	if m.Snapshot().Screen.Current != "final" {
+		t.Errorf("screen %q, want final", m.Snapshot().Screen.Current)
+	}
+	do(t, mn, Action{Do: "undo"})
+	if m.Snapshot().Screen.Current != "marcador" {
+		t.Errorf("screen %q after the undo, want marcador", m.Snapshot().Screen.Current)
+	}
+}
+
+func TestVolleyballDeciderTarget(t *testing.T) {
+	mn, _, _ := newVolley()
+	for i := 0; i < 4; i++ { // two sets each
+		w := "home"
+		if i%2 == 1 {
+			w = "away"
+		}
+		points(t, mn, w, 25)
+		do(t, mn, Action{Do: "set_next"})
+	}
+	points(t, mn, "home", 15)
+	points(t, mn, "away", 14)
+	if !errors.Is(mn.Do(Action{Do: "set_next"}), errSetOpen) {
+		t.Error("15-14 ended the deciding set")
+	}
+	points(t, mn, "home", 1)
+	do(t, mn, Action{Do: "set_next"})
+}
+
+func TestVolleyballEmit(t *testing.T) {
+	c := &fakeClock{t: time.Date(2026, 11, 15, 18, 0, 0, 0, time.UTC)}
+	mn := NewManual(&Manual{Now: c.now, Rules: func() sport.Profile { return sport.Volleyball }})
+	var got map[string]string
+	mn.attach(func(v map[string]string) { got = v }, func(bool) {})
+	points(t, mn, "home", 25)
+	points(t, mn, "away", 23)
+	do(t, mn, Action{Do: "set_next"})
+	if got["sets"] != "25-23" || got["home_sets"] != "1" || got["away_sets"] != "0" || got["clock"] != "" || got["period"] != "2" {
+		t.Errorf("emit %v", got)
+	}
+}
+
+func TestVolleyballSeedAndRestore(t *testing.T) {
+	mn, _, _ := newVolley()
+	mn.Seed(state.Live{HomeSets: 1, AwaySets: 1, Home: 12, Away: 9, Serve: "away"})
+	s := mn.Score()
+	if s.Period != 3 || s.Home != 12 || s.Serve != "away" || s.Sets[0].Winner != "home" || s.Sets[1].Winner != "away" || s.Sets[2].Winner != "" {
+		t.Errorf("seeded %+v", s)
+	}
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back Score
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	again, _, _ := newVolley()
+	again.Restore(back)
+	if got := again.Score(); got != s {
+		t.Errorf("restored %+v, want %+v", got, s)
 	}
 }
 

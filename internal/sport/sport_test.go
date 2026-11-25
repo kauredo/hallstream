@@ -65,3 +65,40 @@ func TestResetsTimeouts(t *testing.T) {
 		}
 	}
 }
+
+func TestFutsal(t *testing.T) {
+	if Get("futsal") != Futsal {
+		t.Error("Get(futsal) is not futsal")
+	}
+	for p, want := range map[int]bool{1: false, 2: false, 3: true, 4: true} {
+		if got := Futsal.Overtime(p); got != want {
+			t.Errorf("futsal Overtime(%d) = %v, want %v", p, got, want)
+		}
+	}
+	for p, want := range map[int]bool{1: false, 4: false, 5: true, 6: true} {
+		if got := Basketball.Overtime(p); got != want {
+			t.Errorf("basketball Overtime(%d) = %v, want %v", p, got, want)
+		}
+	}
+	for i, w := range []int{1, 1, 0, 0} {
+		if got := Futsal.Timeouts(i + 1); got != w {
+			t.Errorf("futsal Timeouts(%d) = %d, want %d", i+1, got, w)
+		}
+	}
+}
+
+func TestResetsFouls(t *testing.T) {
+	for p, want := range map[int]bool{2: true, 3: false, 4: false} {
+		if got := Futsal.ResetsFouls(p); got != want {
+			t.Errorf("futsal ResetsFouls(%d) = %v, want %v", p, got, want)
+		}
+	}
+	for p := 2; p <= 6; p++ {
+		if !Basketball.ResetsFouls(p) {
+			t.Errorf("basketball ResetsFouls(%d) is false", p)
+		}
+	}
+	if Volleyball.ResetsFouls(2) {
+		t.Error("volleyball resets fouls")
+	}
+}

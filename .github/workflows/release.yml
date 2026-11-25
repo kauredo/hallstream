@@ -15,6 +15,8 @@ on:
       - scripts/notices.sh
       - winres/**
       - LEIA-ME.txt
+      - READ-ME.txt
+      - docs/youtube/**
   workflow_dispatch:
 
 concurrency:
@@ -64,7 +66,7 @@ jobs:
         run: |
           cd dist
           zip="Hallstream-$VERSION.zip"
-          want=$'Hallstream (32-bit).exe\nHallstream.exe\nLEIA-ME.txt\nLICENSE.txt\nTHIRD-PARTY-NOTICES.txt\nYouTube/LIGAR-YOUTUBE.txt'
+          want=$'Hallstream (32-bit).exe\nHallstream.exe\nLEIA-ME.txt\nLICENSE.txt\nREAD-ME.txt\nTHIRD-PARTY-NOTICES.txt\nYouTube/CONNECT-YOUTUBE.txt\nYouTube/LIGAR-YOUTUBE.txt'
           got=$(zipinfo -1 "$zip" | LC_ALL=C sort)
           [[ "$got" == "$want" ]] || { echo "Unexpected zip contents:"; echo "$got"; exit 1; }
           sha256sum "$zip" > SHA256SUMS

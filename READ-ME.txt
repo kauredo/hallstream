@@ -1,0 +1,286 @@
+Hallstream for OBS
+
+The program reads the scoreboard console through the SL Stream Box, over
+Bluetooth, keeps the squads and sponsors of each age group, and shows
+the graphics in OBS in a single browser source.
+
+It needs Windows 10 or newer, with Bluetooth. Use "Hallstream.exe". The
+"Hallstream (32-bit).exe" is only for 32-bit Windows.
+
+The program does not open a window. A red icon with a shield stays next
+to the Windows clock. If you can't see it, press the arrow ^ beside the
+icons.
+- Press the icon to open the panel.
+- Right-click it for "Copy overlay address", the box status and "Quit",
+  which closes the program.
+- Opening the program when it is already open just opens the panel.
+- The Help tab in the panel has the steps for game day and what to do
+  when something goes wrong.
+- The program also writes every value to text files
+  (dados\score\*.txt), for anyone who uses them in OBS.
+
+
+FIRST TIME (AT HOME)
+
+1. Unzip everything to C:\Hallstream and don't move the folder. The
+   program keeps everything in the "dados" folder inside it. To make a
+   backup, press "Save backup" in Settings (see "BACKUP AND ANOTHER
+   COMPUTER").
+2. Open "Hallstream.exe". The panel opens by itself in the browser.
+   - If "Windows protected your PC" appears, press "More info" and then
+     "Run anyway".
+   - The panel asks if you want a desktop shortcut. Press "Create".
+     There is also a button in Settings.
+3. Install OBS (version 31 or newer) and DroidCam on the PC and on the
+   tablet, and close OBS.
+4. In the Screens tab you will see "First-time setup is missing". Press
+   "Start". There are seven steps, one at a time: language, club,
+   scoring (the console or a phone), OBS ("Set up OBS"), YouTube,
+   YouTube channel and a rehearsal. You can stop halfway, as the panel
+   remembers where you were. It is also in Settings > First-time setup.
+   - For the YouTube step, bring the OAuth client ID and secret, made
+     beforehand with the guide YouTube\CONNECT-YOUTUBE.txt (see "LIVE
+     STREAMS ON YOUTUBE"). Without them, press "Skip for now" and
+     connect the YouTube account in OBS itself, in Settings > Stream.
+   - For the PC to open everything by itself, turn on "Open with
+     Windows" in Settings > On this computer.
+   - New camera? Choose it in Settings > Camera and press Set up OBS.
+     The old one is hidden in OBS.
+   - In Settings > Club, type the name of the home side, the short code
+     and the "Club name on the FPB", exactly as it appears in the FPB
+     calendar. With that name, the program creates the club's age groups
+     and fetches the players and photos from the FPB. If that doesn't
+     happen by itself, press "Import club teams" in the Squad tab. Check
+     them and add what is missing, such as the coaches.
+5. Sponsors tab: upload the logos for each age group and mark the main
+   one, if there is one. Those under "General" appear in every age
+   group. The screens' strip shows them in this order.
+6. To practise without the box: Settings > Demo mode.
+7. The scoreboard sits in the top left corner. To move it to the bottom:
+   Settings > Graphics > Scoreboard position.
+
+
+ON GAME DAY
+
+Before you start
+1. Put the tablet on the tripod, plugged in and facing the court, and
+   open DroidCam.
+2. Close the SL Live Stream app on all phones and tablets. The box only
+   accepts one connection at a time.
+3. Switch on the scoreboard console and the PC. Hallstream opens by
+   itself (or from the shortcut) and opens OBS.
+4. In the Screens tab, wait for the box to say "Connected" and for OBS
+   to say "Ready", in green. If "Repair" appears, press it. If the box
+   won't connect, see the Scoring tab.
+5. Game tab: choose the age group and the FPB game. The opponent, the
+   crest, the time and the hall fill in by themselves. Mark who is
+   playing today.
+   - The points for each quarter of the last game are only cleared when
+     you choose another game, another age group or another date. For a
+     second manual game on the same day, or after testing the console,
+     press "New game", at the bottom of the Game tab.
+6. Only if YouTube is not connected in Hallstream: in the Screens tab,
+   press "YouTube thumbnail" and then "Download". In YouTube Studio, set
+   the image as the thumbnail of the live video.
+7. Screens tab: when it says "Ready to stream", press "Start stream". If
+   something is missing, the list below says what. The live stream only
+   starts when you press it. With YouTube connected, Hallstream creates
+   the live stream with the game's title and the thumbnail, and shows
+   the link.
+   To try it out first, "Test stream" makes a private live stream: only
+   the channel's account can see it, in YouTube Studio. It stays private
+   at the end.
+
+During the stream (Screens tab)
+8.  Before the game: "Opening", then "Squad" to introduce the team, and
+    "Scoreboard" when the ball goes up.
+9.  Leave "Automatic" on. The break and the final score appear by
+    themselves.
+10. In a timeout, press "Timeout" and, when the game restarts,
+    "Scoreboard".
+11. To show a player, press their name.
+12. "Supporters" shows the sponsors large, for example before the game
+    or during the break.
+13. In a technical pause, press "Back soon" and, when everything is
+    back, "Scoreboard". To put a line of text underneath, type it in
+    "Back soon message" and press "Save message".
+14. In the break or at the end, "Next game" shows the age group's next
+    game. The FPB only gives the games for the next 14 days. If there is
+    no game in that period, the button turns grey and says why.
+
+With the Scoreboard on air, a sponsor appears for 10 seconds in the top
+right corner, every 4 minutes, in the order of the strip. To turn it off
+or change the minutes, go to Settings > Graphics.
+
+At the end
+15. "Save score image" makes the image for Instagram.
+16. In Screens, press "End stream" and confirm. With YouTube connected,
+    a minute or two later the video becomes unlisted and the link
+    appears, with "Copy" and "Share on WhatsApp", to send to the
+    players.
+17. To close the program, right-click the icon next to the clock and
+    choose "Quit". If the stream is still on air, the program asks
+    before closing.
+
+
+CLUB VIDEOS (PROMO)
+
+In the Promo tab, upload MP4 videos up to 200 MB, for example the
+shop's advert filmed on a phone.
+- For each video, type the label, the title and a line of text. You can
+  add a link with a QR code.
+- Choose whether it has sound, the volume and what happens at the end:
+  go back to the previous screen or repeat.
+- "Show promo" puts the video on air full screen. "Stop and go back"
+  takes it off.
+- A vertical video can also play small beside the camera during a
+  timeout ("Show small during timeout").
+The videos are kept in the folder dados\promo.
+
+
+SQUADS ALWAYS UP TO DATE
+
+Once a day, and when you choose the game, the program goes to the FPB
+to fetch the new players, the numbers and the photos for each age
+group.
+- It deletes nobody, and what you typed by hand stays as it is.
+- The Squad tab shows when it last ran and what changed.
+- In a new season, the FPB creates new teams and the program moves each
+  age group to the right team. Anyone no longer on the team is taken
+  off the games and goes under "No longer in the team". If the program
+  doesn't know which team is the new one, the Squad tab asks you to
+  choose it.
+
+
+IF THE PROGRAM CAN'T FIND THE BOX
+
+Open the Scoring tab in the panel.
+- If "Bluetooth off" appears, press "Open Bluetooth settings" and turn
+  it on.
+- The list shows the Bluetooth devices nearby, strongest signal first.
+  The box is usually marked "Likely". If it isn't, put the PC next to
+  the box and try the ones with the strongest signal.
+- Press "Try". If it is the box, the program connects and remembers it
+  for next time. If it isn't, it says so and you can try another.
+- If nothing works, send the file dados\bluetooth.log, which keeps
+  everything the program saw.
+
+
+TIMEOUT WITH OBS
+
+After "Set up OBS", during a timeout the camera picture shrinks to the
+graphics window and comes back afterwards, in the same scene.
+- Settings > Camera shows the camera in use. "Automatic" picks DroidCam,
+  if there is one.
+- "Adjust camera" puts it back to full screen.
+- If OBS is on another computer, connect it by hand in Settings > OBS
+  control > OBS connection set up by hand.
+
+If the tablet rotates or DroidCam changes resolution, the program
+adjusts the camera again by itself. With "Full image", an upright
+tablet has margins at the sides, and during a timeout those margins turn
+blue.
+
+If you already use a "Desconto" scene in OBS, you can keep it. Type its
+name in Settings > OBS control > Old mode, and the program switches
+scene as before.
+
+
+BACKUP AND ANOTHER COMPUTER
+
+In Settings > Backup, "Save backup" downloads a .zip file with the
+"dados" folder: age groups, players, photos, sponsors, videos, settings
+and the YouTube connection. It only works on the PC itself. Keep a copy
+after you change anything, on a USB stick or in a folder just for the
+club. Don't send it by email or WhatsApp: with it, anyone can stream on
+the club's channel.
+
+To move to another computer:
+1. On the old computer, press "Save backup" and take the .zip on a USB
+   stick.
+2. On the new computer, install OBS 31 or newer and DroidCam. Unzip
+   Hallstream to C:\Hallstream.
+3. With Hallstream closed, unzip the backup: right-click the .zip,
+   "Extract all", and type C:\Hallstream as the destination. Check that
+   you end up with C:\Hallstream\dados, with everything you had.
+4. Open Hallstream. In Settings, press "Set up OBS" and "Create desktop
+   shortcut". If "Open with Windows" was on, it stays on.
+5. Switch on the scoreboard console and wait for the box to say
+   "Connected". If it won't connect, see "IF THE PROGRAM CAN'T FIND THE
+   BOX".
+
+If the old computer broke, use the last backup you saved. With no
+backup, do the First-time setup again: the players and photos come back
+from the FPB, but the sponsor logos and the videos have to be uploaded
+again.
+
+
+IF SOMETHING GOES WRONG
+
+- The box won't connect: check that the SL Live Stream app is closed on
+  the phone and the tablet, and see the Scoring tab.
+- OBS isn't "Ready", or the graphics don't appear: press "Repair" in
+  the Screens tab, or "Set up OBS" in Settings.
+- OBS won't connect: if it asks about safe mode, choose normal mode. In
+  safe mode OBS turns off the WebSocket server.
+- "Set up the YouTube account in OBS": in OBS, Settings > Stream,
+  connect the YouTube account.
+- A promo video has no sound: press "Set up OBS", which turns on the
+  sound of the graphics source.
+- The camera is crooked: Settings > OBS control > "Adjust camera".
+- The panel won't open on the phone: use the address shown in Settings >
+  Phone, with the phone on the same Wi-Fi network.
+- A number looks wrong: send the file dados\raw.log.
+- A warning that port 8765 is in use by another program: the scoreboard
+  opened on another port. Press "Repair" or "Set up OBS", which changes
+  the address in OBS, or close the other program and open Hallstream
+  again.
+- Any other problem: send the file dados\marcador.log, where the program
+  writes what it has been doing.
+
+The versions published on GitHub send nothing out of the PC. Only a
+version built for a club, with its own key, sends the logs of each game
+to that club's server at the end of the stream. Nothing personal goes
+with them: no names, no passwords, no PIN.
+
+
+LIVE STREAMS ON YOUTUBE
+
+With access to the club's channel, Hallstream creates the public live
+stream for each game by itself, with the title and the thumbnail, and at
+the end makes the video unlisted. The guide YouTube\CONNECT-YOUTUBE.txt
+has two parts.
+In the first, on any computer and with any Google account, you create
+the OAuth client in Google Cloud, with the app set to "In production".
+In "Testing", the login expires every week.
+In the second, on the club's PC, you paste the ID and the secret into
+the First-time setup and sign in with the account that manages the
+club's channel.
+- The Streams tab lists the channel's live streams, those made by
+  Hallstream and those made outside it, with filters by age group and by
+  season. Each one has "Copy", "Open" and, if it is still public, "Make
+  unlisted".
+- A custom thumbnail only works with a verified channel
+  (youtube.com/verify). Without that, the live stream still starts.
+- If the panel says the YouTube connection has expired, go to Settings >
+  YouTube and press "Connect to YouTube" again.
+- The login is kept in the dados folder, in the file youtube.json. Don't
+  send it to anyone. "Disconnect" revokes access on Google and deletes
+  it.
+
+
+LICENCE
+
+Hallstream is free and open-source software.
+Copyright (C) 2026 Vasco Kaufmann.
+
+You can use it, change it and share it under the terms of the GNU
+Affero General Public License, version 3 or later, in the file
+LICENSE.txt. The program comes with no warranty of any kind.
+
+The source code is at https://github.com/kauredo/hallstream.
+
+The program includes third-party software, each with its own licence,
+in the file THIRD-PARTY-NOTICES.txt. The fonts are under the SIL Open
+Font License, which the panel shows at /fonts/OFL.txt.
+

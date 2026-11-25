@@ -216,12 +216,15 @@ body.sets .somar { grid-template-columns: 1fr; }
 body.sets .somar button:nth-child(n + 2) { display: none; }
 body.sets .periodo { grid-template-columns: 1fr; }
 /* The serve is a ring on the team's own colour; lit in Lâmpada on the side that has it. */
-.servico::before { content: ""; display: block; width: 22px; height: 22px; margin: auto; border: 3px solid currentColor; border-radius: 50%; }
+body.sets .sets-linha { grid-template-columns: auto 1fr auto auto; }
+.linha .servico { display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 15px; font-weight: 700; font-stretch: var(--estreito); }
+.servico::before { content: ""; flex: none; width: 18px; height: 18px; border: 3px solid currentColor; border-radius: 50%; }
 .servico.on { background: var(--lampada); color: var(--carvao); }
 .servico.on::before { background: currentColor; }
 .feitos { margin: 0; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; font-size: 24px; line-height: 1.1; color: var(--soalho); }
 body.sets .feitos:not([hidden]) { display: flex; }
+.feitos i { font-style: normal; font-size: 16px; font-weight: 700; margin-right: 8px; color: color-mix(in srgb, var(--soalho) 70%, transparent); }
 /* The set can end: the button lights, as the clock's does while it runs. */
 .arrancar.pronto { background: var(--lampada); color: var(--carvao); }
 body.sets .mesa-centro { grid-template-rows: auto auto auto 1fr auto auto; }

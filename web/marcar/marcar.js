@@ -207,7 +207,12 @@
     // The finished sets, as small scores in the middle strip.
     const feitos = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
     feitos.hidden = !sets;
-    feitos.replaceChildren(...done.map((x) => Object.assign(document.createElement('span'), { textContent: x.home === 0 && x.away === 0 ? '–' : `${x.home}–${x.away}` })));
+    feitos.replaceChildren(...done.map((x, i) => {
+      const row = document.createElement('span'), k = document.createElement('i');
+      k.textContent = x.set ?? i + 1;
+      row.append(k, x.home === 0 && x.away === 0 ? '–' : `${x.home}–${x.away}`);
+      return row;
+    }));
 
     const manual = input === 'manual';
     document.body.classList.toggle('consola', !manual);

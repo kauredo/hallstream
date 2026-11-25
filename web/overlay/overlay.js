@@ -602,7 +602,14 @@
         line('goal', v.setTarget);
         continue;
       }
-      for (const s of v.setList.slice(-4)) line('ln', s.home === 0 && s.away === 0 ? '–' : s.home + '–' + s.away);
+      for (const s of v.setList.slice(-4)) {
+        const d = document.createElement('div');
+        d.className = 'ln';
+        const k = document.createElement('i');
+        k.textContent = s.set;
+        d.append(k, s.home === 0 && s.away === 0 ? '–' : s.home + '–' + s.away);
+        box.append(d);
+      }
     }
   }
 
@@ -641,10 +648,10 @@
         for (const p of periods) {
           const pts = p[tx + '_points'] ?? 0;
           if (v.sets) {
-            // A set the console ended has no points: the winner's cell says so, the other one is a dash.
+            // A set the console ended has no points: both cells are a dash, the loser's dimmed.
             const lost = p.winner === o;
             const unknown = pts === 0 && (p[o + '_points'] ?? 0) === 0;
-            cell(lost ? 'lo' : '', unknown ? (lost ? '–' : t('overlay.periodos.venceu')) : pts);
+            cell(lost ? 'lo' : '', unknown ? '–' : pts);
           } else cell(pts < (p[o + '_points'] ?? 0) ? 'lo' : '', pts);
         }
         cell('tot', v[tx + 'Big']);
@@ -1222,7 +1229,7 @@
     setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
     root.dataset.scoring = v.sets ? 'sets' : 'points';
-    for (const el of $$('[data-srv]')) setClass(el, 'on', v.sets && v.serve === el.dataset.srv);
+    for (const tx of ['home', 'away']) setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);
     renderSetList(v);
 
     const hs = +v.homeBig, as = +v.awayBig;

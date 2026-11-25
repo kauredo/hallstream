@@ -53,6 +53,9 @@
   --hole-w: var(--win-w);
   --hole-h: var(--win-h);
 }
+/* The stand-in hall is a basketball court; other sports get a floor with no lines but the middle one.
+   A club's own photo is set inline on <html> and wins over both. */
+html[data-sport]:not([data-sport="basketball"]) { --hall: url(/assets/pavilhao-neutro.svg); }
 /* ?anim=0: everything at its final state, no transitions (screenshots and tests). */
 html.noanim *, html.noanim *::before, html.noanim *::after { transition: none !important; animation: none !important; }
 html, body {

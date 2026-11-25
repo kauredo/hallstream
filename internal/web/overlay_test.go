@@ -142,6 +142,27 @@ func TestOverlayStyles(t *testing.T) {
 	}
 }
 
+// The overlay names the game's sport on <html>, and only basketball gets the court-lined stand-in hall.
+func TestOverlaySportArt(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	for fx, want := range map[string][2]string{
+		"marcador":            {"basketball", "pavilhao-demo.jpg"},
+		"volleyball/marcador": {"volleyball", "pavilhao-neutro.svg"},
+	} {
+		t.Run(fx, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style=pavilhao&state=/overlay/fixtures/"+fx+".json")); err != nil {
+				t.Fatal(err)
+			}
+			cond := `document.documentElement.dataset.sport === "` + want[0] + `" && getComputedStyle(document.documentElement).getPropertyValue("--hall").includes("` + want[1] + `")`
+			if err := until(tab, cond); err != nil {
+				t.Fatalf("want sport %s with hall %s: %v", want[0], want[1], err)
+			}
+		})
+	}
+}
+
 // Wherever the club puts the bug and the lower third, at the largest size and the smallest
 // margin, in every style: both stay inside the frame and never cover each other, and the
 // credit and the sponsor corner only show where they cover neither.

@@ -1254,6 +1254,7 @@
     setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
 
     root.dataset.scoring = v.sets ? 'sets' : 'points';
+    root.dataset.sport = (st.game && st.game.sport) || 'basketball';
     for (const tx of ['home', 'away']) {
       setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);
       // The side behind on sets is dimmed, as the lower of two is in the set table.

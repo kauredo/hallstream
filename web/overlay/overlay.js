@@ -627,33 +627,50 @@
     for (const el of $$(`[data-hot="${team}"]`)) setClass(el, 'hot', hot);
   }
 
-  // The suspensions running, a chip each (the time left, the shirt number once the scorer has it),
-  // home and away on their own row, at most three. The key keeps the chips from being rebuilt each frame.
+  // The suspensions running, as one compact cell per team: how many players are out ("−2", U+2212), when
+  // the soonest one returns (MM:SS) and, once the scorer has typed it, that player's number ("#7");
+  // nothing when no one is out. The last 10 seconds of the return are tinted. The key keeps the cell
+  // from being rebuilt when nothing in it changed.
+  const secsOf = (left) => {
+    const m = /^(\d+):(\d+)$/.exec(left || '');
+    return m ? +m[1] * 60 + +m[2] : Infinity;
+  };
   let suspKey = null;
   function renderSuspensions(v) {
-    const key = JSON.stringify(v.suspensions);
+    const sums = {};
+    for (const team of ['home', 'away']) {
+      const mine = v.suspensions.filter((x) => x && x.team === team).slice(0, 3);
+      if (!mine.length) { sums[team] = null; continue; }
+      const next = mine.reduce((a, x) => (secsOf(x.left) < secsOf(a.left) ? x : a));
+      sums[team] = { n: mine.length, left: next.left || '', no: String(next.number || ''), soon: secsOf(next.left) <= 10 };
+    }
+    const key = JSON.stringify(sums);
     if (key === suspKey) return;
     suspKey = key;
     for (const team of ['home', 'away']) {
-      const mine = v.suspensions.filter((x) => x && x.team === team).slice(0, 3);
+      const x = sums[team];
       for (const box of $$(`[data-susp="${team}"]`)) {
         box.textContent = '';
-        for (const x of mine) {
-          const chip = document.createElement('span');
-          chip.className = 'chip';
-          const time = document.createElement('time');
-          time.textContent = x.left || '';
-          chip.append(time);
-          const no = String(x.number || '');
-          if (no) {
-            const b = document.createElement('b');
-            b.textContent = no;
-            chip.append(b);
-          }
-          chip.setAttribute('role', 'img');
-          chip.setAttribute('aria-label', t('overlay.exclusao', { numero: no, tempo: x.left || '' }));
-          box.append(chip);
+        box.removeAttribute('role');
+        box.removeAttribute('aria-label');
+        if (!x) continue;
+        const out = document.createElement('span');
+        out.className = 'out';
+        const n = document.createElement('b');
+        n.textContent = '\u2212' + x.n;
+        const time = document.createElement('time');
+        time.textContent = x.left;
+        if (x.soon) time.className = 'soon';
+        out.append(n, time);
+        if (x.no) {
+          const no = document.createElement('span');
+          no.className = 'no';
+          no.textContent = '#' + x.no;
+          out.append(no);
         }
+        box.append(out);
+        box.setAttribute('role', 'img');
+        box.setAttribute('aria-label', t('overlay.exclusao', { n: x.n, tempo: x.left }));
       }
     }
   }

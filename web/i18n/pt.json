@@ -483,7 +483,7 @@
   "overlay.desconto.tempo_de_jogo": "TEMPO DE JOGO",
   "overlay.desconto.titulo": "DESCONTO<span>DE TEMPO</span>",
   "overlay.desporto_omissao": "BASKET",
-  "overlay.exclusao": "Exclusão {numero} {tempo}",
+  "overlay.exclusao": "{n} fora, volta em {tempo}",
   "overlay.exclusoes": "EXCLUSÕES",
   "overlay.faltas": "FALTAS",
   "overlay.final.obrigado": "OBRIGADO AOS NOSSOS APOIANTES",

@@ -380,7 +380,7 @@ func TestSavedSetsFollowTheMachine(t *testing.T) {
 	var saved [][]SetScore
 	m.SaveSets = func(ss []SetScore) { saved = append(saved, ss) }
 	vframe(m, 0, 0, 1, 0, "25-20")
-	m.ResetSets()
+	m.ResetPeriods()
 	if len(saved) != 2 || len(saved[0]) != 1 || len(saved[1]) != 0 {
 		t.Errorf("saved %v", saved)
 	}

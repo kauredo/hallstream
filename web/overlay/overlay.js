@@ -464,6 +464,24 @@
     return { full: w.join(' '), first: w.length > 1 ? w[0] : '', last: w.length > 1 ? w.slice(1).join(' ') : (w[0] || '') };
   }
 
+  // The period's name: "SET 3" in a sets sport, "2º PER." / "PROL." in basketball; the box's own word when it sent none.
+  function periodShort(pn, raw, v) {
+    if (pn == null) return raw;
+    if (v.sets) return t('overlay.set.curto', { n: pn });
+    if (pn <= v.regulationPeriods) return t('overlay.periodo.curto', { n: pn });
+    if (pn === v.regulationPeriods + 1) return t('overlay.periodo.prol');
+    return t('overlay.periodo.prol_n', { n: pn - v.regulationPeriods });
+  }
+  function periodLong(pn, raw, v) {
+    if (pn == null) return raw;
+    if (v.sets) return t('overlay.set.longo', { n: pn });
+    if (pn <= v.regulationPeriods) return t('overlay.periodo.longo', { n: pn });
+    if (pn === v.regulationPeriods + 1) return t('overlay.periodo.prolongamento');
+    return t('overlay.periodo.prolong_n', { n: pn - v.regulationPeriods });
+  }
+  // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
+  const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : h + '–' + a);
+
   // ---------- derive what every screen shows ----------
   function view(st) {
     const live = st.live || {};
@@ -500,8 +518,8 @@
     v.awayFouls = live.away_fouls ?? 0;
     v.homeBig = v.sets ? v.homeSets : v.homeScore;
     v.awayBig = v.sets ? v.awaySets : v.awayScore;
-    v.periodShort = v.sets && pn != null ? t('overlay.set.curto', { n: pn }) : pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.curto', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prol') : t('overlay.periodo.prol_n', { n: pn - v.regulationPeriods });
-    v.periodLong = v.sets && pn != null ? t('overlay.set.longo', { n: pn }) : pn == null ? (live.period || '') : pn <= v.regulationPeriods ? t('overlay.periodo.longo', { n: pn }) : pn === v.regulationPeriods + 1 ? t('overlay.periodo.prolongamento') : t('overlay.periodo.prolong_n', { n: pn - v.regulationPeriods });
+    v.periodShort = periodShort(pn, live.period || '', v);
+    v.periodLong = periodLong(pn, live.period || '', v);
     v.compRound = joinDot(game.competition, game.round);
     v.venue = game.venue || '';
     const coach = splitName((game.group && game.group.coach) || '');
@@ -607,7 +625,7 @@
         d.className = 'ln';
         const k = document.createElement('i');
         k.textContent = s.set;
-        d.append(k, s.home === 0 && s.away === 0 ? '–' : s.home + '–' + s.away);
+        d.append(k, setScoreText(s.home, s.away));
         box.append(d);
       }
     }

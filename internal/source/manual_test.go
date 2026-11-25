@@ -320,7 +320,7 @@ func TestVolleyballPointsAndServe(t *testing.T) {
 		}
 	}
 	live := m.Snapshot().Live
-	if live.Serve != "away" && live.Serve != "home" {
+	if live.Serve != "home" {
 		t.Errorf("serve never reached the state: %+v", live)
 	}
 }
@@ -335,7 +335,7 @@ func TestVolleyballSetNext(t *testing.T) {
 	do(t, mn, Action{Do: "point", Team: "home", N: 1}, Action{Do: "timeout", Team: "home", N: 1})
 	do(t, mn, Action{Do: "set_next"})
 	s := mn.Score()
-	if s.Sets[0] != (SetScore{25, 23, "home"}) || s.Sets[1].Winner != "" || s.Home != 0 || s.Away != 0 ||
+	if s.Sets[0] != (state.SetScore{Set: 1, Home: 25, Away: 23, Winner: "home"}) || s.Sets[1].Winner != "" || s.Home != 0 || s.Away != 0 ||
 		s.Serve != "" || s.HomeTimeouts != 0 || s.Period != 2 {
 		t.Errorf("after set_next: %+v", s)
 	}
@@ -397,8 +397,21 @@ func TestVolleyballEmit(t *testing.T) {
 	points(t, mn, "home", 25)
 	points(t, mn, "away", 23)
 	do(t, mn, Action{Do: "set_next"})
-	if got["sets"] != "25-23" || got["home_sets"] != "1" || got["away_sets"] != "0" || got["clock"] != "" || got["period"] != "2" {
+	if got["sets"] != "25-23h" || got["home_sets"] != "1" || got["away_sets"] != "0" || got["clock"] != "" || got["period"] != "2" {
 		t.Errorf("emit %v", got)
+	}
+}
+
+// A set the console ended has no points, and an away win must stay one.
+func TestVolleyballSeededAwayWinStaysAway(t *testing.T) {
+	mn, m, _ := newVolley()
+	mn.Seed(state.Live{HomeSets: 1, AwaySets: 1, Home: 3, Away: 2})
+	got := m.Snapshot().Sets
+	if len(got) != 2 || got[0].Winner != "home" || got[1].Winner != "away" {
+		t.Errorf("recorded sets %v, want home then away", got)
+	}
+	if s := m.Snapshot().Live; s.HomeSets != 1 || s.AwaySets != 1 {
+		t.Errorf("live %+v", s)
 	}
 }
 

@@ -215,6 +215,28 @@ func TestOldSettingsReadTheConsole(t *testing.T) {
 	}
 }
 
+func TestSetsFile(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	type set struct {
+		Set, Home, Away int
+		Winner          string
+	}
+	var got []set
+	if err := s.LoadSets(&got); err != nil || got != nil {
+		t.Fatalf("no file: %v %v", got, err)
+	}
+	want := []set{{1, 25, 20, "home"}, {2, 18, 25, "away"}}
+	if err := s.SaveSets(want); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LoadSets(&got); err != nil || !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v %v", got, err)
+	}
+}
+
 func TestManualRoundTrip(t *testing.T) {
 	s, err := Open(t.TempDir())
 	if err != nil {

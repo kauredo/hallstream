@@ -183,6 +183,7 @@ func main() {
 	m.SetScreen("", set.AutoScreens)
 	m.OnPeriods = func(s state.State) { saveHistory(st, s) }
 	restorePeriods(st, m)
+	restoreSets(st, m)
 	m.Start()
 
 	// The score comes from one source at a time, settings.input: the box
@@ -363,6 +364,11 @@ func restorePeriods(st *store.Store, m *state.Machine) {
 			say(i18n.T("log.nao_guardei_periodos", "err", err))
 		}
 	}
+}
+
+// restoreSets is restorePeriods for the finished sets of a sets sport
+// (sets.json).
+func restoreSets(st *store.Store, m *state.Machine) {
 	var ss []state.SetScore
 	if err := st.LoadSets(&ss); err != nil {
 		say(i18n.T("log.nao_li_sets", "err", err))

@@ -8,10 +8,22 @@ import (
 	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/i18n"
+	"github.com/kauredo/hallstream/internal/source"
 	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
+
+// newGameState forgets the game that was played: the periods and sets the
+// state machine recorded and, for a sets sport, the sets the phone scorer
+// still holds (it would send them again and the machine would record them).
+// The scorer's new_game cannot fail on a sets sport, so its error is dropped.
+func (s *Server) newGameState() {
+	s.State.ResetPeriods()
+	if s.Manual != nil && sport.Get(s.Store.GameSport()).Sets() {
+		_ = s.Manual.Do(source.Action{Do: "new_game"})
+	}
+}
 
 func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {
 	var g store.Game
@@ -40,8 +52,7 @@ func (s *Server) putGame(w http.ResponseWriter, r *http.Request) {
 	if s.save(w, s.Store.SaveGame(g)) {
 		reply(w, g)
 		if old.GroupID != g.GroupID || !sameGame(old.FPBGameID, g.FPBGameID) || day(old.Start) != day(g.Start) {
-			s.State.ResetPeriods() // another game: last game's periods go
-			s.State.ResetSets()
+			s.newGameState() // another game: last game's periods and sets go
 		}
 		s.refreshNextInBackground()
 		// A game picked for a linked escalão: bring its squad up to date.

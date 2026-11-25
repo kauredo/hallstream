@@ -151,6 +151,8 @@
   function periodName(p, periods) {
     return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
+  // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
+  const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : `${h}–${a}`);
   const sigla = (team) => ((st && st.game && st.game[team]) || {}).short || '';
   // What undo takes back, in the words of the tap.
   function undoLabel(a) {
@@ -205,12 +207,12 @@
       $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
     }
     // The finished sets, as small scores in the middle strip.
-    const feitos = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
-    feitos.hidden = !sets;
-    feitos.replaceChildren(...done.map((x, i) => {
+    const finished = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
+    finished.hidden = !sets;
+    finished.replaceChildren(...done.map((x, i) => {
       const row = document.createElement('span'), k = document.createElement('i');
       k.textContent = x.set ?? i + 1;
-      row.append(k, x.home === 0 && x.away === 0 ? '–' : `${x.home}–${x.away}`);
+      row.append(k, setScoreText(x.home, x.away));
       return row;
     }));
 
@@ -230,7 +232,7 @@
     // The set can end once a side has the points with the lead; the button lights up to say so.
     const setOver = sets && !!setWon(rules, period, +l.home || 0, +l.away || 0) && (+l.home_sets || 0) < rules.setsToWin && (+l.away_sets || 0) < rules.setsToWin;
     go.classList.toggle('pronto', manual && setOver);
-    if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; go.disabled = false; }
+    if (!manual) { go.textContent = t('marcar.marcar_daqui'); go.dataset.do = 'take'; delete go.dataset.ask; go.disabled = false; }
     else if (sets) { go.textContent = t('marcar.set_seguinte'); go.dataset.do = ''; go.dataset.ask = 'set_next'; go.disabled = !setOver; }
     else if (atZero) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - zeroSince < 2000; }
     else { go.textContent = running ? t('marcar.parar') : t('marcar.iniciar'); go.dataset.do = running ? 'clock_stop' : 'clock_start'; delete go.dataset.ask; go.disabled = false; }

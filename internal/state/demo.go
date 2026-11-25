@@ -89,7 +89,7 @@ func (m *Machine) demo(stop <-chan struct{}) {
 		m.mu.Lock()
 		if m.s.Demo {
 			m.s.Periods, m.s.Sets = []Period{}, []SetScore{}
-			m.finalDone, m.zeroSince = 0, time.Time{}
+			m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
 		}
 		m.mu.Unlock()
 	}

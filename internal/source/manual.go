@@ -26,20 +26,12 @@ type Score struct {
 
 	// Volleyball. Sets is an array, not a slice, so a Score stays comparable
 	// with ==; a played set has a Winner, an empty slot has none.
-	Sets  [maxSets]SetScore `json:"sets"`  // finished sets, in order
-	Serve string            `json:"serve"` // "home", "away" or ""
+	Sets  [maxSets]state.SetScore `json:"sets"`  // finished sets, in order
+	Serve string                  `json:"serve"` // "home", "away" or ""
 }
 
 // maxSets is the most sets a match can have (best of 5).
 const maxSets = 5
-
-// SetScore is one finished set. A set seeded from a console has no points
-// (0-0) and only its Winner.
-type SetScore struct {
-	Home   int    `json:"home"`
-	Away   int    `json:"away"`
-	Winner string `json:"winner"`
-}
 
 // played is how many sets are finished, and how many each side won.
 func (s Score) played() (n, home, away int) {
@@ -210,10 +202,10 @@ func (m *Manual) seedSets(l state.Live) {
 	s := Score{Home: max(l.Home, 0), Away: max(l.Away, 0), Length: m.s.Length, Serve: l.Serve}
 	i := 0
 	for ; i < min(l.HomeSets, maxSets); i++ {
-		s.Sets[i] = SetScore{Winner: "home"}
+		s.Sets[i] = state.SetScore{Set: i + 1, Winner: "home"}
 	}
 	for j := 0; j < l.AwaySets && i < maxSets; j++ {
-		s.Sets[i] = SetScore{Winner: "away"}
+		s.Sets[i] = state.SetScore{Set: i + 1, Winner: "away"}
 		i++
 	}
 	s.Clock, s.Period = s.Length, i+1
@@ -246,39 +238,26 @@ func (m *Manual) Do(a Action) error {
 	prev, clock := m.s, false
 	s := &m.s
 	r := m.Rules()
-	if r.Sets() {
-		switch a.Do {
-		case "foul":
-			return errNoFouls
-		case "clock_start", "clock_stop", "clock_set", "clock_add", "period_next", "period_back", "period_length":
-			return errNoClock
-		}
+	sets := r.Sets()
+	if err := refused(a, sets); err != nil {
+		return err
 	}
 	switch a.Do {
 	case "point", "foul", "timeout":
-		if r.Sets() && a.Do == "point" && a.N != 1 && a.N != -1 {
-			return errPoints
-		}
 		p, err := m.count(a)
 		if err != nil {
 			return err
 		}
 		*p = max(*p+a.N, 0)
-		if r.Sets() && a.Do == "point" && a.N == 1 {
+		if sets && a.Do == "point" && a.N == 1 {
 			s.Serve = a.Team
 		}
 	case "serve":
-		if !r.Sets() {
-			return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
-		}
 		if a.Team != "home" && a.Team != "away" {
 			return errTeam
 		}
 		s.Serve = a.Team
 	case "set_next":
-		if !r.Sets() {
-			return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
-		}
 		n, hs, as := s.played()
 		if hs >= r.SetsToWin || as >= r.SetsToWin || n >= maxSets {
 			return errGameOver
@@ -287,7 +266,7 @@ func (m *Manual) Do(a Action) error {
 		if w == "" {
 			return errSetOpen
 		}
-		s.Sets[n] = SetScore{Home: s.Home, Away: s.Away, Winner: w}
+		s.Sets[n] = state.SetScore{Set: n + 1, Home: s.Home, Away: s.Away, Winner: w}
 		s.Home, s.Away, s.HomeTimeouts, s.AwayTimeouts, s.Serve = 0, 0, 0, 0, ""
 		s.Period = n + 2
 	case "undo":
@@ -357,6 +336,31 @@ func (m *Manual) Do(a Action) error {
 		}
 	}
 	m.changed()
+	return nil
+}
+
+// refused is the error for an action the sport's kind of scoring does not
+// take, nil for one it does: a sets sport has no fouls, clock or periods and
+// scores one point at a time, and only it has a serve and set ends.
+func refused(a Action, sets bool) error {
+	switch a.Do {
+	case "serve", "set_next":
+		if !sets {
+			return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
+		}
+	case "foul":
+		if sets {
+			return errNoFouls
+		}
+	case "clock_start", "clock_stop", "clock_set", "clock_add", "period_next", "period_back", "period_length":
+		if sets {
+			return errNoClock
+		}
+	case "point":
+		if sets && a.N != 1 && a.N != -1 {
+			return errPoints
+		}
+	}
 	return nil
 }
 
@@ -507,7 +511,11 @@ func (m *Manual) emit() {
 		played, hs, as := s.played()
 		var done []string
 		for _, x := range s.Sets[:played] {
-			done = append(done, n(x.Home)+"-"+n(x.Away))
+			side := "h"
+			if x.Winner == "away" {
+				side = "a"
+			}
+			done = append(done, n(x.Home)+"-"+n(x.Away)+side)
 		}
 		m.out(map[string]string{
 			"home": n(s.Home), "away": n(s.Away),

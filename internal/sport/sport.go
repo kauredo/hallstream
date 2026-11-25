@@ -37,10 +37,15 @@ var Volleyball = Profile{ID: "volleyball", Scoring: "sets", SetPoints: 25, LastS
 
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {
-	if id == "volleyball" {
-		return Volleyball
+	if p, ok := profiles[id]; ok {
+		return p
 	}
 	return Basketball
+}
+
+var profiles = map[string]Profile{
+	Basketball.ID: Basketball,
+	Volleyball.ID: Volleyball,
 }
 
 // Sets reports whether the sport is scored in sets.

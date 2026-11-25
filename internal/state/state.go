@@ -52,6 +52,12 @@ type Live struct {
 	HomeSets int    `json:"home_sets"`
 	AwaySets int    `json:"away_sets"`
 	Serve    string `json:"serve"`
+	// Sets is the phone scorer's finished sets, "25-20h,18-25a" (home-away and
+	// the winner's side; the winner may be missing). The machine records them
+	// into State.Sets; the console sends nothing here.
+	Sets string `json:"sets"`
+	// setCounts is true when the frame carried home_sets or away_sets.
+	setCounts bool
 }
 
 // SetScore is one finished set of a sets sport (volleyball). A set seeded
@@ -291,7 +297,8 @@ type Machine struct {
 	autoSwitch bool // the program picked the screen, not the volunteer
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
-	finalDone  int       // period whose end already fired "final"; for a sets sport, the sets recorded when the match ended
+	finalDone  int       // period whose end already fired "final"
+	matchOver  bool      // a sets sport: a side has won the match and "final" fired
 	started    bool      // the clock has run in the current period
 	clockRanAt time.Time // when the clock value last changed; zero before any
 	lastTenths int
@@ -653,22 +660,14 @@ func (m *Machine) HideLowerThird() {
 	m.mu.Unlock()
 }
 
-// ResetPeriods starts a new game: no recorded periods, also for after the demo.
+// ResetPeriods starts a new game: no recorded periods or sets, the match not
+// over, also for after the demo. The phone scorer keeps its own sets, so a
+// caller that resets a sets game resets the scorer too (Server.newGame).
 func (m *Machine) ResetPeriods() {
 	m.mu.Lock()
 	m.s.Periods, m.realPeriods = []Period{}, nil
-	m.finalDone, m.zeroSince = 0, time.Time{}
-	m.changed()
-	save := m.saver(true)
-	m.mu.Unlock()
-	save()
-}
-
-// ResetSets starts a new game: no recorded sets and the match not over.
-func (m *Machine) ResetSets() {
-	m.mu.Lock()
 	m.s.Sets, m.realSets = []SetScore{}, nil
-	m.finalDone = 0
+	m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
 	m.changed()
 	save := m.saver(true)
 	m.mu.Unlock()
@@ -729,8 +728,11 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		HomeFouls: num("home_fouls"), AwayFouls: num("away_fouls"),
 		Shot: v["shot_clock"], Sport: v["sport"],
 		HomeTimeouts: num("home_timeouts"), AwayTimeouts: num("away_timeouts"),
-		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"],
+		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"], Sets: v["sets"],
 	}
+	_, hasHome := v["home_sets"]
+	_, hasAway := v["away_sets"]
+	l.setCounts = hasHome || hasAway
 	m.mu.Lock()
 	now := m.now().UTC()
 	m.s.Box.LastFrameAt = &now
@@ -743,34 +745,42 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		m.s.Box.BoxType = v["box_type"]
 	}
 	m.mu.Unlock()
-	m.apply(l, false, parseSets(v["sets"]))
+	m.update(l, false)
 }
 
-// parseSets reads the phone scorer's finished sets, "25-20,18-25" (home-away).
-// The side with more points won. A part that is not two numbers is skipped.
+// parseSets reads the phone scorer's finished sets, "25-20h,18-25a": home-away
+// points and, after them, the winner's side (h or a). Without the letter the
+// side with more points won, and a tie has no winner yet (setSets takes it
+// from the counts). A part that is not two numbers is skipped.
 func parseSets(s string) []SetScore {
 	var out []SetScore
-	for i, part := range strings.Split(s, ",") {
+	for _, part := range strings.Split(s, ",") {
+		win := ""
+		switch {
+		case strings.HasSuffix(part, "h"):
+			win, part = "home", strings.TrimSuffix(part, "h")
+		case strings.HasSuffix(part, "a"):
+			win, part = "away", strings.TrimSuffix(part, "a")
+		}
 		a, b, ok := strings.Cut(part, "-")
 		h, errH := strconv.Atoi(a)
 		w, errW := strconv.Atoi(b)
 		if !ok || errH != nil || errW != nil {
 			continue
 		}
-		win := "home"
-		if w > h {
+		switch {
+		case win != "":
+		case h > w:
+			win = "home"
+		case w > h:
 			win = "away"
 		}
-		out = append(out, SetScore{Set: i + 1, Home: h, Away: w, Winner: win})
+		out = append(out, SetScore{Set: len(out) + 1, Home: h, Away: w, Winner: win})
 	}
 	return out
 }
 
-func (m *Machine) update(l Live, fromDemo bool) { m.apply(l, fromDemo, nil) }
-
-// apply applies a frame. finished is the sets the phone scorer sent, nil
-// from the console and the demo.
-func (m *Machine) apply(l Live, fromDemo bool, finished []SetScore) {
+func (m *Machine) update(l Live, fromDemo bool) {
 	m.mu.Lock()
 	if m.s.Demo != fromDemo {
 		m.mu.Unlock()
@@ -781,7 +791,7 @@ func (m *Machine) apply(l Live, fromDemo bool, finished []SetScore) {
 		now := m.now().UTC()
 		m.s.Box.Connected, m.s.Box.LastFrameAt = true, &now
 	}
-	recorded := m.setLive(l, finished)
+	recorded := m.setLive(l)
 	m.changed()
 	snap := m.snapshot()
 	save := m.recordedSaver(recorded)
@@ -807,7 +817,7 @@ func (m *Machine) recorded(rec bool, snap State, save func()) {
 
 // setLive applies new live values and runs the period and screen rules.
 // It reports whether a period or set score was recorded.
-func (m *Machine) setLive(l Live, finished []SetScore) bool {
+func (m *Machine) setLive(l Live) bool {
 	old := m.s.Live
 	m.s.Live = l
 	if old.Clock != "" && old.Clock != l.Clock {
@@ -817,7 +827,7 @@ func (m *Machine) setLive(l Live, finished []SetScore) bool {
 	newP, _ := strconv.Atoi(l.Period)
 	r := m.rules()
 	if r.Sets() {
-		return m.setSets(old, l, finished)
+		return m.setSets(old, l)
 	}
 	recorded := false
 
@@ -854,20 +864,26 @@ func (m *Machine) setLive(l Live, finished []SetScore) bool {
 // setSets is setLive for a sets sport: it records a set when the count of sets
 // won rises, drops sets when it falls (an undo) and ends the match when a side
 // has won SetsToWin sets. A frame from the phone scorer carries every finished
-// set's score; the console only sends the counts, so a set it ends is recorded
-// with the points that were on the board before the count rose. Reports whether
-// the recorded sets changed.
-func (m *Machine) setSets(old, l Live, finished []SetScore) bool {
+// set's score in l.Sets; the console only sends the counts, so a set it ends is
+// recorded with the points that were on the board before the count rose. A
+// frame with no set counts at all (a console that has not sent them) leaves
+// everything as it is. Reports whether the recorded sets changed.
+func (m *Machine) setSets(old, l Live) bool {
+	if !l.setCounts {
+		return false
+	}
 	r := m.rules()
-	total, have := l.HomeSets+l.AwaySets, len(m.s.Sets)
+	most := 2*r.SetsToWin - 1
+	hs, as := min(max(l.HomeSets, 0), most), min(max(l.AwaySets, 0), most)
+	m.s.Live.HomeSets, m.s.Live.AwaySets = hs, as
+	total, have := min(hs+as, most), len(m.s.Sets)
+	finished := parseSets(l.Sets)
 	changed := false
 	if total > have {
-		home, away := 0, 0
+		home := 0
 		for _, s := range m.s.Sets {
 			if s.Winner == "home" {
 				home++
-			} else {
-				away++
 			}
 		}
 		for n := have + 1; n <= total; n++ {
@@ -878,17 +894,14 @@ func (m *Machine) setSets(old, l Live, finished []SetScore) bool {
 			} else if n == total && total == have+1 {
 				s.Home, s.Away = old.Home, old.Away
 			}
-			if n > len(finished) {
-				if home < l.HomeSets {
+			if s.Winner == "" { // a tie, or no word on the winner: the counts say who
+				s.Winner = "away"
+				if home < hs {
 					s.Winner = "home"
-				} else {
-					s.Winner = "away"
 				}
 			}
 			if s.Winner == "home" {
 				home++
-			} else {
-				away++
 			}
 			m.s.Sets = append(m.s.Sets, s)
 		}
@@ -897,13 +910,13 @@ func (m *Machine) setSets(old, l Live, finished []SetScore) bool {
 		m.s.Sets = append([]SetScore{}, m.s.Sets[:total]...)
 		changed = true
 	}
-	won := l.HomeSets >= r.SetsToWin || l.AwaySets >= r.SetsToWin
+	won := hs >= r.SetsToWin || as >= r.SetsToWin
 	switch {
-	case won && m.finalDone == 0:
-		m.finalDone = max(len(m.s.Sets), 1)
+	case won && !m.matchOver:
+		m.matchOver = true
 		m.auto("final")
-	case !won && m.finalDone != 0:
-		m.finalDone = 0
+	case !won && m.matchOver:
+		m.matchOver = false
 		if m.s.Screen.Current == "final" {
 			m.auto("marcador")
 		}

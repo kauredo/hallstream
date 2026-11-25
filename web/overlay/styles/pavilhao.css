@@ -51,6 +51,14 @@ html[data-style="pavilhao"] .atmo {
     var(--ink);
 }
 
+/* The circles, keys and arcs above are basketball's; other sports keep only the middle line. */
+html[data-style="pavilhao"][data-sport]:not([data-sport="basketball"]) .atmo {
+  background:
+    linear-gradient(90deg, transparent 956px, var(--l) 956px 964px, transparent 964px),
+    linear-gradient(rgba(var(--red-rgb),0.1), rgba(var(--red-rgb),0.1)),
+    var(--ink);
+}
+
 /* A separator between two parts of a line is a short painted line, not a dot. */
 html[data-style="pavilhao"] i.sep { display: inline-block; width: 4px; height: 0.72em; margin: 0 0.4em; overflow: clip; vertical-align: -0.02em; white-space: nowrap; background: currentColor; opacity: 0.6; -webkit-text-fill-color: transparent; }
 html[data-style="pavilhao"] .sb-head i.sep, html[data-style="pavilhao"] .sb-head [data-b="homeShort"] { display: none; }
@@ -68,6 +76,12 @@ html[data-style="pavilhao"] .sb-fill {
   clip-path: none;
   background:
     radial-gradient(circle at calc(100% + 10px) 50%, var(--red) 0 46px, var(--mt-line) 46.5px 51px, transparent 51.5px),
+    var(--mt-grain), var(--mt-maple);
+}
+/* Other sports end the floor with a straight painted line instead of the three-point arc. */
+html[data-style="pavilhao"][data-sport]:not([data-sport="basketball"]) .sb-fill {
+  background:
+    linear-gradient(90deg, transparent calc(100% - 41px), var(--mt-line) calc(100% - 41px) calc(100% - 36px), var(--red) calc(100% - 36px)),
     var(--mt-grain), var(--mt-maple);
 }
 html[data-style="pavilhao"] .sb-fill i { background: transparent; }
@@ -127,6 +141,9 @@ html[data-style="pavilhao"] .lt-tile {
     linear-gradient(90deg, var(--red) 0 146px, transparent 146px),
     radial-gradient(circle at 146px 64px, var(--red) 0 52px, var(--mt-line) 52.5px 58px, transparent 58.5px);
 }
+html[data-style="pavilhao"][data-sport]:not([data-sport="basketball"]) .lt-tile {
+  background: linear-gradient(90deg, var(--red) 0 146px, var(--mt-line) 146px 152px, transparent 152px);
+}
 html[data-style="pavilhao"] .lt-band { background: transparent; }
 html[data-style="pavilhao"] .lt-num { font-family: var(--mt-num); font-weight: 400; font-size: 92px; font-variant-numeric: tabular-nums; padding-top: 4px; box-sizing: border-box; }
 html[data-style="pavilhao"] .lt-small, html[data-style="pavilhao"] .lt-label { font-weight: 600; font-stretch: 85%; font-size: 24px; letter-spacing: 0.02em; color: var(--ink); }
@@ -149,6 +166,12 @@ html[data-style="pavilhao"] .blk-fill {
   clip-path: none;
   background:
     radial-gradient(circle at calc(100% + 34px) 50%, var(--red) 0 124px, var(--mt-line) 124.5px 134px, transparent 134.5px),
+    var(--mt-grain), var(--mt-maple);
+  background-size: auto, 100% 45px, auto;
+}
+html[data-style="pavilhao"][data-sport]:not([data-sport="basketball"]) .blk-fill {
+  background:
+    linear-gradient(90deg, transparent calc(100% - 100px), var(--mt-line) calc(100% - 100px) calc(100% - 90px), var(--red) calc(100% - 90px)),
     var(--mt-grain), var(--mt-maple);
   background-size: auto, 100% 45px, auto;
 }

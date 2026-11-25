@@ -8,7 +8,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, owner's decision
 |------|-------|----------|--------|------------|--------|
 | 002 | Basketball's rules live in one `internal/sport` profile, with no change in behaviour | P1 | M | none | DONE: merged #27 (59af5f4) |
 | 003 | Each escalão has its own sport | P1 | M | 002 | DONE: merged #28 (e98194c) |
-| 004 | Volleyball | P1 | L | 002, 003 | IN REVIEW (this branch) |
+| 004 | Volleyball | P1 | L | 002, 003 | DONE: merged #29 (61190d7) |
 | 001 | An escalão can link to a network data source, and Nevobo is the first one | P2 | L | 004 | TODO |
 | 005 | Futsal | P2 | M | 002, 003, 004 | TODO |
 | 006 | Handball | P2 | L | 002, 003, 004 | TODO |

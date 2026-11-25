@@ -241,6 +241,7 @@ func main() {
 	safely("YouTube", srv.RunYouTube)
 	safely(i18n.T("log.tarefa.proximo"), srv.WatchNext)
 	safely(i18n.T("log.tarefa.envios"), srv.RunUploads)
+	safely(i18n.T("log.tarefa.atualizacoes"), srv.RunUpdates)
 	safely(i18n.T("log.tarefa.fpb"), func() {
 		srv.FirstRun(*demo)
 		srv.Daily(*demo)

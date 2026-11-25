@@ -80,6 +80,9 @@ type Settings struct {
 	Lang string `json:"lang"`
 	// Input is where the score comes from: one of Inputs.
 	Input string `json:"input"`
+	// UpdateCheck lets the program ask GitHub once a day for a newer release
+	// (off until the volunteer turns it on). It never downloads.
+	UpdateCheck bool `json:"update_check"`
 	// Stream is where OBS sends the picture; only PUT /api/stream changes it.
 	Stream Stream `json:"stream"`
 }

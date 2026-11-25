@@ -18,6 +18,13 @@ type Profile struct {
 	FinalHold  int    `json:"final_hold"`  // tenths the clock sits at 0 in the last period before the game is over
 	TimeoutsBy [3]int `json:"timeouts"`    // timeouts per team: first half, second half, each overtime
 
+	OvertimeLength int    `json:"overtime_length"` // tenths in an overtime period; 0 = the regulation length
+	FoulsCarry     bool   `json:"fouls_carry"`     // fouls of the last regulation period run on through overtime
+	PeriodWord     string `json:"period_word"`     // "quarter", "half" or "set": which period labels the pages use
+	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
+	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
+
+	MaxPoint      int    `json:"max_point"`       // the most one score action can add: basketball 3, a goal or a set point 1
 	Scoring       string `json:"scoring"`         // "points" (basketball) or "sets"
 	SetPoints     int    `json:"set_points"`      // points to win a set (25); 0 when Scoring is "points"
 	LastSetPoints int    `json:"last_set_points"` // points to win the deciding set (15)
@@ -28,12 +35,22 @@ type Profile struct {
 // Basketball is FIBA.
 var Basketball = Profile{ID: "basketball", Periods: 4, Half: 2, Length: 6000, ClockDown: true,
 	FoulsReset: true, FoulWarn: 4, FoulBonus: 5, ShotClock: true, FinalHold: 600,
-	TimeoutsBy: [3]int{2, 3, 1}, Scoring: "points"}
+	TimeoutsBy: [3]int{2, 3, 1}, Scoring: "points", MaxPoint: 3, OvertimeLength: 3000, PeriodWord: "quarter",
+	FoulMarks: 5, FoulPenalty: "bonus"}
 
 // Volleyball: best of 5, sets to 25 (15 in the 5th), win by 2, no clock,
 // 2 timeouts per team per set.
-var Volleyball = Profile{ID: "volleyball", Scoring: "sets", SetPoints: 25, LastSetPoints: 15,
-	SetsToWin: 3, WinBy: 2, TimeoutsBy: [3]int{2, 2, 2}}
+var Volleyball = Profile{ID: "volleyball", MaxPoint: 1, Scoring: "sets", SetPoints: 25, LastSetPoints: 15,
+	SetsToWin: 3, WinBy: 2, TimeoutsBy: [3]int{2, 2, 2}, PeriodWord: "set"}
+
+// Futsal is FIFA: two halves of 20:00 on a stopped clock, accumulated fouls
+// per half (the 6th gives a free kick without a wall) that carry into extra
+// time, one timeout per team per half and none in extra time, extra time in
+// periods of 5:00.
+var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown: true,
+	FoulsReset: true, FoulsCarry: true, FoulWarn: 5, FoulBonus: 6, FinalHold: 600,
+	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", MaxPoint: 1, OvertimeLength: 3000, PeriodWord: "half",
+	FoulMarks: 5, FoulPenalty: "free_kick"}
 
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {
@@ -46,6 +63,7 @@ func Get(id string) Profile {
 var profiles = map[string]Profile{
 	Basketball.ID: Basketball,
 	Volleyball.ID: Volleyball,
+	Futsal.ID:     Futsal,
 }
 
 // Sets reports whether the sport is scored in sets.
@@ -96,4 +114,17 @@ func (p Profile) ResetsTimeouts(period int) bool {
 		return period >= 2
 	}
 	return period == p.Half+1 || period > p.Periods
+}
+
+// Overtime reports whether period is an overtime (after Periods).
+func (p Profile) Overtime(period int) bool { return period > p.Periods }
+
+// ResetsFouls reports whether starting period puts the team fouls back to 0:
+// not when the sport never resets them, and not in an overtime when the
+// fouls carry on from the last regulation period.
+func (p Profile) ResetsFouls(period int) bool {
+	if !p.FoulsReset {
+		return false
+	}
+	return !(p.FoulsCarry && p.Overtime(period))
 }

@@ -88,8 +88,11 @@ func TestPanelSportPerEscalao(t *testing.T) {
 	if has(fpbCard) {
 		t.Error("a futsal escalão shows the FPB card")
 	}
-	if !has(`document.querySelector('#pGSport option[value="futsal"]').disabled`) {
-		t.Error("futsal can be picked, but no plan makes it playable yet")
+	if has(`document.querySelector('#pGSport option[value="futsal"]').disabled`) {
+		t.Error("futsal is playable now, but the option is disabled")
+	}
+	if !has(`document.querySelector('#pGSport option[value="handball"]').disabled`) {
+		t.Error("handball can be picked, but no plan makes it playable yet")
 	}
 	pick("pGroup", "seniores-basquetebol")
 	if err := until(tab, `document.querySelector("#pGroup").value === "seniores-basquetebol" && `+fpbCard); err != nil {

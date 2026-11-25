@@ -10,8 +10,8 @@ import (
 	"github.com/kauredo/hallstream/internal/store"
 )
 
-// setSport sets an escalão's sport straight in the store: futsal can't be
-// picked through the API yet.
+// setSport sets an escalão's sport straight in the store, whether or not the
+// API accepts it.
 func setSport(t *testing.T, s *Server, id, sport string) {
 	t.Helper()
 	if _, err := s.Store.UpdateGroup(id, func(g *store.Group) error { g.Sport = sport; return nil }); err != nil {
@@ -23,13 +23,16 @@ func TestPutGroupSport(t *testing.T) {
 	s := newServer(t)
 	var g store.Group
 	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sub 16"}, &g)
-	for _, sp := range []string{"curling", "futsal"} {
+	for _, sp := range []string{"curling", "handball"} {
 		var e struct{ Error string }
 		if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": sp}, &e); code != http.StatusBadRequest || e.Error != i18n.T("api.escalao.desporto") {
 			t.Errorf("sport %q: %d %q", sp, code, e.Error)
 		}
 	}
 	var got store.Group
+	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "futsal"}, &got); code != http.StatusOK || got.Sport != "futsal" {
+		t.Errorf("futsal: %d %+v", code, got)
+	}
 	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "basketball"}, &got); code != http.StatusOK || got.Sport != "basketball" {
 		t.Errorf("basketball: %d %+v", code, got)
 	}

@@ -125,7 +125,7 @@ func TestOverlayStyles(t *testing.T) {
 	srv := httptest.NewServer(newServerFiles(t, assets.FS))
 	t.Cleanup(srv.Close)
 	for _, style := range store.Styles {
-		for _, fx := range []string{"marcador", "marcador-12", "rodape-fotos", "rodape-comentador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo-casa", "voltamos", "volleyball/marcador", "volleyball/final"} {
+		for _, fx := range []string{"marcador", "marcador-12", "rodape-fotos", "rodape-comentador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo-casa", "voltamos", "volleyball/marcador", "volleyball/final", "futsal/marcador", "futsal/marcador-faltas", "futsal/intervalo", "futsal/final-prolongamento"} {
 			t.Run(style+"/"+fx, func(t *testing.T) {
 				messages := chromedp.Console(tab)
 				if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {

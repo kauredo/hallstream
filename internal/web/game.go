@@ -242,7 +242,26 @@ func (s *Server) SyncGame() {
 	shared, _ := s.Store.Group(store.Shared)
 	out.Sponsors = sponsors(grp.Sponsors, shared.Sponsors)
 	s.State.SetGame(out, g.Picked())
+	s.switchSport(sp.ID)
 	s.timelineGame(g, out)
+}
+
+// switchSport gives a fresh scorer game the new sport's period length when
+// the game's sport changes. lastSport starts empty, so the first sync after a
+// start only records the sport. An empty id is basketball, as sport.Get has
+// it. Called with syncMu held.
+func (s *Server) switchSport(id string) {
+	id = sport.Get(id).ID
+	prev := s.lastSport
+	s.lastSport = id
+	if prev == "" || prev == id || s.Manual == nil {
+		return
+	}
+	if l := sport.Get(id).Length; l > 0 {
+		if err := s.Manual.SetLength(l); err != nil {
+			s.Log(i18n.T("log.nao_mudei_duracao", "err", err))
+		}
+	}
 }
 
 // sponsors puts the group's principal first (else the shared one), then the

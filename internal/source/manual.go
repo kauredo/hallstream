@@ -75,9 +75,10 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps running
 //   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0 and MaxClock
 //   - "period_next": the next period, with the clock stopped at the period
-//     length and the team fouls at 0 when the sport resets them; the timeouts
-//     go back to 0 when the sport's profile says so (basketball: the second
-//     half and each overtime)
+//     length (an overtime runs the sport's OvertimeLength when it sets one)
+//     and the team fouls at 0 when the sport resets them for that period (futsal
+//     carries them into extra time); the timeouts go back to 0 when the
+//     sport's profile says so (basketball: the second half and each overtime)
 //   - "period_back": the period before, the clock stopped where it is
 //   - "period_length": the period length to Tenths (above 0); a clock
 //     stopped at the old length moves to the new one
@@ -101,6 +102,7 @@ var (
 	errUndo   error = i18n.Key("manual.nada_para_desfazer")
 
 	errNoFouls  error = i18n.Key("manual.sem_faltas")
+	errOnePoint error = i18n.Key("manual.um_ponto")
 	errSetOpen  error = i18n.Key("manual.set_por_acabar")
 	errGameOver error = i18n.Key("manual.jogo_acabou")
 	errNoClock  error = i18n.Key("manual.sem_relogio")
@@ -228,6 +230,34 @@ func (m *Manual) Heartbeat() {
 	m.tellBox()
 }
 
+// SetLength sets the period length to tenths, as "period_length" does: a
+// clock sitting at the old length moves to the new one. It is for the server,
+// when the game's sport changes, so unlike Do it is not the phone calling in
+// and it leaves the undo list alone. It only touches a fresh game (period 1,
+// 0-0, no set played, the clock stopped) and changes nothing otherwise: a game
+// under way keeps its length until the volunteer starts a new one. A length
+// outside 1 to MaxClock is refused.
+func (m *Manual) SetLength(tenths int) error {
+	if tenths <= 0 || tenths > MaxClock {
+		return errClock
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.s = m.current()
+	if n, _, _ := m.s.played(); m.s.Running || m.s.Period != 1 || m.s.Home != 0 || m.s.Away != 0 || n > 0 {
+		return nil
+	}
+	prev := m.s
+	if m.s.Clock == m.s.Length {
+		m.s.Clock = tenths
+	}
+	m.s.Length = tenths
+	if m.s != prev {
+		m.changed()
+	}
+	return nil
+}
+
 // Do applies one action from the scorer's page; it counts as a heartbeat too.
 func (m *Manual) Do(a Action) error {
 	m.mu.Lock()
@@ -244,7 +274,7 @@ func (m *Manual) Do(a Action) error {
 	}
 	switch a.Do {
 	case "point", "foul", "timeout":
-		p, err := m.count(a)
+		p, err := m.count(r, a)
 		if err != nil {
 			return err
 		}
@@ -305,7 +335,10 @@ func (m *Manual) Do(a Action) error {
 	case "period_next":
 		s.Period++
 		s.Clock, s.Running, clock = s.Length, false, true
-		if r.FoulsReset {
+		if r.Overtime(s.Period) && r.OvertimeLength > 0 {
+			s.Clock = r.OvertimeLength
+		}
+		if r.ResetsFouls(s.Period) {
 			s.HomeFouls, s.AwayFouls = 0, 0
 		}
 		if r.ResetsTimeouts(s.Period) {
@@ -375,7 +408,7 @@ func (m *Manual) Undo() (Action, bool) {
 }
 
 // count is the number a point, foul or timeout action changes.
-func (m *Manual) count(a Action) (*int, error) {
+func (m *Manual) count(r sport.Profile, a Action) (*int, error) {
 	if a.Team != "home" && a.Team != "away" {
 		return nil, errTeam
 	}
@@ -384,6 +417,10 @@ func (m *Manual) count(a Action) (*int, error) {
 	case "point":
 		if a.N == 0 || a.N < -3 || a.N > 3 {
 			return nil, errPoints
+		}
+		// A profile with no MaxPoint (a test's own) takes up to 3, as basketball does.
+		if most := r.MaxPoint; most > 0 && (a.N < -most || a.N > most) {
+			return nil, errOnePoint
 		}
 		if home {
 			return &m.s.Home, nil

@@ -498,3 +498,179 @@ func TestTimeoutsPerHalf(t *testing.T) {
 		t.Error("a new game has something to undo")
 	}
 }
+
+// newSport is newTest for a sport's profile.
+func newSport(p sport.Profile) (*Manual, *state.Machine, *fakeClock) {
+	c := &fakeClock{t: time.Date(2026, 11, 15, 18, 0, 0, 0, time.UTC)}
+	m := state.New(c.now)
+	m.SetInput("manual")
+	mn := NewManual(&Manual{Now: c.now, Rules: func() sport.Profile { return p }})
+	mn.attach(m.ApplyConsole, m.SetBox)
+	return mn, m, c
+}
+
+func foulsTo(t *testing.T, mn *Manual, home, away int) {
+	t.Helper()
+	for i := 0; i < home; i++ {
+		do(t, mn, Action{Do: "foul", Team: "home", N: 1})
+	}
+	for i := 0; i < away; i++ {
+		do(t, mn, Action{Do: "foul", Team: "away", N: 1})
+	}
+}
+
+func TestFutsalPeriods(t *testing.T) {
+	mn, _, _ := newSport(sport.Futsal)
+	do(t, mn, Action{Do: "period_length", Tenths: sport.Futsal.Length})
+	foulsTo(t, mn, 4, 3)
+	do(t, mn, Action{Do: "timeout", Team: "home", N: 1}, Action{Do: "period_next"})
+	if s := mn.Score(); s.Period != 2 || s.HomeFouls != 0 || s.AwayFouls != 0 || s.HomeTimeouts != 0 || s.Clock != 12000 {
+		t.Errorf("half 2 starts with %+v", s)
+	}
+	foulsTo(t, mn, 5, 2)
+	do(t, mn, Action{Do: "timeout", Team: "away", N: 1}, Action{Do: "period_next"})
+	s := mn.Score()
+	if s.Period != 3 || s.HomeFouls != 5 || s.AwayFouls != 2 {
+		t.Errorf("extra time loses the fouls: %+v", s)
+	}
+	if s.Clock != 3000 {
+		t.Errorf("extra time starts at %d, want 3000", s.Clock)
+	}
+	if s.AwayTimeouts != 0 {
+		t.Errorf("extra time keeps the timeouts: %+v", s)
+	}
+	do(t, mn, Action{Do: "foul", Team: "home", N: 1}, Action{Do: "period_next"})
+	if s := mn.Score(); s.Period != 4 || s.HomeFouls != 6 || s.Clock != 3000 {
+		t.Errorf("the second extra period: %+v", s)
+	}
+}
+
+func TestBasketballOvertimeIsFiveMinutes(t *testing.T) {
+	mn, _, _ := newSport(sport.Basketball)
+	for i := 0; i < 3; i++ {
+		do(t, mn, Action{Do: "period_next"})
+	}
+	if s := mn.Score(); s.Period != 4 || s.Clock != DefaultLength {
+		t.Fatalf("the 4th quarter starts at %d", s.Clock)
+	}
+	foulsTo(t, mn, 3, 0)
+	do(t, mn, Action{Do: "period_next"})
+	if s := mn.Score(); s.Period != 5 || s.Clock != 3000 || s.HomeFouls != 0 {
+		t.Errorf("overtime starts with %+v", s)
+	}
+}
+
+func TestSetLength(t *testing.T) {
+	mn, m, c := newSport(sport.Futsal)
+	if err := mn.SetLength(12000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 12000 || s.Clock != 12000 {
+		t.Errorf("a stopped clock at the old length: %+v", s)
+	}
+	if m.Snapshot().Box.Connected {
+		t.Error("SetLength counted as the phone calling in")
+	}
+	if _, ok := mn.Undo(); ok {
+		t.Error("SetLength went on the undo list")
+	}
+	if got := m.Snapshot().Live.Clock; got != "20:00" {
+		t.Errorf("the live clock shows %q", got)
+	}
+
+	do(t, mn, Action{Do: "clock_set", Tenths: 9000})
+	if err := mn.SetLength(6000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 6000 || s.Clock != 9000 {
+		t.Errorf("a clock elsewhere moved: %+v", s)
+	}
+	if a, ok := mn.Undo(); !ok || a.Do != "clock_set" {
+		t.Errorf("SetLength went on the undo list: %+v", a)
+	}
+
+	do(t, mn, Action{Do: "clock_set", Tenths: 6000}, Action{Do: "clock_start"})
+	c.add(10 * time.Second)
+	if err := mn.SetLength(4800); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); !s.Running || s.Clock != 5900 || s.Length != 6000 {
+		t.Errorf("a running clock was touched: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_stop"}, Action{Do: "point", Team: "home", N: 1})
+	if err := mn.SetLength(4800); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 6000 || s.Clock != 5900 {
+		t.Errorf("a game under way changed length: %+v", s)
+	}
+	do(t, mn, Action{Do: "new_game"})
+	if err := mn.SetLength(4800); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 4800 || s.Clock != 4800 {
+		t.Errorf("a new game kept the old length: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if err := mn.SetLength(3000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 4800 || s.Period != 2 {
+		t.Errorf("period 2 changed length: %+v", s)
+	}
+
+	for _, n := range []int{0, -1, MaxClock + 1} {
+		if mn.SetLength(n) == nil {
+			t.Errorf("SetLength(%d): want an error", n)
+		}
+	}
+}
+
+// The scorer takes a timeout tap in futsal extra time, where the rules give
+// none: only the page, which draws no marks for it, shows the limit.
+func TestFutsalExtraTimeTimeoutIsNotRefused(t *testing.T) {
+	mn, _, _ := newSport(sport.Futsal)
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "period_next"})
+	if got := sport.Futsal.Timeouts(mn.Score().Period); got != 0 {
+		t.Fatalf("extra time has %d timeouts, want 0", got)
+	}
+	do(t, mn, Action{Do: "timeout", Team: "home", N: 1})
+	if s := mn.Score(); s.Period != 3 || s.HomeTimeouts != 1 {
+		t.Errorf("the tap was not counted: %+v", s)
+	}
+}
+
+// How much one score action can add follows the profile: basketball takes up to
+// 3, a goal in futsal is 1, and volleyball's +1 only stays as it was.
+func TestMaxPointByProfile(t *testing.T) {
+	for _, c := range []struct {
+		p      sport.Profile
+		n      int
+		accept bool
+	}{
+		{sport.Basketball, 3, true}, {sport.Basketball, -3, true}, {sport.Basketball, 4, false},
+		{sport.Futsal, 1, true}, {sport.Futsal, -1, true}, {sport.Futsal, 2, false}, {sport.Futsal, 3, false}, {sport.Futsal, 0, false},
+		{sport.Volleyball, 1, true}, {sport.Volleyball, 2, false}, {sport.Volleyball, -2, false},
+	} {
+		mn, _, _ := newSport(c.p)
+		if c.n < 0 {
+			do(t, mn, Action{Do: "point", Team: "home", N: 1}, Action{Do: "point", Team: "home", N: 1}, Action{Do: "point", Team: "home", N: 1})
+			if c.p.Sets() {
+				continue
+			}
+		}
+		err := mn.Do(Action{Do: "point", Team: "home", N: c.n})
+		if (err == nil) != c.accept {
+			t.Errorf("%s point %d: err %v, want accepted %v", c.p.ID, c.n, err, c.accept)
+		}
+	}
+	mn, _, _ := newSport(sport.Futsal)
+	foulsTo(t, mn, 2, 0) // futsal keeps its fouls
+	if s := mn.Score(); s.HomeFouls != 2 {
+		t.Errorf("futsal fouls %d, want 2", s.HomeFouls)
+	}
+	before := mn.Score()
+	if mn.Do(Action{Do: "point", Team: "home", N: 2}) == nil || mn.Score() != before {
+		t.Error("a refused +2 changed the score")
+	}
+}

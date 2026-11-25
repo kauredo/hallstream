@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/sport"
 )
 
 type fakeClock struct{ t time.Time }
@@ -467,5 +469,24 @@ func TestClockRanWithin(t *testing.T) {
 	c.t = c.t.Add(2 * time.Minute)
 	if m.ClockRanWithin(30 * time.Minute) {
 		t.Fatal("clock moved 31 minutes ago")
+	}
+}
+
+// Futsal has two halves: the break falls after period 1, the final after
+// period 2 once the clock has sat at zero for the hold.
+func TestFutsalPeriodsAndScreens(t *testing.T) {
+	m, c := newTest()
+	m.SetGame(Game{Sport: "futsal", Rules: sport.Futsal}, true)
+	run(t, m, c, []step{
+		{0, "1", "20:00", 0, 0, "marcador", 0},
+		{1, "1", "0.0", 3, 2, "marcador", 0},
+		{1, "2", "20:00", 3, 2, "intervalo", 1},
+		{1, "2", "19:59", 3, 2, "marcador", 1},
+		{1, "2", "0.0", 5, 4, "marcador", 1},
+		{59, "2", "0.0", 5, 4, "marcador", 1},
+		{1, "2", "0.0", 5, 4, "final", 2},
+	})
+	if got := m.Snapshot().Periods; len(got) != 2 || got[0].Period != 1 || got[1].Period != 2 {
+		t.Errorf("periods %v", got)
 	}
 }

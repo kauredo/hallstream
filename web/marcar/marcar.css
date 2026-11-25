@@ -212,8 +212,9 @@ dialog h2 b { font-weight: 800; }
 .sets-linha, .feitos { display: none; }
 body.sets .sets-linha { display: grid; }
 body.sets .faltas, body.sets .relogio, body.sets .acerto, body.sets .seta { display: none; }
-body.sets .somar { grid-template-columns: 1fr; }
-body.sets .somar button:nth-child(n + 2) { display: none; }
+body.nofouls .faltas { display: none; }
+body.sets .somar, body.um .somar { grid-template-columns: 1fr; }
+body.sets .somar button:nth-child(n + 2), body.um .somar button:nth-child(n + 2) { display: none; }
 body.sets .periodo { grid-template-columns: 1fr; }
 /* The serve is a ring on the team's own colour; lit in Lâmpada on the side that has it. */
 body.sets .sets-linha { grid-template-columns: auto 1fr auto auto; }

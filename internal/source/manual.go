@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 )
 
@@ -45,8 +46,9 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps running
 //   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0 and MaxClock
 //   - "period_next": the next period, with the clock stopped at the period
-//     length and the team fouls at 0; the timeouts go back to 0 for the
-//     second half (period 3) and each overtime (5 on)
+//     length and the team fouls at 0 when the sport resets them; the timeouts
+//     go back to 0 when the sport's profile says so (basketball: the second
+//     half and each overtime)
 //   - "period_back": the period before, the clock stopped where it is
 //   - "period_length": the period length to Tenths (above 0); a clock
 //     stopped at the old length moves to the new one
@@ -73,6 +75,8 @@ type Manual struct {
 	Now  func() time.Time
 	Save func(Score) error // dados/manual.json, after each change
 	Log  func(string)
+	// Rules is called under the scorer's lock, so it must not call back into Manual.
+	Rules func() sport.Profile
 
 	mu         sync.Mutex
 	s          Score
@@ -103,6 +107,9 @@ func NewManual(m *Manual) *Manual {
 	}
 	if m.Log == nil {
 		m.Log = func(string) {}
+	}
+	if m.Rules == nil {
+		m.Rules = func() sport.Profile { return sport.Basketball }
 	}
 	m.s = newScore(DefaultLength)
 	return m
@@ -208,10 +215,13 @@ func (m *Manual) Do(a Action) error {
 		m.from, m.fromClock, clock = m.Now(), s.Clock, true
 		s.Running = s.Running && s.Clock > 0
 	case "period_next":
+		r := m.Rules()
 		s.Period++
-		s.Clock, s.Running, s.HomeFouls, s.AwayFouls, clock = s.Length, false, 0, 0, true
-		// FIBA timeouts: 2 in the first half, 3 in the second, 1 in each overtime.
-		if s.Period == 3 || s.Period >= 5 {
+		s.Clock, s.Running, clock = s.Length, false, true
+		if r.FoulsReset {
+			s.HomeFouls, s.AwayFouls = 0, 0
+		}
+		if r.ResetsTimeouts(s.Period) {
 			s.HomeTimeouts, s.AwayTimeouts = 0, 0
 		}
 	case "period_back":

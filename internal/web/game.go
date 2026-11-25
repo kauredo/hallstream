@@ -8,6 +8,7 @@ import (
 	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/i18n"
+	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
@@ -181,11 +182,12 @@ func (s *Server) SyncGame() {
 	if crest == "" {
 		crest = store.DefaultCrest
 	}
-	sport, _ := club.SportOf(cl.Sport)
+	sp, _ := club.SportOf(cl.Sport)
 	out := state.Game{
 		Home:        state.Team{Name: cl.Name, Short: cl.Short, CrestURL: &crest, Color: cl.Primary, Initials: cl.Short},
-		Sport:       sport.ID,
-		SportLabel:  sport.Short,
+		Sport:       sp.ID,
+		SportLabel:  sp.Short,
+		Rules:       sport.Get(sp.ID),
 		Theme:       club.Theme(cl.Primary, cl.Secondary),
 		Away:        state.Team{Name: g.Away.Name, Short: g.Away.Short, Color: fpb.EnsureContrast(g.Away.Color)},
 		Start:       g.Start,

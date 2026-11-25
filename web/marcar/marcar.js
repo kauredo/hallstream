@@ -132,8 +132,13 @@
     const s = Math.ceil(tenths / 10);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
-  function periodName(p) {
-    return p <= 4 ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === 5 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - 4}</b>` });
+  // The sport's rules from game.rules; a missing field reads as basketball's.
+  function rulesOf() {
+    const r = (st && st.game && st.game.rules) || {};
+    return { periods: r.periods ?? 4, half: r.half ?? 2, timeouts: r.timeouts ?? [2, 3, 1], bonus: r.foul_bonus ?? 5 };
+  }
+  function periodName(p, periods) {
+    return p <= periods ? t('marcar.periodo', { n: `<b>${p}</b>` }) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: `<b>${p - periods}</b>` });
   }
   const sigla = (team) => ((st && st.game && st.game[team]) || {}).short || '';
   // What undo takes back, in the words of the tap.
@@ -171,20 +176,21 @@
     setV('home', l.home ?? 0);
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
-    const maxTO = period <= 2 ? 2 : period <= 4 ? 3 : 1;
+    const { periods, half, timeouts, bonus } = rulesOf();
+    const maxTO = period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
-      marks($(`[data-marks="${tx}Fouls"]`), f, 5);
+      marks($(`[data-marks="${tx}Fouls"]`), f, bonus);
       marks($(`[data-marks="${tx}Timeouts"]`), to, maxTO);
       setV(tx + 'Fouls', f);
       setV(tx + 'Timeouts', to);
-      $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', f >= 5);
+      $(`.equipa[data-team="${tx}"] .faltas`).toggleAttribute('data-bonus', bonus > 0 && f >= bonus);
     }
 
     const manual = input === 'manual';
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
-    $('#periodo').innerHTML = periodName(period);
+    $('#periodo').innerHTML = periodName(period, periods);
     const running = !!(manual && score && score.running);
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
@@ -269,8 +275,9 @@
   function ask(what) {
     const box = $('#confirmar'), period = (st && +st.live?.period) || (score && score.period) || 1;
     const next = what === 'period_next';
+    const { periods } = rulesOf();
     if (!next && period <= 1) return;
-    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1) });
+    $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, periods) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, periods) });
     $('#confirmarDica').textContent = next ? t('marcar.confirmar.seguinte_dica') : t('marcar.confirmar.anterior_dica');
     $('#confirmarSim').textContent = next ? t('marcar.confirmar.passar') : t('marcar.confirmar.voltar');
     $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.periodo')); };

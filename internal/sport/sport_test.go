@@ -110,7 +110,7 @@ func TestMaxPoint(t *testing.T) {
 	for _, c := range []struct {
 		p    Profile
 		want int
-	}{{Basketball, 3}, {Futsal, 1}, {Volleyball, 1}} {
+	}{{Basketball, 3}, {Futsal, 1}, {Volleyball, 1}, {Handball, 1}} {
 		if c.p.MaxPoint != c.want {
 			t.Errorf("%s MaxPoint %d, want %d", c.p.ID, c.p.MaxPoint, c.want)
 		}

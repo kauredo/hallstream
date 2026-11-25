@@ -352,6 +352,9 @@ func (m *Manual) Do(a Action) error {
 	if err := refused(a, sets); err != nil {
 		return err
 	}
+	if a.Do == "foul" && r.FoulMarks == 0 {
+		return errNoFouls
+	}
 	switch a.Do {
 	case "point", "foul", "timeout":
 		p, err := m.count(r, a)

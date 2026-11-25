@@ -61,7 +61,7 @@ var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown
 // suspensions, no team fouls, two timeouts per team per half shown (three per
 // match is the rule, not enforced), extra time in periods of 5:00.
 var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false,
-	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points",
+	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points", MaxPoint: 1,
 	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200}
 
 // Get returns the profile for id; an unknown or empty id is basketball.

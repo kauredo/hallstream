@@ -651,6 +651,7 @@ func TestMaxPointByProfile(t *testing.T) {
 		{sport.Basketball, 3, true}, {sport.Basketball, -3, true}, {sport.Basketball, 4, false},
 		{sport.Futsal, 1, true}, {sport.Futsal, -1, true}, {sport.Futsal, 2, false}, {sport.Futsal, 3, false}, {sport.Futsal, 0, false},
 		{sport.Volleyball, 1, true}, {sport.Volleyball, 2, false}, {sport.Volleyball, -2, false},
+		{sport.Handball, 1, true}, {sport.Handball, 2, false}, {sport.Handball, 3, false},
 	} {
 		mn, _, _ := newSport(c.p)
 		if c.n < 0 {
@@ -1071,5 +1072,20 @@ func TestRestoreKeepsSuspensions(t *testing.T) {
 	mn2.Restore(back)
 	if got := mn2.Score(); got.HomeSusp[0] != saved.HomeSusp[0] || got.NextSusp != 1 {
 		t.Errorf("restored %+v", got)
+	}
+}
+
+// A sport with no foul marks (handball) takes no foul; futsal and basketball do.
+func TestFoulRefusedWhereASportHasNone(t *testing.T) {
+	mn, _, _ := newHandball()
+	before := mn.Score()
+	if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err == nil || mn.Score() != before {
+		t.Errorf("handball took a foul: %v", err)
+	}
+	for _, p := range []sport.Profile{sport.Basketball, sport.Futsal} {
+		mn, _, _ := newSport(p)
+		if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err != nil {
+			t.Errorf("%s refused a foul: %v", p.ID, err)
+		}
 	}
 }

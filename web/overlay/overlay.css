@@ -85,7 +85,7 @@ html[data-preview="foto"][data-screen="desconto"] #cam { left: var(--hole-x); to
 }
 .screen.on { opacity: 1; transition: opacity var(--fade) var(--ease-out) var(--enter-delay, 0ms); }
 .screen > * { position: absolute; }
-.num, [data-b$="Score"], [data-b$="Fouls"], [data-b="clock"], [data-b="shot"], [data-b="startTime"] { font-variant-numeric: tabular-nums; }
+.num, [data-b$="Score"], [data-b$="Big"], [data-b$="Sets"], [data-b$="Fouls"], [data-b="clock"], [data-b="shot"], [data-b="startTime"] { font-variant-numeric: tabular-nums; }
 
 /* Team tile: crest image, or the team initials when there is no crest */
 .tile { position: relative; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }

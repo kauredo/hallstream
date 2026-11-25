@@ -39,7 +39,7 @@ It answers `201 { "success": true, "issueUrl": "…" }`, or `400` for a body it 
    npx wrangler deploy
    ```
 
-   Wrangler prints the worker's URL, such as `https://hallstream-feedback.<account>.workers.dev`.
+   Wrangler prints the worker's URL. It lives at `https://hallstream-feedback.kauredo.workers.dev` (deployed 2026-11-25).
 3. Give the app the URL: set the repository variable `HALLSTREAM_FEEDBACK_URL` to `<that URL>/feedback` (`gh variable set HALLSTREAM_FEEDBACK_URL`). The release workflow builds it into the exe. A build without it shows only the "Write on GitHub" button.
 
 ## Test

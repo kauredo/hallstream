@@ -47,8 +47,8 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - Move `internal/fpb` behind it.
    - Add `manual`: typed squads, CSV import (`number,name,photo`) and typed fixtures.
    - Only offer FPB for Portuguese basketball clubs.
-6. **First-run wizard.** Done: language, club (with sport and country), scoring, OBS, YouTube, the channel and a rehearsal; the streaming destination is the YouTube step until RTMP lands. The steps are language, club, sport, input, OBS, streaming destination and a rehearsal. Every step can be skipped and resumed.
-7. **YouTube and RTMP.**
+6. **First-run wizard.** Done: language, club (with sport and country), scoring, OBS, YouTube, the channel and a rehearsal; the destination step picks YouTube or RTMP. The steps are language, club, sport, input, OBS, streaming destination and a rehearsal. Every step can be skipped and resumed.
+7. **YouTube and RTMP.** RTMP done: Definições and the setup pick YouTube or a custom server and key, written into OBS.
    - Ship the project OAuth client, with "use your own" as a fallback.
    - The RTMP path writes the server and key into OBS.
 8. **Releases.**

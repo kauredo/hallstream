@@ -197,6 +197,7 @@ func (s *Server) routes() {
 	m.HandleFunc("GET /api/status", s.status)
 	m.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) { reply(w, forCaller(s.Store.Settings(), r)) })
 	m.HandleFunc("PUT /api/settings", s.putSettings)
+	m.HandleFunc("PUT /api/stream", s.putStream)
 	m.HandleFunc("POST /api/screen", s.screen)
 	m.HandleFunc("POST /api/lower-third", s.lowerThird)
 	m.HandleFunc("DELETE /api/lower-third", func(w http.ResponseWriter, r *http.Request) {
@@ -506,6 +507,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.DesktopShortcut, req.StartWithWindows, req.FirstSetup = cur.DesktopShortcut, cur.StartWithWindows, cur.FirstSetup
 		req.OBS.SetupAt = cur.OBS.SetupAt
 		req.Club.Crest = cur.Club.Crest // /api/club/crest owns it
+		req.Stream = cur.Stream         // /api/stream owns it
 		if !isLoopback(r.RemoteAddr) {
 			// What starts programs on the PC, or reaches OBS, is set on the PC only.
 			req.OBS.Host, req.OBS.Port, req.OBS.Password = cur.OBS.Host, cur.OBS.Port, cur.OBS.Password
@@ -555,7 +557,7 @@ func words(w http.ResponseWriter, r *http.Request) {
 // on the whole network, and the password is all that guards it.
 func forCaller(set store.Settings, r *http.Request) store.Settings {
 	if !isLoopback(r.RemoteAddr) {
-		set.OBS.Password = ""
+		set.OBS.Password, set.Stream.Key = "", ""
 	}
 	return set
 }

@@ -2047,6 +2047,7 @@
       '<label class="field"><span>' + t('painel.definicoes.cena_desconto') + '</span><input id="dObsTimeout" value="' + esc(o.timeout_scene || '') + '" placeholder="' + t('painel.definicoes.em_branco') + '"></label>' +
       '</div></details></div>';
 
+    html += '<div class="card"><h2>' + t('painel.destino.titulo') + '</h2>' + destHtml() + '</div>';
     html += '<div class="card" id="ytSetup">' + ytSetupHtml() + '</div>';
 
     html += '<div class="card"><h2>' + t('painel.definicoes.telemovel') + '</h2>' +
@@ -2141,6 +2142,44 @@
   }
 
   /* YouTube: the program's own login to the club's channel (set up once, on the PC). */
+  /* Where OBS sends the picture: the YouTube stream the program manages, or a custom RTMP server.
+     Drawn in Definições and in the setup's destination step; PUT /api/stream saves it. */
+  function streamDest() { return (S.settings && S.settings.stream) || {}; }
+  function destHtml() {
+    var d = streamDest(), rt = d.service === 'rtmp', off = S.setup && !S.setup.pc ? ' disabled' : '';
+    var opt = function (v, on, label, hint) {
+      return '<label><input type="radio" name="dest" value="' + v + '"' + (on ? ' checked' : '') + off + '><span><b>' + label + '</b><small>' + hint + '</small></span></label>';
+    };
+    return '<div data-dest><p class="hint">' + t('painel.destino.texto') + '</p><div class="cx-in">' +
+      opt('youtube', !rt, 'YouTube', t('painel.destino.youtube_dica')) + opt('rtmp', rt, t('painel.destino.rtmp'), t('painel.destino.rtmp_dica')) + '</div>' +
+      '<div class="cols" data-rtmp' + (rt ? '' : ' hidden') + '>' +
+        '<label class="field"><span>' + t('painel.destino.servidor') + '</span><input data-f="server" placeholder="rtmp://" value="' + esc(d.server || '') + '"' + off + '></label>' +
+        '<label class="field"><span>' + t('painel.destino.chave') + '</span><input type="password" data-f="key" autocomplete="off" value="' + esc(d.key || '') + '"' + off + '></label></div>' +
+      (off ? '' : '<div class="row" style="margin-top:12px;align-items:center"><button class="btn" type="button" data-act="dest-save">' + t('painel.destino.guardar') + '</button><span class="msg" role="status"></span></div>') +
+      '</div>';
+  }
+  function destEvents() {
+    var main = $('main');
+    main.addEventListener('change', function (e) {
+      var box = e.target.closest('[data-dest]');
+      if (box && e.target.name === 'dest') box.querySelector('[data-rtmp]').hidden = e.target.value !== 'rtmp';
+    });
+    main.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act="dest-save"]'); if (!b) return;
+      var box = b.closest('[data-dest]'), msg = b.parentNode.querySelector('.msg'), pick = box.querySelector('input[name="dest"]:checked');
+      var body = { service: pick ? pick.value : 'youtube', server: box.querySelector('[data-f="server"]').value, key: box.querySelector('[data-f="key"]').value };
+      b.disabled = true; msg.className = 'msg'; msg.textContent = '';
+      api('PUT', '/api/stream', body).then(function (r) {
+        S.settings.stream = r.stream;
+        var o = r.obs;
+        msg.className = 'msg ' + (o && o.result === 'failed' ? 'err' : 'ok');
+        msg.textContent = o ? o.detail : t('painel.marcar.guardado');
+        if (S.tab === 'inicio') { renderWzBody(); refreshInicio(true); }
+      }, function (err) { msg.className = 'msg err'; msg.textContent = err.message; })
+        .then(function () { b.disabled = false; });
+    });
+  }
+
   function ytSetupHtml(bare) {
     var y = S.yt || (S.status && S.status.youtube);
     var html = bare ? '' : '<h2>YouTube</h2>';
@@ -2591,7 +2630,7 @@
   // already reads (status, settings, YouTube); ticks, choices and "Saltar" from /api/setup.
   var WZ = [
     { id: 'idioma', title: t('painel.wz.idioma') }, { id: 'clube', title: t('painel.wz.clube') }, { id: 'entrada', title: t('painel.nav.caixa') },
-    { id: 'obs', title: t('painel.wz.obs') }, { id: 'youtube', title: t('painel.wz.youtube') },
+    { id: 'obs', title: t('painel.wz.obs') }, { id: 'youtube', title: t('painel.wz.destino') },
     { id: 'canal', title: t('painel.wz.canal') }, { id: 'ensaio', title: t('painel.wz.ensaio') }
   ];
   function wzIndex(id) { for (var i = 0; i < WZ.length; i++) if (WZ[i].id === id) return i; return -1; }
@@ -2658,6 +2697,8 @@
       if (h.ready) return { s: 'ok', why: t('painel.obs.pronto') };
       return { s: 'bad', why: (h.problems || [])[0] || t('painel.wz.obs_reparar') };
     }
+    if (id === 'youtube' && streamDest().service === 'rtmp') return { s: 'ok', why: t('painel.wz.destino_rtmp', { servidor: streamDest().server }) };
+    if (id === 'canal' && streamDest().service === 'rtmp') return { s: 'skip', why: t('painel.wz.canal_so_yt') };
     if (id === 'youtube') {
       if (y.connected && y.expired) return { s: 'bad', why: t('painel.wz.yt_expirou') };
       if (y.connected) return { s: 'ok', why: t('painel.wz.yt_ligado', { canal: (y.channel && y.channel.title) || t('painel.wz.yt_canal') }) };
@@ -2728,7 +2769,7 @@
         '<span class="wz-state st-' + st.s + '"><span class="dot ' + tag[0] + '"></span>' + tag[1] + '</span></div>' +
         '<h2>' + esc(w.title) + '</h2><p class="wz-why' + (st.s === 'bad' ? ' bad' : '') + '">' + esc(st.why) + '</p>';
       n = (cur > 0 ? '<button class="btn" type="button" data-wz="' + (cur - 1) + '">' + t('painel.anterior') + '</button>' : '') + '<span class="grow"></span>' +
-        (w.id === 'youtube' && S.setup.pc && !y.connected && st.s !== 'skip' ? '<button class="btn quiet" type="button" data-wz-act="yt-skip">' + t('painel.wz.saltar') + '</button>' : '') +
+        (w.id === 'youtube' && S.setup.pc && !y.connected && streamDest().service !== 'rtmp' && st.s !== 'skip' ? '<button class="btn quiet" type="button" data-wz-act="yt-skip">' + t('painel.wz.saltar') + '</button>' : '') +
         (cur < WZ.length - 1 ? '<button class="btn primary" type="button" data-wz="' + (cur + 1) + '">' + t('painel.seguinte') + '</button>' :
           S.setup.pc ? '<button class="btn primary" type="button" data-wz-act="done">' + t('painel.wz.concluida') + '</button>' : '') +
         '<span class="msg" id="wzNavMsg" role="status"></span>';
@@ -2811,8 +2852,10 @@
       if (pc) html += '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="obs-setup">' + t('painel.configurar_obs') + '</button>' +
         '<span class="msg" id="wzObsMsg" role="status"></span></div>';
       html += '<div id="wzObsResult">' + setupHtml(S.obsSetup) + '</div>';
+    } else if (id === 'youtube' && streamDest().service === 'rtmp') {
+      html = destHtml();
     } else if (id === 'youtube') {
-      html = '<div class="wz-how"><p>' + t('painel.wz.yt_precisa') + '</p>' +
+      html = destHtml() + '<div class="wz-how"><p>' + t('painel.wz.yt_precisa') + '</p>' +
         '<ol class="steps"><li>' + t('painel.wz.yt_passo1') + '</li>' +
         '<li>' + t('painel.wz.yt_passo2') + '</li>' +
         '<li>' + t('painel.wz.yt_passo3') + '</li></ol></div>' +
@@ -3001,7 +3044,7 @@
   /* ---------------- boot ---------------- */
   function boot() {
     $all('.nav [data-tab]').forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
-    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); caixaEvents(); shortcutEvents(); ajudaEvents();
+    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); destEvents(); caixaEvents(); shortcutEvents(); ajudaEvents();
     transmissoesEvents(); ytEvents($('#definicoes'));
     streamEvents(); setupEvents();
     $('#chips').addEventListener('click', function (e) {

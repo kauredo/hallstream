@@ -267,7 +267,9 @@ func (s *Server) ytLoggedIn(l *youtube.Login, tok *oauth2.Token, err error) {
 			s.yt.Channel = &ch
 			s.ytWrite()
 			s.ytMu.Unlock()
-			_, _, err = s.ytPrepare(ctx)
+			if !s.rtmp() {
+				_, _, err = s.ytPrepare(ctx)
+			}
 		}
 		if err != nil {
 			s.ytFailed(err)
@@ -370,8 +372,12 @@ func (s *Server) ytPrepare(ctx context.Context) (youtube.Stream, string, error) 
 	return st, "ok", nil
 }
 
-// ytSetupStep is the YouTube line of Configurar OBS.
+// ytSetupStep is the destination line of Configurar OBS: the YouTube stream,
+// or the custom RTMP server when one is chosen.
 func (s *Server) ytSetupStep() (step obsws.Step, ok bool) {
+	if s.rtmp() {
+		return s.rtmpSetupStep(), true
+	}
 	if !s.ytConnected() {
 		return step, false
 	}
@@ -409,7 +415,7 @@ func gameKey(g store.Game) string {
 // A test makes a private broadcast, kept apart from the game's real one.
 func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 	y := s.ytGet()
-	if !y.connected() {
+	if !y.connected() || s.rtmp() {
 		if test {
 			return errNoTest
 		}

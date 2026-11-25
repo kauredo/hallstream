@@ -313,7 +313,7 @@ func (s *Server) fixturesCSV(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, bad, err := store.ParseFixtures(data, lisbon)
+	rows, bad, err := store.ParseFixtures(data, s.zone())
 	if err != nil {
 		fail(w, http.StatusBadRequest, err.Error())
 		return

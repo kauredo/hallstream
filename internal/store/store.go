@@ -117,6 +117,9 @@ type Club struct {
 	Crest   string `json:"crest"`
 	Sport   string `json:"sport"`   // an id from club.Sports
 	Country string `json:"country"` // ISO 3166 alpha-2, "PT"
+	// TimeZone is an IANA zone ("Europe/Madrid"); "" takes the country's
+	// (club.Zone). Fixture times typed or imported are read in it.
+	TimeZone string `json:"timezone"`
 }
 
 // DefaultCrest is the neutral stand-in shield.
@@ -299,7 +302,7 @@ type Group struct {
 // Fixture is one game the club entered by hand.
 type Fixture struct {
 	ID          string   `json:"id"`
-	Start       string   `json:"start"` // RFC 3339, Lisbon time
+	Start       string   `json:"start"` // RFC 3339, with the offset of the club's zone
 	Opponent    Opponent `json:"opponent"`
 	Home        bool     `json:"home"` // the club plays at home
 	Venue       string   `json:"venue"`

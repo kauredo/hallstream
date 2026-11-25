@@ -399,11 +399,11 @@ func (s *Server) ytSetupStep() (step obsws.Step, ok bool) {
 	return step, true
 }
 
-func gameKey(g store.Game) string {
+func gameKey(g store.Game, zone *time.Location) string {
 	if g.FPBGameID != nil {
 		return "fpb:" + strconv.FormatInt(*g.FPBGameID, 10)
 	}
-	day := time.Now().In(lisbon).Format("2006-01-02")
+	day := time.Now().In(zone).Format("2006-01-02")
 	if len(g.Start) >= 10 {
 		day = g.Start[:10]
 	}
@@ -430,7 +430,7 @@ func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 	}
 	c := s.ytClient()
 	game := s.Store.Game()
-	key, privacy := gameKey(game), "public"
+	key, privacy := gameKey(game, s.zone()), "public"
 	if test {
 		key, privacy = "teste:"+key, "private"
 	}
@@ -463,7 +463,7 @@ func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 		s.ytUpdate(rec.BroadcastID, func(r *ytRecord) { r.Status = status })
 	}
 	snap := s.State.Snapshot()
-	title, desc := broadcastText(snap.Game, time.Now())
+	title, desc := broadcastText(snap.Game, time.Now().In(s.zone()))
 	if test {
 		r := []rune(i18n.T("yt.titulo_teste", "titulo", title))
 		title = string(r[:min(len(r), 100)])
@@ -864,12 +864,12 @@ const ytThumbMax = 8 << 20
 // ytExternal is the escalão filter value for streams made outside the program.
 func ytExternal() string { return i18n.T("yt.fora_hallstream") }
 
-func ytSeason(date string) string {
+func ytSeason(date string, zone *time.Location) string {
 	t, err := time.Parse(time.RFC3339, date)
 	if err != nil {
 		return ""
 	}
-	t = t.In(lisbon)
+	t = t.In(zone)
 	y := t.Year()
 	if t.Month() < time.August {
 		y--
@@ -928,7 +928,7 @@ func (s *Server) ytHistory(w http.ResponseWriter, r *http.Request) {
 		if g != "" && !slices.Contains(groups, g) {
 			groups = append(groups, g)
 		}
-		se := ytSeason(it.Date)
+		se := ytSeason(it.Date, s.zone())
 		if se != "" && !slices.Contains(seasons, se) {
 			seasons = append(seasons, se)
 		}
@@ -1004,7 +1004,7 @@ func broadcastText(g state.Game, now time.Time) (string, string) {
 	if t, err := time.Parse(time.RFC3339, g.Start); err == nil {
 		when = t
 	}
-	when = when.In(lisbon)
+	when = when.In(now.Location()) // the club's zone: the caller passes now in it
 	date := i18n.T("yt.data", "dia_semana", weekday(when.Weekday()), "dia", when.Day(), "mes", month(when.Month()), "ano", when.Year(), "hora", when.Format("15:04"))
 	desc := ytClean(strings.Join(nonEmpty(joinDot(g.Competition, g.Round, group), g.Venue, date), "\n"))
 	return title, desc

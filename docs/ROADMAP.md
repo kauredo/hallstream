@@ -86,7 +86,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 
 In the order the research (`docs/research/team-data-sources.md`) recommends.
 
-1. **Time zones.** Store fixture times in UTC with the club's time zone (from `settings.club.country`, or chosen), and read CSV and typed times in it. Today they are read as Lisbon time. This comes first, before any club outside Portugal.
+1. **Time zones.** Done: `settings.club.timezone`, or the country's zone, reads typed and imported times, and the pages draw in it. Store fixture times in UTC with the club's time zone (from `settings.club.country`, or chosen), and read CSV and typed times in it. Today they are read as Lisbon time. This comes first, before any club outside Portugal.
 2. **Calendar (`.ics`) import.** A team's calendar link (TeamSnap, SportsEngine, GameChanger, many federations, calendariofpb.pt) feeds its fixtures, refreshed daily and cached. It works for any sport and country.
 3. **Grow the interface** as the first network provider needs it:
    - capabilities, declared per provider

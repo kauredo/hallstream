@@ -17,7 +17,7 @@
   }
   function ink(a) { return 'rgba(' + C['ink-rgb'] + ',' + a + ')'; }
   var COND = '"Barlow Condensed", sans-serif', DISPLAY = 'Graduate, serif';
-  var TZ = 'Europe/Lisbon';
+  var TZ = window.HS_TZ || 'Europe/Lisbon'; // the club's zone, from /i18n.js
   var SKEW = Math.tan(12 * Math.PI / 180);
   var HOME_X = 300, AWAY_X = 980;
   // The brush group of the overlay (web/overlay/index.html), in its 1920x1080 space, with its theme colour.

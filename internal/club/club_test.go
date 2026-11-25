@@ -149,3 +149,18 @@ func TestSports(t *testing.T) {
 		t.Error("an unknown sport was found")
 	}
 }
+
+func TestZone(t *testing.T) {
+	for _, c := range []struct{ zone, country, want string }{
+		{"", "ES", "Europe/Madrid"},
+		{"", "pt", "Europe/Lisbon"},
+		{"America/Manaus", "BR", "America/Manaus"},
+		{"", "BR", "America/Sao_Paulo"},
+		{"Not/AZone", "XX", "Europe/Lisbon"},
+		{"", "", "Europe/Lisbon"},
+	} {
+		if got := Zone(c.zone, c.country).String(); got != c.want {
+			t.Errorf("Zone(%q, %q) = %s, want %s", c.zone, c.country, got, c.want)
+		}
+	}
+}

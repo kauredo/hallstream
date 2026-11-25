@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/i18n"
@@ -39,6 +40,12 @@ func checkClub(c *store.Club) error {
 	}
 	if len(c.Country) != 2 || strings.Trim(c.Country, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") != "" {
 		return userError(i18n.T("api.clube.pais"))
+	}
+	c.TimeZone = strings.TrimSpace(c.TimeZone)
+	if c.TimeZone != "" {
+		if _, err := time.LoadLocation(c.TimeZone); err != nil || c.TimeZone == "Local" {
+			return userError(i18n.T("api.clube.fuso", "fuso", c.TimeZone))
+		}
 	}
 	return nil
 }

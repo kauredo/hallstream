@@ -20,7 +20,9 @@ func TestWordsScript(t *testing.T) {
 	if w.Code != 200 || !strings.HasPrefix(w.Header().Get("Content-Type"), "text/javascript") || w.Header().Get("Cache-Control") != "no-cache" {
 		t.Fatalf("/i18n.js: %d %q %q", w.Code, w.Header().Get("Content-Type"), w.Header().Get("Cache-Control"))
 	}
-	js, ok := strings.CutPrefix(strings.TrimSpace(body), "window.I18N = ")
+	// The first line sets the words; the second, window.HS_TZ (TestClubZone).
+	first, _, _ := strings.Cut(body, "\n")
+	js, ok := strings.CutPrefix(strings.TrimSpace(first), "window.I18N = ")
 	if !ok || !strings.HasSuffix(js, ";") {
 		t.Fatalf("/i18n.js does not set window.I18N: %.80q", body)
 	}

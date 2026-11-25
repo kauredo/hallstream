@@ -1,5 +1,5 @@
 // Package club holds what the club profile derives: the on-air colours that
-// come from the club's two colours, and the sports a club can pick.
+// come from the club's two colours, the sports a club can pick, and its time zone.
 package club
 
 import (
@@ -7,6 +7,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
+	_ "time/tzdata" // Windows has no zone database
 )
 
 // The colours of a club that has not set its own: a slate blue and the
@@ -245,4 +247,28 @@ func hsl(h, s, l float64) rgb {
 		return math.Round(v * 255)
 	}
 	return rgb{ch(h + 1.0/3), ch(h), ch(h - 1.0/3)}
+}
+
+// zones is each country's zone when the club picks none: the one most of its
+// clubs play in. Countries with several (Brazil, Portugal's islands) pick
+// theirs in Definições.
+var zones = map[string]string{
+	"PT": "Europe/Lisbon", "ES": "Europe/Madrid", "FR": "Europe/Paris", "LU": "Europe/Luxembourg",
+	"CH": "Europe/Zurich", "BR": "America/Sao_Paulo", "AO": "Africa/Luanda", "CV": "Atlantic/Cape_Verde",
+	"MZ": "Africa/Maputo", "GB": "Europe/London", "IE": "Europe/Dublin", "IT": "Europe/Rome",
+	"DE": "Europe/Berlin", "BE": "Europe/Brussels", "NL": "Europe/Amsterdam", "US": "America/New_York",
+}
+
+// Zone is the club's time zone: zone when it names one Go knows, else the
+// country's, else Lisbon. Fixture times typed or imported are read in it.
+func Zone(zone, country string) *time.Location {
+	for _, name := range []string{zone, zones[strings.ToUpper(country)], "Europe/Lisbon"} {
+		if name == "" {
+			continue
+		}
+		if l, err := time.LoadLocation(name); err == nil {
+			return l
+		}
+	}
+	return time.UTC
 }

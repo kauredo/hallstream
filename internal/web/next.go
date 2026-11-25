@@ -28,6 +28,8 @@ type fixtures struct {
 // onAirWindow is how long a game can still be on air after midnight.
 const onAirWindow = 3 * time.Hour
 
+// lisbon reads the FPB's times, which are Portugal's. Everything the club
+// types or imports is read in its own zone (Server.zone).
 var lisbon = func() *time.Location {
 	if l, err := time.LoadLocation("Europe/Lisbon"); err == nil {
 		return l
@@ -124,7 +126,7 @@ func (s *Server) findNext(g store.Game, now time.Time) fixtures {
 	if g.FPBGameID != nil {
 		ref = fmt.Sprintf("fpb/%d", *g.FPBGameID)
 	}
-	cur, next := pickNext(games, ref, start, now)
+	cur, next := pickNext(games, ref, start, now.In(s.zone()))
 	var f fixtures
 	if cur >= 0 {
 		home := games[cur].AtHome
@@ -169,8 +171,9 @@ func pickNext(games []provider.Fixture, ref string, start, now time.Time) (cur, 
 	if start.After(at) {
 		at = start
 	}
-	y, m, d := at.In(lisbon).Date()
-	day, dayAfter := time.Date(y, m, d, 0, 0, 0, 0, lisbon), time.Date(y, m, d+1, 0, 0, 0, 0, lisbon)
+	z := now.Location() // the club's zone: the caller passes now in it
+	y, m, d := at.In(z).Date()
+	day, dayAfter := time.Date(y, m, d, 0, 0, 0, 0, z), time.Date(y, m, d+1, 0, 0, 0, 0, z)
 	var best time.Time
 	for i, x := range games {
 		switch {

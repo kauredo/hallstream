@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/club"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/store"
@@ -54,6 +55,7 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 		// FPBTeam is the team picked, so the escalão can follow it into next season.
 		FPBTeam     *fpb.TeamInfo `json:"fpb_team"`
 		CalendarURL *string       `json:"calendar_url"`
+		Sport       *string       `json:"sport"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -90,11 +92,21 @@ func (s *Server) putGroup(w http.ResponseWriter, r *http.Request) {
 		if req.FPBTeamName != nil {
 			g.FPBTeamName = strings.TrimSpace(*req.FPBTeamName)
 		}
+		if req.Sport != nil {
+			if sp, found := club.SportOf(*req.Sport); !found || !sp.Active {
+				return userError(i18n.T("api.escalao.desporto"))
+			}
+			g.Sport = *req.Sport
+		}
+		// The FPB plays basketball only.
+		if (req.Sport != nil || req.FPBTeamID != nil) && g.FPBTeamID != 0 && g.Sport != "" && g.Sport != "basketball" {
+			return userError(i18n.T("api.escalao.desporto_fpb"))
+		}
 		return nil
 	})
 	if s.save(w, err) {
 		reply(w, g)
-		if (req.FPBTeamID != nil || req.CalendarURL != nil) && g.ID == s.Store.Game().GroupID {
+		if (req.FPBTeamID != nil || req.CalendarURL != nil || req.Sport != nil) && g.ID == s.Store.Game().GroupID {
 			s.refreshNextInBackground()
 		}
 	}

@@ -31,6 +31,8 @@
   "api.destino.so_no_pc": "The stream destination is changed on the club's computer.",
   "api.ecra_desconhecido": "Unknown screen: {ecra}",
   "api.equipa_invalida": "Invalid team.",
+  "api.escalao.desporto": "Pick a sport that's available for this age group.",
+  "api.escalao.desporto_fpb": "This age group is linked to an FPB team, which plays basketball. Unlink it first.",
   "api.escalao_desconhecido": "Unknown age group.",
   "api.escalao_sem_fpb": "This age group isn't linked to an FPB team yet.",
   "api.falta_ficheiro": "The file is missing (up to 10 MB).",

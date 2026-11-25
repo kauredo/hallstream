@@ -28,6 +28,7 @@ import (
 	"github.com/kauredo/hallstream/internal/source"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/update"
 	"github.com/kauredo/hallstream/internal/youtube"
 )
 
@@ -57,6 +58,8 @@ type Server struct {
 	UseInput func(name string)
 	// Manual is the score kept by hand from /marcar; nil answers 503.
 	Manual *source.Manual
+	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
+	UpdateURL string
 
 	mux        *http.ServeMux
 	failMu     sync.Mutex
@@ -94,6 +97,9 @@ type Server struct {
 	logMu    sync.Mutex
 	logStart time.Time // when the stream on air started; zero off air
 	lastGame string    // the game last put in the timeline (under syncMu)
+
+	updateNow chan struct{}                  // wakes RunUpdates when the check is switched on
+	newer     atomic.Pointer[update.Release] // a newer release, found by RunUpdates
 }
 
 func New(s *Server) *Server {
@@ -101,6 +107,7 @@ func New(s *Server) *Server {
 		s.Log = func(string) {}
 	}
 	s.mux = http.NewServeMux()
+	s.updateNow = make(chan struct{}, 1)
 	s.newCamera()
 	s.health.Problems = []string{}
 	s.ytBusy, s.ytAgain = map[string]bool{}, map[string]bool{}
@@ -464,6 +471,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		"fpb":         map[string]any{"reachable": reachable, "cached_at": cached},
 		"club_setup":  s.progress(),
 		"langs":       i18n.Languages(),
+		"update":      s.newerRelease(),
 		"data_dir":    s.Store.Dir,
 		// The panel offers the desktop shortcut on the PC itself only.
 		"shortcut":  s.Shortcut != nil && isLoopback(r.RemoteAddr),
@@ -533,6 +541,12 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if old.Input != set.Input && s.UseInput != nil {
 		s.UseInput(set.Input)
+	}
+	if set.UpdateCheck && !old.UpdateCheck {
+		select {
+		case s.updateNow <- struct{}{}:
+		default:
+		}
 	}
 	if old.PhoneAccess != set.PhoneAccess {
 		s.Log(i18n.T("log.telemovel_depois"))

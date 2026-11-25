@@ -53,7 +53,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - The RTMP path writes the server and key into OBS.
 8. **Releases.**
    - Signed Windows builds and notarised macOS builds.
-   - An opt-in update check.
+   - An opt-in update check. Done: once a day against GitHub Releases, a banner links to the release page.
    - A feedback form that opens a GitHub issue.
 
 ## Phase B: multiple cameras

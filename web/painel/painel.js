@@ -306,6 +306,7 @@
       var u = $('#dUrl'); if (u && s && s.overlay_url) u.value = s.overlay_url;
       if (S.tab === 'ajuda') renderAjudaDir();
       renderShortcutAsk();
+      renderUpdateAsk();
       refreshInicio();
       var dl = $('#dLang');
       if (dl && s && s.langs && dl.options.length !== s.langs.length) dl.innerHTML = langOptions(s.langs);
@@ -2012,6 +2013,9 @@
       '<div class="row" style="align-items:center"><select id="dLang" style="max-width:420px" aria-label="' + t('painel.definicoes.idioma') + '">' +
       langOptions(langs) +
       '</select><span class="msg" role="status"></span></div></div>';
+    html += '<div class="card"><h2>' + t('painel.atualizacao.titulo') + '</h2>' +
+      '<div class="row" style="align-items:center"><label class="switch"><input type="checkbox" id="dUpdates"' + (s.update_check ? ' checked' : '') + '><i></i>' + t('painel.atualizacao.avisar') + '</label><span class="msg" role="status"></span></div>' +
+      '<p class="hint">' + t('painel.atualizacao.avisar_dica') + '</p></div>';
     html += '<div class="card"><h2>' + t('painel.definicoes.obs') + '</h2>' +
       '<p class="hint">' + t('painel.definicoes.obs_dica') + '</p>' +
       '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-act="obs-setup">' + t('painel.configurar_obs') + '</button><span class="msg" id="obsSetupMsg" role="status"></span></div>' +
@@ -2508,6 +2512,16 @@
     root.addEventListener('change', function (e) {
       var tx = e.target;
       if (tx.id === 'dPin') tx.value = tx.value.replace(/\D/g, '').slice(0, 4);
+      if (tx.id === 'dUpdates') {
+        var um = tx.closest('.row').querySelector('.msg');
+        tx.disabled = true; um.className = 'msg'; um.textContent = '';
+        api('PUT', '/api/settings', Object.assign({}, S.settings, { update_check: tx.checked })).then(function (saved) {
+          S.settings = saved; um.className = 'msg ok'; um.textContent = t('painel.marcar.guardado');
+          setTimeout(loadStatus, 3000);
+        }, function (err) { tx.checked = !tx.checked; um.className = 'msg err'; um.textContent = err.message; })
+          .then(function () { tx.disabled = false; });
+        return;
+      }
       if (tx.id === 'dLang') {
         // Every page reads its words once, from /i18n.js, so a new language means a reload.
         var lm = tx.closest('.row').querySelector('.msg');
@@ -3009,6 +3023,24 @@
     });
   }
 
+  /* ---------------- a newer release ---------------- */
+  // Shown while /api/status names a newer release, until "Agora não" for that version (this browser only).
+  function laterVersion() { try { return localStorage.getItem('hs-update-later') || ''; } catch (e) { return ''; } }
+  function renderUpdateAsk() {
+    var u = S.status && S.status.update, box = $('#updateAsk');
+    box.hidden = !u || laterVersion() === u.version;
+    if (box.hidden) return;
+    $('#updateTxt').textContent = t('painel.atualizacao.pergunta', { versao: u.version });
+    $('#updateLink').href = u.url;
+  }
+  function updateEvents() {
+    $('#updateAsk').addEventListener('click', function (e) {
+      if (!e.target.closest('[data-act="up-later"]')) return;
+      try { localStorage.setItem('hs-update-later', S.status.update.version); } catch (err) { /* hide for now only */ }
+      $('#updateAsk').hidden = true;
+    });
+  }
+
   /* ---------------- desktop shortcut ---------------- */
   // Asked once, on the PC itself (the status says so), until answered.
   function renderShortcutAsk() {
@@ -3044,7 +3076,7 @@
   /* ---------------- boot ---------------- */
   function boot() {
     $all('.nav [data-tab]').forEach(function (b) { b.addEventListener('click', function () { showTab(b.dataset.tab); }); });
-    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); destEvents(); caixaEvents(); shortcutEvents(); ajudaEvents();
+    gameEvents(); plantelEvents(); manualEvents(); sponsorEvents(); promoEvents(); defsEvents(); destEvents(); caixaEvents(); shortcutEvents(); updateEvents(); ajudaEvents();
     transmissoesEvents(); ytEvents($('#definicoes'));
     streamEvents(); setupEvents();
     $('#chips').addEventListener('click', function (e) {

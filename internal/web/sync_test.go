@@ -217,6 +217,26 @@ func TestNewSeason(t *testing.T) {
 	}
 }
 
+// A new season moves the basketball escalões onto their new teams and leaves
+// one that isn't basketball as it was.
+func TestNewSeasonSkipsOtherSports(t *testing.T) {
+	s := newServer(t)
+	f := clubFPB(t, s)
+	s.FirstRun(false)
+	fut, bb := groupNamed(t, s, "Sub 21 Masculino"), groupNamed(t, s, "Sub 18 Masculino")
+	setSport(t, s, fut.ID, "futsal")
+	f.set(func(f *fakeClub) { nextSeason(t, f) })
+	s.SyncAll(time.Hour)
+
+	got, _ := s.Store.Group(fut.ID)
+	if got.FPBTeamID != fut.FPBTeamID || got.NeedsTeam || got.Sport != "futsal" || got.FPBTeamName != fut.FPBTeamName {
+		t.Errorf("futsal escalão moved: %+v (was %+v)", got, fut)
+	}
+	if got, _ := s.Store.Group(bb.ID); got.FPBTeamID != bb.FPBTeamID+100000 || got.NeedsTeam {
+		t.Errorf("basketball control not relinked: %+v (was team %d)", got, bb.FPBTeamID)
+	}
+}
+
 func TestSyncWithoutFPB(t *testing.T) {
 	s := newServer(t)
 	f := clubFPB(t, s)

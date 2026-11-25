@@ -1466,7 +1466,11 @@
   }
 
   // Names were fitted with fallback fonts if the web fonts were still loading: refit once they land.
-  document.fonts.ready.then(() => { for (const el of $$('[data-fit]')) if (el._v) fit(el); fitPromo(); });
+  // A font loads when text first uses it, so one that a later render asks for lands after `ready` has
+  // already resolved; every batch that finishes refits.
+  const refit = () => { for (const el of $$('[data-fit]')) if (el._v) fit(el); fitPromo(); };
+  document.fonts.ready.then(refit);
+  document.fonts.addEventListener('loadingdone', refit);
   // The opener countdown moves with the wall clock, not with state changes.
   setInterval(render, 15000);
   // A forced screen (previews, tests) shows at once, without its entrance.

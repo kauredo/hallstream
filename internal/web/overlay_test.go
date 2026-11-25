@@ -422,3 +422,45 @@ func TestOverlaySoccerCards(t *testing.T) {
 		t.Errorf("console errors:\n%s", strings.Join(errs, "\n"))
 	}
 }
+
+// A web font loads when text first uses it, so a state that arrives after
+// document.fonts.ready resolved asks for fonts that land later. Names fitted with the fallback font must be
+// fitted again, or two renders of the same state differ by the load order.
+func TestOverlayRefitsNamesWhenAFontLandsLate(t *testing.T) {
+	s := newServerFiles(t, assets.FS)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".woff2") {
+			time.Sleep(300 * time.Millisecond)
+		}
+		if strings.Contains(r.URL.Path, "fixtures") {
+			time.Sleep(time.Second)
+		}
+		s.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	tab := chrome(t)
+	for _, style := range []string{"classico", "cor", "pavilhao"} {
+		t.Run(style, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador-edge.json")); err != nil {
+				t.Fatal(err)
+			}
+			const fitted = `document.fonts.status === "loaded" && [...document.querySelectorAll("[data-fit]")].filter(e => e.textContent).every(e => {
+				const size = parseFloat(e.style.fontSize), min = Math.round(e.dataset.fit * 0.55);
+				const fits = e.scrollWidth <= e.clientWidth + 0.5;
+				e.style.fontSize = (size + 1) + "px";
+				const roomLeft = e.scrollWidth <= e.clientWidth + 0.5;
+				e.style.fontSize = size + "px";
+				return (fits || size <= min) && (!roomLeft || size >= e.dataset.fit);
+			})`
+			if err := until(tab, `document.documentElement.dataset.screen === "marcador" && `+fitted); err != nil {
+				t.Fatalf("a name overflows once the fonts are in: %v", err)
+			}
+			if err := chromedp.Do(tab, chromedp.Sleep(2*time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fitted); err != nil {
+				t.Errorf("a name overflowed after the fonts landed: %v", err)
+			}
+		})
+	}
+}

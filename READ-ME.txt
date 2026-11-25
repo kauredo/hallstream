@@ -1,8 +1,16 @@
 Hallstream for OBS
 
-The program reads the scoreboard console through the SL Stream Box, over
-Bluetooth, keeps the squads and sponsors of each age group, and shows
-the graphics in OBS in a single browser source.
+The program scores basketball, futsal, handball, volleyball and soccer.
+It reads the scoreboard console through the SL Stream Box, over
+Bluetooth, or takes the score from a phone. It keeps the squads and
+sponsors of each age group, and shows the graphics in OBS in a single
+browser source.
+
+The phone scorer works for all five sports. The console has only been
+tested on basketball. Futsal, handball, volleyball and soccer on the
+console are untested until someone records a real game. If you try it,
+please tell us how it went. The FPB import is for Portuguese basketball
+only.
 
 It needs Windows 10 or newer, with Bluetooth. Use "Hallstream.exe". The
 "Hallstream (32-bit).exe" is only for 32-bit Windows.

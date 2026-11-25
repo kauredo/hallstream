@@ -490,3 +490,217 @@ func TestFutsalPeriodsAndScreens(t *testing.T) {
 		t.Errorf("periods %v", got)
 	}
 }
+
+func TestClockTextUp(t *testing.T) {
+	for _, c := range []struct {
+		t    int
+		want string
+	}{{0, "00:00"}, {125, "00:12"}, {129, "00:12"}, {18000, "30:00"}, {35999, "59:59"}, {36000, "60:00"}, {-5, "00:00"}} {
+		if got := ClockTextUp(c.t); got != c.want {
+			t.Errorf("ClockTextUp(%d) = %q, want %q", c.t, got, c.want)
+		}
+	}
+	if Tenths(ClockTextUp(18000)) != 18000 {
+		t.Error("Tenths does not read ClockTextUp")
+	}
+}
+
+// Handball counts up: the break falls after period 1, the first frame of the
+// second half at 30:00 is not yet the clock running, and the final comes once
+// the clock has sat at 60:00 for the hold.
+func TestHandballPeriodsAndScreens(t *testing.T) {
+	m, c := newTest()
+	m.SetGame(Game{Sport: "handball", Rules: sport.Handball}, true)
+	run(t, m, c, []step{
+		{0, "1", "00:00", 0, 0, "marcador", 0},
+		{1, "1", "00:01", 0, 0, "marcador", 0},
+		{1, "1", "30:00", 14, 12, "marcador", 0},
+		{1, "2", "30:00", 14, 12, "intervalo", 1},
+		{1, "2", "30:00", 14, 12, "intervalo", 1},
+		{1, "2", "30:01", 14, 12, "marcador", 1},
+		{1, "2", "59:59", 27, 25, "marcador", 1},
+		{1, "2", "60:00", 27, 25, "marcador", 1},
+		{59, "2", "60:00", 27, 25, "marcador", 1},
+		{1, "2", "60:00", 27, 25, "final", 2},
+	})
+	if got := m.Snapshot().Periods; len(got) != 2 || got[1].Period != 2 {
+		t.Errorf("periods %v", got)
+	}
+}
+
+// A frame from the scorer says where its period ends, which holds for a half
+// of any length; the clock at the start of period 1 never holds.
+func TestHandballHoldUsesPeriodEnd(t *testing.T) {
+	m, c := newTest()
+	m.SetGame(Game{Sport: "handball", Rules: sport.Handball}, true)
+	frame := func(p, clock, end string) {
+		c.t = c.t.Add(time.Second)
+		m.ApplyConsole(map[string]string{"period": p, "clock": clock, "period_end": end})
+	}
+	frame("1", "00:00", "15000")
+	frame("2", "25:00", "30000")
+	frame("2", "25:01", "30000")
+	c.t = c.t.Add(time.Minute)
+	frame("2", "50:00", "30000")
+	c.t = c.t.Add(time.Minute)
+	m.Tick()
+	if got := m.Snapshot().Screen.Current; got != "final" {
+		t.Errorf("a 25 minute half ended at 50:00 but the screen is %q", got)
+	}
+}
+
+// A count-up that runs on (soccer) never holds at the end of the game; one
+// that stops at the end of its period (handball) does, for final_hold.
+func TestCountUpHoldDependsOnStopAtEnd(t *testing.T) {
+	for _, stop := range []bool{false, true} {
+		p := sport.Handball
+		p.StopAtEnd = stop
+		m, c := newTest()
+		m.rulesFor = func(string) sport.Profile { return p }
+		m.SetGame(Game{Sport: "handball", Rules: p}, true)
+		for _, clock := range []string{"00:00", "30:00"} {
+			m.ApplyConsole(map[string]string{"period": "2", "clock": clock})
+		}
+		m.ApplyConsole(map[string]string{"period": "2", "clock": "60:00"})
+		c.t = c.t.Add(time.Minute)
+		m.Tick()
+		got := m.Snapshot().Screen.Current
+		if stop && got != "final" {
+			t.Errorf("StopAtEnd: screen %q at 60:00 after the hold, want final", got)
+		}
+		if !stop && got == "final" {
+			t.Error("a clock that runs on ended the game")
+		}
+	}
+}
+
+func TestSuspensionsFromAFrame(t *testing.T) {
+	m, _ := newTest()
+	m.ApplyConsole(map[string]string{"period": "1", "clock": "05:00",
+		"suspensions": `[{"team":"home","id":1,"number":"7","left":"01:23"},{"team":"away","id":2,"number":"","left":"00:10"}]`})
+	got := m.Snapshot().Live.Suspensions
+	want := []Suspension{{"home", 1, "7", "01:23"}, {"away", 2, "", "00:10"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("suspensions %+v", got)
+	}
+	m.ApplyConsole(map[string]string{"period": "1", "clock": "05:01", "home": "3", "suspensions": "not json"})
+	l := m.Snapshot().Live
+	if len(l.Suspensions) != 0 || l.Home != 3 {
+		t.Errorf("a bad list: %d suspensions, home %d", len(l.Suspensions), l.Home)
+	}
+	m.ApplyConsole(map[string]string{"period": "1", "clock": "05:02", "home": "4"})
+	if l := m.Snapshot().Live; len(l.Suspensions) != 0 || l.Home != 4 {
+		t.Errorf("a frame with none: %+v", l)
+	}
+}
+
+// events collects what the timeline is told.
+func events(m *Machine) *[]string {
+	var got []string
+	m.OnEvent = func(e string, f map[string]any) {
+		if e == "suspension" {
+			got = append(got, f["team"].(string)+":"+f["number"].(string))
+		}
+	}
+	return &got
+}
+
+func suspFrame(ids ...int) map[string]string {
+	list := "["
+	for i, id := range ids {
+		if i > 0 {
+			list += ","
+		}
+		list += `{"team":"home","id":` + strconv.Itoa(id) + `,"number":"` + strconv.Itoa(id) + `","left":"01:00"}`
+	}
+	return map[string]string{"period": "1", "clock": "05:00", "suspensions": list + "]"}
+}
+
+func TestSuspensionEvent(t *testing.T) {
+	m, _ := newTest()
+	got := events(m)
+	m.ApplyConsole(suspFrame())
+	m.ApplyConsole(suspFrame(1))
+	m.ApplyConsole(suspFrame(1))
+	if !reflect.DeepEqual(*got, []string{"home:1"}) {
+		t.Fatalf("events %v, want one", *got)
+	}
+	m.ApplyConsole(suspFrame(1, 2))
+	if len(*got) != 2 || (*got)[1] != "home:2" {
+		t.Errorf("events %v", *got)
+	}
+}
+
+func TestSuspensionEventMutedInTheDemo(t *testing.T) {
+	m, _ := newTest()
+	got := events(m)
+	m.mu.Lock()
+	m.s.Demo = true
+	m.mu.Unlock()
+	m.update(Live{Period: "1", Clock: "05:00", Suspensions: []Suspension{{"home", 1, "", "01:00"}}}, true)
+	if len(*got) != 0 {
+		t.Errorf("the demo told %v", *got)
+	}
+}
+
+// After a restart the scorer holds suspension 3, already told. The first sync
+// (SetGame) runs before its first frame, and must not make 3 news again.
+func TestPrimeKeepsRestoredSuspensionsQuiet(t *testing.T) {
+	m, _ := newTest()
+	got := events(m)
+	m.Prime(LiveOf(suspFrame(3)))
+	m.SetGame(Game{Sport: "handball", Rules: sport.Handball}, true)
+	m.ApplyConsole(suspFrame(3))
+	if len(*got) != 0 {
+		t.Fatalf("a restored suspension was told as new: %v", *got)
+	}
+	m.ApplyConsole(suspFrame(3, 4))
+	if !reflect.DeepEqual(*got, []string{"home:4"}) {
+		t.Errorf("events %v, want one for ID 4", *got)
+	}
+}
+
+func TestPrimeLoadsTheLiveValues(t *testing.T) {
+	m, _ := newTest()
+	f := suspFrame(3)
+	f["home"] = "7"
+	m.Prime(LiveOf(f))
+	if l := m.Snapshot().Live; l.Home != 7 || len(l.Suspensions) != 1 {
+		t.Errorf("live after Prime: %+v", l)
+	}
+}
+
+func TestResetPeriodsNumbersSuspensionsFromOneAgain(t *testing.T) {
+	m, _ := newTest()
+	got := events(m)
+	m.Prime(LiveOf(suspFrame(3)))
+	m.ResetPeriods()
+	m.ApplyConsole(suspFrame(1))
+	if !reflect.DeepEqual(*got, []string{"home:1"}) {
+		t.Errorf("a new game's first suspension was not told: %v", *got)
+	}
+}
+
+// An ID is told once: ending ID 2 early and undoing it brings the chip back
+// but is no news.
+func TestSuspensionIsToldOnce(t *testing.T) {
+	m, _ := newTest()
+	got := events(m)
+	m.ApplyConsole(suspFrame(1, 2))
+	m.ApplyConsole(suspFrame(1))
+	m.ApplyConsole(suspFrame(1, 2))
+	if !reflect.DeepEqual(*got, []string{"home:1", "home:2"}) {
+		t.Errorf("events %v, want one each for IDs 1 and 2", *got)
+	}
+}
+
+func TestLiveOfBoundsTheSuspensionList(t *testing.T) {
+	v := suspFrame(1, 2, 3, 4, 5, 6, 7, 8)
+	if got := LiveOf(v).Suspensions; len(got) != 6 {
+		t.Errorf("%d suspensions, want 6", len(got))
+	}
+	v["suspensions"] = `[{"team":"cat","id":1,"left":"01:00"},{"team":"away","id":2,"left":"01:00"}]`
+	if got := LiveOf(v).Suspensions; len(got) != 1 || got[0].Team != "away" {
+		t.Errorf("a team that is neither home nor away got through: %+v", got)
+	}
+}

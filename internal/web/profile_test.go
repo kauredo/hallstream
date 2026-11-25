@@ -62,7 +62,7 @@ func TestClubProfileRefusesBadValues(t *testing.T) {
 		{"short": " "},
 		{"name": ""},
 		{"name": "CLUBE DO VALE VERDE"},
-		{"sport": "handball"},
+		{"sport": "soccer"},
 		{"sport": "curling"},
 		{"country": "Portugal"},
 	} {

@@ -56,8 +56,23 @@ type Live struct {
 	// the winner's side; the winner may be missing). The machine records them
 	// into State.Sets; the console sends nothing here.
 	Sets string `json:"sets"`
+	// PeriodEnd is where the period ends on a clock counting up, in tenths
+	// (the phone scorer sends it; 0 for a countdown or a console frame).
+	PeriodEnd int `json:"period_end"`
+	// Suspensions are the 2-minute suspensions running, home first (the phone
+	// scorer sends them; the console sends none).
+	Suspensions []Suspension `json:"suspensions"`
 	// setCounts is true when the frame carried home_sets or away_sets.
 	setCounts bool
+}
+
+// Suspension is one running suspension; Left is "MM:SS" and Number is empty
+// until the scorer adds it.
+type Suspension struct {
+	Team   string `json:"team"` // "home" or "away"
+	ID     int    `json:"id"`
+	Number string `json:"number"`
+	Left   string `json:"left"`
 }
 
 // SetScore is one finished set of a sets sport (volleyball). A set seeded
@@ -295,6 +310,9 @@ type Machine struct {
 	OnEvent    func(event string, fields map[string]any)
 	seen       seen
 	autoSwitch bool // the program picked the screen, not the volunteer
+	// suspRenumber: a new game began while suspensions of the last one were still
+	// live, so seen.susp holds at their ID until they are gone, and then goes to 0.
+	suspRenumber bool
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"
@@ -365,6 +383,7 @@ type seen struct {
 	box        bool
 	periods    int
 	sets       int
+	susp       int // the highest suspension ID told so far; it only goes up, until a new game
 	demo       bool
 }
 
@@ -374,7 +393,16 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.s.Demo}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.liveSusp(), m.s.Demo}
+}
+
+// liveSusp is the highest suspension ID in the live state.
+func (m *Machine) liveSusp() int {
+	n := 0
+	for _, x := range m.s.Live.Suspensions {
+		n = max(n, x.ID)
+	}
+	return n
 }
 
 // EmitCurrent tells OnEvent the screen, lower third and box as they are now
@@ -394,7 +422,11 @@ func (m *Machine) EmitCurrent() {
 // emit tells OnEvent what changed since the last call. The demo is no game,
 // so nothing is told while it runs.
 func (m *Machine) emit() {
+	if m.suspRenumber && m.liveSusp() < m.seen.susp {
+		m.seen.susp, m.suspRenumber = 0, false
+	}
 	old, cur, auto := m.seen, m.seenNow(), m.autoSwitch
+	cur.susp = max(old.susp, cur.susp)
 	m.seen, m.autoSwitch = cur, false
 	if m.OnEvent == nil || old.demo || cur.demo {
 		return
@@ -416,6 +448,11 @@ func (m *Machine) emit() {
 	for i := old.sets; i < cur.sets; i++ {
 		s := m.s.Sets[i]
 		m.OnEvent("set", map[string]any{"set": s.Set, "home": s.Home, "away": s.Away})
+	}
+	for _, x := range m.s.Live.Suspensions {
+		if x.ID > old.susp {
+			m.OnEvent("suspension", map[string]any{"team": x.Team, "number": x.Number})
+		}
 	}
 }
 
@@ -668,6 +705,9 @@ func (m *Machine) ResetPeriods() {
 	m.s.Periods, m.realPeriods = []Period{}, nil
 	m.s.Sets, m.realSets = []SetScore{}, nil
 	m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
+	// A new game numbers its suspensions from 1 again.
+	m.seen.susp = m.liveSusp()
+	m.suspRenumber = m.seen.susp > 0
 	m.changed()
 	save := m.saver(true)
 	m.mu.Unlock()
@@ -680,6 +720,16 @@ func (m *Machine) RestoreSets(ss []SetScore) {
 	m.s.Sets = append([]SetScore{}, ss...)
 	m.seen.sets = len(ss) // restored, not recorded now
 	m.changed()
+	m.mu.Unlock()
+}
+
+// Prime loads the live values the scorer had before a restart, without telling
+// the timeline anything: what it holds now is not news. SetGame calls changed()
+// before the scorer's first frame, so what Prime loads goes into seen as well.
+func (m *Machine) Prime(l Live) {
+	m.mu.Lock()
+	m.s.Live = l
+	m.seen = m.seenNow()
 	m.mu.Unlock()
 }
 
@@ -716,10 +766,13 @@ func (m *Machine) saver(reset bool) func() {
 	}
 }
 
-// ApplyConsole takes the values of one frame from the score input: the
-// decoder's for the box, the scorer's for manual. It is ignored while the
-// demo runs.
-func (m *Machine) ApplyConsole(v map[string]string) {
+// maxLiveSusp is the most suspensions a frame can carry (three a team).
+const maxLiveSusp = 6
+
+// LiveOf reads one frame's values (the keys ApplyConsole documents) into a Live.
+// A suspensions list that is not JSON reads as none; entries beyond the sixth
+// and entries for a team that is neither home nor away are dropped.
+func LiveOf(v map[string]string) Live {
 	num := func(k string) int { n, _ := strconv.Atoi(v[k]); return n }
 	l := Live{
 		HomeName: v["home_name"], AwayName: v["away_name"],
@@ -729,10 +782,27 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		Shot: v["shot_clock"], Sport: v["sport"],
 		HomeTimeouts: num("home_timeouts"), AwayTimeouts: num("away_timeouts"),
 		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"], Sets: v["sets"],
+		PeriodEnd: num("period_end"),
+	}
+	var list []Suspension
+	if json.Unmarshal([]byte(v["suspensions"]), &list) == nil {
+		for _, x := range list {
+			if (x.Team == "home" || x.Team == "away") && len(l.Suspensions) < maxLiveSusp {
+				l.Suspensions = append(l.Suspensions, x)
+			}
+		}
 	}
 	_, hasHome := v["home_sets"]
 	_, hasAway := v["away_sets"]
 	l.setCounts = hasHome || hasAway
+	return l
+}
+
+// ApplyConsole takes the values of one frame from the score input: the
+// decoder's for the box, the scorer's for manual. It is ignored while the
+// demo runs.
+func (m *Machine) ApplyConsole(v map[string]string) {
+	l := LiveOf(v)
 	m.mu.Lock()
 	now := m.now().UTC()
 	m.s.Box.LastFrameAt = &now
@@ -842,7 +912,12 @@ func (m *Machine) setLive(l Live) bool {
 	}
 
 	t := Tenths(l.Clock)
-	if !m.started && t >= 0 && m.lastTenths > 0 && t < m.lastTenths {
+	up := r.CountUp()
+	began := t >= 0 && m.lastTenths > 0 && t < m.lastTenths
+	if up {
+		began = t >= 0 && m.lastTenths >= 0 && t > m.lastTenths
+	}
+	if !m.started && began {
 		m.started = true
 		cur := m.s.Screen.Current
 		if newP > r.Half && (cur == "intervalo" || cur == "final") {
@@ -851,7 +926,7 @@ func (m *Machine) setLive(l Live) bool {
 	}
 	m.lastTenths = t
 
-	if newP >= r.Periods && t == 0 {
+	if m.holding(l, newP, t, r) {
 		if m.zeroSince.IsZero() {
 			m.zeroSince = m.now()
 		}
@@ -859,6 +934,27 @@ func (m *Machine) setLive(l Live) bool {
 		m.zeroSince = time.Time{}
 	}
 	return m.checkFinal() || recorded
+}
+
+// holding reports whether the clock sits at the end of the game: a countdown
+// at 0 in the last period or later; a count-up that stops at the end of its
+// period at (or past) that end in the last period or later. A count-up that
+// runs on (soccer) never holds.
+func (m *Machine) holding(l Live, period, t int, r sport.Profile) bool {
+	if period < r.Periods {
+		return false
+	}
+	if !r.CountUp() {
+		return t == 0
+	}
+	if !r.StopAtEnd {
+		return false
+	}
+	end := l.PeriodEnd
+	if end == 0 {
+		end = r.End(period, r.Length)
+	}
+	return end > 0 && t >= end
 }
 
 // setSets is setLive for a sets sport: it records a set when the count of sets
@@ -999,6 +1095,13 @@ func ClockText(t int) string {
 		return fmt.Sprintf("%02d:%02d", s/60, s%60)
 	}
 	return fmt.Sprintf("%d.%d", t/10, t%10)
+}
+
+// ClockTextUp formats the tenths of a clock counting up: the whole seconds
+// played, always "MM:SS" ("00:12", "30:00", "59:59").
+func ClockTextUp(t int) string {
+	s := max(t, 0) / 10
+	return fmt.Sprintf("%02d:%02d", s/60, s%60)
 }
 
 // Tenths parses "MM:SS" or "S.T" into tenths of a second, -1 if empty.

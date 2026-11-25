@@ -258,7 +258,7 @@ func (s *Server) switchSport(id string) {
 		return
 	}
 	if l := sport.Get(id).Length; l > 0 {
-		if err := s.Manual.SetLength(l); err != nil {
+		if err := s.Manual.SetLengthFrom(sport.Get(prev), l); err != nil {
 			s.Log(i18n.T("log.nao_mudei_duracao", "err", err))
 		}
 	}

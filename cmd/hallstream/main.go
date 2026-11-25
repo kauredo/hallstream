@@ -193,6 +193,10 @@ func main() {
 	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say,
 		Rules: func() sport.Profile { return sport.Get(st.GameSport()) }})
 	restoreManual(st, manual)
+	if set.Input == "manual" && !*demo {
+		// What the restored scorer holds is not news for the timeline.
+		m.Prime(state.LiveOf(manual.Frame()))
+	}
 	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader
 	if !*demo {

@@ -11,7 +11,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, owner's decision
 | 004 | Volleyball | P1 | L | 002, 003 | DONE: merged #29 (61190d7) |
 | 001 | An escalão can link to a network data source, and Nevobo is the first one | P2 | L | 004 | TODO |
 | 005 | Futsal | P2 | M | 002, 003, 004 (merged) | IN REVIEW: stacked PRs (futsal, handball, soccer) |
-| 006 | Handball | P2 | L | 005 | TODO: reconciled at 0d7570c; stack layer 02 (`02-feat/handball`) |
+| 006 | Handball | P2 | L | 005 | IN REVIEW: stacked PRs (futsal, handball, soccer) |
 | 007 | Soccer | P3 | L | 005, 006 | TODO: reconciled at 0d7570c; stack layer 03 (`03-feat/soccer`) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)

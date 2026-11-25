@@ -84,7 +84,7 @@ func TestBadActions(t *testing.T) {
 			t.Errorf("%+v: want an error", a)
 		}
 	}
-	if s := mn.Score(); s != newScore(DefaultLength) {
+	if s := mn.Score(); s != newScoreAt(DefaultLength, DefaultLength) {
 		t.Errorf("bad actions changed the score: %+v", s)
 	}
 }
@@ -651,6 +651,7 @@ func TestMaxPointByProfile(t *testing.T) {
 		{sport.Basketball, 3, true}, {sport.Basketball, -3, true}, {sport.Basketball, 4, false},
 		{sport.Futsal, 1, true}, {sport.Futsal, -1, true}, {sport.Futsal, 2, false}, {sport.Futsal, 3, false}, {sport.Futsal, 0, false},
 		{sport.Volleyball, 1, true}, {sport.Volleyball, 2, false}, {sport.Volleyball, -2, false},
+		{sport.Handball, 1, true}, {sport.Handball, 2, false}, {sport.Handball, 3, false},
 	} {
 		mn, _, _ := newSport(c.p)
 		if c.n < 0 {
@@ -672,5 +673,419 @@ func TestMaxPointByProfile(t *testing.T) {
 	before := mn.Score()
 	if mn.Do(Action{Do: "point", Team: "home", N: 2}) == nil || mn.Score() != before {
 		t.Error("a refused +2 changed the score")
+	}
+}
+
+// newHandball is a scorer for handball in a new game: 2 x 30:00, the clock at 0.
+func newHandball() (*Manual, *state.Machine, *fakeClock) {
+	mn, m, c := newSport(sport.Handball)
+	if err := mn.Do(Action{Do: "period_length", Tenths: 18000}); err != nil {
+		panic(err)
+	}
+	if err := mn.Do(Action{Do: "new_game"}); err != nil {
+		panic(err)
+	}
+	return mn, m, c
+}
+
+func TestCountUpClock(t *testing.T) {
+	mn, m, c := newHandball()
+	if s := mn.Score(); s.Clock != 0 || s.Length != 18000 || s.Period != 1 {
+		t.Fatalf("a new game: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(65 * time.Second)
+	if s := mn.Score(); s.Clock != 650 || !s.Running {
+		t.Errorf("65 s after the start: %+v", s)
+	}
+	mn.Tick()
+	if got := m.Snapshot().Live.Clock; got != "01:05" {
+		t.Errorf("live clock %q, want 01:05", got)
+	}
+	if got := m.Snapshot().Live.PeriodEnd; got != 18000 {
+		t.Errorf("live period_end %d, want 18000", got)
+	}
+	// It stops at the end of the period.
+	c.add(40 * time.Minute)
+	if s := mn.Score(); s.Clock != 18000 || s.Running {
+		t.Errorf("after the half: %+v, want stopped at 18000", s)
+	}
+	do(t, mn, Action{Do: "clock_start"})
+	if s := mn.Score(); s.Running {
+		t.Errorf("the clock started at the end of the half: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if s := mn.Score(); s.Period != 2 || s.Clock != 18000 || s.Running {
+		t.Errorf("second half: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_start"})
+	if s := mn.Score(); !s.Running {
+		t.Errorf("the second half did not start: %+v", s)
+	}
+	c.add(40 * time.Minute)
+	if s := mn.Score(); s.Clock != 36000 || s.Running {
+		t.Errorf("end of the game: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if s := mn.Score(); s.Period != 3 || s.Clock != 36000 {
+		t.Errorf("extra time starts at the time played: %+v", s)
+	}
+}
+
+func TestCountUpClockEdits(t *testing.T) {
+	mn, _, c := newHandball()
+	do(t, mn, Action{Do: "clock_set", Tenths: 50}, Action{Do: "clock_start"})
+	c.add(0)
+	do(t, mn, Action{Do: "clock_add", Tenths: 100})
+	if s := mn.Score(); s.Clock != 150 || !s.Running {
+		t.Errorf("clock_add on a running clock: %+v, want 150 and running", s)
+	}
+	do(t, mn, Action{Do: "clock_set", Tenths: 50000})
+	if s := mn.Score(); s.Clock != 18000 || s.Running {
+		t.Errorf("clock_set past the end: %+v, want 18000 and stopped", s)
+	}
+	do(t, mn, Action{Do: "clock_add", Tenths: -50000})
+	if s := mn.Score(); s.Clock != 0 {
+		t.Errorf("clock_add below the start: %+v, want 0", s)
+	}
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "clock_set", Tenths: 10})
+	if s := mn.Score(); s.Clock != 18000 {
+		t.Errorf("second half below its start: %+v, want 18000", s)
+	}
+	do(t, mn, Action{Do: "period_back"})
+	if s := mn.Score(); s.Period != 1 || s.Clock != 18000 || s.Running {
+		t.Errorf("period_back: %+v, want 18000 stopped", s)
+	}
+}
+
+func TestCountUpPeriodLength(t *testing.T) {
+	mn, _, _ := newHandball()
+	do(t, mn, Action{Do: "period_length", Tenths: 15000})
+	if s := mn.Score(); s.Clock != 0 || s.Length != 15000 {
+		t.Errorf("period 1 at 0: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"})
+	if s := mn.Score(); s.Clock != 15000 {
+		t.Errorf("second half with 25 minutes: %+v, want 15000", s)
+	}
+	do(t, mn, Action{Do: "new_game"})
+	if s := mn.Score(); s.Clock != 0 || s.Length != 15000 {
+		t.Errorf("new_game: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "period_length", Tenths: 18000})
+	if s := mn.Score(); s.Clock != 18000 || s.Length != 18000 {
+		t.Errorf("a stopped clock at the start of period 2 follows the length: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_set", Tenths: 20000}, Action{Do: "period_length", Tenths: 12000})
+	if s := mn.Score(); s.Clock != 20000 {
+		t.Errorf("a clock elsewhere moved: %+v", s)
+	}
+}
+
+func TestCountUpRunningClockKeepsItsLength(t *testing.T) {
+	mn, _, c := newHandball()
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(10 * time.Second)
+	do(t, mn, Action{Do: "period_length", Tenths: 12000})
+	if s := mn.Score(); s.Clock != 100 || !s.Running {
+		t.Errorf("a running clock moved: %+v", s)
+	}
+}
+
+func TestSuspensions(t *testing.T) {
+	mn, m, c := newHandball()
+	do(t, mn, Action{Do: "clock_set", Tenths: 5000}, Action{Do: "suspension", Team: "home"})
+	if s := mn.Score(); s.HomeSusp[0] != (Suspension{ID: 1, End: 6200}) {
+		t.Fatalf("a tap at 5000: %+v", s.HomeSusp)
+	}
+	for i := 0; i < 2; i++ {
+		do(t, mn, Action{Do: "suspension", Team: "home"})
+	}
+	before := mn.Score()
+	if err := mn.Do(Action{Do: "suspension", Team: "home"}); err == nil {
+		t.Error("a fourth suspension was taken")
+	}
+	if mn.Score() != before {
+		t.Error("a refused suspension changed the score")
+	}
+	if err := mn.Do(Action{Do: "suspension", Team: "away"}); err != nil {
+		t.Errorf("the other team is full too: %v", err)
+	}
+
+	// Time left follows the game clock, not the wall.
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(30 * time.Second)
+	if s := mn.Score(); s.HomeSusp[0].End-s.Clock != 900 {
+		t.Errorf("left after 30 s: %+v", s)
+	}
+	do(t, mn, Action{Do: "clock_stop"})
+	c.add(10 * time.Minute)
+	if s := mn.Score(); s.HomeSusp[0].End-s.Clock != 900 {
+		t.Errorf("left moved while the clock was stopped: %+v", s)
+	}
+	mn.Tick()
+	var live []state.Suspension
+	for _, x := range m.Snapshot().Live.Suspensions {
+		if x.Team == "home" {
+			live = append(live, x)
+		}
+	}
+	if len(live) != 3 || live[0].Left != "01:30" || live[0].ID != 1 {
+		t.Errorf("live suspensions %+v", live)
+	}
+
+	do(t, mn, Action{Do: "suspension_number", ID: 1, Number: "7"})
+	if s := mn.Score(); s.HomeSusp[0].Number != "7" {
+		t.Errorf("number not set: %+v", s.HomeSusp)
+	}
+	for _, n := range []string{"1234", "7a", "-1"} {
+		if mn.Do(Action{Do: "suspension_number", ID: 1, Number: n}) == nil {
+			t.Errorf("number %q accepted", n)
+		}
+	}
+	if mn.Do(Action{Do: "suspension_number", ID: 99, Number: "1"}) == nil {
+		t.Error("an unknown ID was accepted")
+	}
+	do(t, mn, Action{Do: "suspension_number", ID: 1, Number: ""})
+	if s := mn.Score(); s.HomeSusp[0].Number != "" {
+		t.Errorf("number not cleared: %+v", s.HomeSusp)
+	}
+	do(t, mn, Action{Do: "suspension_end", ID: 2})
+	if s := mn.Score(); s.HomeSusp[1].ID != 0 || s.HomeSusp[0].ID != 1 || s.HomeSusp[2].ID != 3 {
+		t.Errorf("suspension_end: %+v", s.HomeSusp)
+	}
+	do(t, mn, Action{Do: "suspension", Team: "home"})
+	if s := mn.Score(); s.HomeSusp[1].ID != 5 {
+		t.Errorf("a freed slot is reused with a new ID: %+v", s.HomeSusp)
+	}
+}
+
+func TestSuspensionsEndOnTheGameClock(t *testing.T) {
+	mn, _, c := newHandball()
+	do(t, mn, Action{Do: "clock_set", Tenths: 17000}, Action{Do: "suspension", Team: "away"})
+	do(t, mn, Action{Do: "clock_start"})
+	c.add(100 * time.Second)
+	if s := mn.Score(); s.AwaySusp[0].ID != 1 || s.Clock != 18000 || s.Running {
+		t.Fatalf("at the half: %+v", s)
+	}
+	do(t, mn, Action{Do: "period_next"}, Action{Do: "clock_start"})
+	c.add(19 * time.Second)
+	if s := mn.Score(); s.AwaySusp[0].ID != 1 {
+		t.Errorf("the suspension did not carry into the second half: %+v", s)
+	}
+	c.add(2 * time.Second)
+	if s := mn.Score(); s.AwaySusp[0].ID != 0 {
+		t.Errorf("the suspension did not end at 31:00: %+v", s)
+	}
+}
+
+func TestSuspensionUndo(t *testing.T) {
+	mn, _, c := newHandball()
+	do(t, mn, Action{Do: "clock_start"}, Action{Do: "suspension", Team: "home"})
+	c.add(10 * time.Second)
+	do(t, mn, Action{Do: "point", Team: "away", N: 1})
+	do(t, mn, Action{Do: "undo"})
+	if s := mn.Score(); s.HomeSusp[0].End-s.Clock != 1100 || s.Away != 0 {
+		t.Errorf("undo of a point changed the suspension: %+v", s)
+	}
+	do(t, mn, Action{Do: "undo"})
+	if s := mn.Score(); s.HomeSusp[0].ID != 0 {
+		t.Errorf("undo of the suspension left it: %+v", s)
+	}
+	do(t, mn, Action{Do: "suspension", Team: "home"}, Action{Do: "suspension_end", ID: 1})
+	do(t, mn, Action{Do: "undo"})
+	if s := mn.Score(); s.HomeSusp[0].ID != 1 {
+		t.Errorf("undo of an early end did not bring the chip back: %+v", s)
+	}
+}
+
+func TestSuspensionOnlyChangeIsKept(t *testing.T) {
+	mn, m, _ := newHandball()
+	var saved []Score
+	mn.Save = func(s Score) error { saved = append(saved, s); return nil }
+	do(t, mn, Action{Do: "suspension", Team: "home"})
+	if len(saved) != 1 || saved[0].HomeSusp[0].ID != 1 {
+		t.Errorf("saved %d scores: %+v", len(saved), saved)
+	}
+	if a, ok := mn.Undo(); !ok || a.Do != "suspension" {
+		t.Errorf("not on the undo list: %+v", a)
+	}
+	if got := m.Snapshot().Live.Suspensions; len(got) != 1 || got[0].Left != "02:00" {
+		t.Errorf("live %+v", got)
+	}
+}
+
+func TestNoSuspensionsOutsideHandball(t *testing.T) {
+	for _, p := range []sport.Profile{sport.Basketball, sport.Futsal, sport.Volleyball} {
+		mn, _, _ := newSport(p)
+		for _, a := range []Action{{Do: "suspension", Team: "home"}, {Do: "suspension_number", ID: 1}, {Do: "suspension_end", ID: 1}} {
+			if mn.Do(a) == nil {
+				t.Errorf("%s accepted %s", p.ID, a.Do)
+			}
+		}
+	}
+	if err := (func() error { mn, _, _ := newHandball(); return mn.Do(Action{Do: "suspension", Team: "x"}) })(); err == nil {
+		t.Error("a bad team was accepted")
+	}
+}
+
+func TestSuspensionsExpireInTheFrame(t *testing.T) {
+	mn, _, _ := newHandball()
+	do(t, mn, Action{Do: "suspension", Team: "home"}, Action{Do: "clock_set", Tenths: 1200})
+	if got := suspensionsJSON(mn.s); got != "[]" {
+		t.Errorf("an ended suspension is still sent: %s", got)
+	}
+	if s := mn.Score(); s.HomeSusp[0].ID != 0 {
+		t.Errorf("slot not emptied: %+v", s.HomeSusp)
+	}
+}
+
+func TestSetLengthAcrossACountUpSwitch(t *testing.T) {
+	prof := sport.Basketball
+	c := &fakeClock{t: time.Date(2026, 11, 15, 18, 0, 0, 0, time.UTC)}
+	mn := NewManual(&Manual{Now: c.now, Rules: func() sport.Profile { return prof }})
+	prof = sport.Handball
+	do(t, mn, Action{Do: "suspension", Team: "home"})
+	if err := mn.SetLengthFrom(sport.Basketball, 18000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 18000 || s.Clock != 0 || s.HomeSusp[0].ID != 0 {
+		t.Errorf("basketball to handball: %+v", s)
+	}
+	prof = sport.Basketball
+	if err := mn.SetLengthFrom(sport.Handball, 6000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 6000 || s.Clock != 6000 {
+		t.Errorf("handball to basketball: %+v", s)
+	}
+	// A game under way is left alone, suspensions included.
+	prof = sport.Handball
+	do(t, mn, Action{Do: "new_game"}, Action{Do: "suspension", Team: "away"}, Action{Do: "point", Team: "home", N: 1})
+	prof = sport.Basketball
+	if err := mn.SetLengthFrom(sport.Handball, 6000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Clock != 0 || s.AwaySusp[0].ID != 1 {
+		t.Errorf("a game under way was touched: %+v", s)
+	}
+}
+
+// A countdown at 0:00 in a fresh game is not "at the old start": the switch to
+// another countdown leaves it there. A fresh game with the clock moved by hand
+// keeps its suspensions, since only a clock at the old start is a new game.
+func TestSetLengthOnlyMovesAClockAtTheOldStart(t *testing.T) {
+	mn, _, _ := newSport(sport.Futsal)
+	do(t, mn, Action{Do: "clock_set", Tenths: 0})
+	if err := mn.SetLengthFrom(sport.Basketball, 12000); err != nil {
+		t.Fatal(err)
+	}
+	if s := mn.Score(); s.Length != 12000 || s.Clock != 0 {
+		t.Errorf("countdown to countdown with the clock at 0: %+v, want the clock left at 0", s)
+	}
+
+	hb, _, _ := newHandball()
+	do(t, hb, Action{Do: "clock_set", Tenths: 5000}, Action{Do: "suspension", Team: "home"})
+	if err := hb.SetLengthFrom(sport.Basketball, 15000); err != nil {
+		t.Fatal(err)
+	}
+	if s := hb.Score(); s.Length != 15000 || s.Clock != 5000 || s.HomeSusp[0].ID != 1 {
+		t.Errorf("a clock set by hand lost its suspension or moved: %+v", s)
+	}
+}
+
+// The time left rounds up: the last second reads 00:01, never 00:00.
+func TestSuspensionLeftRoundsUp(t *testing.T) {
+	mn, _, _ := newHandball()
+	do(t, mn, Action{Do: "suspension", Team: "home"})
+	for _, c := range []struct {
+		clock int
+		want  string
+	}{{0, "02:00"}, {600, "01:00"}, {1100, "00:10"}, {1191, "00:01"}, {1195, "00:01"}} {
+		s := mn.s
+		s.Clock = c.clock
+		var list []struct{ Left string }
+		if err := json.Unmarshal([]byte(suspensionsJSON(s)), &list); err != nil || len(list) != 1 || list[0].Left != c.want {
+			t.Errorf("clock %d: %s, want left %s", c.clock, suspensionsJSON(s), c.want)
+		}
+	}
+	s := mn.s
+	s.Clock = 1200
+	if got := suspensionsJSON(s); got != "[]" {
+		t.Errorf("a suspension at its end is still sent: %s", got)
+	}
+}
+
+// A console-less take-over in the second half of handball puts the clock at
+// the start of that half, not the length.
+func TestSeedHandballWithNoClock(t *testing.T) {
+	mn, _, _ := newHandball()
+	mn.Seed(state.Live{Period: "2", Home: 14, Away: 12})
+	if s := mn.Score(); s.Period != 2 || s.Clock != 18000 || s.Home != 14 {
+		t.Errorf("seeded %+v, want period 2 at 18000", s)
+	}
+	mn.Seed(state.Live{Period: "3"})
+	if s := mn.Score(); s.Period != 3 || s.Clock != 36000 {
+		t.Errorf("seeded %+v, want extra time at 36000", s)
+	}
+}
+
+func TestRestoreSanitisesSuspensions(t *testing.T) {
+	mn, _, _ := newHandball()
+	var s Score
+	s.Period, s.Length = 1, 18000
+	s.HomeSusp[0] = Suspension{ID: 4, Number: "abc", End: 5000}
+	s.HomeSusp[1] = Suspension{ID: -2, Number: "1", End: 5000}
+	s.AwaySusp[0] = Suspension{ID: 2, Number: "77", End: -9}
+	s.NextSusp = 0
+	mn.Restore(s)
+	got := mn.s
+	if got.HomeSusp[0].Number != "" || got.HomeSusp[0].ID != 4 {
+		t.Errorf("a bad number stayed: %+v", got.HomeSusp[0])
+	}
+	if got.HomeSusp[1].ID != 0 {
+		t.Errorf("a negative ID stayed: %+v", got.HomeSusp[1])
+	}
+	if got.AwaySusp[0].End != 0 || got.AwaySusp[0].Number != "77" {
+		t.Errorf("end or number wrong: %+v", got.AwaySusp[0])
+	}
+	if got.NextSusp != 4 {
+		t.Errorf("NextSusp %d, want the highest restored ID 4", got.NextSusp)
+	}
+	s.NextSusp = 1 << 40
+	mn.Restore(s)
+	if mn.s.NextSusp != maxSuspID {
+		t.Errorf("NextSusp %d, want it capped at %d", mn.s.NextSusp, maxSuspID)
+	}
+}
+
+func TestRestoreKeepsSuspensions(t *testing.T) {
+	mn, _, _ := newHandball()
+	do(t, mn, Action{Do: "suspension", Team: "home"}, Action{Do: "suspension_number", ID: 1, Number: "9"})
+	saved := mn.Score()
+	b, _ := json.Marshal(saved)
+	var back Score
+	if err := json.Unmarshal(b, &back); err != nil {
+		t.Fatal(err)
+	}
+	mn2, _, _ := newHandball()
+	mn2.Restore(back)
+	if got := mn2.Score(); got.HomeSusp[0] != saved.HomeSusp[0] || got.NextSusp != 1 {
+		t.Errorf("restored %+v", got)
+	}
+}
+
+// A sport with no foul marks (handball) takes no foul; futsal and basketball do.
+func TestFoulRefusedWhereASportHasNone(t *testing.T) {
+	mn, _, _ := newHandball()
+	before := mn.Score()
+	if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err == nil || mn.Score() != before {
+		t.Errorf("handball took a foul: %v", err)
+	}
+	for _, p := range []sport.Profile{sport.Basketball, sport.Futsal} {
+		mn, _, _ := newSport(p)
+		if err := mn.Do(Action{Do: "foul", Team: "home", N: 1}); err != nil {
+			t.Errorf("%s refused a foul: %v", p.ID, err)
+		}
 	}
 }

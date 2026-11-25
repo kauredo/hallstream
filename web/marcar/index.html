@@ -32,6 +32,11 @@
       <b class="conta" data-v="homeSets"></b>
       <button type="button" class="servico" data-do="serve" data-n="1" data-i18n="marcar.servico"></button>
     </div>
+    <div class="linha exclusoes">
+      <span class="rotulo" data-i18n="marcar.exclusoes"></span>
+      <button type="button" class="mais" data-do="suspension" data-n="1" data-i18n="marcar.exclusao"></button>
+      <div class="chips" data-susp="home"></div>
+    </div>
     <div class="linha descontos">
       <span class="rotulo" data-i18n="marcar.descontos"></span>
       <span class="marcas" data-marks="homeTimeouts"></span>
@@ -80,6 +85,11 @@
       <b class="conta" data-v="awaySets"></b>
       <button type="button" class="servico" data-do="serve" data-n="1" data-i18n="marcar.servico"></button>
     </div>
+    <div class="linha exclusoes">
+      <span class="rotulo" data-i18n="marcar.exclusoes"></span>
+      <button type="button" class="mais" data-do="suspension" data-n="1" data-i18n="marcar.exclusao"></button>
+      <div class="chips" data-susp="away"></div>
+    </div>
     <div class="linha descontos">
       <span class="rotulo" data-i18n="marcar.descontos"></span>
       <span class="marcas" data-marks="awayTimeouts"></span>
@@ -118,6 +128,16 @@
   <div class="botoes">
     <button type="button" class="anular" id="acertarRepor"></button>
     <button type="button" class="arrancar" id="acertarFechar" data-i18n="marcar.feito"></button>
+  </div>
+</dialog>
+
+<!-- A suspension's shirt number, or its end when the scorer tapped it by mistake. -->
+<dialog id="exclusao">
+  <h2 id="exclusaoTitulo"></h2>
+  <input id="exclusaoNumero" inputmode="numeric" maxlength="3" autocomplete="off" data-i18n-attr="aria-label:marcar.exclusao_numero;placeholder:marcar.exclusao_numero">
+  <div class="botoes">
+    <button type="button" class="anular" id="exclusaoAcabou" data-i18n="marcar.exclusao_acabou"></button>
+    <button type="button" class="arrancar" id="exclusaoFeito" data-i18n="marcar.feito"></button>
   </div>
 </dialog>
 

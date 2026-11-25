@@ -1,0 +1,183 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "CASA",
+    "away_name": "VISITANTE",
+    "home": 29,
+    "away": 27,
+    "clock": "60:00",
+    "period": "2",
+    "home_fouls": 0,
+    "away_fouls": 0,
+    "shot": "",
+    "sport": "handball",
+    "home_timeouts": 0,
+    "away_timeouts": 0,
+    "period_end": 36000,
+    "suspensions": []
+  },
+  "periods": [
+    {
+      "period": 1,
+      "home": 14,
+      "away": 12,
+      "home_points": 14,
+      "away_points": 12
+    },
+    {
+      "period": 2,
+      "home": 29,
+      "away": 27,
+      "home_points": 15,
+      "away_points": 15
+    }
+  ],
+  "game": {
+    "group": {
+      "id": "andebol-m",
+      "name": "Sénior Andebol",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "CASA",
+      "short": "CAS",
+      "crest_url": "/assets/crest.png",
+      "color": "#BD1522",
+      "initials": "CAS"
+    },
+    "away": {
+      "name": "VISITANTE",
+      "short": "VIS",
+      "crest_url": null,
+      "color": "#5C6170",
+      "initials": "VIS"
+    },
+    "start": "2026-11-15T18:00:00+00:00",
+    "venue": "Pavilhão Municipal do Vale",
+    "competition": "Campeonato Regional",
+    "round": "Jornada 5",
+    "squad": [
+      {
+        "number": "4",
+        "name": "Caio Rebelo"
+      },
+      {
+        "number": "5",
+        "name": "Mauro Pestana"
+      },
+      {
+        "number": "6",
+        "name": "Hélio Vaz Quaresma"
+      },
+      {
+        "number": "7",
+        "name": "Nuno Valadares"
+      },
+      {
+        "number": "8",
+        "name": "Leandro Couto"
+      },
+      {
+        "number": "9",
+        "name": "Filipe Arruda"
+      },
+      {
+        "number": "10",
+        "name": "Abel Quintas Mota"
+      },
+      {
+        "number": "11",
+        "name": "Igor Seabra"
+      },
+      {
+        "number": "12",
+        "name": "Edgar Pimenta"
+      },
+      {
+        "number": "13",
+        "name": "Bruno Teles"
+      },
+      {
+        "number": "14",
+        "name": "Joel Sarmento"
+      },
+      {
+        "number": "15",
+        "name": "Dário Neves"
+      }
+    ],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4
+    },
+    "sport": "handball",
+    "sport_label": "ANDEBOL",
+    "rules": {
+      "id": "handball",
+      "periods": 2,
+      "half": 1,
+      "length": 18000,
+      "clock_down": false,
+      "fouls_reset": false,
+      "foul_warn": 0,
+      "foul_bonus": 0,
+      "shot_clock": false,
+      "final_hold": 600,
+      "timeouts": [
+        2,
+        2,
+        0
+      ],
+      "overtime_length": 3000,
+      "fouls_carry": false,
+      "period_word": "half",
+      "foul_marks": 0,
+      "foul_penalty": "",
+      "count_up": true,
+      "stop_at_end": true,
+      "suspensions": 1200,
+      "scoring": "points",
+      "set_points": 0,
+      "last_set_points": 0,
+      "sets_to_win": 0,
+      "win_by": 0
+    }
+  },
+  "screen": {
+    "current": "final",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": false,
+    "type": "jogador",
+    "number": "7",
+    "first_name": "Nome",
+    "last_name": "Apelido",
+    "label": "",
+    "until": null
+  },
+  "demo": false
+}

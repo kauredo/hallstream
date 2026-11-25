@@ -192,3 +192,71 @@ func TestSportSwitchKeepsACustomLengthAcrossARestart(t *testing.T) {
 		t.Errorf("after a restart: %+v, want 4800", sc)
 	}
 }
+
+// A fresh basketball game switched to handball starts its clock at 0 with the
+// handball half; switching back gives basketball's clock again.
+func TestSportSwitchToAndFromHandball(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	bb := gameIn(t, s, "Sub 16", "basketball")
+	hb := gameIn(t, s, "Andebol", "handball")
+	playIn(t, s, bb)
+	if err := m.Do(source.Action{Do: "clock_set", Tenths: 6000}); err != nil {
+		t.Fatal(err)
+	}
+	playIn(t, s, hb)
+	if sc := m.Score(); sc.Length != 18000 || sc.Clock != 0 {
+		t.Errorf("to handball: %+v, want length 18000 and clock 0", sc)
+	}
+	playIn(t, s, bb)
+	if sc := m.Score(); sc.Length != 6000 || sc.Clock != 6000 {
+		t.Errorf("back to basketball: %+v, want 6000", sc)
+	}
+}
+
+// A fresh score has its suspensions cleared by the switch; a game under way
+// keeps its clock and its suspensions, and a running clock is never touched.
+func TestSportSwitchHandballLeavesAGameUnderWay(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	bb := gameIn(t, s, "Sub 16", "basketball")
+	hb := gameIn(t, s, "Andebol", "handball")
+	playIn(t, s, hb)
+	playIn(t, s, bb)
+	playIn(t, s, hb)
+	for _, a := range []source.Action{{Do: "period_next"}, {Do: "clock_set", Tenths: 24770}, {Do: "suspension", Team: "home"}} {
+		if err := m.Do(a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	playIn(t, s, bb)
+	if sc := m.Score(); sc.Clock != 24770 || sc.Period != 2 || sc.HomeSusp[0].ID != 1 {
+		t.Errorf("a handball game in the 2nd half was switched: %+v", sc)
+	}
+
+	playIn(t, s, hb)
+	if err := m.Do(source.Action{Do: "clock_start"}); err != nil {
+		t.Fatal(err)
+	}
+	playIn(t, s, bb)
+	if sc := m.Score(); !sc.Running || sc.Length != 18000 {
+		t.Errorf("a running clock was switched: %+v", sc)
+	}
+}
+
+func TestSportSwitchClearsSuspensionsOnAFreshScore(t *testing.T) {
+	s := newServer(t)
+	m := withScorer(s)
+	bb := gameIn(t, s, "Sub 16", "basketball")
+	hb := gameIn(t, s, "Andebol", "handball")
+	playIn(t, s, hb)
+	playIn(t, s, bb)
+	playIn(t, s, hb)
+	if err := m.Do(source.Action{Do: "suspension", Team: "away"}); err != nil {
+		t.Fatal(err)
+	}
+	playIn(t, s, bb)
+	if sc := m.Score(); sc.AwaySusp[0].ID != 0 {
+		t.Errorf("suspensions survived a switch on a fresh score: %+v", sc)
+	}
+}

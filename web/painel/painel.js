@@ -46,7 +46,15 @@
   function groupName(id) {
     if (id === 'geral') return t('painel.geral');
     var g = S.groups.filter(function (x) { return x.id === id; })[0];
-    return g ? g.name : '';
+    return g ? groupLabel(g) : '';
+  }
+  // The name, plus the sport when another escalão has the same name.
+  function groupLabel(g) {
+    var key = String(g.name).trim().toLowerCase();
+    var twin = S.groups.some(function (x) { return x !== g && x.id !== g.id && String(x.name).trim().toLowerCase() === key; });
+    if (!twin) return g.name;
+    var sp = SPORTS.filter(function (x) { return x[0] === (g.sport || 'basketball'); })[0];
+    return g.name + ' · ' + (sp ? sp[1] : g.sport);
   }
   function groupById(id) { return S.groups.filter(function (x) { return x.id === id; })[0] || null; }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -433,7 +441,7 @@
     }
     var g = groupById(d.group_id);
     var opts = S.groups.map(function (x) {
-      return '<option value="' + esc(x.id) + '"' + (x.id === d.group_id ? ' selected' : '') + '>' + esc(x.name) + '</option>';
+      return '<option value="' + esc(x.id) + '"' + (x.id === d.group_id ? ' selected' : '') + '>' + esc(groupLabel(x)) + '</option>';
     }).join('');
     var a = d.away;
     var color = a.color || '#5C6170';
@@ -444,10 +452,10 @@
       '<div class="row"><button class="btn primary" type="button" data-act="game-newer">' + t('painel.jogo.usar_guardado') + '</button></div></div>';
     html += '<div class="card"><div class="row">' +
       '<label class="field grow"><span>' + t('painel.jogo.escalao') + '</span><select id="jGroup">' + (d.group_id ? '' : '<option value="">' + t('painel.escolha') + '</option>') + opts + '</select></label>' +
-      (fpbOffered() ? '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>' + t('painel.jogo.escolher_fpb') + '</button>' : '') +
+      (fpbForGroup(g) ? '<button class="btn dark" data-act="fpb-games"' + (g && g.fpb_team_id ? '' : ' disabled') + '>' + t('painel.jogo.escolher_fpb') + '</button>' : '') +
       '<button class="btn" data-act="manual">' + t('painel.jogo.manual') + '</button>' +
       '</div>';
-    if (g && !g.fpb_team_id && fpbOffered()) html += '<p class="hint" style="margin-top:10px">' + t('painel.jogo.sem_fpb') + '</p>';
+    if (g && !g.fpb_team_id && fpbForGroup(g)) html += '<p class="hint" style="margin-top:10px">' + t('painel.jogo.sem_fpb') + '</p>';
     if (S.fpbGamesErr) html += '<p class="alert" style="margin-top:12px">' + esc(S.fpbGamesErr) + '</p>';
     if (S.fpbGames) html += renderFpbGames();
     html += '</div>';
@@ -514,7 +522,7 @@
     if (!all) { loadFixtures(g.id); return html + '<p class="hint">' + t('painel.a_carregar') + '</p></div>'; }
     var soon = Date.now() - 3 * 3600e3;
     var next = all.filter(function (f) { return new Date(f.start).getTime() >= soon; });
-    if (!next.length) html += '<p class="hint">' + (fpbOffered() && g.fpb_team_id ? t('painel.calendario.vazio_fpb') : t('painel.calendario.vazio')) + '</p>';
+    if (!next.length) html += '<p class="hint">' + (fpbForGroup(g) && g.fpb_team_id ? t('painel.calendario.vazio_fpb') : t('painel.calendario.vazio')) + '</p>';
     else html += '<div class="games" role="list">' + next.map(function (f) {
       var d = new Date(f.start), o = f.opponent || {};
       var sel = !S.draft.fpb_game_id && S.draft.start && new Date(S.draft.start).getTime() === d.getTime() && S.draft.away.name === o.name;
@@ -1465,7 +1473,7 @@
   /* ================= 3. PLANTEL ================= */
   function groupSelect(id, cur, withGeral) {
     var opts = (withGeral ? '<option value="geral"' + (cur === 'geral' ? ' selected' : '') + '>' + t('painel.geral_todos') + '</option>' : '') +
-      S.groups.map(function (g) { return '<option value="' + esc(g.id) + '"' + (g.id === cur ? ' selected' : '') + '>' + esc(g.name) + '</option>'; }).join('');
+      S.groups.map(function (g) { return '<option value="' + esc(g.id) + '"' + (g.id === cur ? ' selected' : '') + '>' + esc(groupLabel(g)) + '</option>'; }).join('');
     return '<select id="' + id + '">' + opts + '</select>';
   }
 
@@ -1490,10 +1498,13 @@
     html += '<div class="card"><h2>' + t('painel.jogo.escalao') + '</h2><div class="stack">' +
       '<label class="field"><span>' + t('painel.nome') + '</span><input id="pGName" value="' + esc(g.name) + '"></label>' +
       '<label class="field"><span>' + t('painel.plantel.treinador') + '</span><input id="pCoach" value="' + esc(g.coach || '') + '" placeholder="' + t('painel.plantel.treinador_ex') + '"></label>' +
+      '<label class="field"><span>' + t('painel.clube.modalidade') + '</span><select id="pGSport">' + SPORTS.map(function (x) {
+        return '<option value="' + x[0] + '"' + (x[2] ? '' : ' disabled') + ((g.sport || 'basketball') === x[0] ? ' selected' : '') + '>' + (x[2] ? x[1] : t('painel.clube.em_breve', { modalidade: x[1] })) + '</option>';
+      }).join('') + '</select></label>' +
       '<div class="row"><button class="btn primary" data-act="save-group">' + t('painel.guardar') + '</button><span class="msg"></span><span style="flex:1"></span>' +
       '<button class="btn quiet" data-act="del-group">' + t('painel.plantel.apagar_escalao') + '</button></div></div></div>';
 
-    if (fpb) {
+    if (fpb && fpbForGroup(g)) {
       html += '<div class="card"><h2>FPB</h2>';
       if (g.fpb_team_id) {
         html += '<p>' + t('painel.plantel.ligado_a', { equipa: '<b>' + esc(g.fpb_team_name || t('painel.plantel.equipa_n', { id: g.fpb_team_id })) + '</b>' }) + '</p>' +
@@ -1686,12 +1697,12 @@
       }
       if (act === 'save-group') {
         busy(b, function () {
-          // Name and coach only: the FPB link may have moved since this page loaded.
-          return api('PUT', base(), { name: $('#pGName').value.trim(), coach: $('#pCoach').value.trim() })
+          // Name, coach and sport only: the FPB link may have moved since this page loaded.
+          return api('PUT', base(), { name: $('#pGName').value.trim(), coach: $('#pCoach').value.trim(), sport: $('#pGSport').value })
             .then(function () { return loadGroups(); });
         });
       } else if (act === 'del-group') {
-        confirmBox(t('painel.plantel.apagar_escalao_pergunta', { nome: g.name }), '<p>' + t('painel.plantel.apagar_escalao_texto') + '</p>', { yes: t('painel.apagar'), danger: true }).then(function (ok) {
+        confirmBox(t('painel.plantel.apagar_escalao_pergunta', { nome: groupLabel(g) }), '<p>' + t('painel.plantel.apagar_escalao_texto') + '</p>', { yes: t('painel.apagar'), danger: true }).then(function (ok) {
           if (!ok) return;
           api('DELETE', base()).then(function () { S.plantelGid = null; return loadGroups(); }).then(renderPlantel, showError);
         });
@@ -2153,7 +2164,11 @@
   var COUNTRIES = [['PT', t('painel.pais.pt')], ['ES', t('painel.pais.es')], ['FR', t('painel.pais.fr')], ['LU', t('painel.pais.lu')], ['CH', t('painel.pais.ch')],
     ['BR', t('painel.pais.br')], ['AO', t('painel.pais.ao')], ['CV', t('painel.pais.cv')], ['MZ', t('painel.pais.mz')]];
   // The FPB import is for Portuguese basketball clubs only.
-  function fpbFor(c) { c = c || {}; return (c.country || 'PT') === 'PT' && (c.sport || 'basketball') === 'basketball'; }
+  function anyBasketballGroup() {
+    return (S.groups || []).some(function (g) { return g.id !== 'geral' && (g.sport || 'basketball') === 'basketball'; });
+  }
+  function fpbFor(c) { c = c || {}; return (c.country || 'PT') === 'PT' && ((c.sport || 'basketball') === 'basketball' || anyBasketballGroup()); }
+  function fpbForGroup(g) { return !!g && ((S.settings && S.settings.club && S.settings.club.country) || 'PT') === 'PT' && (g.sport || 'basketball') === 'basketball'; }
   function fpbOffered() { return fpbFor(S.settings && S.settings.club); }
   // Every zone the browser knows, after "from the country"; the club's saved zone stays listed even if it doesn't.
   function zoneOptions(cur) {

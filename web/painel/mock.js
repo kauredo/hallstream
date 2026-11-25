@@ -31,8 +31,10 @@
       overlay: { bug_position: 'top-left' }, credit: true, desktop_shortcut: ''
     },
     groups: [
-      { id: 'senior-m', name: 'Sénior Masculino', coach: 'Jorge Matos Lima', fpb_team_id: 64791, fpb_team_name: 'Clube Exemplo · Sénior' },
-      { id: 'sub16-m', name: 'Sub 16', coach: 'Ana Lopes', fpb_team_id: null, fpb_team_name: '' }
+      { id: 'senior-m', name: 'Sénior Masculino', coach: 'Jorge Matos Lima', fpb_team_id: 64791, fpb_team_name: 'Clube Exemplo · Sénior', sport: 'basketball' },
+      { id: 'sub16-m', name: 'Sub 16', coach: 'Ana Lopes', fpb_team_id: null, fpb_team_name: '', sport: 'basketball' },
+      { id: 'seniores-basquetebol', name: 'Seniores', coach: '', fpb_team_id: null, fpb_team_name: '', sport: 'basketball' },
+      { id: 'seniores-futsal', name: 'Seniores', coach: '', fpb_team_id: null, fpb_team_name: '', sport: 'futsal' }
     ],
     players: {
       'senior-m': [
@@ -44,7 +46,9 @@
       ].map(function (r, i) { return { id: 'p' + (i + 1), number: r[0], display_name: r[1], fpb_player_id: r[2], fpb_name: r[3] || null, photo_url: r[2] ? photo(i % 3 + 1) : '' }; }),
       'sub16-m': [
         ['3', 'Tomás Leal'], ['5', 'Afonso Brito'], ['8', 'Martim Rocha'], ['11', 'Santiago Dias'], ['14', 'Vasco Pires'], ['20', 'Lourenço Matos']
-      ].map(function (r, i) { return { id: 'j' + (i + 1), number: r[0], display_name: r[1], fpb_player_id: null, fpb_name: null, photo_url: '' }; })
+      ].map(function (r, i) { return { id: 'j' + (i + 1), number: r[0], display_name: r[1], fpb_player_id: null, fpb_name: null, photo_url: '' }; }),
+      'seniores-basquetebol': [],
+      'seniores-futsal': []
     },
     sponsors: {
       geral: [
@@ -57,7 +61,9 @@
         { id: 's5', name: 'Seguros Atlântico', url: logo('ATLÂNTICO', '#2E6FD8', '#ffffff'), principal: false },
         { id: 's6', name: 'Talho Silva', url: logo('SILVA', '#8B2223', '#ffffff'), principal: false }
       ],
-      'sub16-m': []
+      'sub16-m': [],
+      'seniores-basquetebol': [],
+      'seniores-futsal': []
     },
     suggestions: [
       { fpb_player_id: 9201, name: 'Miguel Ângelo Pinto', number: '6', games: 7, photo_url: photo(2), best_match: 'p3' },
@@ -160,7 +166,7 @@
       game: {
         group: { id: grp.id, name: grp.name, coach: grp.coach },
         home: { name: db.settings.club.name, short: db.settings.club.short, crest_url: db.settings.club.crest, color: db.settings.club.primary, initials: db.settings.club.short },
-        sport: db.settings.club.sport, sport_label: 'BASKET',
+        sport: grp.sport || db.settings.club.sport, sport_label: 'BASKET',
         away: { name: g.away.name, short: g.away.short, crest_url: g.away.crest_url || null, color: g.away.color || '#5C6170', initials: g.away.short },
         start: g.start, venue: g.venue, competition: g.competition, round: g.round,
         squad: g.squad.map(function (s) {
@@ -336,7 +342,7 @@
     if (p === '/api/groups') {
       if (m === 'POST') {
         if (!b || !b.name) return err(400, 'O escalão precisa de nome.');
-        var g = { id: 'g' + (nextId++), name: b.name, coach: '', fpb_team_id: null, fpb_team_name: '' };
+        var g = { id: 'g' + (nextId++), name: b.name, coach: '', fpb_team_id: null, fpb_team_name: '', sport: db.settings.club.sport };
         db.groups.push(g); db.players[g.id] = []; db.sponsors[g.id] = [];
         return reply(201, g);
       }

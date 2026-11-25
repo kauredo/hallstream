@@ -35,8 +35,9 @@ PRIMEIRA VEZ (EM CASA)
 3. Instale o OBS (versão 31 ou mais recente) e o DroidCam no PC e no
    tablet, e feche o OBS.
 4. No separador Ecrãs aparece "Falta a configuração inicial". Carregue
-   em "Começar". São cinco passos, um de cada vez: clube e caixa, OBS
-   ("Configurar OBS"), YouTube, canal do YouTube e um ensaio. Pode parar
+   em "Começar". São sete passos, um de cada vez: idioma, clube,
+   marcação (a consola ou um telemóvel), OBS ("Configurar OBS"), YouTube,
+   canal do YouTube e um ensaio. Pode parar
    a meio, que o painel lembra-se de onde ficou. Também está em Definições >
    Configuração inicial.
    - Para o passo YouTube, traga o ID e o segredo do cliente OAuth, feitos

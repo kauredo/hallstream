@@ -2587,12 +2587,14 @@
   }
 
   /* ================= CONFIGURAÇÃO INICIAL ================= */
-  // Five steps, one card at a time. The status comes from what the panel
-  // already reads (status, settings, YouTube); ticks and "Saltar" from /api/setup.
+  // Seven steps, one card at a time. The status comes from what the panel
+  // already reads (status, settings, YouTube); ticks, choices and "Saltar" from /api/setup.
   var WZ = [
-    { id: 'clube', title: t('painel.wz.clube') }, { id: 'obs', title: t('painel.wz.obs') }, { id: 'youtube', title: t('painel.wz.youtube') },
+    { id: 'idioma', title: t('painel.wz.idioma') }, { id: 'clube', title: t('painel.wz.clube') }, { id: 'entrada', title: t('painel.nav.caixa') },
+    { id: 'obs', title: t('painel.wz.obs') }, { id: 'youtube', title: t('painel.wz.youtube') },
     { id: 'canal', title: t('painel.wz.canal') }, { id: 'ensaio', title: t('painel.wz.ensaio') }
   ];
+  function wzIndex(id) { for (var i = 0; i < WZ.length; i++) if (WZ[i].id === id) return i; return -1; }
   var WZ_TAG = { ok: ['on', t('painel.feito')], todo: ['wait', t('painel.wz.falta')], bad: ['off', t('painel.wz.com_problema')], skip: ['', t('painel.wz.saltado')], wait: ['wait', t('painel.wz.a_verificar')] };
   var ENSAIO = [
     ['ensaio-demo', t('app.bandeja.demo'), t('painel.ensaio.demo')],
@@ -2631,13 +2633,22 @@
   }
   function wzStatus(id) {
     var st = S.status || {}, set = S.settings || {}, y = S.yt || st.youtube || {};
+    if (id === 'idioma') {
+      var lang = ((st.langs || []).filter(function (l) { return l.code === (set.lang || 'pt'); })[0] || {}).name || t('data.nome');
+      return wzTicked('idioma') ? { s: 'ok', why: t('painel.wz.idioma_ok', { lingua: lang }) } : { s: 'todo', why: t('painel.wz.idioma_falta') };
+    }
     if (id === 'clube') {
-      var c = set.club_setup || '', box = realBox();
       if (st.club_setup && st.club_setup.running) return { s: 'wait', why: clubProgress(st.club_setup) };
-      if (c === 'pending') return { s: 'bad', why: t('painel.wz.clube_fpb_pendente') };
-      if (!c && !S.groups.length) return { s: 'todo', why: t('painel.wz.clube_faltam') };
+      if (fpbOffered() && set.club_setup === 'pending') return { s: 'bad', why: t('painel.wz.clube_fpb_pendente') };
+      if (!wzTicked('clube')) return { s: 'todo', why: t('painel.wz.clube_falta') };
+      return { s: 'ok', why: t('painel.wz.clube_ok_nome', { clube: (set.club && set.club.name) || '' }) };
+    }
+    if (id === 'entrada') {
+      if (!wzTicked('entrada')) return { s: 'todo', why: t('painel.wz.entrada_falta') };
+      if (set.input === 'manual') return { s: 'ok', why: t('painel.wz.entrada_mao_ok') };
+      var box = realBox();
       if (!set.box_address && !box.connected) return { s: 'todo', why: t('painel.wz.clube_sem_caixa') };
-      return { s: 'ok', why: t('painel.wz.clube_ok') };
+      return { s: 'ok', why: box.connected ? t('painel.wz.caixa_agora') : t('painel.wz.caixa_ja') };
     }
     if (id === 'obs') {
       var o = st.obs || {}, h = o.health || {};
@@ -2746,16 +2757,55 @@
       el.innerHTML = html;
       return;
     }
-    var id = WZ[cur].id;
-    if (id === 'clube') {
-      var set = S.settings, box = realBox();
-      var club = (set.club_setup && set.club_setup !== 'pending') || S.groups.length;
-      html = '<ul class="wz-list">' +
-        wzItem(club ? 'on' : 'wait', t('painel.wz.escaloes_fpb'), '<p class="hint">' + (club ? plural(S.groups.length, t('painel.wz.escaloes_no_plantel.um', { n: S.groups.length }), t('painel.wz.escaloes_no_plantel.outros', { n: S.groups.length })) :
-          t('painel.wz.escaloes_sozinho')) + ' <a href="#plantel" data-goto="plantel">' + t('painel.ajuda.problemas.abrir_plantel') + '</a></p>') +
-        wzItem(set.box_address || box.connected ? 'on' : 'wait', t('painel.wz.caixa'), '<p class="hint">' + (box.connected ? t('painel.wz.caixa_agora') : set.box_address ? t('painel.wz.caixa_ja') :
-          t('painel.wz.caixa_ligue')) + ' <a href="#caixa" data-goto="caixa">' + t('painel.ajuda.problemas.abrir_caixa') + '</a></p>') +
-        '</ul><p class="hint">' + t('painel.wz.caixa_depois') + '</p>';
+    var id = WZ[cur].id, set = S.settings, off = pc ? '' : ' disabled';
+    var save = function (act, label) {
+      return pc ? '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="' + act + '">' + label + '</button>' +
+        '<span class="msg" id="wzSaveMsg" role="status"></span></div>' : '';
+    };
+    if (id === 'idioma') {
+      var langs = (S.status && S.status.langs) || [{ code: set.lang || 'pt', name: t('data.nome') }];
+      html = '<p>' + t('painel.wz.idioma_texto') + '</p><select id="wLang" style="max-width:420px" aria-label="' + t('painel.wz.idioma') + '"' + off + '>' + langOptions(langs) + '</select>' +
+        save('lang', t('painel.wz.idioma_usar'));
+    } else if (id === 'clube') {
+      var c = set.club || {};
+      var colour = function (cid, label, v) {
+        v = /^#[0-9a-f]{6}$/i.test(v || '') ? v.toLowerCase() : '#2f4b7c';
+        return '<label class="field"><span>' + label + '</span><span class="colour"><input type="color" id="' + cid + '" value="' + esc(v) + '"' + off + '></span></label>';
+      };
+      html = '<p>' + t('painel.wz.clube_texto') + '</p><div class="cols">' +
+        '<label class="field"><span>' + t('painel.clube.nome') + '</span><input id="wHome" maxlength="12" value="' + esc(c.name || '') + '"' + off + '></label>' +
+        '<label class="field"><span>' + t('painel.jogo.sigla') + '</span><input id="wHomeShort" maxlength="4" value="' + esc(c.short || '') + '"' + off + '></label>' +
+        colour('wPrimary', t('painel.clube.cor_principal'), c.primary) +
+        colour('wSecondary', t('painel.clube.cor_secundaria'), c.secondary || '#1c1a17') +
+        '<label class="field"><span>' + t('painel.clube.modalidade') + '</span><select id="wSport"' + off + '>' + SPORTS.map(function (x) {
+          return '<option value="' + x[0] + '"' + (x[2] ? '' : ' disabled') + ((c.sport || 'basketball') === x[0] ? ' selected' : '') + '>' + (x[2] ? x[1] : t('painel.clube.em_breve', { modalidade: x[1] })) + '</option>';
+        }).join('') + '</select></label>' +
+        '<label class="field"><span>' + t('painel.clube.pais') + '</span><select id="wCountry"' + off + '>' + COUNTRIES.map(function (x) {
+          return '<option value="' + esc(x[0]) + '"' + (x[0] === (c.country || 'PT') ? ' selected' : '') + '>' + esc(x[1]) + '</option>';
+        }).join('') + '</select></label></div>';
+      if (fpbOffered()) {
+        var club = (set.club_setup && set.club_setup !== 'pending') || S.groups.length;
+        html += '<ul class="wz-list">' + wzItem(club ? 'on' : 'wait', t('painel.wz.escaloes_fpb'), '<p class="hint">' + (club ? plural(S.groups.length, t('painel.wz.escaloes_no_plantel.um', { n: S.groups.length }), t('painel.wz.escaloes_no_plantel.outros', { n: S.groups.length })) :
+          t('painel.wz.escaloes_sozinho')) + ' <a href="#plantel" data-goto="plantel">' + t('painel.ajuda.problemas.abrir_plantel') + '</a></p>') + '</ul>';
+      } else {
+        html += '<p class="hint">' + t('painel.wz.plantel_csv') + ' <a href="#plantel" data-goto="plantel">' + t('painel.ajuda.problemas.abrir_plantel') + '</a></p>';
+      }
+      html += save('club', t('painel.wz.clube_guardar'));
+    } else if (id === 'entrada') {
+      var manual = set.input === 'manual', box = realBox();
+      var opt = function (v, title, hint, on) {
+        return '<label><input type="radio" name="wInput" value="' + v + '"' + (on ? ' checked' : '') + off + '><span><b>' + title + '</b><small>' + hint + '</small></span></label>';
+      };
+      html = '<p>' + t('painel.wz.entrada_texto') + '</p><div class="cx-in">' +
+        opt('console', t('painel.marcar.consola'), t('painel.marcar.consola_dica'), !manual) +
+        opt('manual', t('painel.marcar.telemovel'), t('painel.marcar.telemovel_dica'), manual) + '</div>' +
+        save('input', t('painel.wz.entrada_usar'));
+      if (wzTicked('entrada')) {
+        html += manual
+          ? '<p class="hint">' + t('painel.wz.entrada_qr') + ' <a href="#caixa" data-goto="caixa">' + t('painel.ajuda.problemas.abrir_caixa') + '</a></p>'
+          : '<ul class="wz-list">' + wzItem(set.box_address || box.connected ? 'on' : 'wait', t('painel.wz.caixa'), '<p class="hint">' + (box.connected ? t('painel.wz.caixa_agora') : set.box_address ? t('painel.wz.caixa_ja') :
+            t('painel.wz.caixa_ligue')) + ' <a href="#caixa" data-goto="caixa">' + t('painel.ajuda.problemas.abrir_caixa') + '</a></p>') + '</ul><p class="hint">' + t('painel.wz.caixa_depois') + '</p>';
+      }
     } else if (id === 'obs') {
       html = '<p>' + t('painel.wz.obs_texto') + '</p>';
       if (pc) html += '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="obs-setup">' + t('painel.configurar_obs') + '</button>' +
@@ -2789,7 +2839,7 @@
   function wzGo(i) {
     S.setupStep = i === 'fim' ? 'fim' : +i;
     renderInicio();
-    if (S.setupStep === 3 && S.setup.pc && S.yt && S.yt.connected && !S.chk && !S.chkBusy) checkChannel();
+    if (S.setupStep === wzIndex('canal') && S.setup.pc && S.yt && S.yt.connected && !S.chk && !S.chkBusy) checkChannel();
     var card = $('#wzCard');
     if (card.getBoundingClientRect().top < 0) card.scrollIntoView();
   }
@@ -2801,7 +2851,7 @@
       .then(function () {
         S.chkBusy = false; refreshInicio();
         // Other steps may hold typing (the YouTube fields): only these two are drawn again.
-        if (S.tab === 'inicio' && (S.setupStep === 'fim' || S.setupStep === 3)) renderWzBody();
+        if (S.tab === 'inicio' && (S.setupStep === 'fim' || S.setupStep === wzIndex('canal'))) renderWzBody();
       });
   }
 
@@ -2816,6 +2866,38 @@
     }, function (err) {
       var m = $('#wzObsMsg'); if (m) { m.className = 'msg err'; m.textContent = err.message; }
       var b = $('[data-wz-act="obs-setup"]'); if (b) b.disabled = false;
+    });
+  }
+
+  // Saves what the Idioma, Clube and Marcação steps ask, ticks the step and moves on.
+  function wzSave(btn, act) {
+    var msg = $('#wzSaveMsg'), set = S.settings, next = {};
+    if (act === 'lang') next.lang = $('#wLang').value;
+    if (act === 'club') {
+      next.club = Object.assign({}, set.club, {
+        name: $('#wHome').value.trim(), short: $('#wHomeShort').value.trim().toUpperCase(),
+        primary: $('#wPrimary').value.toUpperCase(), secondary: $('#wSecondary').value.toUpperCase(),
+        sport: $('#wSport').value, country: $('#wCountry').value
+      });
+    }
+    if (act === 'input') {
+      var pick = $('#wzBody input[name="wInput"]:checked');
+      next.input = pick ? pick.value : 'console';
+    }
+    var id = { lang: 'idioma', club: 'clube', input: 'entrada' }[act];
+    btn.disabled = true; msg.className = 'msg'; msg.textContent = '';
+    api('PUT', '/api/settings', Object.assign({}, set, next)).then(function (saved) {
+      var reload = act === 'lang' && saved.lang !== (set.lang || 'pt');
+      S.settings = saved;
+      return api('PUT', '/api/setup/steps/' + id, { state: 'done' }).then(function (f) {
+        // Every page reads its words once, so a new language means a reload.
+        if (reload) { location.reload(); return; }
+        setupSaid(f);
+        wzGo(act === 'input' ? S.setupStep : S.setupStep + 1);
+      });
+    }).then(null, function (err) {
+      var m = $('#wzSaveMsg'); if (m) { m.className = 'msg err'; m.textContent = err.message; }
+      btn.disabled = false;
     });
   }
 
@@ -2835,6 +2917,7 @@
         if (pk) wzObs(b, pk.value);
       }
       if (act === 'chk') checkChannel();
+      if (act === 'lang' || act === 'club' || act === 'input') { wzSave(b, act); return; }
       if (act === 'yt-skip' || act === 'done') {
         b.disabled = true;
         var req = act === 'done' ? api('POST', '/api/setup/done', {}) : api('PUT', '/api/setup/steps/youtube', { state: 'skipped' });

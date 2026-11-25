@@ -32,6 +32,13 @@ func TestSetupSteps(t *testing.T) {
 	if _, ok := st.Steps["canal-diretos"]; ok || st.Steps["youtube"] != "skipped" {
 		t.Errorf("untick: %+v", st)
 	}
+	for _, id := range []string{"idioma", "clube", "entrada"} {
+		if code := call(t, s, "PUT", "/api/setup/steps/"+id, map[string]string{"state": "done"}, &st); code != 200 || st.Steps[id] != "done" {
+			t.Errorf("tick %s: %d %+v", id, code, st)
+		}
+		st = setupState{}
+		call(t, s, "PUT", "/api/setup/steps/"+id, map[string]string{"state": ""}, &st)
+	}
 	if code := call(t, s, "PUT", "/api/setup/steps/obs", map[string]string{"state": "done"}, &st); code != 404 {
 		t.Errorf("a step the program checks: %d", code)
 	}

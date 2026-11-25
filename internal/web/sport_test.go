@@ -23,7 +23,7 @@ func TestPutGroupSport(t *testing.T) {
 	s := newServer(t)
 	var g store.Group
 	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sub 16"}, &g)
-	for _, sp := range []string{"curling", "handball"} {
+	for _, sp := range []string{"curling", "soccer"} {
 		var e struct{ Error string }
 		if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": sp}, &e); code != http.StatusBadRequest || e.Error != i18n.T("api.escalao.desporto") {
 			t.Errorf("sport %q: %d %q", sp, code, e.Error)
@@ -32,6 +32,9 @@ func TestPutGroupSport(t *testing.T) {
 	var got store.Group
 	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "futsal"}, &got); code != http.StatusOK || got.Sport != "futsal" {
 		t.Errorf("futsal: %d %+v", code, got)
+	}
+	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "handball"}, &got); code != http.StatusOK || got.Sport != "handball" {
+		t.Errorf("handball: %d %+v", code, got)
 	}
 	if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": "basketball"}, &got); code != http.StatusOK || got.Sport != "basketball" {
 		t.Errorf("basketball: %d %+v", code, got)

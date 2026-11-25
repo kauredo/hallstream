@@ -56,8 +56,23 @@ type Live struct {
 	// the winner's side; the winner may be missing). The machine records them
 	// into State.Sets; the console sends nothing here.
 	Sets string `json:"sets"`
+	// PeriodEnd is where the period ends on a clock counting up, in tenths
+	// (the phone scorer sends it; 0 for a countdown or a console frame).
+	PeriodEnd int `json:"period_end"`
+	// Suspensions are the 2-minute suspensions running, home first (the phone
+	// scorer sends them; the console sends none).
+	Suspensions []Suspension `json:"suspensions"`
 	// setCounts is true when the frame carried home_sets or away_sets.
 	setCounts bool
+}
+
+// Suspension is one running suspension; Left is "MM:SS" and Number is empty
+// until the scorer adds it.
+type Suspension struct {
+	Team   string `json:"team"` // "home" or "away"
+	ID     int    `json:"id"`
+	Number string `json:"number"`
+	Left   string `json:"left"`
 }
 
 // SetScore is one finished set of a sets sport (volleyball). A set seeded
@@ -295,6 +310,12 @@ type Machine struct {
 	OnEvent    func(event string, fields map[string]any)
 	seen       seen
 	autoSwitch bool // the program picked the screen, not the volunteer
+	// restored is the floor for seen.susp after a restart, until the scorer's
+	// first frame has been applied.
+	restored struct {
+		susp    int
+		pending bool
+	}
 
 	zeroSince  time.Time // clock at 0 in the last regulation period or later since then
 	finalDone  int       // period whose end already fired "final"
@@ -365,6 +386,7 @@ type seen struct {
 	box        bool
 	periods    int
 	sets       int
+	susp       int // the highest suspension ID on air
 	demo       bool
 }
 
@@ -374,7 +396,14 @@ func (m *Machine) seenNow() seen {
 	if lt.Visible {
 		shown = lt.Type + ":" + lt.Number
 	}
-	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), m.s.Demo}
+	susp := 0
+	for _, x := range m.s.Live.Suspensions {
+		susp = max(susp, x.ID)
+	}
+	if m.restored.pending {
+		susp = max(susp, m.restored.susp)
+	}
+	return seen{m.s.Screen.Current, shown, m.s.Box.Connected, len(m.s.Periods), len(m.s.Sets), susp, m.s.Demo}
 }
 
 // EmitCurrent tells OnEvent the screen, lower third and box as they are now
@@ -416,6 +445,11 @@ func (m *Machine) emit() {
 	for i := old.sets; i < cur.sets; i++ {
 		s := m.s.Sets[i]
 		m.OnEvent("set", map[string]any{"set": s.Set, "home": s.Home, "away": s.Away})
+	}
+	for _, x := range m.s.Live.Suspensions {
+		if x.ID > old.susp {
+			m.OnEvent("suspension", map[string]any{"team": x.Team, "number": x.Number})
+		}
 	}
 }
 
@@ -668,6 +702,7 @@ func (m *Machine) ResetPeriods() {
 	m.s.Periods, m.realPeriods = []Period{}, nil
 	m.s.Sets, m.realSets = []SetScore{}, nil
 	m.finalDone, m.matchOver, m.zeroSince = 0, false, time.Time{}
+	m.restored.pending = false
 	m.changed()
 	save := m.saver(true)
 	m.mu.Unlock()
@@ -680,6 +715,17 @@ func (m *Machine) RestoreSets(ss []SetScore) {
 	m.s.Sets = append([]SetScore{}, ss...)
 	m.seen.sets = len(ss) // restored, not recorded now
 	m.changed()
+	m.mu.Unlock()
+}
+
+// RestoreSeen sets the highest suspension ID the scorer had given out before
+// a restart, so the suspensions it still holds are not told as new. The floor
+// lasts until the scorer's first frame has been applied: SetGame runs
+// changed() before that frame, and a floor kept only in seen would be undone.
+func (m *Machine) RestoreSeen(susp int) {
+	m.mu.Lock()
+	m.restored.susp, m.restored.pending = susp, true
+	m.seen.susp = susp
 	m.mu.Unlock()
 }
 
@@ -729,6 +775,11 @@ func (m *Machine) ApplyConsole(v map[string]string) {
 		Shot: v["shot_clock"], Sport: v["sport"],
 		HomeTimeouts: num("home_timeouts"), AwayTimeouts: num("away_timeouts"),
 		HomeSets: num("home_sets"), AwaySets: num("away_sets"), Serve: v["serve"], Sets: v["sets"],
+		PeriodEnd: num("period_end"),
+	}
+	// Bad JSON leaves the list empty; the frame still counts.
+	if err := json.Unmarshal([]byte(v["suspensions"]), &l.Suspensions); err != nil {
+		l.Suspensions = nil
 	}
 	_, hasHome := v["home_sets"]
 	_, hasAway := v["away_sets"]
@@ -793,6 +844,9 @@ func (m *Machine) update(l Live, fromDemo bool) {
 	}
 	recorded := m.setLive(l)
 	m.changed()
+	if !fromDemo {
+		m.restored.pending = false // this frame's diff has respected the floor
+	}
 	snap := m.snapshot()
 	save := m.recordedSaver(recorded)
 	m.mu.Unlock()
@@ -842,7 +896,12 @@ func (m *Machine) setLive(l Live) bool {
 	}
 
 	t := Tenths(l.Clock)
-	if !m.started && t >= 0 && m.lastTenths > 0 && t < m.lastTenths {
+	up := r.CountUp()
+	began := t >= 0 && m.lastTenths > 0 && t < m.lastTenths
+	if up {
+		began = t >= 0 && m.lastTenths >= 0 && t > m.lastTenths
+	}
+	if !m.started && began {
 		m.started = true
 		cur := m.s.Screen.Current
 		if newP > r.Half && (cur == "intervalo" || cur == "final") {
@@ -851,7 +910,7 @@ func (m *Machine) setLive(l Live) bool {
 	}
 	m.lastTenths = t
 
-	if newP >= r.Periods && t == 0 {
+	if m.holding(l, newP, t, r) {
 		if m.zeroSince.IsZero() {
 			m.zeroSince = m.now()
 		}
@@ -859,6 +918,27 @@ func (m *Machine) setLive(l Live) bool {
 		m.zeroSince = time.Time{}
 	}
 	return m.checkFinal() || recorded
+}
+
+// holding reports whether the clock sits at the end of the game: a countdown
+// at 0 in the last period or later; a count-up that stops at the end of its
+// period at (or past) that end in the last period or later. A count-up that
+// runs on (soccer) never holds.
+func (m *Machine) holding(l Live, period, t int, r sport.Profile) bool {
+	if period < r.Periods {
+		return false
+	}
+	if !r.CountUp() {
+		return t == 0
+	}
+	if !r.StopAtEnd {
+		return false
+	}
+	end := l.PeriodEnd
+	if end == 0 {
+		end = r.End(period, r.Length)
+	}
+	return end > 0 && t >= end
 }
 
 // setSets is setLive for a sets sport: it records a set when the count of sets
@@ -999,6 +1079,13 @@ func ClockText(t int) string {
 		return fmt.Sprintf("%02d:%02d", s/60, s%60)
 	}
 	return fmt.Sprintf("%d.%d", t/10, t%10)
+}
+
+// ClockTextUp formats the tenths of a clock counting up: the whole seconds
+// played, always "MM:SS" ("00:12", "30:00", "59:59").
+func ClockTextUp(t int) string {
+	s := max(t, 0) / 10
+	return fmt.Sprintf("%02d:%02d", s/60, s%60)
 }
 
 // Tenths parses "MM:SS" or "S.T" into tenths of a second, -1 if empty.

@@ -1,6 +1,7 @@
 package source
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,13 +17,19 @@ type Score struct {
 	Home         int  `json:"home"`
 	Away         int  `json:"away"`
 	Period       int  `json:"period"`  // 1 and up; 5 is the first overtime
-	Clock        int  `json:"clock"`   // tenths of a second left in the period
-	Running      bool `json:"running"` // the clock is counting down
+	Clock        int  `json:"clock"`   // tenths on the clock: left in the period for a countdown, played in the game for a count-up
+	Running      bool `json:"running"` // the clock is running
 	Length       int  `json:"length"`  // tenths of a second in a period
 	HomeFouls    int  `json:"home_fouls"`
 	AwayFouls    int  `json:"away_fouls"`
 	HomeTimeouts int  `json:"home_timeouts"`
 	AwayTimeouts int  `json:"away_timeouts"`
+
+	// Handball. Fixed arrays keep a Score comparable with ==; three
+	// suspensions per team run at most. NextSusp is the last ID given out.
+	HomeSusp [maxSusp]Suspension `json:"home_susp"`
+	AwaySusp [maxSusp]Suspension `json:"away_susp"`
+	NextSusp int                 `json:"next_susp"`
 
 	// Volleyball. Sets is an array, not a slice, so a Score stays comparable
 	// with ==; a played set has a Winner, an empty slot has none.
@@ -32,6 +39,27 @@ type Score struct {
 
 // maxSets is the most sets a match can have (best of 5).
 const maxSets = 5
+
+// maxSusp is the most suspensions a team can have running.
+const maxSusp = 3
+
+// Suspension is one running suspension; an empty slot has ID 0.
+type Suspension struct {
+	ID     int    `json:"id"`
+	Number string `json:"number"` // shirt number, "" until the scorer adds it
+	End    int    `json:"end"`    // the game clock (count-up, tenths) at which it ends
+}
+
+// expire empties every suspension slot that has run out at the clock.
+func (s *Score) expire() {
+	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
+		for i, x := range side {
+			if x.ID != 0 && x.End <= s.Clock {
+				side[i] = Suspension{}
+			}
+		}
+	}
+}
 
 // played is how many sets are finished, and how many each side won.
 func (s Score) played() (n, home, away int) {
@@ -62,6 +90,9 @@ const (
 
 func newScore(length int) Score { return Score{Period: 1, Clock: length, Length: length} }
 
+// newScoreAt is newScore with the clock at start: 0 for a count-up sport.
+func newScoreAt(length, start int) Score { return Score{Period: 1, Clock: start, Length: length} }
+
 // Action is one tap on the scorer's page. Do is one of:
 //   - "point": N points (-3 to 3, not 0) for Team; never below 0
 //   - "foul", "timeout": N (1 or -1) for Team; never below 0
@@ -71,18 +102,27 @@ func newScore(length int) Score { return Score{Period: 1, Clock: length, Length:
 //   - "set_next": ends the set (volleyball): refused until the points win it;
 //     the score goes into the finished sets, the points and timeouts to 0 and
 //     the serve to nobody; refused once a team has won the match
-//   - "clock_start", "clock_stop"
-//   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps running
-//   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0 and MaxClock
+//   - "clock_start", "clock_stop": a count-up clock that stops at the end of
+//     its period (handball) does not start at the end
+//   - "clock_set": the clock to Tenths (0 to MaxClock); a running clock keeps
+//     running; a count-up clock is kept inside the current period
+//   - "clock_add": Tenths more (or less, below 0) on the clock, kept between 0
+//     and MaxClock (a count-up: inside the current period)
 //   - "period_next": the next period, with the clock stopped at the period
-//     length (an overtime runs the sport's OvertimeLength when it sets one)
+//     length (an overtime runs the sport's OvertimeLength when it sets one; a
+//     count-up clock starts at the time already played)
 //     and the team fouls at 0 when the sport resets them for that period (futsal
 //     carries them into extra time); the timeouts go back to 0 when the
 //     sport's profile says so (basketball: the second half and each overtime)
-//   - "period_back": the period before, the clock stopped where it is
+//   - "period_back": the period before, the clock stopped where it is (a
+//     count-up clock: at the end of the period before)
 //   - "period_length": the period length to Tenths (above 0); a clock
 //     stopped at the old length moves to the new one
-//   - "new_game": 0-0 in period 1, the clock at the period length
+//   - "new_game": 0-0 in period 1, the clock at the period length (a count-up: 0)
+//   - "suspension": starts the sport's suspension for Team, in its first
+//     free slot (three at most); it runs on the game clock, so it stops with it
+//   - "suspension_number": the shirt Number (1 to 3 digits, or "" to clear) of suspension ID
+//   - "suspension_end": ends suspension ID early
 //
 // A sets sport (volleyball) takes only +1 or -1 point, which also gives the
 // serve to the team that scored; it refuses fouls, the clock and the period
@@ -92,6 +132,8 @@ type Action struct {
 	Team   string `json:"team"` // "home" or "away"
 	N      int    `json:"n"`
 	Tenths int    `json:"tenths"`
+	ID     int    `json:"id"`     // a suspension's ID
+	Number string `json:"number"` // a suspension's shirt number
 }
 
 var (
@@ -106,6 +148,11 @@ var (
 	errSetOpen  error = i18n.Key("manual.set_por_acabar")
 	errGameOver error = i18n.Key("manual.jogo_acabou")
 	errNoClock  error = i18n.Key("manual.sem_relogio")
+
+	errSuspFull   error = i18n.Key("manual.suspensoes_cheias")
+	errNoSusp     error = i18n.Key("manual.sem_exclusoes")
+	errSuspGone   error = i18n.Key("manual.exclusao_desconhecida")
+	errSuspNumber error = i18n.Key("manual.exclusao_numero")
 )
 
 // Manual is the score kept by hand on a phone (the /marcar page). The page
@@ -166,6 +213,11 @@ func (m *Manual) Restore(s Score) {
 	s.Period = max(s.Period, 1)
 	s.Clock = min(max(s.Clock, 0), MaxClock)
 	s.Running = false
+	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
+		for i := range side {
+			side[i].End = min(max(side[i].End, 0), 2*MaxClock)
+		}
+	}
 	m.mu.Lock()
 	m.s, m.undo = s, nil
 	m.mu.Unlock()
@@ -188,7 +240,7 @@ func (m *Manual) Seed(l state.Live) {
 		HomeFouls: l.HomeFouls, AwayFouls: l.AwayFouls, HomeTimeouts: l.HomeTimeouts, AwayTimeouts: l.AwayTimeouts}
 	s.Clock = min(state.Tenths(l.Clock), MaxClock)
 	if s.Clock < 0 {
-		s.Clock = s.Length
+		s.Clock = m.Rules().Start(p, s.Length)
 	}
 	m.s, m.undo = s, nil
 	m.changed()
@@ -231,7 +283,8 @@ func (m *Manual) Heartbeat() {
 }
 
 // SetLength sets the period length to tenths, as "period_length" does: a
-// clock sitting at the old length moves to the new one. It is for the server,
+// clock sitting at the old start (the old length, or 0 on a count-up) moves to
+// the new sport's start, and suspensions are cleared. It is for the server,
 // when the game's sport changes, so unlike Do it is not the phone calling in
 // and it leaves the undo list alone. It only touches a fresh game (period 1,
 // 0-0, no set played, the clock stopped) and changes nothing otherwise: a game
@@ -248,10 +301,14 @@ func (m *Manual) SetLength(tenths int) error {
 		return nil
 	}
 	prev := m.s
-	if m.s.Clock == m.s.Length {
-		m.s.Clock = tenths
+	// A fresh clock sits at the old sport's start: the old length (a countdown)
+	// or 0 (a count-up). It goes to the new sport's start, and suspensions
+	// from the old game go.
+	if m.s.Clock == m.s.Length || m.s.Clock == 0 {
+		m.s.Clock = m.Rules().Start(1, tenths)
 	}
 	m.s.Length = tenths
+	m.s.HomeSusp, m.s.AwaySusp, m.s.NextSusp = [maxSusp]Suspension{}, [maxSusp]Suspension{}, 0
 	if m.s != prev {
 		m.changed()
 	}
@@ -311,10 +368,11 @@ func (m *Manual) Do(a Action) error {
 			u.s.Clock, u.s.Running = s.Clock, s.Running
 		}
 		*s = u.s
+		s.expire()
 		m.changed()
 		return nil
 	case "clock_start":
-		if !s.Running && s.Clock > 0 {
+		if !s.Running && m.clockCanStart(r, s) {
 			s.Running, m.from, m.fromClock = true, m.Now(), s.Clock
 		}
 	case "clock_stop":
@@ -323,21 +381,25 @@ func (m *Manual) Do(a Action) error {
 		if a.Tenths < 0 || a.Tenths > MaxClock {
 			return errClock
 		}
-		s.Clock, m.from, m.fromClock, clock = a.Tenths, m.Now(), a.Tenths, true
-		s.Running = s.Running && s.Clock > 0
+		s.Clock, clock = a.Tenths, true
+		if r.CountUp() {
+			s.Clock = clampUp(r, s, s.Clock)
+		}
+		m.from, m.fromClock = m.Now(), s.Clock
+		s.Running = s.Running && m.clockCanStart(r, s)
 	case "clock_add":
 		if a.Tenths == 0 || a.Tenths < -MaxClock || a.Tenths > MaxClock {
 			return errClock
 		}
 		s.Clock = min(max(s.Clock+a.Tenths, 0), MaxClock)
+		if r.CountUp() {
+			s.Clock = clampUp(r, s, s.Clock)
+		}
 		m.from, m.fromClock, clock = m.Now(), s.Clock, true
-		s.Running = s.Running && s.Clock > 0
+		s.Running = s.Running && m.clockCanStart(r, s)
 	case "period_next":
 		s.Period++
-		s.Clock, s.Running, clock = s.Length, false, true
-		if r.Overtime(s.Period) && r.OvertimeLength > 0 {
-			s.Clock = r.OvertimeLength
-		}
+		s.Clock, s.Running, clock = r.Start(s.Period, s.Length), false, true
 		if r.ResetsFouls(s.Period) {
 			s.HomeFouls, s.AwayFouls = 0, 0
 		}
@@ -345,17 +407,53 @@ func (m *Manual) Do(a Action) error {
 			s.HomeTimeouts, s.AwayTimeouts = 0, 0
 		}
 	case "period_back":
+		if r.CountUp() && s.Period > 1 {
+			s.Clock = r.End(s.Period-1, s.Length)
+		}
 		s.Period, s.Running, clock = max(s.Period-1, 1), false, true
 	case "period_length":
 		if a.Tenths <= 0 || a.Tenths > MaxClock {
 			return errClock
 		}
-		if !s.Running && s.Clock == s.Length {
-			s.Clock = a.Tenths
+		if !s.Running && s.Clock == r.Start(s.Period, s.Length) {
+			s.Clock = r.Start(s.Period, a.Tenths)
 		}
 		s.Length, clock = a.Tenths, true
 	case "new_game":
-		*s, clock = newScore(s.Length), true
+		*s, clock = newScoreAt(s.Length, r.Start(1, s.Length)), true
+	case "suspension":
+		if r.Suspensions == 0 {
+			return errNoSusp
+		}
+		side, err := suspSide(s, a.Team)
+		if err != nil {
+			return err
+		}
+		i := 0
+		for i < maxSusp && side[i].ID != 0 {
+			i++
+		}
+		if i == maxSusp {
+			return errSuspFull
+		}
+		s.NextSusp++
+		side[i] = Suspension{ID: s.NextSusp, End: s.Clock + r.Suspensions}
+	case "suspension_number", "suspension_end":
+		if r.Suspensions == 0 {
+			return errNoSusp
+		}
+		x := s.suspension(a.ID)
+		if x == nil {
+			return errSuspGone
+		}
+		if a.Do == "suspension_end" {
+			*x = Suspension{}
+			break
+		}
+		if !validNumber(a.Number) {
+			return errSuspNumber
+		}
+		x.Number = a.Number
 	default:
 		return i18n.Err("manual.acao_desconhecida", "acao", a.Do)
 	}
@@ -370,6 +468,64 @@ func (m *Manual) Do(a Action) error {
 	}
 	m.changed()
 	return nil
+}
+
+// clockCanStart reports whether a stopped clock may start: a countdown above
+// 0, a count-up below the end of its period (below MaxClock when it runs on).
+func (m *Manual) clockCanStart(r sport.Profile, s *Score) bool {
+	if !r.CountUp() {
+		return s.Clock > 0
+	}
+	return s.Clock < clampUp(r, s, MaxClock)
+}
+
+// clampUp keeps t inside the current period of a count-up clock: from its
+// start to its end, or to MaxClock when the sport's clock runs on.
+func clampUp(r sport.Profile, s *Score, t int) int {
+	hi := MaxClock
+	if r.StopAtEnd {
+		hi = min(r.End(s.Period, s.Length), MaxClock)
+	}
+	return min(max(t, r.Start(s.Period, s.Length)), hi)
+}
+
+// suspSide is the team's three suspension slots.
+func suspSide(s *Score, team string) (*[maxSusp]Suspension, error) {
+	switch team {
+	case "home":
+		return &s.HomeSusp, nil
+	case "away":
+		return &s.AwaySusp, nil
+	}
+	return nil, errTeam
+}
+
+// suspension is the running suspension with id, nil when there is none.
+func (s *Score) suspension(id int) *Suspension {
+	if id <= 0 {
+		return nil
+	}
+	for _, side := range []*[maxSusp]Suspension{&s.HomeSusp, &s.AwaySusp} {
+		for i := range side {
+			if side[i].ID == id {
+				return &side[i]
+			}
+		}
+	}
+	return nil
+}
+
+// validNumber is a shirt number: 1 to 3 digits, or empty to clear it.
+func validNumber(n string) bool {
+	if len(n) > 3 {
+		return false
+	}
+	for _, c := range n {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // refused is the error for an action the sport's kind of scoring does not
@@ -498,7 +654,8 @@ func (m *Manual) Tick() {
 	}
 	m.s = m.current()
 	was := m.sent
-	if state.ClockText(m.s.Clock) == state.ClockText(was.Clock) && m.s.Running == was.Running {
+	if m.clockText(m.s.Clock) == m.clockText(was.Clock) && m.s.Running == was.Running &&
+		suspensionsJSON(m.s) == suspensionsJSON(was) {
 		return
 	}
 	if m.s.Clock/10 != was.Clock/10 || !m.s.Running {
@@ -507,14 +664,65 @@ func (m *Manual) Tick() {
 	m.emit()
 }
 
-// current is the score with the running clock brought up to now; it stops at 0.
+// current is the score with the running clock brought up to now. A countdown
+// stops at 0; a count-up stops at the end of its period when the sport says
+// so, else at MaxClock. Suspensions that have run out are gone.
 func (m *Manual) current() Score {
 	s := m.s
+	r := m.Rules()
 	if s.Running {
-		s.Clock = max(m.fromClock-int(m.Now().Sub(m.from)/(100*time.Millisecond)), 0)
-		s.Running = s.Clock > 0
+		elapsed := int(m.Now().Sub(m.from) / (100 * time.Millisecond))
+		if r.CountUp() {
+			s.Clock = m.fromClock + elapsed
+			if hi := clampUp(r, &s, MaxClock); s.Clock >= hi {
+				s.Clock, s.Running = hi, false
+			}
+		} else {
+			s.Clock = max(m.fromClock-elapsed, 0)
+			s.Running = s.Clock > 0
+		}
+	}
+	if r.Suspensions > 0 {
+		s.expire()
 	}
 	return s
+}
+
+// clockText is the clock as the box shows it: MM:SS counting up, or the
+// countdown's text.
+func (m *Manual) clockText(t int) string {
+	if m.Rules().CountUp() {
+		return state.ClockTextUp(t)
+	}
+	return state.ClockText(t)
+}
+
+// suspensionsJSON is the running suspensions for the state, home first:
+// [{"team":"home","id":1,"number":"7","left":"01:23"}, ...]. A slot whose
+// time has run out is never in it.
+func suspensionsJSON(s Score) string {
+	type out struct {
+		Team   string `json:"team"`
+		ID     int    `json:"id"`
+		Number string `json:"number"`
+		Left   string `json:"left"`
+	}
+	list := []out{}
+	for _, side := range []struct {
+		team  string
+		slots [maxSusp]Suspension
+	}{{"home", s.HomeSusp}, {"away", s.AwaySusp}} {
+		for _, x := range side.slots {
+			if x.ID != 0 && x.End > s.Clock {
+				list = append(list, out{side.team, x.ID, x.Number, state.ClockTextUp(x.End - s.Clock)})
+			}
+		}
+	}
+	b, err := json.Marshal(list)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
 }
 
 // The rest run with mu held.
@@ -560,15 +768,24 @@ func (m *Manual) emit() {
 			"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
 			"home_sets": n(hs), "away_sets": n(as), "serve": s.Serve,
 			"sets": strings.Join(done, ","), "shot_clock": "",
+			"period_end": "", "suspensions": "[]",
 		})
 		return
 	}
+	r := m.Rules()
+	end, susp := "", "[]"
+	if r.CountUp() {
+		end = n(r.End(s.Period, s.Length))
+	}
+	if r.Suspensions > 0 {
+		susp = suspensionsJSON(s)
+	}
 	m.out(map[string]string{
 		"home": n(s.Home), "away": n(s.Away),
-		"clock": state.ClockText(s.Clock), "period": n(s.Period),
+		"clock": m.clockText(s.Clock), "period": n(s.Period), "period_end": end,
 		"home_fouls": n(s.HomeFouls), "away_fouls": n(s.AwayFouls),
 		"home_timeouts": n(s.HomeTimeouts), "away_timeouts": n(s.AwayTimeouts),
-		"shot_clock": "",
+		"shot_clock": "", "suspensions": susp,
 	})
 }
 

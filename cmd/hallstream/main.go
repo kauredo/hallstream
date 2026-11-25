@@ -193,6 +193,7 @@ func main() {
 	manual := source.NewManual(&source.Manual{Save: func(s source.Score) error { return st.SaveManual(s) }, Log: say,
 		Rules: func() sport.Profile { return sport.Get(st.GameSport()) }})
 	restoreManual(st, manual)
+	m.RestoreSeen(highestSuspension(manual.Score()))
 	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader
 	if !*demo {
@@ -390,6 +391,18 @@ func restoreManual(st *store.Store, mn *source.Manual) {
 		return
 	}
 	mn.Restore(sc)
+}
+
+// highestSuspension is the newest suspension ID the scorer still holds, 0 when
+// it holds none: the timeline must not tell those as new after a restart.
+func highestSuspension(sc source.Score) int {
+	n := 0
+	for _, side := range [][len(sc.HomeSusp)]source.Suspension{sc.HomeSusp, sc.AwaySusp} {
+		for _, x := range side {
+			n = max(n, x.ID)
+		}
+	}
+	return n
 }
 
 // saveHistory writes the game's periods to dados/jogos each time one ends.

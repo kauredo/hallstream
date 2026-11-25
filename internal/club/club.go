@@ -30,7 +30,7 @@ type Sport struct {
 var Sports = []Sport{
 	{"basketball", "BASQUETEBOL", "BASKET", true},
 	{"futsal", "FUTSAL", "FUTSAL", true},
-	{"handball", "ANDEBOL", "ANDEBOL", false},
+	{"handball", "ANDEBOL", "ANDEBOL", true},
 	{"volleyball", "VOLEIBOL", "VOLEIBOL", true},
 	{"soccer", "FUTEBOL", "FUTEBOL", false},
 }

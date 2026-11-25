@@ -2158,8 +2158,8 @@
   }
 
   /* Club profile (settings.club): what the overlay shows for the home side, in the club's colours.
-     SPORTS follows club.Sports in internal/club; basketball, futsal and volleyball work so far. */
-  var SPORTS = [['basketball', t('painel.desporto.basketball'), true], ['futsal', t('painel.desporto.futsal'), true], ['handball', t('painel.desporto.handball')],
+     SPORTS follows club.Sports in internal/club; basketball, futsal, handball and volleyball work so far. */
+  var SPORTS = [['basketball', t('painel.desporto.basketball'), true], ['futsal', t('painel.desporto.futsal'), true], ['handball', t('painel.desporto.handball'), true],
     ['volleyball', t('painel.desporto.volleyball'), true], ['soccer', t('painel.desporto.soccer')]];
   var COUNTRIES = [['PT', t('painel.pais.pt')], ['ES', t('painel.pais.es')], ['FR', t('painel.pais.fr')], ['LU', t('painel.pais.lu')], ['CH', t('painel.pais.ch')],
     ['BR', t('painel.pais.br')], ['AO', t('painel.pais.ao')], ['CV', t('painel.pais.cv')], ['MZ', t('painel.pais.mz')]];

@@ -98,11 +98,33 @@
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' +
       pad(d.getMinutes()) + ':00' + sign + pad(Math.floor(off / 60)) + ':' + pad(off % 60);
   }
+  // The club's time zone (window.HS_TZ, from /i18n.js): typed times are its wall clock, wherever the PC's clock is set.
+  var TZ = window.HS_TZ || 'Europe/Lisbon';
+  function zoneParts(d) {
+    var p = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  // "2026-12-20T18:30" on the club's clock, as RFC 3339 with the zone's offset on that day.
+  function zonedISO(wall) {
+    var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(wall || '');
+    if (!m) return '';
+    var want = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]), at = want;
+    for (var i = 0; i < 3; i++) {
+      var p = zoneParts(new Date(at));
+      at += want - Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute);
+    }
+    var off = Math.round((want - at) / 60000), sign = off >= 0 ? '+' : '-';
+    off = Math.abs(off);
+    return m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00' + sign + pad(Math.floor(off / 60)) + ':' + pad(off % 60);
+  }
   function toInputDT(iso) {
     if (!iso) return '';
     var d = new Date(iso);
     if (isNaN(d)) return '';
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + hhmm(d);
+    var p = zoneParts(d);
+    return p.year + '-' + p.month + '-' + p.day + 'T' + p.hour + ':' + p.minute;
   }
   function luminance(hex) {
     var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
@@ -311,6 +333,8 @@
       refreshInicio();
       var dl = $('#dLang');
       if (dl && s && s.langs && dl.options.length !== s.langs.length) dl.innerHTML = langOptions(s.langs);
+      var dz = $('#dTz');
+      if (dz && s && s.timezone && !(S.settings.club || {}).timezone) dz.options[0].textContent = t('painel.clube.fuso_pais_n', { fuso: s.timezone.replace(/_/g, ' ') });
       // The PC card needs the status: draw it once it comes in.
       if (S.tab === 'definicoes' && s && s.shortcut && !$('#dShortcut')) renderDefinicoes();
     }, function () {});
@@ -590,7 +614,7 @@
       e.preventDefault();
       var gid = S.draft.group_id, btn = e.target.querySelector('[type="submit"]'), crest = $('#fxCrest').files[0];
       var body = {
-        start: $('#fxStart').value ? isoLocal(new Date($('#fxStart').value)) : '',
+        start: zonedISO($('#fxStart').value),
         home: $('#fxHome').value === '1',
         opponent: { name: $('#fxName').value.trim(), short: $('#fxShort').value.trim() },
         venue: $('#fxVenue').value.trim(), competition: $('#fxComp').value.trim(), round: $('#fxRound').value.trim()
@@ -667,7 +691,7 @@
       } else if (tx.id === 'jColor') {
         d.away.color = tx.value.toUpperCase(); renderJogo();
       } else if (tx.id === 'jStart') {
-        d.start = tx.value ? isoLocal(new Date(tx.value)) : '';
+        d.start = zonedISO(tx.value);
       } else if (tx.id === 'jCrestFile' && tx.files && tx.files[0]) {
         var fd = new FormData(); fd.append('file', tx.files[0]);
         busy(tx.closest('label'), function () {
@@ -839,7 +863,7 @@
   function nextLabel(n) {
     var d = new Date(n.start), opp = (n.opponent && n.opponent.name) || '';
     if (isNaN(d)) return opp;
-    var when = new Intl.DateTimeFormat(t('data.locale'), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Lisbon' }).format(d);
+    var when = new Intl.DateTimeFormat(t('data.locale'), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: TZ }).format(d);
     return opp + ' · ' + when.replace(/\./g, '');
   }
 
@@ -2107,6 +2131,15 @@
   // The FPB import is for Portuguese basketball clubs only.
   function fpbFor(c) { c = c || {}; return (c.country || 'PT') === 'PT' && (c.sport || 'basketball') === 'basketball'; }
   function fpbOffered() { return fpbFor(S.settings && S.settings.club); }
+  // Every zone the browser knows, after "from the country"; the club's saved zone stays listed even if it doesn't.
+  function zoneOptions(cur) {
+    var all = (Intl.supportedValuesOf && Intl.supportedValuesOf('timeZone')) || [];
+    if (cur && all.indexOf(cur) < 0) all = [cur].concat(all);
+    // With no zone picked, the status names the country's.
+    var auto = !cur && S.status && S.status.timezone ? t('painel.clube.fuso_pais_n', { fuso: S.status.timezone.replace(/_/g, ' ') }) : t('painel.clube.fuso_pais');
+    return '<option value=""' + (cur ? '' : ' selected') + '>' + esc(auto) + '</option>' +
+      all.map(function (z) { return '<option value="' + esc(z) + '"' + (z === cur ? ' selected' : '') + '>' + esc(z.replace(/_/g, ' ')) + '</option>'; }).join('');
+  }
   function clubCard(s) {
     var c = s.club || {}, crest = c.crest || '/assets/crest.svg', country = c.country || 'PT';
     var countries = COUNTRIES.some(function (x) { return x[0] === country; }) ? COUNTRIES : COUNTRIES.concat([[country, country]]);
@@ -2132,6 +2165,7 @@
         '<label class="field"><span>' + t('painel.clube.pais') + '</span><select id="dCountry">' + countries.map(function (x) {
           return '<option value="' + esc(x[0]) + '"' + (x[0] === country ? ' selected' : '') + '>' + esc(x[1]) + '</option>';
         }).join('') + '</select></label>' +
+        '<label class="field"><span>' + t('painel.clube.fuso') + '</span><select id="dTz">' + zoneOptions(c.timezone || '') + '</select></label>' +
       '</div></div>' +
       '<p class="hint" style="margin-top:12px">' + t('painel.clube.cores_dica') + '</p>' +
       '<div class="cols" style="margin-top:8px">' +
@@ -2434,7 +2468,7 @@
     s.club = Object.assign({}, s.club, {
       name: $('#dHome').value.trim(), short: $('#dHomeShort').value.trim().toUpperCase(),
       primary: $('#dPrimary').value.toUpperCase(), secondary: $('#dSecondary').value.toUpperCase(),
-      sport: $('#dSport').value, country: $('#dCountry').value
+      sport: $('#dSport').value, country: $('#dCountry').value, timezone: $('#dTz').value
     });
     s.instagram = $('#dInsta').value.trim();
     s.club_search = $('#dClubSearch').value.trim();
@@ -2479,7 +2513,12 @@
           var m = b.parentElement.querySelector('.msg'); m.className = 'msg err'; m.textContent = t('painel.definicoes.pin_telemovel'); return;
         }
         busy(b, function () {
-          return api('PUT', '/api/settings', s).then(function (r) { S.settings = r || s; renderChips(); loadStatus(); });
+          var zoneWas = S.status && S.status.timezone;
+          return api('PUT', '/api/settings', s).then(function (r) {
+            S.settings = r || s; renderChips();
+            // The pages read the club's zone once, from /i18n.js: a new zone means a reload.
+            return api('GET', '/api/status').then(function (st) { if (zoneWas && st.timezone !== zoneWas) location.reload(); else loadStatus(); });
+          });
         });
       } else if (b.dataset.act === 'shortcut') {
         busy(b, function () { return createShortcut(true); }, t('painel.definicoes.atalho_ok'));

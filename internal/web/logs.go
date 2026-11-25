@@ -93,7 +93,7 @@ func (s *Server) logsEnd(rec *ytRecord) {
 		Escalao: r.Escalao, Opponent: r.Opponent, StreamStart: start.Format(time.RFC3339), StreamEnd: end.Format(time.RFC3339),
 		Score: gamelog.Score{Home: snap.Live.Home, Away: snap.Live.Away}, BoxAddress: snap.Box.Scan.Address, BoxName: snap.Box.Scan.Name}
 	if rec == nil {
-		meta.Title, _ = broadcastText(snap.Game, start)
+		meta.Title, _ = broadcastText(snap.Game, start.In(s.zone()))
 		meta.Opponent = teamName(snap.Game.Away.Name)
 		if snap.Game.Group != nil {
 			meta.Escalao = snap.Game.Group.Name
@@ -133,7 +133,7 @@ func (s *Server) scrubber() func([]byte) []byte {
 func (s *Server) timelineGame(g store.Game, out state.Game) {
 	key := ""
 	if g.Picked() {
-		key = gameKey(g)
+		key = gameKey(g, s.zone())
 	}
 	line := key + "\x00" + out.Home.Name + "\x00" + out.Away.Name
 	if line == s.lastGame {

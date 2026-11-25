@@ -15,7 +15,7 @@
     return c;
   }
   var COND = '"Barlow Condensed", sans-serif', TEXT = 'Barlow, sans-serif', DISPLAY = 'Graduate, serif';
-  var TZ = 'Europe/Lisbon';
+  var TZ = window.HS_TZ || 'Europe/Lisbon'; // the club's zone, from /i18n.js
   var TAN12 = Math.tan(12 * Math.PI / 180);
   // Faixa principal: nomes de T a M, resultados de M a B.
   var T = 236, M = 566, B = 806;

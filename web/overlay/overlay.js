@@ -33,7 +33,7 @@
   // The credit shows only where the bottom-right corner is free: the strip and the time-out window fill it elsewhere.
   const CREDIT_SCREENS = new Set(['marcador', 'apoiantes', 'promo']);
   const SQUAD_MAX = 12;
-  const TZ = 'Europe/Lisbon';
+  const TZ = window.HS_TZ || 'Europe/Lisbon'; // the club's zone, from /i18n.js
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -504,7 +504,7 @@
       v.startLine = '';
     }
 
-    // Próximo jogo: weekday ("SEXTA"), day ("20 NOV") and time in Lisbon.
+    // Próximo jogo: weekday ("SEXTA"), day ("20 NOV") and time in the club's zone.
     const next = game.next || null;
     const ns = next && next.start ? new Date(next.start) : null;
     const nsOK = ns && !isNaN(ns);

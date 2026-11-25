@@ -190,7 +190,7 @@ func (s *Server) routes() {
 	for _, dir := range []string{"/overlay/", "/painel/", "/marcar/", "/i18n/", "/fonts/", "/assets/"} {
 		m.Handle("GET "+dir, static)
 	}
-	m.HandleFunc("GET /i18n.js", words)
+	m.HandleFunc("GET /i18n.js", s.words)
 	media := http.StripPrefix("/media/", http.FileServer(http.Dir(s.Store.MediaDir())))
 	m.HandleFunc("GET /media/", func(w http.ResponseWriter, r *http.Request) {
 		// Logos come from outside (FPB, uploads): an SVG must never run scripts.
@@ -475,6 +475,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		"fpb":         map[string]any{"reachable": reachable, "cached_at": cached},
 		"club_setup":  s.progress(),
 		"langs":       i18n.Languages(),
+		"timezone":    s.zone().String(),
 		"update":      s.newerRelease(),
 		"feedback":    s.FeedbackURL != "",
 		"data_dir":    s.Store.Dir,
@@ -560,8 +561,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 // words is /i18n.js: window.I18N, every string of the panel and the overlay
-// in settings.lang, with pt under it, so the pages have them before they draw.
-func words(w http.ResponseWriter, r *http.Request) {
+// in settings.lang, with pt under it, so the pages have them before they draw,
+// and window.HS_TZ, the club's time zone.
+func (s *Server) words(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(i18n.Words())
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
@@ -569,7 +571,9 @@ func words(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	fmt.Fprintf(w, "window.I18N = %s;\n", b)
+	zone, _ := json.Marshal(s.zone().String())
+	// The club's time zone, for the dates and times the pages draw.
+	fmt.Fprintf(w, "window.I18N = %s;\nwindow.HS_TZ = %s;\n", b, zone)
 }
 
 // forCaller hides the OBS password from other devices: OBS's server listens

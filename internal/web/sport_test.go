@@ -23,7 +23,7 @@ func TestPutGroupSport(t *testing.T) {
 	s := newServer(t)
 	var g store.Group
 	call(t, s, "POST", "/api/groups", map[string]string{"name": "Sub 16"}, &g)
-	for _, sp := range []string{"curling", "soccer"} {
+	for _, sp := range []string{"curling"} {
 		var e struct{ Error string }
 		if code := call(t, s, "PUT", "/api/groups/"+g.ID, map[string]any{"sport": sp}, &e); code != http.StatusBadRequest || e.Error != i18n.T("api.escalao.desporto") {
 			t.Errorf("sport %q: %d %q", sp, code, e.Error)

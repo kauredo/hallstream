@@ -894,3 +894,19 @@ func TestPrimeKeepsRestoredCardsQuiet(t *testing.T) {
 		t.Errorf("events %v, want one for the card after the restart", *got)
 	}
 }
+
+// A sport with FinalHold 0 never ends on a hold, even one whose clock sits at 0
+// (the guard in checkFinal, apart from soccer's clock that never holds).
+func TestNoHoldWhenFinalHoldIsZero(t *testing.T) {
+	m, c := newTest()
+	m.rulesFor = func(string) sport.Profile {
+		return sport.Profile{ID: "x", Periods: 1, Length: 100, ClockDown: true, Scoring: "points", FinalHold: 0}
+	}
+	m.ApplyConsole(map[string]string{"period": "1", "clock": "0.5"})
+	m.ApplyConsole(map[string]string{"period": "1", "clock": "0.0"})
+	c.t = c.t.Add(10 * time.Minute)
+	m.Tick()
+	if s := m.Snapshot(); s.Screen.Current == "final" || len(s.Periods) != 0 {
+		t.Errorf("screen %q periods %v: a hold ended a sport with no hold", s.Screen.Current, s.Periods)
+	}
+}

@@ -140,10 +140,8 @@ func TestSports(t *testing.T) {
 	if !ok || !sp.Active || sp.Name != "BASQUETEBOL" || sp.Short != "BASKET" {
 		t.Errorf("basketball: %+v %v", sp, ok)
 	}
-	for id, name := range map[string]string{"soccer": "FUTEBOL"} {
-		if sp, ok := SportOf(id); !ok || sp.Active || sp.Name != name {
-			t.Errorf("%s: %+v %v (listed, not active yet)", id, sp, ok)
-		}
+	if sp, ok := SportOf("soccer"); !ok || !sp.Active || sp.Name != "FUTEBOL" {
+		t.Errorf("soccer: %+v %v", sp, ok)
 	}
 	if sp, ok := SportOf("handball"); !ok || !sp.Active || sp.Name != "ANDEBOL" {
 		t.Errorf("handball: %+v %v", sp, ok)

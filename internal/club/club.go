@@ -32,7 +32,7 @@ var Sports = []Sport{
 	{"futsal", "FUTSAL", "FUTSAL", true},
 	{"handball", "ANDEBOL", "ANDEBOL", true},
 	{"volleyball", "VOLEIBOL", "VOLEIBOL", true},
-	{"soccer", "FUTEBOL", "FUTEBOL", false},
+	{"soccer", "FUTEBOL", "FUTEBOL", true},
 }
 
 // SportOf finds a sport by its id.

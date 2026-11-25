@@ -24,6 +24,10 @@ type Profile struct {
 	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
+	CountsUp    bool `json:"count_up"`    // the clock counts up (handball); same as CountUp(), for the pages
+	StopAtEnd   bool `json:"stop_at_end"` // a count-up clock stops at the end of the period; false runs on (soccer)
+	Suspensions int  `json:"suspensions"` // tenths a suspension lasts; 0 = the sport has none
+
 	MaxPoint      int    `json:"max_point"`       // the most one score action can add: basketball 3, a goal or a set point 1
 	Scoring       string `json:"scoring"`         // "points" (basketball) or "sets"
 	SetPoints     int    `json:"set_points"`      // points to win a set (25); 0 when Scoring is "points"
@@ -52,6 +56,13 @@ var Futsal = Profile{ID: "futsal", Periods: 2, Half: 1, Length: 12000, ClockDown
 	TimeoutsBy: [3]int{1, 1, 0}, Scoring: "points", MaxPoint: 1, OvertimeLength: 3000, PeriodWord: "half",
 	FoulMarks: 5, FoulPenalty: "free_kick"}
 
+// Handball is IHF: two halves of 30:00 on a clock that counts up, 2-minute
+// suspensions, no team fouls, two timeouts per team per half shown (three per
+// match is the rule, not enforced), extra time in periods of 5:00.
+var Handball = Profile{ID: "handball", Periods: 2, Half: 1, Length: 18000, ClockDown: false, CountsUp: true,
+	StopAtEnd: true, FinalHold: 600, TimeoutsBy: [3]int{2, 2, 0}, Scoring: "points",
+	OvertimeLength: 3000, PeriodWord: "half", Suspensions: 1200}
+
 // Get returns the profile for id; an unknown or empty id is basketball.
 func Get(id string) Profile {
 	if p, ok := profiles[id]; ok {
@@ -64,6 +75,7 @@ var profiles = map[string]Profile{
 	Basketball.ID: Basketball,
 	Volleyball.ID: Volleyball,
 	Futsal.ID:     Futsal,
+	Handball.ID:   Handball,
 }
 
 // Sets reports whether the sport is scored in sets.
@@ -127,4 +139,39 @@ func (p Profile) ResetsFouls(period int) bool {
 		return false
 	}
 	return !(p.FoulsCarry && p.Overtime(period))
+}
+
+// CountUp reports whether the clock counts up (handball, soccer); false for a
+// countdown and for a sport with no clock (volleyball).
+func (p Profile) CountUp() bool { return !p.ClockDown && p.Length > 0 }
+
+// length is the length of period: an overtime's, or the regulation one.
+func (p Profile) length(period, length int) int {
+	if p.Overtime(period) && p.OvertimeLength > 0 {
+		return p.OvertimeLength
+	}
+	return length
+}
+
+// Start is the clock at the start of period, given the scorer's regulation
+// length. Countdown: length, or OvertimeLength in an overtime when set.
+// Count-up: the time played before period (handball's period 2 starts at 30:00).
+func (p Profile) Start(period, length int) int {
+	if !p.CountUp() {
+		return p.length(period, length)
+	}
+	t := 0
+	for i := 1; i < period; i++ {
+		t += p.length(i, length)
+	}
+	return t
+}
+
+// End is where period ends on a count-up clock (its Start plus its length);
+// 0 for a countdown.
+func (p Profile) End(period, length int) int {
+	if !p.CountUp() {
+		return 0
+	}
+	return p.Start(period, length) + p.length(period, length)
 }

@@ -113,3 +113,48 @@ func TestMaxPoint(t *testing.T) {
 		}
 	}
 }
+
+func TestCountsUpMatchesCountUp(t *testing.T) {
+	for id, p := range profiles {
+		if p.CountsUp != p.CountUp() {
+			t.Errorf("%s: CountsUp %v, CountUp() %v", id, p.CountsUp, p.CountUp())
+		}
+	}
+	if !Handball.CountUp() || Basketball.CountUp() || Volleyball.CountUp() || Futsal.CountUp() {
+		t.Error("only handball counts up")
+	}
+	if Get("handball") != Handball {
+		t.Error("Get(handball) is not Handball")
+	}
+}
+
+func TestHandballStartAndEnd(t *testing.T) {
+	h := Handball
+	for _, c := range []struct{ p, start, end int }{{1, 0, 18000}, {2, 18000, 36000}, {3, 36000, 39000}, {4, 39000, 42000}} {
+		if got := h.Start(c.p, 18000); got != c.start {
+			t.Errorf("Start(%d) = %d, want %d", c.p, got, c.start)
+		}
+		if got := h.End(c.p, 18000); got != c.end {
+			t.Errorf("End(%d) = %d, want %d", c.p, got, c.end)
+		}
+	}
+	if h.Start(2, 15000) != 15000 || h.End(2, 15000) != 30000 {
+		t.Error("a 25 minute half does not move the second half's start and end")
+	}
+}
+
+func TestCountdownStartAndEnd(t *testing.T) {
+	for p := 1; p <= 4; p++ {
+		if got := Basketball.Start(p, 6000); got != 6000 {
+			t.Errorf("Start(%d) = %d, want 6000", p, got)
+		}
+	}
+	if got := Basketball.Start(5, 6000); got != 3000 {
+		t.Errorf("Start(5) = %d, want 3000", got)
+	}
+	for p := 1; p <= 5; p++ {
+		if got := Basketball.End(p, 6000); got != 0 {
+			t.Errorf("End(%d) = %d, want 0", p, got)
+		}
+	}
+}

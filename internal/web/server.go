@@ -58,6 +58,8 @@ type Server struct {
 	UseInput func(name string)
 	// Manual is the score kept by hand from /marcar; nil answers 503.
 	Manual *source.Manual
+	// OpenFolder shows a folder in the system's file manager; nil answers 501.
+	OpenFolder func(dir string) error
 	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
 	UpdateURL string
 	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
@@ -125,6 +127,7 @@ func New(s *Server) *Server {
 	}
 	s.routes()
 	s.bleRoutes()
+	s.captureRoutes()
 	s.cameraRoutes()
 	s.appRoutes()
 	s.promoRoutes()

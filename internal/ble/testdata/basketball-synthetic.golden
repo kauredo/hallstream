@@ -1,0 +1,12 @@
+0 0ms 
+1 50ms box_type="Pro"
+2 100ms home_name="MONTEALTO"
+3 150ms away_name="PORTO"
+4 1000ms away="0" away_fouls="0" clock="10:00" home="0" home_fouls="0" period="1" shot_clock="24" sport="basketball"
+5 2000ms clock="09:58" shot_clock="22"
+6 3000ms clock="09:55" home="2" shot_clock="24"
+7 5000ms away="3" away_fouls="1" clock="09:41" shot_clock="18"
+8 7000ms clock="09:30" home="5" home_fouls="1" shot_clock="14"
+9 9000ms away="79" away_fouls="2" clock="07:45" home="82" home_fouls="4" period="3"
+10 11000ms clock="9.4" shot_clock="3.2"
+11 12500ms clock="0.0" home="84" shot_clock="00"

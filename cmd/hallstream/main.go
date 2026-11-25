@@ -133,6 +133,7 @@ func (w *writer) state(s map[string]string) {
 func main() {
 	demo := flag.Bool("demo", false, i18n.T("app.flag.demo"))
 	noBrowser := flag.Bool("nobrowser", false, i18n.T("app.flag.nobrowser"))
+	replayFile := flag.String("replay", "", i18n.T("app.flag.replay"))
 	flag.Parse()
 
 	// A second double-click opens the panel of the one already running.
@@ -173,6 +174,14 @@ func main() {
 	set := st.Settings()
 	i18n.SetLang(set.Lang)
 
+	// -replay plays a capture through the console, with no Bluetooth.
+	var replay []ble.Frame
+	if *replayFile != "" {
+		if replay, err = readCapture(*replayFile); err != nil {
+			fatal(i18n.T("log.replay.nao_li", "ficheiro", *replayFile, "err", err))
+		}
+	}
+
 	tl, err := gamelog.OpenTimeline(filepath.Join(dir, "timeline.jsonl"))
 	if err != nil {
 		say(i18n.T("log.nao_criei_timeline", "err", err))
@@ -199,14 +208,18 @@ func main() {
 	}
 	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader
-	if !*demo {
+	if !*demo && replay == nil {
 		reader = ble.New(&ble.Reader{
 			Radio:     ble.Adapter(),
 			Frame:     console.Frame,
 			Connected: console.Connected,
 			Log:       say,
 			Status:    m.SetScan,
-			Saved:     func() string { return st.Settings().BoxAddress },
+			Capture: &ble.Recorder{
+				Dir: filepath.Join(dir, "captura"), App: version, Log: say,
+				Sport: func() string { return st.Settings().Club.Sport },
+			},
+			Saved: func() string { return st.Settings().BoxAddress },
 			Save: func(addr string) {
 				if err := st.SetBoxAddress(addr); err != nil {
 					say(i18n.T("log.nao_guardei_endereco_caixa", "err", err))
@@ -221,17 +234,18 @@ func main() {
 	}
 
 	srv := web.New(&web.Server{
-		Store:     st,
-		State:     m,
-		FPB:       fpb.New(func() string { return st.Settings().FPBBaseURL }, st.CacheDir(), version),
-		OBS:       &obsws.Client{},
-		BLE:       reader,
-		Files:     assets.FS,
-		Version:   version,
-		Log:       say,
-		Shortcut:  desktop.Shortcut,
-		Autostart: desktop.Autostart,
-		OBSApp:    obsapp.System(),
+		Store:      st,
+		State:      m,
+		FPB:        fpb.New(func() string { return st.Settings().FPBBaseURL }, st.CacheDir(), version),
+		OBS:        &obsws.Client{},
+		BLE:        reader,
+		Files:      assets.FS,
+		Version:    version,
+		Log:        say,
+		Shortcut:   desktop.Shortcut,
+		OpenFolder: openFolder,
+		Autostart:  desktop.Autostart,
+		OBSApp:     obsapp.System(),
 
 		UploadToken: uploadToken,
 		FeedbackURL: feedbackURL,
@@ -287,8 +301,18 @@ func main() {
 		openBrowser(panel)
 	}
 
-	inputs.Use(set.Input)
-	if *demo {
+	if replay != nil {
+		inputs.Use("console") // whatever the settings say: the recording is the console
+	} else {
+		inputs.Use(set.Input)
+	}
+	if replay != nil {
+		say(i18n.T("log.replay.a_tocar", "ficheiro", filepath.Base(*replayFile), "frames", len(replay)))
+		safely(i18n.T("log.tarefa.replay"), func() {
+			console.Replay(make(chan struct{}), replay)
+			say(i18n.T("log.replay.fim"))
+		})
+	} else if *demo {
 		say(i18n.T("log.modo_demo"))
 		m.SetDemo(true)
 	} else {
@@ -426,6 +450,37 @@ func saveHistory(st *store.Store, s state.State) {
 	if err != nil {
 		say(i18n.T("log.nao_guardei_historico", "err", err))
 	}
+}
+
+// readCapture reads a recording made with the panel's "Gravar a consola".
+func readCapture(path string) ([]ble.Frame, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ble.ReadCapture(f)
+}
+
+// openFolder shows a folder in the system's file manager, making it first.
+func openFolder(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	default:
+		cmd = exec.Command("xdg-open", dir)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait()
+	return nil
 }
 
 func openBrowser(url string) {

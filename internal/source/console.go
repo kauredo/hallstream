@@ -2,6 +2,7 @@ package source
 
 import (
 	"sync"
+	"time"
 
 	"github.com/kauredo/hallstream/internal/ble"
 )
@@ -95,4 +96,31 @@ func (c *Console) frame(f []byte, out func(map[string]string)) {
 	c.Raw(f)
 	ble.Decode(f, c.vals)
 	out(c.vals)
+}
+
+// Replay plays a recording through the console as if the box had sent it, at
+// the pace it was recorded, with no Bluetooth. It returns at the end of the
+// recording or when stop closes; the console stays linked.
+func (c *Console) Replay(stop <-chan struct{}, frames []ble.Frame) {
+	// Run throws away the frames from before it started: wait for it.
+	for i := 0; i < 500 && !c.running(); i++ {
+		time.Sleep(10 * time.Millisecond)
+	}
+	c.Connected(true)
+	ble.Play(frames, c.Frame, func(d time.Duration) bool {
+		t := time.NewTimer(d)
+		defer t.Stop()
+		select {
+		case <-t.C:
+			return true
+		case <-stop:
+			return false
+		}
+	})
+}
+
+func (c *Console) running() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.connected != nil
 }

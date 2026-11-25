@@ -134,6 +134,14 @@
     dev('E0:6D:17:4A:C8:31', 'Mi Smart Band 6', -86, ['fee0']),
     dev('4B:D0:66:91:2E:A7', '', -93, ['fd6f'])
   ];
+  // Gravar a consola: ?capture=on (recording, counting up), stopped (hit the cap) or off.
+  var capMode = (/[?&]capture=([a-z]+)/.exec(location.search) || [])[1] || 'off';
+  db.capture = { on: capMode === 'on', file: capMode === 'off' ? '' : 'captura-2026-11-28_19-42-10.txt', t0: Date.now(), base: 1840 };
+  function captureStatus() {
+    var c = db.capture, fr = c.on ? c.base + Math.floor((Date.now() - c.t0) / 250) : c.file ? c.base : 0;
+    if (capMode === 'stopped' && !c.on) return { on: false, file: c.file, bytes: 52428800, frames: 1117000, dropped: 0, max: 52428800, stopped: 'cap' };
+    return { on: c.on, file: c.file, bytes: c.file ? 150 + fr * 47 : 0, frames: fr, dropped: 0, max: 52428800, stopped: c.file && !c.on ? 'off' : '' };
+  }
   db.ble = boxMode === 'ligado' ? { connected: true, saved: BOX } : { connected: false, saved: '' };
   db.settings.box_address = db.ble.saved;
 
@@ -481,6 +489,14 @@
         return reply(200, { ok: true });
       });
     }
+    if (p === '/api/ble/capture') {
+      if (m === 'POST') {
+        db.capture.on = !!b.on; capMode = 'live';
+        if (b.on) { db.capture.file = 'captura-2026-11-28_19-42-10.txt'; db.capture.t0 = Date.now(); db.capture.base = 0; } else db.capture.base += Math.floor((Date.now() - db.capture.t0) / 250);
+      }
+      return reply(200, captureStatus());
+    }
+    if (p === '/api/system/capture-folder') return reply(200, { ok: true });
     if (p === '/api/ble/forget') { db.ble = { connected: false, saved: '' }; emit(); return reply(200, { ok: true }); }
     if (p === '/api/system/bluetooth-settings') return reply(200, { ok: true });
     if (p === '/api/system/desktop-shortcut') {

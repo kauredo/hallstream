@@ -678,6 +678,8 @@ a.chip.link:hover b { text-decoration: underline; text-decoration-thickness: 2px
 .cx-in input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--marcador); }
 .cx-in b { display: block; font-stretch: var(--estreito); font-size: 18px; }
 .cx-in small { display: block; color: var(--tinta-2); font-size: 15px; }
+.cx-cap { margin: 12px 0; overflow-wrap: anywhere; }
+.cx-cap code { font-size: 15px; }
 .cx-qr { display: flex; align-items: center; gap: 20px; margin-top: 16px; }
 .cx-qr img { flex: none; border: 1px solid var(--marcador); border-radius: var(--raio); background: var(--qr); }
 .cx-qr code { overflow-wrap: anywhere; }

@@ -94,6 +94,9 @@ type Reader struct {
 	Save      func(string)
 	DevLog    io.Writer // dados/bluetooth.log
 	Now       func() time.Time
+	// Capture records the raw frames when the panel's switch is on; nil
+	// records nothing.
+	Capture *Recorder
 
 	// Round is one scan; Settle is how long to keep listening after the
 	// first likely box, to pick the strongest; Timeout bounds a connection.
@@ -481,7 +484,7 @@ func (r *Reader) connect(addr string) (Link, error) {
 	go func() {
 		link, err := r.Radio.Connect(addr)
 		if err == nil {
-			if err = link.Listen(r.Frame); err != nil {
+			if err = link.Listen(r.onFrame); err != nil {
 				link.Disconnect()
 			}
 		}
@@ -515,6 +518,20 @@ func (r *Reader) connect(addr string) (Link, error) {
 	return out.link, nil
 }
 
+// onFrame is what the link calls for every notification: the recorder gets
+// the raw bytes first, and never blocks.
+func (r *Reader) onFrame(f []byte) {
+	r.Capture.Offer(f)
+	r.Frame(f)
+}
+
+// Linked reports whether the box is connected now, and its name.
+func (r *Reader) Linked() (bool, string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.link != nil, r.scan.Name
+}
+
 // follow keeps the box connected until the link drops or the panel asks
 // for something else.
 func (r *Reader) follow(addr string, link Link) *request {
@@ -540,6 +557,7 @@ func (r *Reader) follow(addr string, link Link) *request {
 		r.link = nil
 		r.mu.Unlock()
 		link.Disconnect()
+		r.Capture.Stop("box")
 		r.Connected(false)
 		r.setScan(func(s *state.Scan) { s.Address, s.Name, s.Message = "", "", "" })
 	}

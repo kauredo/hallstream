@@ -426,7 +426,7 @@
     if (name === 'transmissoes') renderTransmissoes();
     if (name === 'definicoes') { renderDefinicoes(); loadYt(); }
     clearInterval(devTimer);
-    if (name === 'caixa') { renderCaixa(); loadDevices(); devTimer = setInterval(loadDevices, 2000); }
+    if (name === 'caixa') { renderCaixa(); loadDevices(); devTimer = setInterval(function () { loadDevices(); loadCapture(); }, 2000); }
     if (name === 'ajuda') renderAjudaDir();
     window.scrollTo(0, 0);
   }
@@ -1336,12 +1336,26 @@
       $('#caixa').innerHTML =
         '<div class="card" id="cxInput"></div>' +
         '<div class="card" id="cxStatus"></div>' +
+        '<div class="card" id="cxCapture"></div>' +
         '<div id="cxBanner"></div>' +
         '<p class="warn">' + t('painel.caixa.feche_app') + '</p>' +
         '<div class="card"><h2>' + t('painel.caixa.dispositivos') + ' <span class="count" id="cxCount"></span></h2>' +
         '<p class="hint">' + t('painel.caixa.dispositivos_dica') + '</p>' +
         '<ul class="devs" id="cxList"></ul></div>';
       caixaBuilt = true;
+      $('#cxCapture').addEventListener('change', function (e) {
+        if (e.target.id !== 'cxCap') return;
+        var msg = $('#cxCapMsg'), on = e.target.checked;
+        msg.className = 'msg'; msg.textContent = '';
+        api('POST', '/api/ble/capture', { on: on }).then(function (got) { S.capture = got; }, function (err) {
+          msg.className = 'msg err'; msg.textContent = err.message;
+        }).then(renderCapture);
+      });
+      $('#cxCapture').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-act]'); if (!b) return;
+        if (b.dataset.act === 'cx-cap-folder') busy(b, function () { return api('POST', '/api/system/capture-folder'); }, t('painel.captura.abri_pasta'));
+        else if (b.dataset.act === 'cx-cap-help') showHelp('ajuda-feedback');
+      });
       $('#cxInput').addEventListener('change', function (e) {
         if (e.target.name !== 'cxIn' || !S.settings) return;
         var s = Object.assign({}, S.settings, { input: e.target.value }), msg = $('#cxInMsg');
@@ -1354,6 +1368,7 @@
     renderCaixaInput();
     renderCaixaStatus();
     renderDevices();
+    loadCapture();
   }
 
   // Where the score comes from: the console's Stream Box, or a phone on /marcar (with its QR code).
@@ -1373,6 +1388,34 @@
         ? '<div class="cx-qr"><img src="/marcar/qr.svg" width="148" height="148" alt="' + t('painel.marcar.qr_alt') + '">' +
           '<p>' + t('painel.marcar.abra', { url: '<code>' + esc(lan) + '</code>' }) + '</p></div>'
         : '<p class="hint">' + t('painel.marcar.sem_telemovel') + '</p>');
+  }
+
+  // Gravar a consola: the raw frames the box sends, saved to dados/captura for a developer to replay.
+  function loadCapture() {
+    return api('GET', '/api/ble/capture').then(function (c) { S.capture = c; }, function () {}).then(renderCapture);
+  }
+  function renderCapture() {
+    var el = $('#cxCapture'); if (!el) return;
+    var c = S.capture; if (!c) return;
+    var linked = scanState().box.connected, demo = !!(S.state && S.state.demo);
+    var off = !c.on && (demo || !linked);
+    var mb = function (n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
+    var stopped = { cap: t('painel.captura.parou_limite'), box: t('painel.captura.parou_caixa'), error: t('painel.captura.parou_erro') }[c.stopped];
+    var html = '<h2>' + t('painel.captura.titulo') + '</h2>' +
+      '<p class="hint">' + t('painel.captura.dica') + '</p>' +
+      '<div class="row" style="align-items:center"><label class="switch"><input type="checkbox" id="cxCap"' + (c.on ? ' checked' : '') + (off ? ' disabled' : '') + '><i></i>' + t('painel.captura.interruptor') + '</label>' +
+      '<span class="msg" id="cxCapMsg" role="status"></span></div>' +
+      (off ? '<p class="hint">' + (demo ? t('painel.captura.demo') : t('painel.captura.sem_caixa')) + '</p>' : '');
+    if (c.file) {
+      html += '<p class="cx-cap"><code>' + esc(c.file) + '</code><br>' +
+        t('painel.captura.tamanho', { tamanho: mb(c.bytes), max: mb(c.max) }) + ' · ' + t('painel.captura.frames', { n: c.frames }) +
+        (c.dropped ? ' · ' + t('painel.captura.perdidos', { n: c.dropped }) : '') + '</p>';
+      if (stopped) html += '<p class="msg err" role="status">' + stopped + (c.error ? ' ' + esc(c.error) : '') + '</p>';
+    }
+    html += '<div class="row" style="align-items:center"><button class="btn" data-act="cx-cap-folder">' + t('painel.captura.abrir_pasta') + '</button>' +
+      '<button class="btn quiet" data-act="cx-cap-help">' + t('painel.captura.enviar') + '</button><span class="msg"></span></div>';
+    // The poll runs every 2 s: only touch the DOM when something changed, so a message stays.
+    if (el.dataset.h !== html) { var m = $('#cxCapMsg'), keep = m ? [m.className, m.textContent] : null; el.dataset.h = html; el.innerHTML = html; if (keep) { m = $('#cxCapMsg'); m.className = keep[0]; m.textContent = keep[1]; } }
   }
 
   function scanState() {

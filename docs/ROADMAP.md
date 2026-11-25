@@ -79,7 +79,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 ## Phase D: more consoles
 
 1. A serial `Source` for RS-232 consoles: Daktronics AllSport, Fair-Play and Bodet.
-2. A capture mode that records the raw bytes, so a contributor can send a session.
+2. A capture mode that records the raw bytes, so a contributor can send a session. Done: the panel's "Gravar a consola" switch writes `dados/captura/`, and `-replay <file>` plays a file back.
 3. A support table on the website lists each console and sport as tested, community or wanted.
 
 ## Phase E: more data providers

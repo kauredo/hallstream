@@ -250,7 +250,7 @@ func TestMarcarCardAndSubLowerThirds(t *testing.T) {
 		t.Fatalf("card: %d", code)
 	}
 	lt := s.State.Snapshot().LowerThird
-	if !lt.Visible || lt.Type != "cartao" || lt.Card != "yellow" || lt.Number != "9" || lt.FirstName != "Rui" || lt.LastName != "Costa Lima" {
+	if !lt.Visible || lt.Type != "cartao" || lt.Card != "yellow" || lt.Number != "9" || lt.FirstName != "Rui" || lt.LastName != "Costa Lima" || lt.Label == "" {
 		t.Errorf("home card: %+v", lt)
 	}
 	post(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"})
@@ -258,7 +258,7 @@ func TestMarcarCardAndSubLowerThirds(t *testing.T) {
 		t.Errorf("second yellow: %+v", lt)
 	}
 	post(source.Action{Do: "card", Team: "away", Number: "9", Kind: "red"})
-	if lt := s.State.Snapshot().LowerThird; lt.Card != "red" || lt.Number != "9" || lt.FirstName != "" || lt.LastName != "" || lt.PhotoURL != "" {
+	if lt := s.State.Snapshot().LowerThird; lt.Card != "red" || lt.Number != "9" || lt.FirstName != "" || lt.LastName != "" || lt.PhotoURL != "" || lt.Label != "VISITANTE" {
 		t.Errorf("away card must show the number only: %+v", lt)
 	}
 	post(source.Action{Do: "sub", Team: "home", Out: "7", In: "14"})

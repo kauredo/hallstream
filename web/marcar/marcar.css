@@ -24,6 +24,9 @@
   --fora: #8C2F39;
   --sobre-casa: var(--soalho-claro);
   --sobre-fora: var(--soalho-claro);
+  --cartao-amarelo: #F5C400;  /* the referee's cards: the same on every team's half */
+  --cartao-vermelho: #D7261E;
+  --cartao-contorno: rgba(0, 0, 0, .4);
 }
 
 * { box-sizing: border-box; }
@@ -258,3 +261,38 @@ body.susp .exclusoes { display: grid; grid-template-columns: 1fr 64px; row-gap: 
 /* The shirt number is the lit part, on the paper fill like a serve that is on. */
 .exc b { display: flex; align-items: center; padding: 0 10px; background: var(--sobre); color: var(--cor); font-size: 22px; }
 .exc b[hidden] { display: none; }
+
+/* ---------- cards and substitutions (soccer) ----------
+   body.cartoes: under the +1, one row of three buttons (yellow, red, substitution) opens a shirt number, and a
+   line of small chips lists that team's cards and substitutions. In the middle strip the added-time stepper
+   takes the place of the second-by-second nudges (the clock's own steps are one tap away), and "Fim do jogo"
+   (or the next half, past the half's minutes) sits under the clock button. */
+.linha.cartoes, .registo, .compensacao { display: none; }
+body.cartoes .linha.cartoes { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 6px; }
+.linha.cartoes button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 8px;
+  font-size: 15px; font-weight: 700; font-stretch: var(--estreito); line-height: 1.1; }
+.linha.cartoes button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cartao i { flex: none; width: 14px; height: 20px; border-radius: 2px; background: var(--cartao-amarelo); box-shadow: inset 0 0 0 1px var(--cartao-contorno); }
+.cartao.vermelho i { background: var(--cartao-vermelho); }
+body.cartoes .registo { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 2px 10px; min-height: 24px; max-height: 48px; overflow: hidden;
+  font-size: 16px; font-weight: 700; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; }
+.reg { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.reg .cs { width: 11px; height: 16px; border-radius: 2px; box-shadow: inset 0 0 0 1px var(--cartao-contorno); }
+.reg .cs.y { background: var(--cartao-amarelo); }
+.reg .cs.r { background: var(--cartao-vermelho); }
+body.semdescontos .descontos { display: none; }
+body.cartoes .acerto { display: none; }
+body.cartoes .mesa-centro { gap: 6px; }
+body.cartoes .compensacao { display: grid; grid-template-columns: 44px 1fr 44px; gap: 6px; align-items: center; }
+.compensacao button { height: 44px; border: 2px solid color-mix(in srgb, var(--soalho) 45%, transparent); border-radius: var(--raio); background: transparent; font-size: 22px; font-weight: 800; line-height: 1; }
+.compensacao button:active { background: var(--soalho); color: var(--marcador); }
+.compensacao output { display: flex; flex-direction: column; align-items: center; font-stretch: var(--estreito); font-size: 14px; line-height: 1.1; color: color-mix(in srgb, var(--soalho) 80%, transparent); }
+.compensacao output b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--soalho); }
+body.consola .compensacao button { opacity: .35; }
+#fecho { min-height: 44px; font-size: 17px; }
+/* A shirt number: the squad's numbers as big buttons. */
+.camisolas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+.camisolas button { min-height: 48px; border: 2px solid var(--marcador); border-radius: var(--raio); background: transparent; color: var(--marcador);
+  font: 800 22px/1 var(--letra); font-stretch: var(--estreito); font-variant-numeric: tabular-nums; }
+.camisolas button:active { background: var(--marcador); color: var(--soalho-claro); }
+#numero .botoes { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }

@@ -511,8 +511,20 @@
     v.periodWord = rules.period_word ?? 'quarter';
     v.freeKick = rules.foul_penalty === 'free_kick';
     // Handball: the fouls cells show the suspensions running instead (a missing or null list is none).
-    v.penalties = (rules.suspensions ?? 0) > 0 ? 'suspensions' : '';
-    v.suspensions = v.penalties && Array.isArray(live.suspensions) ? live.suspensions : [];
+    // Soccer: they show each team's cards, and the added time, instead (a missing or null list is none).
+    v.penalties = (rules.suspensions ?? 0) > 0 ? 'suspensions' : rules.cards ? 'cards' : '';
+    v.suspensions = v.penalties === 'suspensions' && Array.isArray(live.suspensions) ? live.suspensions : [];
+    // Every yellow shown counts, a second yellow included; a red counts with the second yellow.
+    v.cards = { home: { y: 0, r: 0 }, away: { y: 0, r: 0 } };
+    for (const c of v.penalties === 'cards' && Array.isArray(live.cards) ? live.cards : []) {
+      const n = c && v.cards[c.team];
+      if (!n) continue;
+      if (c.kind === 'yellow' || c.kind === 'second_yellow') n.y++;
+      if (c.kind === 'red' || c.kind === 'second_yellow') n.r++;
+    }
+    // "90+4'": the half's end minute and the minutes the referee announced.
+    const added = v.penalties === 'cards' ? Math.max(0, Math.min(+live.stoppage || 0, 15)) : 0;
+    v.addTime = added ? t('overlay.compensacao', { fim: (+live.period_end || 0) > 0 ? Math.round(live.period_end / 600) : '', n: added }) : '';
     // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
     v.sets = rules.scoring === 'sets';
     const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];
@@ -635,6 +647,36 @@
     const m = /^(\d+):(\d+)$/.exec(left || '');
     return m ? +m[1] * 60 + +m[2] : Infinity;
   };
+  // Soccer: a yellow count and a red count per team, each only above 0. Like the suspensions cell, it is
+  // rebuilt only when a count changes.
+  let cardsKey = null;
+  function renderCards(v) {
+    const key = JSON.stringify(v.cards);
+    if (key === cardsKey) return;
+    cardsKey = key;
+    for (const team of ['home', 'away']) {
+      for (const box of $$(`[data-cds="${team}"]`)) {
+        box.textContent = '';
+        box.removeAttribute('role');
+        box.removeAttribute('aria-label');
+        const n = v.cards[team];
+        for (const [cls, count] of [['y', n.y], ['r', n.r]]) {
+          if (!count) continue;
+          const cell = document.createElement('span');
+          cell.className = 'cd ' + cls;
+          const sw = document.createElement('i');
+          const num = document.createElement('b');
+          num.textContent = String(count);
+          cell.append(sw, num);
+          box.append(cell);
+        }
+        if (box.firstChild) {
+          box.setAttribute('role', 'img');
+          box.setAttribute('aria-label', t('overlay.cartoes_aria', { a: n.y, v: n.r }));
+        }
+      }
+    }
+  }
   let suspKey = null;
   function renderSuspensions(v) {
     const sums = {};
@@ -839,14 +881,29 @@
       small: l.first_name,
       num: l.number,
       label: l.label || t('overlay.rodape.comentario'),
+      kind: '',
     };
-    c.who = JSON.stringify([c.com, c.big, c.small, c.num, c.label]);
+    // Soccer. Both are a player's lower third with a third line. l.label is the team's name, which stands in
+    // for the player's name when only the shirt number is known (the opponent's squad).
+    if (l.type === 'cartao') {
+      c.kind = { yellow: 'amarelo', second_yellow: 'segundo', red: 'vermelho' }[l.card] || 'amarelo';
+      c.big = l.last_name || l.label || '';
+      c.label = { amarelo: t('overlay.cartao.amarelo'), segundo: t('overlay.cartao.segundo'), vermelho: t('overlay.cartao.vermelho') }[c.kind];
+    } else if (l.type === 'substituicao') {
+      c.kind = 'substituicao';
+      c.small = t('overlay.substituicao');
+      c.big = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.label || '';
+      c.label = [l.out_number, l.out_name].filter(Boolean).join(' ');
+    }
+    c.who = JSON.stringify([c.com, c.big, c.small, c.num, c.label, c.kind]);
     c.key = c.who + c.photo;
     return c;
   }
   function ltFill(c) {
     setClass(lt, 'comentador', c.com);
     setClass(lt, 'jogador', !c.com);
+    for (const k of ['amarelo', 'segundo', 'vermelho', 'substituicao']) setClass(lt, k, c.kind === k);
+    setClass(lt, 'cartao', ['amarelo', 'segundo', 'vermelho'].includes(c.kind));
     if (c.photo && ltImg.getAttribute('src') !== c.photo) ltImg.src = c.photo;
     setClass(lt, 'photo', !!c.photo);
     if (c.com) {
@@ -856,6 +913,7 @@
       setText(ltNum, c.num);
       setText(ltSmall, c.small);
       setText(ltBig, c.big);
+      if (c.kind) setText(ltLabel, c.label);
     }
     ltWho = c.who;
     ltKey = c.key;
@@ -1325,12 +1383,15 @@
     setClass(shotEl, 'hot', String(v.shot).includes('.') || shotUrgent(v.shot));
     const noShot = v.shot === '' || v.shot == null;
     setClass(shotEl.parentElement, 'blank', noShot);
-    setClass(shotEl.parentElement.parentElement, 'solo', noShot || root.dataset.hide.includes('shot'));
+    const add = $('[data-add]');
+    setClass(add, 'blank', !v.addTime);
+    setClass(shotEl.parentElement.parentElement, 'solo', (noShot && !v.addTime) || root.dataset.hide.includes('shot'));
 
     root.dataset.scoring = v.sets ? 'sets' : 'points';
     if (v.penalties) root.dataset.penalties = v.penalties;
     else delete root.dataset.penalties;
     renderSuspensions(v);
+    renderCards(v);
     root.dataset.sport = (st.game && st.game.sport) || 'basketball';
     for (const tx of ['home', 'away']) {
       setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);

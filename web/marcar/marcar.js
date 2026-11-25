@@ -145,7 +145,7 @@
       foulMarks: r.foul_marks ?? 5, freeKick: r.foul_penalty === 'free_kick', word: r.period_word ?? 'quarter', overtimeLength: r.overtime_length ?? 0,
       sets: r.scoring === 'sets', setsToWin: r.sets_to_win ?? 3, setPoints: r.set_points ?? 25,
       lastSetPoints: r.last_set_points ?? 15, winBy: r.win_by ?? 2, maxPoint: r.max_point ?? 3,
-      countUp: !!r.count_up, suspensions: r.suspensions ?? 0,
+      countUp: !!r.count_up, suspensions: r.suspensions ?? 0, cards: !!r.cards, stopAtEnd: !!r.stop_at_end,
     };
   }
   // Where the clock starts in period p, from game.rules and score.length; Go is the source (sport.Profile.Start).
@@ -191,12 +191,18 @@
       case 'timeout': return a.n > 0 ? t('marcar.ultimo.desconto', { sigla: s }) : t('marcar.ultimo.desconto_menos', { sigla: s });
       case 'serve': return t('marcar.ultimo.servico', { sigla: s });
       case 'suspension': case 'suspension_number': case 'suspension_end': return t('marcar.ultimo.exclusao', { sigla: s });
+      case 'card': return t('marcar.ultimo.cartao', { sigla: s });
+      case 'sub': return t('marcar.ultimo.substituicao', { sigla: s });
+      case 'stoppage': return t('marcar.ultimo.compensacao');
+      case 'game_end': return t('marcar.ultimo.fim');
       case 'set_next': return t('marcar.ultimo.set');
       case 'period_next': case 'period_back': return t('marcar.ultimo.periodo');
       case 'clock_set': case 'clock_add': return t('marcar.ultimo.relogio');
       default: return '';
     }
   }
+  // The timeouts each team has in period p (a sets sport has the same in every set).
+  const maxTOOf = (r, sets, p) => (sets || p <= r.half ? r.timeouts[0] : p <= r.periods ? r.timeouts[1] : r.timeouts[2]);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   let endSince = 0;
@@ -220,15 +226,17 @@
     setV('away', l.away ?? 0);
     const period = +l.period || (score && score.period) || 1;
     const rules = rulesOf();
-    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick, maxPoint, countUp, suspensions } = rules;
+    const { periods, half, timeouts, bonus, sets, foulMarks, word, freeKick, maxPoint, countUp, suspensions, cards, stopAtEnd } = rules;
     const penaltyWord = freeKick ? t('marcar.livre') : t('marcar.bonus');
     document.body.classList.toggle('sets', sets);
     document.body.classList.toggle('nofouls', foulMarks === 0);
     document.body.classList.toggle('um', maxPoint === 1); // one +1, as a sets sport has
     document.body.classList.toggle('susp', suspensions > 0);
+    document.body.classList.toggle('cartoes', cards);
+    document.body.classList.toggle('semdescontos', maxTOOf(rules, sets, period) === 0);
     const susp = Array.isArray(l.suspensions) ? l.suspensions : [];
     // A sets sport has the same timeouts in every set.
-    const maxTO = sets || period <= half ? timeouts[0] : period <= periods ? timeouts[1] : timeouts[2];
+    const maxTO = maxTOOf(rules, sets, period);
     for (const tx of ['home', 'away']) {
       const f = +l[tx + '_fouls'] || 0, to = +l[tx + '_timeouts'] || 0;
       marks($(`[data-marks="${tx}Fouls"]`), f, foulMarks);
@@ -266,9 +274,11 @@
     document.body.classList.toggle('consola', !manual);
     $('#estado').textContent = manual ? t('marcar.estado.manual') : t('marcar.estado.consola');
     $('#periodo').innerHTML = sets ? t('marcar.set', { n: `<b>${period}</b>` }) : periodName(period, periods, word);
-    // A count-up clock stops itself at the end of its period, which the scorer sends as live.period_end.
+    // A count-up clock may stop itself at the end of its period (handball); the scorer sends the end as live.period_end.
+    // Soccer's runs on into added time: pastEnd says the period's minutes are over, upEnd that the clock has stopped.
     const liveT = clockTenths(l.clock);
-    const upEnd = !!(manual && score && countUp && l.period_end > 0 && (liveT >= 0 ? liveT : score.clock) >= l.period_end);
+    const pastEnd = !!(manual && score && countUp && l.period_end > 0 && (liveT >= 0 ? liveT : score.clock) >= l.period_end);
+    const upEnd = pastEnd && stopAtEnd;
     const running = !!(manual && score && score.running) && !upEnd;
     document.body.classList.toggle('corre', running);
     $('#relogio').textContent = l.clock || (score ? clockText(score.clock) : '');
@@ -296,12 +306,102 @@
     else if (atEnd) { go.textContent = t('marcar.periodo_seguinte_botao'); go.dataset.do = ''; go.dataset.ask = 'period_next'; go.disabled = Date.now() - endSince < 2000; }
     else { go.textContent = running ? t('marcar.parar') : t('marcar.iniciar'); go.dataset.do = running ? 'clock_stop' : 'clock_start'; delete go.dataset.ask; go.disabled = false; }
     if (!atEnd && !sets) delete go.dataset.ask;
-    for (const b of $$('.equipa button, .seta, .acerto button, #relogio')) b.disabled = !manual;
+    for (const b of $$('.equipa button, .seta, .acerto button, #relogio, .compensacao button')) b.disabled = !manual;
+    renderSoccer(l, period, manual, { periods, pastEnd, cards });
     const u = $('#anular'), label = undoLabel(undo);
     u.disabled = !manual || !undo;
     u.innerHTML = label ? t('marcar.anular_isto', { o: `<b>${esc(label)}</b>` }) : t('marcar.anular');
     if ($('#acertar').open && score) $('#acertarClock').textContent = l.clock || clockText(score.clock);
   }
+
+  // ---------- soccer: added time, full time, cards and substitutions ----------
+  // The added-time stepper, the button for the next half or the end of the game, and each team's cards and
+  // substitutions as small chips under its buttons. Nothing here shows unless the sport has cards.
+  function renderSoccer(l, period, manual, { periods, pastEnd, cards }) {
+    const lastHalf = period >= periods;
+    const added = Math.max(0, +l.stoppage || 0);
+    const text = `+${added}'`;
+    if ($('#compensacao').textContent !== text) $('#compensacao').textContent = text;
+    // The arrow for the next half has no place in the last one: the game ends there, and soccer here has no extra time.
+    for (const el of $$('.seta[data-ask="period_next"]')) el.style.visibility = cards && lastHalf ? 'hidden' : '';
+    const end = $('#fecho');
+    // The space stays reserved while it waits, so Iniciar never moves under the thumb.
+    end.hidden = !cards;
+    end.style.visibility = cards && manual && (lastHalf || pastEnd) ? '' : 'hidden';
+    end.dataset.ask = lastHalf ? 'game_end' : 'period_next';
+    end.textContent = lastHalf ? t('marcar.fim_jogo') : t('marcar.parte_seguinte_botao');
+    end.disabled = !!l.over;
+    const list = (a, tx) => (Array.isArray(a) ? a : []).filter((x) => x && x.team === tx);
+    for (const tx of ['home', 'away']) renderRegisto(tx, cards ? list(l.cards, tx) : [], cards ? list(l.subs, tx) : []);
+  }
+  // Rebuilt only when the lists change, so a tap never lands on a chip that was just replaced.
+  function renderRegisto(tx, cards, subs) {
+    const box = $(`[data-registo="${tx}"]`), key = JSON.stringify([cards, subs]);
+    if (box.dataset.key === key) return;
+    box.dataset.key = key;
+    const chip = (title) => { const s = document.createElement('span'); s.className = 'reg'; s.title = title || ''; return s; };
+    const swatch = (cls) => { const i = document.createElement('i'); i.className = 'cs ' + cls; return i; };
+    const num = (n) => { const b = document.createElement('b'); b.textContent = n; return b; };
+    box.replaceChildren(
+      ...cards.map((c) => {
+        const s = chip(c.minute);
+        s.append(...(c.kind === 'second_yellow' ? [swatch('y'), swatch('r')] : [swatch(c.kind === 'red' ? 'r' : 'y')]), num(c.number));
+        return s;
+      }),
+      ...subs.map((x) => { const s = chip(x.minute); s.append(num(x.out), '→', num(x.in)); return s; }),
+    );
+  }
+  // Which shirt: the squad's numbers for the home team as big buttons, any number typed for the rest. Resolves
+  // with the number, or '' when the scorer backs out.
+  function pickNumber(team, title) {
+    return new Promise((resolve) => {
+      const box = $('#numero'), field = $('#numeroCampo'), grid = $('#camisolas'), other = $('#numeroOutro');
+      const squad = team === 'home' && st && st.game && Array.isArray(st.game.squad)
+        ? st.game.squad.filter((p) => p && /^\d{1,3}$/.test(p.number)).sort((a, b) => a.number - b.number) : [];
+      let answer = '';
+      const done = (n) => { answer = n; box.close(); };
+      $('#numeroTitulo').textContent = title;
+      field.value = '';
+      field.hidden = squad.length > 0;
+      other.hidden = squad.length === 0;
+      grid.hidden = squad.length === 0;
+      grid.replaceChildren(...squad.map((p) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = p.number;
+        b.title = p.name || '';
+        b.onclick = () => done(p.number);
+        return b;
+      }));
+      $('#numeroFeito').hidden = squad.length > 0;
+      other.onclick = () => { field.hidden = false; other.hidden = true; $('#numeroFeito').hidden = false; field.focus(); };
+      $('#numeroFeito').onclick = () => { if (/^\d{1,3}$/.test(field.value.trim())) done(field.value.trim()); };
+      $('#numeroCancelar').onclick = () => box.close();
+      box.addEventListener('close', () => resolve(answer), { once: true });
+      box.showModal();
+    });
+  }
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-pick]');
+    if (!b || b.disabled) return;
+    const team = b.closest('.equipa').dataset.team, kind = b.dataset.pick;
+    if (kind === 'sub') {
+      const out = await pickNumber(team, `${sigla(team)} · ${t('marcar.sai')}`);
+      if (!out) return;
+      const on = await pickNumber(team, `${sigla(team)} · ${t('marcar.entra')}`);
+      if (on) send({ do: 'sub', team, out, in: on }, undoLabel({ do: 'sub', team }));
+      return;
+    }
+    const card = kind === 'red' ? t('marcar.cartao_vermelho') : t('marcar.cartao_amarelo');
+    const number = await pickNumber(team, `${sigla(team)} · ${card}`);
+    if (number) send({ do: 'card', team, number, kind }, undoLabel({ do: 'card', team }));
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-stoppage]');
+    if (!b || b.disabled) return;
+    const n = Math.min(Math.max((+((st && st.live) || {}).stoppage || 0) + +b.dataset.stoppage, 0), 15);
+    send({ do: 'stoppage', n }, t('marcar.ultimo.compensacao'));
+  });
 
   // ---------- taps ----------
   const pending = new Set();
@@ -375,11 +475,19 @@
       box.showModal();
       return;
     }
+    if (what === 'game_end') {
+      $('#confirmarTitulo').textContent = t('marcar.confirmar.fim');
+      $('#confirmarDica').textContent = '';
+      $('#confirmarSim').textContent = t('marcar.fim_jogo');
+      $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.fim')); };
+      box.showModal();
+      return;
+    }
     const next = what === 'period_next';
-    const { periods, word } = rulesOf();
+    const { periods, word, cards } = rulesOf();
     if (!next && period <= 1) return;
     $('#confirmarTitulo').innerHTML = next ? t('marcar.confirmar.seguinte', { periodo: periodName(period + 1, periods, word) }) : t('marcar.confirmar.anterior', { periodo: periodName(period - 1, periods, word) });
-    $('#confirmarDica').textContent = next ? t('marcar.confirmar.seguinte_dica') : t('marcar.confirmar.anterior_dica');
+    $('#confirmarDica').textContent = next ? (cards ? t('marcar.confirmar.seguinte_dica_cartoes', { tempo: clockText(periodStart(period + 1)) }) : t('marcar.confirmar.seguinte_dica')) : t('marcar.confirmar.anterior_dica');
     $('#confirmarSim').textContent = next ? t('marcar.confirmar.passar') : t('marcar.confirmar.voltar');
     $('#confirmarSim').onclick = () => { box.close(); send({ do: what }, t('marcar.ultimo.periodo')); };
     box.showModal();

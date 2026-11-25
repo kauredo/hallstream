@@ -102,10 +102,18 @@ const playSeconds = 8
 
 // showPlay puts the card or substitution the scorer just entered on air as a
 // lower third. A home player is named from the game's squad; the opponent's
-// squad is not known, so an away player shows the shirt number only.
+// squad is not known, so an away player shows the shirt number only. Label is
+// the team's name, which the overlay shows when there is no player's name.
 func (s *Server) showPlay(do string) {
 	score := s.Manual.Score()
-	squad := s.State.Snapshot().Game.Squad
+	game := s.State.Snapshot().Game
+	squad := game.Squad
+	teamName := func(team string) string {
+		if team == "home" {
+			return game.Home.Name
+		}
+		return game.Away.Name
+	}
 	who := func(team, number string) (first, last, photo string) {
 		if team != "home" {
 			return
@@ -123,13 +131,13 @@ func (s *Server) showPlay(do string) {
 	case do == "card" && len(score.Cards) > 0:
 		c := score.Cards[len(score.Cards)-1]
 		first, last, photo := who(c.Team, c.Number)
-		lt = state.LowerThird{Type: "cartao", Card: c.Kind, Number: c.Number, FirstName: first, LastName: last, PhotoURL: photo}
+		lt = state.LowerThird{Type: "cartao", Card: c.Kind, Number: c.Number, FirstName: first, LastName: last, PhotoURL: photo, Label: teamName(c.Team)}
 	case do == "sub" && len(score.Subs) > 0:
 		x := score.Subs[len(score.Subs)-1]
 		first, last, photo := who(x.Team, x.In)
 		outFirst, outLast, _ := who(x.Team, x.Out)
 		lt = state.LowerThird{Type: "substituicao", Number: x.In, FirstName: first, LastName: last, PhotoURL: photo,
-			OutNumber: x.Out, OutName: strings.TrimSpace(outFirst + " " + outLast)}
+			OutNumber: x.Out, OutName: strings.TrimSpace(outFirst + " " + outLast), Label: teamName(x.Team)}
 	default:
 		return
 	}

@@ -19,6 +19,12 @@
       <button type="button" data-do="point" data-n="2" data-long>+2</button>
       <button type="button" data-do="point" data-n="3" data-long>+3</button>
     </div>
+    <div class="linha cartoes">
+      <button type="button" class="cartao amarelo" data-pick="yellow"><i></i><span data-i18n="marcar.cartao_amarelo"></span></button>
+      <button type="button" class="cartao vermelho" data-pick="red"><i></i><span data-i18n="marcar.cartao_vermelho"></span></button>
+      <button type="button" class="troca" data-pick="sub"><span data-i18n="marcar.substituicao"></span></button>
+    </div>
+    <div class="registo" data-registo="home"></div>
     <div class="linha faltas">
       <span class="rotulo" data-i18n="marcar.faltas"></span>
       <span class="aviso"></span>
@@ -54,6 +60,11 @@
       <button type="button" class="seta" data-ask="period_next" data-i18n-attr="aria-label:marcar.periodo_seguinte">›</button>
     </div>
     <button type="button" class="relogio" id="relogio" data-i18n-attr="aria-label:marcar.acertar_relogio"></button>
+    <div class="compensacao" role="group" data-i18n-attr="aria-label:marcar.compensacao">
+      <button type="button" data-stoppage="-1" data-i18n-attr="aria-label:marcar.compensacao_menos">−</button>
+      <output><span data-i18n="marcar.compensacao"></span><b id="compensacao">+0'</b></output>
+      <button type="button" data-stoppage="1" data-i18n-attr="aria-label:marcar.compensacao_mais">+</button>
+    </div>
     <div class="acerto" role="group" data-i18n-attr="aria-label:marcar.acertar_relogio">
       <button type="button" data-do="clock_add" data-tenths="-10">−1 s</button>
       <button type="button" data-do="clock_add" data-tenths="10">+1 s</button>
@@ -61,6 +72,7 @@
     <p class="feitos" id="feitos" hidden></p>
     <p class="falta" id="falta" hidden></p>
     <button type="button" class="arrancar" id="arrancar"></button>
+    <button type="button" class="arrancar seguinte" id="fecho" hidden></button>
     <p class="dica" id="dica" data-i18n="marcar.dica_longo"></p>
   </section>
 
@@ -72,6 +84,12 @@
       <button type="button" data-do="point" data-n="2" data-long>+2</button>
       <button type="button" data-do="point" data-n="3" data-long>+3</button>
     </div>
+    <div class="linha cartoes">
+      <button type="button" class="cartao amarelo" data-pick="yellow"><i></i><span data-i18n="marcar.cartao_amarelo"></span></button>
+      <button type="button" class="cartao vermelho" data-pick="red"><i></i><span data-i18n="marcar.cartao_vermelho"></span></button>
+      <button type="button" class="troca" data-pick="sub"><span data-i18n="marcar.substituicao"></span></button>
+    </div>
+    <div class="registo" data-registo="away"></div>
     <div class="linha faltas">
       <span class="rotulo" data-i18n="marcar.faltas"></span>
       <span class="aviso"></span>
@@ -138,6 +156,18 @@
   <div class="botoes">
     <button type="button" class="anular" id="exclusaoAcabou" data-i18n="marcar.exclusao_acabou"></button>
     <button type="button" class="arrancar" id="exclusaoFeito" data-i18n="marcar.feito"></button>
+  </div>
+</dialog>
+
+<!-- A shirt number for a card or a substitution: the squad's numbers for the home team, a typed number for the rest. -->
+<dialog id="numero">
+  <h2 id="numeroTitulo"></h2>
+  <div class="camisolas" id="camisolas"></div>
+  <input id="numeroCampo" inputmode="numeric" maxlength="3" autocomplete="off" data-i18n-attr="aria-label:marcar.numero_camisola;placeholder:marcar.numero_camisola">
+  <div class="botoes">
+    <button type="button" class="anular" id="numeroOutro" data-i18n="marcar.outro_numero"></button>
+    <button type="button" class="anular" id="numeroCancelar" data-i18n="marcar.cancelar"></button>
+    <button type="button" class="arrancar" id="numeroFeito" data-i18n="marcar.feito"></button>
   </div>
 </dialog>
 

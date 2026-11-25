@@ -54,7 +54,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 8. **Releases.**
    - Signed Windows builds and notarised macOS builds.
    - An opt-in update check. Done: once a day against GitHub Releases, a banner links to the release page.
-   - A feedback form that opens a GitHub issue.
+   - A feedback form that opens a GitHub issue. Done: Ajuda opens a new issue with the version, system, scoring and sport filled in. It needs a GitHub account; a form that needs none (the BVA feedback worker) is still open.
 
 ## Phase B: multiple cameras
 

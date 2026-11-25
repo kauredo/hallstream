@@ -3011,6 +3011,16 @@
     var el = document.getElementById(id);
     if (el) el.scrollIntoView();
   }
+  // A new GitHub issue with what a report always needs already filled in; the person adds the rest there.
+  function feedbackURL() {
+    var st = S.status || {}, set = S.settings || {};
+    var body = t('painel.feedback.corpo', {
+      versao: st.version || '?', sistema: navigator.userAgent,
+      marcacao: set.input === 'manual' ? t('painel.marcar.telemovel') : t('painel.marcar.consola'),
+      desporto: (set.club && set.club.sport) || 'basketball'
+    });
+    return 'https://github.com/kauredo/hallstream/issues/new?body=' + encodeURIComponent(body);
+  }
   function ajudaEvents() {
     $('main').addEventListener('click', function (e) {
       var h = e.target.closest('[data-help]');
@@ -3018,6 +3028,7 @@
       if (!e.target.closest('#ajuda')) return;
       var go = e.target.closest('[data-goto]');
       if (go) { e.preventDefault(); showTab(go.dataset.goto); return; }
+      if (e.target.closest('[data-act="feedback"]')) { window.open(feedbackURL(), '_blank', 'noopener'); return; }
       var b = e.target.closest('[data-act="copy-dir"]');
       if (b) busy(b, function () { $('#aDir').select(); return copyText($('#aDir').value); }, t('painel.copiado'));
     });

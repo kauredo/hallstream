@@ -563,7 +563,7 @@
       const b = box.children[i], [time, no] = b.children;
       b.disabled = input !== 'manual';
       if (time.textContent !== x.left) time.textContent = x.left || '';
-      const shown = x.number || '#?';
+      const shown = x.number || '';
       if (no.textContent !== String(shown)) no.textContent = shown;
       no.classList.toggle('sem', !x.number);
       const name = x.number ? '' : t('marcar.exclusao_sem_numero', { tempo: x.left || '' });

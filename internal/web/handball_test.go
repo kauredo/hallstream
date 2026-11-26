@@ -132,9 +132,9 @@ func TestMarcarPageHandball(t *testing.T) {
 	if err := until(tab, `document.querySelector('.casa [data-do="suspension"]').getAttribute('aria-label').startsWith("Exclusão de 2 minutos, ")`); err != nil {
 		t.Errorf("the +2' button has no label: %v", err)
 	}
-	// With no number yet the chip keeps the number cell, muted, with "#?".
-	if err := until(tab, `(() => { const b = document.querySelector('.casa .exc b'); return b.textContent === "#?" && b.classList.contains('sem') && getComputedStyle(b).display !== 'none' && document.querySelector('.casa .exc').getAttribute('aria-label').includes("sem número"); })()`); err != nil {
-		t.Errorf("the unnumbered chip shows no empty number cell: %v", err)
+	// With no number yet the number band stays empty and keeps its height.
+	if err := until(tab, `(() => { const b = document.querySelector('.casa .exc b'); return b.textContent === "" && b.classList.contains("sem") && getComputedStyle(b).visibility === "hidden" && document.querySelector('.casa .exc').getAttribute('aria-label').includes("sem número"); })()`); err != nil {
+		t.Errorf("the unnumbered chip's number band is not empty and hidden: %v", err)
 	}
 	// The chip opens the number field; "Feito" shows the number on it.
 	tap(`.casa .exc`)

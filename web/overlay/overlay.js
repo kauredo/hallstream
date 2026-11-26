@@ -1427,7 +1427,7 @@
     root.style.setProperty('--away', awayColor);
     setClass(root, 'away-light', lightOnWhite(awayColor));
     // No colour of its own: missing, neutral (the grey) or too close to the club's.
-    setClass(root, 'away-plain', awayColor.toUpperCase() === '#5C6170' || nearColour(((st.game || {}).theme || {}).red || '#2F4B7C', awayColor));
+    setClass(root, 'away-plain', String(awayColor).toUpperCase() === '#5C6170' || nearColour(((st.game || {}).theme || {}).red || '#2F4B7C', awayColor));
     root.style.setProperty('--next', (v.next && v.next.opponent && v.next.opponent.color) || '#5C6170');
     setClass(screens.voltamos, 'no-line', !v.backLine);
     setClass(screens.voltamos, 'no-score', !v.inPlay);

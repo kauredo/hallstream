@@ -42,7 +42,17 @@ func chrome(t *testing.T) context.Context {
 	t.Cleanup(cancel)
 	tab, cancel := chromedp.NewContext(alloc)
 	t.Cleanup(cancel)
-	if err := chromedp.Do(tab); errors.Is(err, exec.ErrNotFound) {
+	// Starting Chrome has no time limit of its own: a browser that never
+	// answers would hold the whole package until go test's 10-minute alarm.
+	started := make(chan error, 1)
+	go func() { started <- chromedp.Do(tab) }()
+	var err error
+	select {
+	case err = <-started:
+	case <-time.After(time.Minute):
+		t.Fatal("Chrome did not start within a minute")
+	}
+	if errors.Is(err, exec.ErrNotFound) {
 		t.Skip("no Chrome on this machine")
 	} else if err != nil {
 		t.Fatal(err)

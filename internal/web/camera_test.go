@@ -1,8 +1,10 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -146,6 +148,42 @@ func TestSettingsNewCameraWithoutList(t *testing.T) {
 	}
 	if got.OBS.Cameras != nil || got.OBS.CameraFull != nil || got.OBS.CameraSource != "B" {
 		t.Errorf("cameras %v full %v source %q", got.OBS.Cameras, got.OBS.CameraFull, got.OBS.CameraSource)
+	}
+}
+
+func TestSettingsTimeoutCamera(t *testing.T) {
+	s := newServer(t)
+	if n := len(s.Store.Settings().OBS.CameraList()); n >= 3 {
+		t.Fatalf("%d cameras; 3 must be past the list", n) // a camera since removed stays chosen
+	}
+	for _, c := range []struct{ put, want int }{{2, 2}, {7, 0}, {3, 3}, {4, 0}, {-1, 0}} {
+		set := s.Store.Settings()
+		set.OBS.TimeoutCamera = c.put
+		var got store.Settings
+		if code := call(t, s, "PUT", "/api/settings", set, &got); code != 200 || got.OBS.TimeoutCamera != c.want {
+			t.Errorf("put %d: %d, saved %d", c.put, code, got.OBS.TimeoutCamera)
+		}
+	}
+	// A panel page from 0.1.2 sends no timeout_camera.
+	b, _ := json.Marshal(s.Store.Settings())
+	var old map[string]any
+	json.Unmarshal(b, &old)
+	delete(old["obs"].(map[string]any), "timeout_camera")
+	var got store.Settings
+	if call(t, s, "PUT", "/api/settings", old, &got); got.OBS.TimeoutCamera != 0 {
+		t.Errorf("without the key: %d", got.OBS.TimeoutCamera)
+	}
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"obs":{"enabled":true}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := st.Settings().OBS.TimeoutCamera; n != 0 {
+		t.Errorf("settings.json without it: %d", n)
 	}
 }
 

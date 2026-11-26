@@ -14,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	"github.com/kauredo/hallstream/internal/obsws"
+	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 )
 
@@ -736,4 +738,454 @@ func TestCameraLiveEventNeverComes(t *testing.T) {
 	if len(s.expect) != 0 {
 		t.Errorf("expect %v", s.expect)
 	}
+}
+
+var threeCams = []store.Camera{{Source: "A", Scene: "Câmara 1"}, {Source: "B", Scene: "Câmara 2"}, {Source: "C", Scene: "Câmara 3"}}
+
+// timeoutServer has camera 1 live and camera tcam for the time-out.
+func timeoutServer(t *testing.T, f *camOBS, cams []store.Camera, tcam int) *Server {
+	t.Helper()
+	s := camServer(t, f, cams)
+	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.TimeoutCamera = tcam })
+	s.programScene("Câmara 1")
+	s.bg.Wait()
+	f.clear()
+	return s
+}
+
+// screenTo changes the screen and lets the squeeze end.
+func screenTo(t *testing.T, s *Server, screen string) map[string]any {
+	t.Helper()
+	var resp map[string]any
+	if code := call(t, s, "POST", "/api/screen", map[string]any{"screen": screen}, &resp); code != 200 {
+		t.Fatalf("%s: %d %v", screen, code, resp)
+	}
+	s.Camera.Stop()
+	return resp
+}
+
+func switches(sent []camSent) []string {
+	var to []string
+	for _, m := range sent {
+		if m.switchTo != "" {
+			to = append(to, m.switchTo)
+		}
+	}
+	return to
+}
+
+// tweenOn checks that every transform went to scene and the last one ended at x, scale.
+func tweenOn(t *testing.T, sent []camSent, scene string, x, scale float64) {
+	t.Helper()
+	if len(sent) == 0 {
+		t.Fatal("no tween")
+	}
+	for _, m := range sent {
+		if m.switchTo != "" || m.scene != scene {
+			t.Fatalf("want only transforms on %q: %+v", scene, sent)
+		}
+	}
+	if end := sent[len(sent)-1]; !near2(end.x, x) || !near2(end.scale, scale) {
+		t.Errorf("ended at %+v", end)
+	}
+}
+
+// placedSwitched checks a placing of scene's camera at x, scale, the switch
+// to scene, then a tween on scene ending at endX, endScale.
+func placedSwitched(t *testing.T, sent []camSent, scene string, x, scale, endX, endScale float64) {
+	t.Helper()
+	if len(sent) < 3 {
+		t.Fatalf("too few: %+v", sent)
+	}
+	if p := sent[0]; p.switchTo != "" || p.scene != scene || !near2(p.x, x) || !near2(p.scale, scale) {
+		t.Errorf("placed %+v", p)
+	}
+	if sent[1].switchTo != scene {
+		t.Errorf("switched %+v", sent[1])
+	}
+	tweenOn(t, sent[2:], scene, endX, endScale)
+}
+
+func TestTimeoutCameraInAndOut(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	if resp := screenTo(t, s, "desconto"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	placedSwitched(t, f.log(), "Câmara 2", fullX, fullScale, winX, winScale)
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+	f.clear()
+	if resp := screenTo(t, s, "marcador"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	placedSwitched(t, f.log(), "Câmara 1", winX, winScale, fullX, fullScale)
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 1 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+func TestTimeoutCameraOff(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 0)
+	screenTo(t, s, "desconto")
+	tweenOn(t, f.log(), "Câmara 1", winX, winScale)
+	f.clear()
+	screenTo(t, s, "marcador")
+	tweenOn(t, f.log(), "Câmara 1", fullX, fullScale)
+}
+
+func TestTimeoutCameraSkipped(t *testing.T) {
+	noScene := []store.Camera{threeCams[0], {Source: "B"}, threeCams[2]}
+	for _, c := range []struct {
+		name    string
+		cams    []store.Camera
+		tcam    int
+		program string // "" keeps Câmara 1
+		legacy  bool
+	}{
+		{name: "out of range", cams: twoCams, tcam: 3},
+		{name: "no scene", cams: noScene, tcam: 2},
+		{name: "already live", cams: threeCams, tcam: 1},
+		{name: "live camera unknown", cams: threeCams, tcam: 2, program: "Outra"},
+		{name: "old two-scene mode", cams: threeCams, tcam: 2, legacy: true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := newCamOBS("A", "B", "C")
+			s := timeoutServer(t, f, c.cams, c.tcam)
+			if c.program != "" {
+				s.programScene(c.program)
+				s.bg.Wait()
+			}
+			if c.legacy {
+				f.scenes["Desconto"] = nil
+				s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.TimeoutScene, set.OBS.GameScene = "Desconto", "Câmara 1" })
+			}
+			screenTo(t, s, "desconto")
+			screenTo(t, s, "marcador")
+			want := []string(nil)
+			if c.legacy {
+				want = []string{"Desconto", "Câmara 1"} // the old mode's own switch
+			}
+			if got := switches(f.log()); !slices.Equal(got, want) {
+				t.Errorf("switches %v", got)
+			}
+			for _, m := range f.log() {
+				if m.switchTo == "" && m.scene != "Câmara 1" {
+					t.Errorf("moved %+v", m)
+				}
+			}
+		})
+	}
+}
+
+func TestTimeoutCameraManualSwitchWins(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	if code, resp := switchCamera(t, s, 3); code != 200 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	f.clear()
+	screenTo(t, s, "marcador")
+	tweenOn(t, f.log(), "Câmara 3", fullX, fullScale)
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 3 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+func TestTimeoutCameraOBSSwitchForgets(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	s.programScene("Câmara 3") // a click in OBS
+	s.bg.Wait()
+	f.clear()
+	screenTo(t, s, "marcador")
+	tweenOn(t, f.log(), "Câmara 3", fullX, fullScale)
+}
+
+func TestTimeoutCameraRefused(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	f.refuse = true
+	s := timeoutServer(t, f, threeCams, 2)
+	resp := screenTo(t, s, "desconto")
+	msg, _ := resp["obs_error"].(string)
+	if want := i18n.T("log.camara.desconto_falhou", "err", ""); !strings.HasPrefix(msg, want) || len(msg) == len(want) {
+		t.Errorf("obs_error %q", msg)
+	}
+	if cur := s.State.Snapshot().Screen.Current; cur != "desconto" {
+		t.Errorf("screen %q", cur)
+	}
+	sent := f.log()
+	if len(sent) < 2 || sent[0].scene != "Câmara 2" {
+		t.Fatalf("want camera 2 placed first: %+v", sent)
+	}
+	tweenOn(t, sent[1:], "Câmara 1", winX, winScale)
+	f.clear()
+	f.refuse = false
+	screenTo(t, s, "marcador")
+	tweenOn(t, f.log(), "Câmara 1", fullX, fullScale)
+}
+
+func TestTimeoutCameraPromo(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	s.State.ShowPromo(state.PromoClip{ID: "a", URL: "/promo/a.mp4"})
+	s.followCamera() // as RunCamera does on the change
+	s.Camera.Stop()
+	screenTo(t, s, "desconto")
+	if got := switches(f.log()); !slices.Equal(got, []string{"Câmara 2", "Câmara 1", "Câmara 2"}) {
+		t.Errorf("switches %v", got)
+	}
+}
+
+// RunCamera and POST /api/screen both follow the same change.
+func TestTimeoutCameraFollowedTwice(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	s.State.SetScreen("desconto", false)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() { defer wg.Done(); s.followCamera() }()
+	}
+	wg.Wait()
+	s.Camera.Stop()
+	placedSwitched(t, f.log(), "Câmara 2", fullX, fullScale, winX, winScale)
+}
+
+// wantError checks that msg holds want.
+func wantError(t *testing.T, msg any, want string) {
+	t.Helper()
+	if s, _ := msg.(string); !strings.Contains(s, want) {
+		t.Errorf("error %v, want %q", msg, want)
+	}
+}
+
+// backToOne leaves the time-out and checks camera 1 came back, in the window first.
+func backToOne(t *testing.T, s *Server, f *camOBS) {
+	t.Helper()
+	f.clear()
+	if resp := screenTo(t, s, "marcador"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	placedSwitched(t, f.log(), "Câmara 1", winX, winScale, fullX, fullScale)
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 1 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+func TestTimeoutCameraEventThenBack(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	s.programScene("Câmara 2") // the event for the time-out switch
+	s.bg.Wait()
+	backToOne(t, s, f)
+}
+
+// OBS reports each switch about 315 ms late, so a quick toggle's events
+// arrive after all three switches.
+func TestTimeoutCameraLateEventsQuickToggle(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	screenTo(t, s, "marcador")
+	screenTo(t, s, "desconto")
+	for _, scene := range []string{"Câmara 2", "Câmara 1", "Câmara 2"} {
+		s.programScene(scene)
+	}
+	s.bg.Wait()
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+	backToOne(t, s, f)
+}
+
+// A transition longer than expectFor: the event names the scene the program
+// put on air, so it is no switch made in OBS.
+func TestTimeoutCameraEventAfterDeadline(t *testing.T) {
+	old := expectFor
+	expectFor = time.Millisecond
+	t.Cleanup(func() { expectFor = old })
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	time.Sleep(5 * time.Millisecond)
+	s.programScene("Câmara 2")
+	s.bg.Wait()
+	backToOne(t, s, f)
+}
+
+func TestTimeoutCameraManualSwitchThenDesconto(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	if code, resp := switchCamera(t, s, 3); code != 200 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	screenTo(t, s, "desconto") // before OBS reports the manual switch
+	s.programScene("Câmara 3")
+	s.programScene("Câmara 2")
+	s.bg.Wait()
+	f.clear()
+	screenTo(t, s, "marcador")
+	placedSwitched(t, f.log(), "Câmara 3", winX, winScale, fullX, fullScale)
+}
+
+func TestTimeoutCameraReconnectKeeps(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	calls := fakeWatch(s, func(_ <-chan struct{}, scene func(string, bool)) error {
+		return errors.New("gone") // the connection drops, and the pending switch with it
+	})
+	s.scenesOnce(scenesWait)
+	fakeWatch(s, func(_ <-chan struct{}, scene func(string, bool)) error {
+		scene("Câmara 2", false) // the first report after connecting again
+		scene("Câmara 2", true)  // a change event naming the scene the program put on air
+		return errors.New("gone")
+	})
+	s.scenesOnce(scenesWait)
+	s.bg.Wait() // the report placed camera 2, in the window, as for any report
+	if *calls != 1 {
+		t.Fatalf("first watch ran %d times", *calls)
+	}
+	backToOne(t, s, f)
+}
+
+func TestTimeoutCameraSettingsChanged(t *testing.T) {
+	t.Run("camera list shrunk", func(t *testing.T) {
+		f := newCamOBS("A", "B", "C")
+		s := timeoutServer(t, f, threeCams, 2)
+		s.programScene("Câmara 3")
+		s.bg.Wait()
+		screenTo(t, s, "desconto")
+		s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Cameras = twoCams })
+		f.clear()
+		resp := screenTo(t, s, "marcador")
+		wantError(t, resp["obs_error"], i18n.T("log.camara.desconto_sem_volta", "n", 3))
+		tweenOn(t, f.log(), "Câmara 2", fullX, fullScale)
+	})
+	t.Run("scene cleared", func(t *testing.T) {
+		f := newCamOBS("A", "B", "C")
+		s := timeoutServer(t, f, threeCams, 2)
+		screenTo(t, s, "desconto")
+		s.Store.UpdateSettings(func(set *store.Settings) {
+			set.OBS.Cameras = []store.Camera{{Source: "A"}, threeCams[1], threeCams[2]}
+		})
+		f.clear()
+		resp := screenTo(t, s, "marcador")
+		wantError(t, resp["obs_error"], i18n.T("log.camara.desconto_sem_volta", "n", 1))
+		tweenOn(t, f.log(), "Câmara 2", fullX, fullScale)
+	})
+	t.Run("timeout_camera changed", func(t *testing.T) {
+		f := newCamOBS("A", "B", "C")
+		s := timeoutServer(t, f, threeCams, 2)
+		screenTo(t, s, "desconto")
+		s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.TimeoutCamera = 3 })
+		backToOne(t, s, f)
+	})
+	t.Run("OBS control off", func(t *testing.T) {
+		f := newCamOBS("A", "B", "C")
+		s := timeoutServer(t, f, threeCams, 2)
+		screenTo(t, s, "desconto")
+		s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = false })
+		f.clear()
+		s.State.SetScreen("marcador", false)
+		err := s.followCamera() // as RunCamera does; the API follows only with OBS on
+		s.Camera.Stop()
+		var msg any
+		if err != nil {
+			msg = err.Error()
+		}
+		wantError(t, msg, i18n.T("log.camara.desconto_obs_desligado", "n", 1))
+		if sent := f.log(); len(sent) != 0 {
+			t.Errorf("sent %+v", sent)
+		}
+	})
+}
+
+// A follow that waited for switchMu acts on the screen as it is then, not
+// on the one it was woken for.
+func TestTimeoutCameraScreenChangesWhileWaiting(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	s.switchMu.Lock()
+	s.State.SetScreen("desconto", false)
+	done := make(chan struct{})
+	go func() { s.followCamera(); close(done) }()
+	time.Sleep(50 * time.Millisecond)
+	s.State.SetScreen("marcador", false)
+	s.switchMu.Unlock()
+	<-done
+	s.Camera.Stop()
+	if sent := f.log(); len(sent) != 0 {
+		t.Errorf("acted on a screen already left: %+v", sent)
+	}
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 1 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+func TestTimeoutCameraBackRefused(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	f.clear()
+	f.refuse = true
+	resp := screenTo(t, s, "marcador")
+	msg, _ := resp["obs_error"].(string)
+	if want := i18n.T("log.camara.desconto_falhou", "err", ""); !strings.HasPrefix(msg, want) {
+		t.Errorf("obs_error %q", msg)
+	}
+	sent := f.log()
+	if len(sent) < 2 || sent[0].scene != "Câmara 1" {
+		t.Fatalf("want camera 1 placed first: %+v", sent)
+	}
+	tweenOn(t, sent[1:], "Câmara 2", fullX, fullScale)
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+func TestTimeoutCameraManualRefusedKeeps(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	screenTo(t, s, "desconto")
+	f.refuse = true
+	if code, resp := switchCamera(t, s, 3); code != 502 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	f.refuse = false
+	backToOne(t, s, f)
+}
+
+func TestTimeoutCameraLiveUnknownThenReported(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := timeoutServer(t, f, threeCams, 2)
+	s.programScene("Outra")
+	s.bg.Wait()
+	f.clear()
+	resp := screenTo(t, s, "desconto")
+	wantError(t, resp["obs_error"], i18n.T("log.camara.desconto_sem_live", "n", 2))
+	s.followCamera() // a state change while OBS still has not said
+	if got := switches(f.log()); got != nil {
+		t.Fatalf("switched with the live camera unknown: %v", got)
+	}
+	s.programScene("Câmara 1")
+	s.bg.Wait()
+	if err := s.followCamera(); err != nil { // as RunCamera does on obs.live_camera
+		t.Fatal(err)
+	}
+	s.Camera.Stop()
+	if got := switches(f.log()); !slices.Equal(got, []string{"Câmara 2"}) {
+		t.Fatalf("switches %v", got)
+	}
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+	backToOne(t, s, f)
 }

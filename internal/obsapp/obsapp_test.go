@@ -98,7 +98,14 @@ func TestSystem(t *testing.T) {
 	if app.ConfigPath == "" || filepath.Base(app.ConfigPath) != "config.json" {
 		t.Errorf("config path %q", app.ConfigPath)
 	}
-	if runtime.GOOS != "windows" && (app.Running != nil || app.Start != nil || app.Close != nil) {
-		t.Error("only Windows starts OBS")
+	switch runtime.GOOS {
+	case "windows", "darwin", "linux":
+		if app.Running == nil || app.Start == nil {
+			t.Error("this system finds and starts OBS")
+		}
+	default:
+		if app.Running != nil || app.Start != nil || app.Close != nil {
+			t.Error("only Windows, macOS and Linux start OBS")
+		}
 	}
 }

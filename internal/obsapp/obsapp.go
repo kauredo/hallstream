@@ -1,5 +1,6 @@
 // Package obsapp is OBS Studio as a program on this PC: obs-websocket's
-// config file, and on Windows finding, starting and closing obs64.exe.
+// config file, and on Windows, macOS and Linux finding, starting and
+// closing OBS.
 package obsapp
 
 import (
@@ -16,13 +17,14 @@ import (
 )
 
 // App is what the program can do with OBS here. System() gives the real
-// one; nil funcs mean this system can't (anything but Windows).
+// one; nil funcs mean this system can't.
 type App struct {
 	// ConfigPath is obs-websocket's config.json; "" when unknown.
 	ConfigPath string
-	// Running reports whether obs64.exe is running.
+	// Running reports whether OBS is running.
 	Running func() (bool, error)
-	// Start launches OBS minimised to the tray.
+	// Start launches OBS: minimised to the tray on Windows, with its window
+	// showing on macOS and Linux.
 	Start func() error
 	// Close asks OBS to close, the way its window's X would; with force it
 	// ends OBS when that does not work.
@@ -41,7 +43,8 @@ type WebSocket struct {
 }
 
 // configPath is obs-studio/plugin_config/obs-websocket/config.json in the
-// user's config folder (%APPDATA% on Windows).
+// user's config folder (%APPDATA% on Windows, ~/Library/Application Support
+// on macOS, ~/.config on Linux).
 func configPath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {

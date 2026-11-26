@@ -6,7 +6,7 @@ import (
 )
 
 func TestVDOLinks(t *testing.T) {
-	if got := VDOPush("abc"); got != "https://vdo.ninja/?push=abc&webcam&autostart&facing=rear&quality=0&audiodevice=0" {
+	if got := VDOPush("abc"); got != "https://vdo.ninja/?push=abc&webcam&autostart&facing=rear&quality=0&audiodevice=0&forcelandscape" {
 		t.Errorf("push %s", got)
 	}
 	if got := VDOView("abc"); got != "https://vdo.ninja/?view=abc&noaudio&cleanoutput&videobitrate=4000" {

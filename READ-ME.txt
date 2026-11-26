@@ -52,8 +52,8 @@ FIRST TIME (AT HOME)
      connect the YouTube account in OBS itself, in Settings > Stream.
    - For the PC to open everything by itself, turn on "Open with
      Windows" in Settings > On this computer.
-   - New camera? Choose it in Settings > Camera and press Set up OBS.
-     The old one is hidden in OBS.
+   - New camera? Choose it in Settings > Cameras and press "Save and
+     set up OBS". The old one is hidden in OBS.
    - In Settings > Club, type the name of the home side, the short code
      and the "Club name on the FPB", exactly as it appears in the FPB
      calendar. With that name, the program creates the club's age groups
@@ -178,16 +178,16 @@ TIMEOUT WITH OBS
 
 After "Set up OBS", during a timeout the camera picture shrinks to the
 graphics window and comes back afterwards, in the same scene.
-- Settings > Camera shows the camera in use. "Automatic" picks DroidCam,
-  if there is one.
+- Settings > Cameras shows the cameras in use. For camera 1,
+  "Automatic" picks DroidCam, if there is one.
 - "Adjust camera" puts it back to full screen.
 - If OBS is on another computer, connect it by hand in Settings > OBS
   control > OBS connection set up by hand.
 - With two or three cameras, Screens has a button per camera, and the one
   on air says "On air". You can change camera during a timeout: the
   picture stays in the window.
-- In Settings > Camera during timeouts, choose the camera that goes on
-  air for the timeout (the bench, for example). At the end the camera
+- In Settings > Cameras > "Camera during timeouts", choose the camera
+  that goes on air for the timeout (the bench, for example). At the end the camera
   that was on air comes back. "None" keeps the camera on air.
 
 If the tablet rotates or DroidCam changes resolution, the program

@@ -16,7 +16,15 @@ import (
 func (t Tray) Run() {
 	var once sync.Once
 	quit := func() { once.Do(t.Quit) }
+	var asking sync.Mutex
+	sair := func() bool {
+		return confirmThenQuit(&asking, t.ConfirmQuit, func() {
+			quit()
+			systray.Quit()
+		})
+	}
 	onReopen(t.Panel)
+	onQuit(func() { sair() })
 	systray.Run(func() {
 		watchSignals(func() {
 			quit()
@@ -54,14 +62,25 @@ func (t Tray) Run() {
 						t.Log(i18n.T("app.bandeja.nao_copiei", "err", err))
 					}
 				case <-exit.ClickedCh:
-					if t.ConfirmQuit != nil && !t.ConfirmQuit() {
-						continue
+					if sair() {
+						return
 					}
-					quit()
-					systray.Quit()
-					return
 				}
 			}
 		}()
 	}, quit)
+}
+
+// confirmThenQuit is "Sair": it runs stop unless confirm says no. While one
+// question is open, another request to quit is dropped.
+func confirmThenQuit(asking *sync.Mutex, confirm func() bool, stop func()) bool {
+	if !asking.TryLock() {
+		return false
+	}
+	defer asking.Unlock()
+	if confirm != nil && !confirm() {
+		return false
+	}
+	stop()
+	return true
 }

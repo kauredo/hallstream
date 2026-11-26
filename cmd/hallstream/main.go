@@ -336,14 +336,7 @@ func main() {
 		Changed: changed,
 		Log:     say,
 		ConfirmQuit: func() bool {
-			if !srv.Streaming() {
-				return true
-			}
-			msg := i18n.T("app.sair.no_ar")
-			if st.Settings().OBS.CloseOnExit {
-				msg = i18n.T("app.sair.no_ar_fecha_obs")
-			}
-			return desktop.Ask(msg)
+			return confirmQuit(srv.Streaming, func() bool { return st.Settings().OBS.CloseOnExit }, desktop.Ask)
 		},
 		Quit: func() {
 			say(i18n.T("log.a_fechar"))
@@ -364,6 +357,19 @@ func main() {
 			}
 		},
 	}.Run()
+}
+
+// confirmQuit lets "Sair" go ahead off air, and asks while the stream is
+// live, warning when OBS will close too.
+func confirmQuit(streaming, closesOBS func() bool, ask func(string) bool) bool {
+	if !streaming() {
+		return true
+	}
+	msg := i18n.T("app.sair.no_ar")
+	if closesOBS() {
+		msg = i18n.T("app.sair.no_ar_fecha_obs")
+	}
+	return ask(msg)
 }
 
 // trayStatus is the grey line in the tray menu.

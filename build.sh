@@ -1,8 +1,9 @@
 #!/bin/zsh
-# Build what to hand over. Usage: ./build.sh 1.0.0 [windows|macos]
+# Build what to hand over. Usage: ./build.sh 1.0.0 [windows|macos|linux]
 # windows (the default) makes the two exes and the zip. macos makes an
 # ad-hoc-signed Hallstream.app and, unless HALLSTREAM_SIGN is set, the DMG;
-# with it set, the release workflow signs the app and makes the DMG.
+# with it set, the release workflow signs the app and makes the DMG. linux
+# makes a static amd64 binary and its tarball.
 set -e
 version=${1:-dev}
 target=${2:-windows}
@@ -106,8 +107,19 @@ if [[ -z $HALLSTREAM_SIGN ]]; then
 	done
 fi
 
+elif [[ $target == linux ]]; then
+rm -rf dist/linux
+mkdir -p dist/linux/Hallstream
+flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags $flags -o dist/linux/Hallstream/Hallstream ./cmd/hallstream
+texts dist/linux/Hallstream linux
+# BSD tar (a Mac) has no --owner or --group.
+owner=()
+if tar --version | grep -q GNU; then owner=(--owner=0 --group=0); fi
+tar $owner -C dist/linux -czf dist/Hallstream-$version-linux-x64.tar.gz Hallstream
+
 else
-print -u2 "build.sh: unknown target $target (windows or macos)"
+print -u2 "build.sh: unknown target $target (windows, macos or linux)"
 exit 1
 fi
 ls -lh dist

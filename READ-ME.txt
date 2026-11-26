@@ -183,6 +183,9 @@ graphics window and comes back afterwards, in the same scene.
 - "Adjust camera" puts it back to full screen.
 - If OBS is on another computer, connect it by hand in Settings > OBS
   control > OBS connection set up by hand.
+- With two or three cameras, Screens has a button per camera, and the one
+  on air says "On air". You can change camera during a timeout: the
+  picture stays in the window.
 
 If the tablet rotates or DroidCam changes resolution, the program
 adjusts the camera again by itself. With "Full image", an upright

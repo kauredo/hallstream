@@ -324,7 +324,7 @@
   }
   function loadStatus() {
     return api('GET', '/api/status').then(function (s) {
-      S.status = s; renderChips(); renderStream();
+      S.status = s; renderChips(); renderStream(); updateCameraButtons();
       var c = s && s.club_setup, was = S.clubRunning;
       S.clubRunning = !!(c && c.running);
       if (S.clubRunning) {
@@ -392,6 +392,7 @@
     tag.hidden = !label;
     tag.textContent = label || '';
     tag.classList.toggle('demo-tag', !!st.demo);
+    updateCameraButtons();
     updateScreenButtons();
     updateLowerThird();
     renderPromoAir();
@@ -839,6 +840,7 @@
   function renderEcras() {
     var root = $('#ecras');
     var html = '<div class="ecras-grid"><div>' +
+      '<div class="card" id="camCard" hidden><h2>' + t('painel.camaras.titulo') + '</h2><div class="cams" id="cams"></div><p class="msg" id="camMsg" role="status"></p></div>' +
       '<div class="card"><h2>' + t('painel.ecras.no_ecra') + '</h2>' +
       '<div class="screens" id="screens">' + SCREENS.map(function (s) {
         return '<button class="scr' + (s.id === 'nada' ? ' nada' : '') + '" data-screen="' + s.id + '" aria-pressed="false">' +
@@ -886,6 +888,7 @@
       ecrasEvents();
     }
     renderLtPlayers();
+    updateCameraButtons();
     updateScreenButtons();
     updateLowerThird();
     var vj = $('#vjLine');
@@ -985,6 +988,38 @@
     if (auto && !auto.disabled) auto.checked = !!(st.screen && st.screen.auto);
   }
 
+  // One button per camera, shown with two or more while OBS answers. Drawn again only
+  // when the cameras change, so focus stays put; the live state marks the one on air.
+  var camKey = '';
+  function updateCameraButtons() {
+    var card = $('#camCard'); if (!card) return;
+    var o = (S.settings && S.settings.obs) || {};
+    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '', scene: '', label: '' }];
+    var connected = !!(S.status && S.status.obs && S.status.obs.connected);
+    card.hidden = !obsOn() || !connected || cams.length < 2;
+    if (card.hidden) return;
+    var key = JSON.stringify(cams);
+    if (key !== camKey) {
+      camKey = key;
+      $('#cams').innerHTML = cams.map(function (c, i) {
+        var n = i + 1;
+        return '<button class="cam' + (c.scene ? '' : ' sem-cena') + '" type="button" data-cam="' + n + '" aria-pressed="false">' +
+          '<span class="cam-n">' + n + '</span><span class="cam-nome">' + esc(c.label || t('painel.camaras.camara', { n: n })) + '</span>' +
+          '<small class="cam-estado"></small><small class="cam-saude"></small></button>';
+      }).join('');
+    }
+    var live = (S.state && S.state.obs && S.state.obs.live_camera) || 0;
+    $all('#cams .cam').forEach(function (b, i) {
+      var on = +b.dataset.cam === live, scene = !!cams[i].scene;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (!S.camBusy) b.disabled = !scene;
+      if (S.camBusy === +b.dataset.cam) return;
+      b.querySelector('.cam-estado').textContent = on ? t('painel.camaras.no_ar') : scene ? '' : t('painel.camaras.sem_cena');
+    });
+    var msg = $('#camMsg');
+    if (!S.camBusy && msg.className !== 'msg err') msg.textContent = live ? '' : t('painel.camaras.outra_cena');
+  }
+
   var ltTimer = null;
   function updateLowerThird() {
     var el = $('#ltNow'); if (!el || !S.state) return;
@@ -1009,6 +1044,20 @@
     root.addEventListener('click', function (e) {
       var go = e.target.closest('[data-goto]');
       if (go) { e.preventDefault(); showTab(go.dataset.goto); return; }
+      var cam = e.target.closest('[data-cam]');
+      if (cam) {
+        var cm = $('#camMsg');
+        S.camBusy = +cam.dataset.cam;
+        $all('#cams .cam').forEach(function (x) { x.disabled = true; });
+        cam.querySelector('.cam-estado').textContent = t('painel.camaras.a_mudar');
+        cm.className = 'msg'; cm.textContent = '';
+        api('POST', '/api/obs/camera/live', { index: +cam.dataset.cam }).then(function (r) {
+          if (S.state) S.state.obs = { live_camera: r.live_camera };
+          if (r.warning) { cm.className = 'msg err'; cm.textContent = r.warning; }
+        }, function (err) { cm.className = 'msg err'; cm.textContent = err.message; })
+          .then(function () { S.camBusy = false; updateCameraButtons(); });
+        return;
+      }
       var b = e.target.closest('[data-screen]');
       if (b) {
         var msg = $('#scrMsg');

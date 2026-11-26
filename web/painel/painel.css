@@ -389,6 +389,33 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
 .scr:disabled .scr-pv { outline-style: dashed; outline-width: 1px; }
 .scr:disabled .scr-pv svg { filter: grayscale(1) brightness(.6); }
 
+/* Câmaras: a channel switch on the scorer's table. The camera on air is filled with ink and its
+   number is lit; "No ar" says it in words too. */
+.cams { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.cam {
+  display: grid; align-content: start; gap: 2px;
+  min-height: 96px; padding: 12px; text-align: left;
+  border: 1px solid var(--marcador); border-radius: var(--raio);
+  background: transparent; color: var(--marcador); cursor: pointer;
+}
+.cam:hover { background: var(--vela); }
+.cam-n { font-stretch: var(--estreito); font-weight: 900; font-size: 40px; line-height: .95; font-variant-numeric: tabular-nums; }
+.cam-nome { font-stretch: var(--estreito); font-weight: 800; font-size: 18px; line-height: 1.05; overflow-wrap: anywhere; }
+.cam small { font-size: 14px; line-height: 1.25; color: var(--tinta-2); }
+.cam small:empty { display: none; }
+.cam[aria-pressed="true"] { background: var(--marcador); color: var(--soalho); }
+.cam[aria-pressed="true"] .cam-n { color: var(--lampada); }
+/* the same "No ar" badge as the screen tiles */
+.cam[aria-pressed="true"] .cam-estado {
+  justify-self: start; margin-top: 4px; padding: 4px 6px 3px; border-radius: var(--raio);
+  background: var(--lampada-funda); color: var(--soalho-claro); font-weight: 800; font-size: 12px; line-height: 1;
+}
+.cam:disabled { cursor: progress; }
+.cam.sem-cena { border-style: dashed; color: var(--tinta-2); cursor: not-allowed; }
+.cam.sem-cena:hover { background: transparent; }
+#camMsg:empty { display: none; }
+#camMsg { margin-top: 12px; }
+
 /* the thumbnails' parts */
 .pv-chao { fill: var(--campo); }
 .pv-linha { fill: none; stroke: var(--campo-linha); stroke-width: 1; }

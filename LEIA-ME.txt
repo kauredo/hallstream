@@ -183,6 +183,9 @@ encolhe para a janela do grafismo e volta depois, na mesma cena.
 - "Ajustar câmara" volta a pô-la em ecrã inteiro.
 - Se o OBS estiver noutro computador, ligue-o à mão em Definições >
   Controlo do OBS > Ligação ao OBS feita à mão.
+- Com duas ou três câmaras, Ecrãs tem um botão por câmara, e a que está
+  no ar diz "No ar". Pode trocar de câmara no desconto: a imagem fica na
+  janela.
 
 Se o tablet rodar ou o DroidCam mudar de resolução, o programa volta a
 ajustar a câmara sozinho. Com "Imagem inteira", um tablet ao alto fica

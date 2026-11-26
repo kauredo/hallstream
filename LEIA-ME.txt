@@ -11,9 +11,17 @@ consola não está testada, até alguém gravar um jogo a sério. Se a
 experimentar, diga-nos como correu. A importação da FPB serve só para
 basquetebol português.
 
-Precisa de Windows 10 ou mais recente, com Bluetooth. Use o
-"Hallstream.exe". O "Hallstream (32-bit).exe" é só para Windows de
-32 bits.
+Há três versões. Descarregue a do seu computador:
+- Windows 10 ou mais recente, com Bluetooth: o ficheiro .zip. Use o
+  "Hallstream.exe". O "Hallstream (32-bit).exe" é só para Windows de
+  32 bits.
+- Mac com macOS 13 Ventura ou mais recente, com chip Intel ou Apple: o
+  ficheiro -macos.dmg.
+- Linux de 64 bits, com Bluetooth pelo BlueZ: o ficheiro
+  -linux-x64.tar.gz.
+
+Os passos abaixo são para Windows. No Mac e no Linux, leia também "NO
+MAC E NO LINUX", mais abaixo.
 
 O programa não abre nenhuma janela. Fica um ícone vermelho com o escudo
 ao pé do relógio do Windows. Se não o vir, carregue na seta ^ ao lado dos
@@ -130,6 +138,71 @@ No fim
 17. Para fechar o programa, carregue com o botão direito no ícone ao pé
     do relógio e escolha "Sair". Se a transmissão ainda estiver no ar, o
     programa pergunta antes de fechar.
+
+
+NO MAC E NO LINUX
+
+O resto deste guia também serve, com estas diferenças:
+- Os dados não ficam em C:\Hallstream\dados (veja abaixo onde ficam).
+  Onde o guia diz dados\, leia dados/.
+- Em "Configurar OBS" e em Definições > Câmaras ainda não dá para
+  escolher uma câmara USB nem uma placa de captura. Use um telemóvel ou
+  um tablet, com o DroidCam ou pelo VDO.Ninja.
+- O OBS abre com a janela à vista. Deixe-o aberto.
+- O painel não oferece atalho no ambiente de trabalho.
+
+No Mac
+1. Abra o ficheiro .dmg e arraste o Hallstream para a pasta Aplicações.
+   Abra-o sempre de lá. Aberto diretamente do .dmg, "Abrir ao iniciar
+   sessão no Mac" não funciona.
+2. Na primeira vez, o Mac pergunta se quer abrir uma aplicação
+   descarregada da internet. Carregue em "Abrir".
+3. Quando o Mac perguntar pelo Bluetooth, carregue em "Permitir". Se
+   recusou, vá a Definições do Sistema > Privacidade e segurança >
+   Bluetooth e ligue o Hallstream.
+- O Hallstream tem um ícone na barra de menus, em cima à direita, e
+  outro na Dock.
+- Carregue no ícone da barra de menus para ver o menu: "Abrir painel",
+  "Copiar endereço do overlay", o estado da caixa e "Sair".
+- Carregue no ícone da Dock, ou abra o Hallstream outra vez, para abrir
+  o painel.
+- Sair no menu do ícone da Dock faz o mesmo que "Sair" na barra de
+  menus: com a transmissão no ar, o programa pergunta antes de fechar.
+- Em vez de "Abrir com o Windows", Definições > Neste computador tem
+  "Abrir ao iniciar sessão no Mac".
+- Os dados ficam em ~/Library/Application Support/Hallstream/dados.
+  Definições mostra o caminho no cartão Demonstração. No Finder, use
+  Ir > Ir para a pasta e cole o caminho.
+- Para usar uma cópia de segurança, feche o Hallstream e descomprima-a
+  em ~/Library/Application Support/Hallstream.
+
+No Linux
+1. Descomprima o ficheiro .tar.gz onde o vai guardar, por exemplo na
+   sua pasta pessoal. Fica uma pasta Hallstream. Não a mude de sítio:
+   os dados ficam lá dentro, em Hallstream/dados.
+2. Abra um terminal na pasta Hallstream e escreva ./Hallstream. O
+   painel abre sozinho no browser.
+- O ícone fica na área de notificação. Carregue nele para abrir o
+  painel; com o botão direito há o menu.
+- O ícone precisa de um sistema que mostre ícones AppIndicator
+  (StatusNotifier). O Ubuntu já o traz. Noutro GNOME, instale a
+  extensão "AppIndicator and KStatusNotifierItem Support". Sem ícone,
+  abra o painel em http://127.0.0.1:8765/painel e feche o programa com
+  Ctrl+C no terminal.
+- O Bluetooth usa o BlueZ. Em alguns sistemas, o seu utilizador tem de
+  estar no grupo bluetooth. "Abrir definições de Bluetooth" não
+  funciona aqui: abra-as à mão.
+- Instale o zenity. Sem ele, o programa escreve as mensagens só no
+  terminal e não pergunta nada antes de fechar, nem com a transmissão
+  no ar.
+- Instale o wl-clipboard ou o xclip para "Copiar endereço do overlay"
+  funcionar.
+- O programa abre o OBS do sistema ou o OBS do Flathub. "Fechar o OBS ao
+  sair" ainda não existe no Linux: no fim, feche o OBS à mão.
+- Em vez de "Abrir com o Windows", Definições > Neste computador tem
+  "Abrir ao iniciar sessão".
+- Para usar uma cópia de segurança, feche o Hallstream e descomprima-a
+  dentro da pasta Hallstream.
 
 
 VÍDEOS DO CLUBE (PROMO)

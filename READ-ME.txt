@@ -12,8 +12,17 @@ console are untested until someone records a real game. If you try it,
 please tell us how it went. The FPB import is for Portuguese basketball
 only.
 
-It needs Windows 10 or newer, with Bluetooth. Use "Hallstream.exe". The
-"Hallstream (32-bit).exe" is only for 32-bit Windows.
+There are three versions. Download the one for your computer:
+- Windows 10 or newer, with Bluetooth: the .zip file. Use
+  "Hallstream.exe". The "Hallstream (32-bit).exe" is only for 32-bit
+  Windows.
+- A Mac with macOS 13 Ventura or newer, with an Intel or Apple chip:
+  the -macos.dmg file.
+- 64-bit Linux, with Bluetooth through BlueZ: the -linux-x64.tar.gz
+  file.
+
+The steps below are for Windows. On a Mac or on Linux, also read "ON A
+MAC AND ON LINUX", further down.
 
 The program does not open a window. A red icon with a shield stays next
 to the Windows clock. If you can't see it, press the arrow ^ beside the
@@ -129,6 +138,69 @@ At the end
 17. To close the program, right-click the icon next to the clock and
     choose "Quit". If the stream is still on air, the program asks
     before closing.
+
+
+ON A MAC AND ON LINUX
+
+The rest of this guide still applies, with these differences:
+- The data is not in C:\Hallstream\dados (see below for where it is).
+  Where the guide says dados\, read dados/.
+- In "Set up OBS" and in Settings > Cameras you can't choose a USB
+  camera or a capture card yet. Use a phone or a tablet, with DroidCam
+  or through VDO.Ninja.
+- OBS opens with its window showing. Leave it open.
+- The panel doesn't offer a desktop shortcut.
+
+On a Mac
+1. Open the .dmg file and drag Hallstream into the Applications folder.
+   Always open it from there. Opened straight from the .dmg, "Open when
+   I sign in to the Mac" doesn't work.
+2. The first time, the Mac asks whether you want to open an app
+   downloaded from the internet. Press "Open".
+3. When the Mac asks about Bluetooth, press "Allow". If you refused, go
+   to System Settings > Privacy & Security > Bluetooth and turn
+   Hallstream on.
+- Hallstream has an icon in the menu bar, at the top right, and another
+  in the Dock.
+- Press the menu bar icon to see the menu: "Open panel", "Copy overlay
+  address", the box status and "Quit".
+- Press the Dock icon, or open Hallstream again, to open the panel.
+- Quit in the Dock icon's menu does the same as "Quit" in the menu bar:
+  if the stream is on air, the program asks before closing.
+- Instead of "Open with Windows", Settings > On this computer has "Open
+  when I sign in to the Mac".
+- The data is in ~/Library/Application Support/Hallstream/dados.
+  Settings shows the path in the Demo card. In Finder, use Go > Go to
+  Folder and paste the path.
+- To use a backup, close Hallstream and unzip it into
+  ~/Library/Application Support/Hallstream.
+
+On Linux
+1. Extract the .tar.gz file where you will keep it, for example in your
+   home folder. You get a Hallstream folder. Don't move it: the data is
+   kept inside it, in Hallstream/dados.
+2. Open a terminal in the Hallstream folder and type ./Hallstream. The
+   panel opens by itself in the browser.
+- The icon sits in the notification area. Press it to open the panel;
+  right-click it for the menu.
+- The icon needs a desktop that shows AppIndicator (StatusNotifier)
+  icons. Ubuntu already has one. On other GNOME desktops, install the
+  "AppIndicator and KStatusNotifierItem Support" extension. With no
+  icon, open the panel at http://127.0.0.1:8765/painel and close the
+  program with Ctrl+C in the terminal.
+- Bluetooth goes through BlueZ. On some systems your user has to be in
+  the bluetooth group. "Open Bluetooth settings" doesn't work here: open
+  them by hand.
+- Install zenity. Without it, the program writes its messages only to
+  the terminal and asks nothing before closing, even with the stream on
+  air.
+- Install wl-clipboard or xclip so that "Copy overlay address" works.
+- The program opens the system's OBS or the Flathub OBS. "Close OBS on
+  quit" doesn't exist on Linux yet: at the end, close OBS by hand.
+- Instead of "Open with Windows", Settings > On this computer has "Open
+  when I sign in".
+- To use a backup, close Hallstream and unzip it inside the Hallstream
+  folder.
 
 
 CLUB VIDEOS (PROMO)

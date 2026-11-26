@@ -26,6 +26,7 @@
     players: {}, sponsors: {}, plantelGid: null, sponsorGid: 'geral',
     fpbGames: null, fpbGamesErr: '', fpbTeams: null, importResult: null, linking: {},
     devices: null, devicesErr: '', tries: {},
+    qrVer: 0, camLinks: {},
     tab: 'jogo'
   };
 
@@ -178,7 +179,11 @@
         if (res.status === 401) {
           return askPin(data && data.error).then(function () { return api(method, path, body); });
         }
-        if (!res.ok) throw new Error((data && data.error) || t('painel.api.erro', { codigo: res.status }));
+        if (!res.ok) {
+          var e = new Error((data && data.error) || t('painel.api.erro', { codigo: res.status }));
+          e.data = data;
+          throw e;
+        }
         return data;
       });
     }, function () {
@@ -1362,25 +1367,41 @@
     html += r.ok ? '<p class="msg ok">' + t('painel.obs.pronto') + '</p>' : r.choices && r.choices.length ? '' : '<p class="msg err">' + t('painel.obs.falta_resolver') + '</p>';
     return html;
   }
-  // Saves the form first, so the camera picked there is the one set up.
-  function runSetup(btn, camera) {
-    var msg = $('#obsSetupMsg'), out = $('#obsResult');
-    var sel = $('#dObsCam'), pick = sel && /^(device:|plugin$)/.test(sel.value) ? sel.value : '';
-    btn.disabled = true; msg.className = 'msg'; msg.textContent = t('painel.obs.a_configurar');
-    var s = readSettingsForm(), old = (S.settings.obs && S.settings.obs.camera_source) || '';
+  // After a setup: the settings again, and each phone's code and link fetched anew.
+  function afterSetup() {
+    S.qrVer++; S.camLinks = {};
+    return api('GET', '/api/settings').then(function (set) { S.settings = set; });
+  }
+  // Saves the form first, then sets OBS up; cams is the camera list from Câmaras. A list the server did
+  // not save stays as typed; a saved one is drawn again from the settings, so a retry sends what the server has.
+  function runSetup(btn, camera, cams) {
+    var act = btn.dataset.act, saved = false;
+    // A redraw replaces the button and its message: find them again on each write.
+    var say = function (cls, text) { var b = $('[data-act="' + act + '"]'), m = b && b.parentElement.querySelector('.msg'); if (m) { m.className = cls; m.textContent = text; } };
+    btn.disabled = true; say('msg', t('painel.obs.a_configurar'));
+    var s = readSettingsForm(), body = { camera: camera || '', old: (S.settings.obs && S.settings.obs.camera_source) || '' };
+    if (cams) body.cameras = cams;
     return api('PUT', '/api/settings', s).then(function (r) {
       S.settings = r || s;
-      return api('POST', '/api/obs/setup', { camera: camera || pick, old: old });
+      return api('POST', '/api/obs/setup', body);
     }).then(function (r) {
-      S.obsSetup = r; msg.textContent = '';
-      return api('GET', '/api/settings').then(function (set) { S.settings = set; });
+      S.obsSetup = r; saved = !!r.saved;
+      return afterSetup();
     }).then(function () {
-      S.obsCams = null;
+      S.obsCams = null; S.camRowsKeep = !!cams && !saved;
       renderDefinicoes(); loadStatus(); loadStream();
+      if (act !== 'cam-save') say('msg', '');
+      else if (S.obsSetup.ok) say('msg ok', t('painel.obs.pronto'));
+      else say('msg err', saved ? t('painel.obs.falta_resolver') : t('painel.camaras.nao_guardada'));
     }, function (err) {
-      msg.className = 'msg err'; msg.textContent = err.message;
+      var out = $('#obsResult');
       if (out) out.innerHTML = '';
-    }).then(function () { var b = $('[data-act="obs-setup"]'); if (b) b.disabled = false; });
+      if (!(cams && err.data && err.data.saved)) { say('msg err', err.message); return; }
+      return afterSetup().then(null, function () {}).then(function () {
+        if ($('#dCams')) { S.camRows = savedRows(); drawCams(); }
+        say('msg err', err.message);
+      });
+    }).then(function () { var b = $('[data-act="' + act + '"]'); if (b) b.disabled = false; });
   }
 
   /* ================= 7. CAIXA ================= */
@@ -2160,7 +2181,6 @@
     var root = $('#definicoes'), s = S.settings;
     if (!s) { root.innerHTML = '<p class="hint">' + t('painel.a_carregar') + '</p>'; return; }
     var o = s.obs || {};
-    var obsCams = (o.cameras || []).slice(0, 3);
     var url = (S.status && S.status.overlay_url) || (location.origin + '/overlay');
     var html = '';
     var fs = S.setup;
@@ -2185,14 +2205,10 @@
       '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-act="obs-setup">' + t('painel.configurar_obs') + '</button><span class="msg" id="obsSetupMsg" role="status"></span></div>' +
       '<div id="obsResult">' + setupHtml(S.obsSetup) + '</div>' +
       '<div class="cols" style="margin-top:12px">' +
-      '<label class="field"><span>' + t('painel.definicoes.camara') + '</span><select id="dObsCam">' + camOptions(o.camera_source || '') + '</select></label>' +
       '<label class="field"><span>' + t('painel.definicoes.enquadramento') + '</span><select id="dObsFit">' +
       '<option value="contain"' + (o.camera_fit !== 'fill' ? ' selected' : '') + '>' + t('painel.definicoes.imagem_inteira') + '</option>' +
       '<option value="fill"' + (o.camera_fit === 'fill' ? ' selected' : '') + '>' + t('painel.definicoes.encher') + '</option></select></label>' +
-      (obsCams.length > 1 ? '<label class="field" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam">' +
-        tcamOptions(obsCams, o.timeout_camera || 0) + '</select></label>' : '') +
-      '</div><p class="hint">' + t('painel.definicoes.camara_dica') + '</p>' +
-      (obsCams.length > 1 ? '<p class="hint">' + t('painel.definicoes.desconto_dica') + '</p>' : '') +
+      '</div><p class="hint">' + t('painel.definicoes.enquadramento_dica') + '</p>' +
       '<div class="row" style="margin-top:12px"><button class="btn" data-act="obs-fit">' + t('painel.definicoes.ajustar') + '</button><span class="msg" id="dObsMsg"></span></div>' +
       (S.status && S.status.obs_app ?
         '<label class="switch" style="margin-top:12px"><input type="checkbox" id="dObsLaunch"' + (o.launch ? ' checked' : '') + '><i></i>' + t('painel.definicoes.abrir_obs') + '</label>' +
@@ -2217,6 +2233,10 @@
       '<label class="field"><span>' + t('painel.definicoes.cena_jogo') + '</span><input id="dObsGame" value="' + esc(o.game_scene || 'Jogo') + '"></label>' +
       '<label class="field"><span>' + t('painel.definicoes.cena_desconto') + '</span><input id="dObsTimeout" value="' + esc(o.timeout_scene || '') + '" placeholder="' + t('painel.definicoes.em_branco') + '"></label>' +
       '</div></details></div>';
+    // A list the server did not save stays as typed.
+    if (!S.camRowsKeep) S.camRows = savedRows();
+    S.camRowsKeep = false;
+    html += '<div class="card" id="dCams">' + camCardHtml() + '</div>';
 
     html += '<div class="card"><h2>' + t('painel.destino.titulo') + '</h2>' + destHtml() + '</div>';
     html += '<div class="card" id="ytSetup">' + ytSetupHtml() + '</div>';
@@ -2260,6 +2280,7 @@
           '<p class="hint">' + t('painel.definicoes.abrir_windows_dica') + '</p>' : '') + '</div>';
     }
     root.innerHTML = html;
+    fillCamLinks();
     startLook();
     if (o.enabled && !S.obsCams) loadObsCameras();
   }
@@ -2571,39 +2592,131 @@
       '<p class="hint">' + t('painel.canto.dica') + '</p>';
   }
 
-  // The cameras OBS has, and the devices it could add; "" lets the program pick (DroidCam first).
   // The time-out camera's options; a saved camera that is gone stays chosen, so a save keeps it.
-  function tcamOptions(cams, cur) {
+  // While the list has changes they are the saved cameras, named by their source rather than a number the rows no longer match.
+  function tcamOptions(cams, cur, changed) {
     var opt = function (v, label) { return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + esc(label) + '</option>'; };
     var html = opt(0, t('painel.definicoes.desconto_nenhuma')) + cams.map(function (c, i) {
-      return opt(i + 1, c.label || t('painel.camaras.camara', { n: i + 1 }));
+      return opt(i + 1, c.label || (changed && c.source) || t('painel.camaras.camara', { n: i + 1 }));
     }).join('');
     return cur > cams.length ? html + opt(cur, t('painel.definicoes.desconto_sem_camara', { n: cur })) : html;
   }
 
-  function camOptions(cur) {
-    var list = S.obsCams || [], found = !cur, adds = '';
-    var html = '<option value="">' + t('painel.camara.automatica') + '</option>';
-    list.forEach(function (c) {
-      if (c.type === 'source') {
-        var name = c.value.slice(7);
-        if (name === cur) found = true;
-        html += '<option value="' + esc(name) + '"' + (name === cur ? ' selected' : '') + '>' + esc(name) + '</option>';
-      } else {
-        adds += '<option value="' + esc(c.value) + '">' + esc(c.label) + '</option>';
-      }
+  /* Definições > Câmaras: the camera list, sent through Configurar OBS. A row is { choice, label, was }:
+     choice is a camera choice value ("vdo:<id>" for a saved phone), was the saved camera it came from, 0 for a new one. */
+  var MOCK_QR = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect width="29" height="29" fill="#fff"/>' +
+    '<path fill="#14060A" d="M4 4h7v7H4zM18 4h7v7h-7zM4 18h7v7H4zM13 13h3v3h-3zM19 19h5v5h-5z"/></svg>');
+  // A saved phone camera's row names it by its source; the server keeps its stream id while the source stays.
+  function savedRows() {
+    var o = (S.settings && S.settings.obs) || {};
+    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '' }];
+    return cams.map(function (c, i) {
+      return { choice: c.source ? 'source:' + c.source : '', label: c.label || '', was: i + 1 };
     });
-    if (!found) html += '<option value="' + esc(cur) + '" selected>' + (S.obsCams ? t('painel.camara.fora_obs', { camara: esc(cur) }) : esc(cur)) + '</option>';
+  }
+  // The choice value of the saved phone camera the row came from, while the row still picks it; else "".
+  function savedPhone(row) {
+    var c = row.was && ((S.settings.obs || {}).cameras || [])[row.was - 1];
+    return c && c.has_vdo && c.source && row.choice === 'source:' + c.source ? row.choice : '';
+  }
+  // The cameras OBS has, the devices it could add, and a phone (tel: the saved phone's value, else "vdo" for a new one);
+  // "" lets the program pick camera 1 (DroidCam first).
+  function camRowOptions(cur, n, tel) {
+    var found = cur === tel, adds = '', html = '';
+    var opt = function (v, label) { if (v === cur) found = true; return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(label) + '</option>'; };
+    if (n === 1) html += opt('', t('painel.camara.automatica'));
+    else if (!cur) { html += '<option value="" selected disabled>' + t('painel.camaras.escolha') + '</option>'; found = true; }
+    (S.obsCams || []).forEach(function (c) {
+      if (c.value === tel) return;
+      if (c.type === 'source') html += opt(c.value, c.label); else adds += opt(c.value, c.label);
+    });
+    if (/^source:/.test(cur) && !found) html += opt(cur, S.obsCams ? t('painel.camara.fora_obs', { camara: cur.slice(7) }) : cur.slice(7));
     if (adds) html += '<optgroup label="' + t('painel.camara.juntar') + '">' + adds + '</optgroup>';
-    return html;
+    return html + opt(tel, t('painel.camaras.telemovel'));
+  }
+  // A saved phone camera's QR code and push link. Both come from routes behind the PIN, never from the settings:
+  // the link is the secret. S.qrVer changes after each setup, so the image is fetched again.
+  function phoneHtml(was, n, idp) {
+    var qr = MOCK ? MOCK_QR : '/api/obs/cameras/' + was + '/qr.svg?v=' + S.qrVer;
+    return '<div class="cx-qr"><img src="' + qr + '" width="148" height="148" alt="' + esc(t('painel.camaras.qr_alt', { n: n })) + '"><p class="hint">' + t('painel.camaras.qr_dica') + '</p></div>' +
+      '<p class="hint cam-link-dica">' + t('painel.camaras.link_dica') + '</p>' +
+      '<div class="urlbox"><input id="' + idp + 'Link' + n + '" data-cam-link="' + was + '" readonly value="' + esc(S.camLinks[was] || '') + '" aria-label="' + esc(t('painel.camaras.link', { n: n })) + '">' +
+      '<button class="btn dark" type="button" data-act="cam-copy">' + t('painel.copiar') + '</button><span class="msg" style="align-self:center"></span></div>';
+  }
+  // Fills each phone link box drawn empty; one request per camera at a time.
+  function fillCamLinks() {
+    $all('[data-cam-link]').forEach(function (el) {
+      var was = el.dataset.camLink, ver = S.qrVer;
+      if (el.value || S.camLinkWait === was + ':' + ver) return;
+      if (S.camLinks[was]) { el.value = S.camLinks[was]; return; }
+      S.camLinkWait = was + ':' + ver;
+      api('GET', '/api/obs/cameras/' + was + '/link').then(function (r) {
+        if (ver !== S.qrVer) return;
+        S.camLinks[was] = r.link;
+        $all('[data-cam-link="' + was + '"]').forEach(function (x) { x.value = r.link; });
+      }, function () {}).then(function () { if (S.camLinkWait === was + ':' + ver) S.camLinkWait = ''; });
+    });
+  }
+  function camRowHtml(row, n, idp, removable) {
+    var name = row.label || t('painel.camaras.camara', { n: n }), phone = savedPhone(row), tel = phone || 'vdo';
+    return '<div class="cam-row">' +
+      '<div class="cam-row-head"><h3>' + t('painel.camaras.camara', { n: n }) + '</h3>' +
+      (removable ? '<button class="btn quiet small" type="button" data-act="cam-remove" aria-label="' + esc(t('painel.camaras.tirar_nome', { camara: name })) + '">' + t('painel.camaras.tirar') + '</button>' : '') + '</div>' +
+      '<div class="cols">' +
+      '<label class="field"><span>' + t('painel.camaras.fonte') + '</span><select id="' + idp + n + '" data-cam-choice>' + camRowOptions(row.choice, n, tel) + '</select></label>' +
+      '<label class="field"><span>' + t('painel.camaras.nome') + '</span><input id="' + idp + 'Nome' + n + '" data-cam-label maxlength="24" value="' + esc(row.label) + '" placeholder="' + esc(t('painel.camaras.camara', { n: n })) + '"></label>' +
+      '</div>' +
+      (row.choice === tel ? '<p class="hint cam-net">' + t('painel.camaras.internet') + '</p>' +
+        (phone ? phoneHtml(row.was, n, idp) : '<p class="hint">' + t('painel.camaras.guarde_qr') + '</p>') : '') +
+      '</div>';
+  }
+  function camCardHtml() {
+    var rows = S.camRows, o = S.settings.obs || {}, saved = (o.cameras || []).slice(0, 3);
+    // The time-out camera's options are the saved cameras, so it waits while the list has changes.
+    var changed = JSON.stringify(rows.map(function (r) { return [r.choice, r.was]; })) !== JSON.stringify(savedRows().map(function (r) { return [r.choice, r.was]; }));
+    return '<h2>' + t('painel.camaras.titulo') + '</h2><p class="hint">' + t('painel.camaras.dica') + '</p>' +
+      '<div class="cam-rows">' + rows.map(function (r, i) { return camRowHtml(r, i + 1, 'dCam', rows.length > 1); }).join('') + '</div>' +
+      (rows.length < 3 ? '<button class="btn quiet small cam-add" type="button" data-act="cam-add">' + t('painel.camaras.adicionar') + '</button>' : '<p class="hint">' + t('painel.camaras.maximo') + '</p>') +
+      (saved.length > 1 ? '<label class="field cam-tcam" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam"' + (changed ? ' disabled' : '') + '>' +
+        tcamOptions(saved, o.timeout_camera || 0, changed) + '</select></label><p class="hint cam-tcam-dica">' + (changed ? t('painel.camaras.desconto_guarde') : t('painel.definicoes.desconto_dica')) + '</p>' : '') +
+      '<div class="row" style="margin-top:20px;align-items:center"><button class="btn primary" type="button" data-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +
+      '<span class="msg" id="camSetupMsg" role="status"></span></div>';
+  }
+  function readCamRows(root, rows) {
+    $all('.cam-row', root).forEach(function (el, i) {
+      if (!rows[i]) return;
+      rows[i].choice = el.querySelector('[data-cam-choice]').value;
+      rows[i].label = el.querySelector('[data-cam-label]').value;
+    });
+  }
+  // Draws the card again from S.camRows, keeping the time-out camera picked and the focus; a redraw with no focus to give keeps the message.
+  function drawCams(focus) {
+    var card = $('#dCams'); if (!card) return;
+    var tc = $('#dObsTcam'), tv = tc && tc.value, a = document.activeElement, said = !focus && $('#camSetupMsg').outerHTML;
+    if (!focus && a && a.id && card.contains(a)) focus = '#' + a.id;
+    card.innerHTML = camCardHtml();
+    fillCamLinks();
+    if (tv && $('#dObsTcam')) $('#dObsTcam').value = tv;
+    if (said) $('#camSetupMsg').outerHTML = said;
+    var f = focus && $(focus); if (f) f.focus();
+  }
+  // The list as Configurar OBS takes it; the number of a row 2 or 3 with no camera chosen, else 0.
+  function camList(rows) {
+    var missing = 0;
+    rows.forEach(function (r, i) { if (i > 0 && !r.choice && !missing) missing = i + 1; });
+    return { missing: missing, list: rows.map(function (r) { return { choice: r.choice, label: r.label.trim(), was: r.was }; }) };
   }
   function loadObsCameras() {
     if (S.obsCamsLoading) return;
     S.obsCamsLoading = true;
     return api('POST', '/api/obs/cameras', {}).then(function (r) { S.obsCams = (r && r.cameras) || []; }, function () { S.obsCams = S.obsCams || []; }).then(function () {
       S.obsCamsLoading = false;
-      var sel = $('#dObsCam');
-      if (sel) { var v = sel.value; sel.innerHTML = camOptions(S.settings.obs.camera_source || ''); if (v) sel.value = v; }
+      if ($('#dCams')) { readCamRows($('#dCams'), S.camRows); drawCams(); }
+      if (S.wzCamRow && $('#wzBody .cam-row')) {
+        var a = document.activeElement, id = a && a.id && $('#wzBody').contains(a) && a.id;
+        readCamRows($('#wzBody'), [S.wzCamRow]); renderWzBody();
+        if (id && $('#' + id)) $('#' + id).focus();
+      }
     });
   }
 
@@ -2614,9 +2727,6 @@
       password: $('#dObsPass').value, game_scene: $('#dObsGame').value.trim(), timeout_scene: $('#dObsTimeout').value.trim(),
       camera_fit: $('#dObsFit').value
     });
-    // A device to add becomes the camera only through Configurar OBS.
-    var cam = $('#dObsCam').value;
-    if (!/^(device:|plugin$)/.test(cam)) s.obs.camera_source = cam;
     if ($('#dObsTcam')) s.obs.timeout_camera = parseInt($('#dObsTcam').value, 10) || 0;
     if ($('#dObsLaunch')) { s.obs.launch = $('#dObsLaunch').checked; s.obs.close_on_exit = $('#dObsClose').checked; }
     s.phone_access = $('#dPhone').checked;
@@ -2686,6 +2796,20 @@
           if (r && r.connected) { msg.className = 'msg ok'; msg.textContent = t('painel.definicoes.obs_funciona'); S.obsCams = null; loadObsCameras(); }
           else { msg.className = 'msg err'; msg.textContent = (r && r.error) || t('painel.definicoes.obs_nao_respondeu'); }
         }, function (err) { msg.className = 'msg err'; msg.textContent = err.message; }).then(function () { b.disabled = false; });
+      } else if (b.dataset.act === 'cam-copy') {
+        var li = b.parentElement.querySelector('input');
+        busy(b, function () { li.select(); return copyText(li.value); }, t('painel.copiado'));
+      } else if (b.dataset.act === 'cam-add' || b.dataset.act === 'cam-remove') {
+        readCamRows($('#dCams'), S.camRows);
+        var ci = S.camRows.length;
+        if (b.dataset.act === 'cam-add') S.camRows.push({ choice: '', label: '', was: 0 });
+        else { ci = $all('#dCams .cam-row').indexOf(b.closest('.cam-row')); S.camRows.splice(ci, 1); ci = Math.min(ci, S.camRows.length - 1); }
+        drawCams('#dCam' + (ci + 1));
+      } else if (b.dataset.act === 'cam-save') {
+        readCamRows($('#dCams'), S.camRows);
+        var cl = camList(S.camRows);
+        if (cl.missing) { var cm = $('#camSetupMsg'); cm.className = 'msg err'; cm.textContent = t('painel.camaras.falta_escolha', { n: cl.missing }); $('#dCam' + cl.missing).focus(); return; }
+        runSetup(b, '', cl.list);
       } else if (b.dataset.act === 'obs-setup') {
         runSetup(b, '');
       } else if (b.dataset.act === 'obs-pick') {
@@ -2707,6 +2831,7 @@
     });
     root.addEventListener('change', function (e) {
       var tx = e.target;
+      if (tx.matches('#dCams [data-cam-choice]')) { readCamRows($('#dCams'), S.camRows); drawCams('#' + tx.id); return; }
       if (tx.id === 'dPin') tx.value = tx.value.replace(/\D/g, '').slice(0, 4);
       if (tx.id === 'dUpdates') {
         var um = tx.closest('.row').querySelector('.msg');
@@ -3062,6 +3187,19 @@
       if (pc) html += '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="obs-setup">' + t('painel.configurar_obs') + '</button>' +
         '<span class="msg" id="wzObsMsg" role="status"></span></div>';
       html += '<div id="wzObsResult">' + setupHtml(S.obsSetup) + '</div>';
+      var nCams = savedRows().length;
+      if (S.wzPhone && S.wzPhone <= nCams) {
+        html += '<div class="wz-sub"><h3>' + t('painel.camaras.camara', { n: S.wzPhone }) + '</h3><p class="hint cam-net">' + t('painel.camaras.internet') + '</p>' +
+          phoneHtml(S.wzPhone, S.wzPhone, 'wCam') + '</div>';
+      }
+      // A row being added stays drawn after a failed save, with its error.
+      if (pc && nCams < 3 && (S.wzCamRow || S.obsSetup && S.obsSetup.ok)) {
+        html += S.wzCamRow
+          ? '<div class="wz-sub">' + camRowHtml(S.wzCamRow, nCams + 1, 'wCam', false) +
+            '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +
+            '<button class="btn quiet" type="button" data-wz-act="cam-cancel">' + t('painel.cancelar') + '</button><span class="msg" role="status"></span></div></div>'
+          : '<div class="row" style="margin-top:12px"><button class="btn" type="button" data-wz-act="cam-add">' + t('painel.wz.outra_camara') + '</button></div>';
+      }
     } else if (id === 'youtube' && streamDest().service === 'rtmp') {
       html = destHtml();
     } else if (id === 'youtube') {
@@ -3087,6 +3225,7 @@
         ENSAIO.map(function (e) { return wzItem(wzTicked(e[0]) ? 'on' : 'wait', esc(e[1]), '<p class="hint">' + e[2] + '</p>' + wzTick(e[0])); }).join('') + '</ul>';
     }
     el.innerHTML = html;
+    fillCamLinks();
   }
 
   function wzGo(i) {
@@ -3108,18 +3247,37 @@
       });
   }
 
-  function wzObs(btn, camera) {
-    var msg = $('#wzObsMsg');
-    btn.disabled = true; msg.className = 'msg'; msg.textContent = t('painel.obs.a_configurar');
-    api('POST', '/api/obs/setup', { camera: camera || '', old: (S.settings.obs && S.settings.obs.camera_source) || '' }).then(function (r) {
-      S.obsSetup = r; S.obsCams = null;
-      return api('GET', '/api/settings').then(function (s) { S.settings = s; });
-    }).then(function () {
+  // A new camera row stays, with the error, until the server saved it; a saved new phone shows its code here.
+  function wzObs(btn, camera, cams) {
+    var act = btn.dataset.wzAct || 'obs-setup', n = cams ? cams.length : 0;
+    // A redraw replaces the button: write next to it, or next to Configurar OBS once the row is gone.
+    var say = function (cls, text) {
+      var b = $('[data-wz-act="' + act + '"]') || $('[data-wz-act="obs-setup"]'), m = b && b.parentElement.querySelector('.msg');
+      if (m) { m.className = cls; m.textContent = text; }
+    };
+    var body = { camera: camera || '', old: (S.settings.obs && S.settings.obs.camera_source) || '' };
+    if (cams) body.cameras = cams;
+    btn.disabled = true; say('msg', t('painel.obs.a_configurar'));
+    var done = function (saved) {
+      if (cams && saved) S.wzCamRow = null;
+      var c = n && saved && ((S.settings.obs || {}).cameras || [])[n - 1];
+      if (n) S.wzPhone = c && c.has_vdo ? n : 0;
       loadStatus(); loadStream(); renderWzBody(); refreshInicio();
-    }, function (err) {
-      var m = $('#wzObsMsg'); if (m) { m.className = 'msg err'; m.textContent = err.message; }
-      var b = $('[data-wz-act="obs-setup"]'); if (b) b.disabled = false;
-    });
+    };
+    api('POST', '/api/obs/setup', body).then(function (r) {
+      S.obsSetup = r; S.obsCams = null;
+      return afterSetup().then(function () {
+        done(r.saved);
+        if (cams && !r.saved) say('msg err', t('painel.camaras.nao_guardada'));
+        else say('msg', '');
+      });
+    }).then(null, function (err) {
+      var saved = !!(cams && err.data && err.data.saved);
+      return (saved ? afterSetup().then(null, function () {}) : Promise.resolve()).then(function () {
+        if (saved) done(true);
+        say('msg err', err.message);
+      });
+    }).then(function () { var b = $('[data-wz-act="' + act + '"]'); if (b) b.disabled = false; });
   }
 
   // Saves what the Idioma, Clube and Marcação steps ask, ticks the step and moves on.
@@ -3161,10 +3319,35 @@
       var go = e.target.closest('[data-goto]');
       if (go) { e.preventDefault(); showTab(go.dataset.goto); return; }
       var w = e.target.closest('[data-wz]');
+      if (w && S.wzCamRow && $('#wzBody .wz-sub .cam-row')) {
+        // The new camera row is not saved yet: say so and keep it.
+        var sv = $('[data-wz-act="cam-save"]'), sm = sv && sv.parentElement.querySelector('.msg');
+        if (sm) { sm.className = 'msg err'; sm.textContent = t('painel.wz.camara_por_guardar'); }
+        if (sv) sv.focus();
+        return;
+      }
       if (w) { wzGo(w.dataset.wz); return; }
-      var b = e.target.closest('[data-wz-act], [data-act="obs-pick"]'); if (!b) return;
+      var b = e.target.closest('[data-wz-act], [data-act="obs-pick"], [data-act="cam-copy"]'); if (!b) return;
       var act = b.dataset.wzAct || b.dataset.act, msg = $('#wzNavMsg');
       if (act === 'obs-setup') wzObs(b, '');
+      if (act === 'cam-copy') {
+        var wli = b.parentElement.querySelector('input');
+        busy(b, function () { wli.select(); return copyText(wli.value); }, t('painel.copiado'));
+        return;
+      }
+      if (act === 'cam-add' || act === 'cam-cancel') {
+        S.wzCamRow = act === 'cam-add' ? { choice: '', label: '', was: 0 } : null;
+        if (act === 'cam-add') S.wzPhone = 0;
+        if (S.wzCamRow && !S.obsCams) loadObsCameras();
+        renderWzBody();
+        var wf = $(act === 'cam-add' ? '#wzBody [data-cam-choice]' : '[data-wz-act="cam-add"]'); if (wf) wf.focus();
+      }
+      if (act === 'cam-save') {
+        readCamRows($('#wzBody'), [S.wzCamRow]);
+        var wl = camList(savedRows().concat([S.wzCamRow]));
+        if (wl.missing) { var wm = b.parentElement.querySelector('.msg'); wm.className = 'msg err'; wm.textContent = t('painel.camaras.falta_escolha', { n: wl.missing }); return; }
+        wzObs(b, '', wl.list);
+      }
       if (act === 'obs-pick') {
         var pk = root.querySelector('input[name="obsPick"]:checked');
         if (pk) wzObs(b, pk.value);
@@ -3181,7 +3364,9 @@
       }
     });
     root.addEventListener('change', function (e) {
-      var tx = e.target; if (!tx.dataset || !tx.dataset.tick) return;
+      var tx = e.target;
+      if (tx.matches('#wzBody [data-cam-choice]')) { readCamRows($('#wzBody'), [S.wzCamRow]); renderWzBody(); var f = $('#' + tx.id); if (f) f.focus(); return; }
+      if (!tx.dataset || !tx.dataset.tick) return;
       tx.disabled = true;
       api('PUT', '/api/setup/steps/' + encodeURIComponent(tx.dataset.tick), { state: tx.checked ? 'done' : '' }).then(function (f) {
         setupSaid(f); renderWzBody();

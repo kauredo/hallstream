@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
@@ -15,6 +16,7 @@ import (
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/youtube"
+	"rsc.io/qr"
 )
 
 // errNotLive: OBS took StartStream but never sent, as when a YouTube account
@@ -55,11 +57,11 @@ func (s *Server) want(o store.OBS, camera, old string) obsws.Want {
 	w := obsws.Want{OverlayURL: obsws.OverlayURL(s.Port), OverlayPorts: [2]int{FirstPort, LastPort},
 		Graphics: o.GraphicsScene}
 	for i, c := range o.CameraList() {
-		wc := obsws.WantCamera{Choice: "source:" + c.Source, Scene: c.Scene}
+		wc := obsws.WantCamera{Choice: "source:" + c.Source, Scene: c.Scene, Vdo: c.Vdo}
 		if i == 0 {
 			switch {
 			case camera != "":
-				wc.Choice = camera
+				wc.Choice, wc.Vdo = camera, ""
 			case c.Source == "":
 				wc.Choice = ""
 			}
@@ -87,6 +89,15 @@ func (s *Server) obsRoutes() {
 			list = []obsws.Choice{}
 		}
 		reply(w, map[string]any{"cameras": list})
+	})
+	m.HandleFunc("GET /api/obs/cameras/{n}/qr.svg", s.phoneQR)
+	m.HandleFunc("GET /api/obs/cameras/{n}/link", func(w http.ResponseWriter, r *http.Request) {
+		id := s.phoneID(w, r)
+		if id == "" {
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		reply(w, map[string]string{"link": obsws.VDOPush(id)})
 	})
 	m.HandleFunc("GET /api/obs/stream", func(w http.ResponseWriter, r *http.Request) { reply(w, s.streamState()) })
 	m.HandleFunc("POST /api/obs/stream/start", func(w http.ResponseWriter, r *http.Request) {
@@ -130,6 +141,36 @@ func (s *Server) obsRoutes() {
 		s.streamCall(w, s.OBS.StopStream, false, s.ytEnd)
 	})
 	m.HandleFunc("POST /api/system/autostart", s.autostart)
+}
+
+// phoneQR draws camera n's VDO.Ninja push link. The link lets whoever has
+// it send a picture to that camera, so it sits behind the PIN and no cache.
+func (s *Server) phoneQR(w http.ResponseWriter, r *http.Request) {
+	id := s.phoneID(w, r)
+	if id == "" {
+		return
+	}
+	code, err := qr.Encode(obsws.VDOPush(id), qr.M)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, i18n.T("api.promo.sem_qr", "err", err))
+		return
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Content-Security-Policy", "script-src 'none'")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(qrSVG(code))
+}
+
+// phoneID is the stream id of camera {n} in the path; with none it answers 404.
+func (s *Server) phoneID(w http.ResponseWriter, r *http.Request) string {
+	n, _ := strconv.Atoi(r.PathValue("n"))
+	cams := s.Store.Settings().OBS.CameraList()
+	if n < 1 || n > len(cams) || cams[n-1].Vdo == "" {
+		http.NotFound(w, r)
+		return ""
+	}
+	return cams[n-1].Vdo
 }
 
 // streamCall runs call on OBS, then done (when set), and answers with the
@@ -219,6 +260,126 @@ func (s *Server) setStream(st *obsws.Stream) {
 type setupReply struct {
 	obsws.Report
 	OK bool `json:"ok"`
+	// Saved: the camera list the request sent is saved, so the panel
+	// draws it from the settings; without it the panel keeps its rows.
+	Saved bool `json:"saved"`
+}
+
+// setupCamera is one camera of the list Definições > Câmaras sends: its
+// choice ("vdo:<id>" for a saved phone), its name on the panel, and the
+// saved camera it was, from 1; 0 for a new one.
+type setupCamera struct {
+	Choice string `json:"choice"`
+	Label  string `json:"label"`
+	Was    int    `json:"was"`
+}
+
+// maxCameraLabel is the longest name a camera's button takes.
+const maxCameraLabel = 24
+
+// checkCameras is what is wrong with the list, or "": it needs one to
+// MaxCameras cameras, each saved camera at most once, a choice for cameras
+// 2 and 3, and no source or phone twice.
+func checkCameras(list []setupCamera, saved []store.Camera) string {
+	if len(list) < 1 || len(list) > store.MaxCameras {
+		return i18n.T("api.obs.camaras_invalidas")
+	}
+	seen := map[int]bool{}
+	picked := map[string]int{}
+	for i, c := range list {
+		if c.Was < 0 || c.Was > len(saved) || c.Was > 0 && seen[c.Was] {
+			return i18n.T("api.obs.camaras_invalidas")
+		}
+		seen[c.Was] = true
+		if i > 0 && c.Choice == "" {
+			return i18n.T("api.obs.camara_por_escolher", "n", i+1)
+		}
+		key := c.Choice
+		if id, ok := strings.CutPrefix(key, "vdo:"); ok {
+			for _, q := range saved {
+				if id != "" && q.Vdo == id {
+					key = "source:" + q.Source
+				}
+			}
+		}
+		if !strings.HasPrefix(key, "source:") && !strings.HasPrefix(key, "vdo:") {
+			continue
+		}
+		if n := picked[key]; n > 0 {
+			return i18n.T("api.obs.camaras_repetidas", "n", n, "outra", i+1)
+		}
+		picked[key] = i + 1
+	}
+	return ""
+}
+
+// listCameras saves the camera list before a setup and returns what the
+// setup aims for. A camera keeps its scene and, unchanged, its source and
+// phone; a phone id the panel sends is used only when the server made it.
+// A camera with a new pick to add keeps its source until the setup adds
+// it, so a failed setup leaves the camera it had. The time-out camera
+// follows its camera, and is 0 when it was removed or was no saved camera.
+func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
+	var picks []string
+	var olds []string
+	set, err := s.Store.UpdateSettings(func(set *store.Settings) {
+		o := &set.OBS
+		old := o.CameraList()
+		picks, olds = make([]string, len(list)), make([]string, len(list))
+		var cams []store.Camera
+		tcam := 0
+		for i, r := range list {
+			var p store.Camera
+			if r.Was > 0 && r.Was <= len(old) {
+				p = old[r.Was-1]
+			}
+			c := store.Camera{Scene: p.Scene, Label: cutRunes(strings.Join(strings.Fields(r.Label), " "), maxCameraLabel)}
+			choice := r.Choice
+			if id, ok := strings.CutPrefix(choice, "vdo:"); ok {
+				choice = "vdo"
+				for _, q := range old {
+					if id != "" && q.Vdo == id {
+						c.Source, c.Vdo, choice = q.Source, q.Vdo, "source:"+q.Source
+					}
+				}
+			}
+			switch name, ok := strings.CutPrefix(choice, "source:"); {
+			case ok:
+				c.Source = name
+				if name == p.Source {
+					c.Vdo = p.Vdo
+				}
+			case choice != "":
+				picks[i] = choice
+				c.Source, c.Vdo = p.Source, p.Vdo
+			}
+			if p.Source != "" && (c.Source != p.Source || picks[i] != "") {
+				olds[i] = p.Source
+			}
+			if r.Was > 0 && r.Was == o.TimeoutCamera {
+				tcam = i + 1
+			}
+			cams = append(cams, c)
+		}
+		o.TimeoutCamera = tcam
+		o.Cameras = cams
+		if o.CameraSource != cams[0].Source {
+			o.CameraSource, o.CameraFull = cams[0].Source, nil
+		}
+	})
+	if err != nil {
+		return obsws.Want{}, err
+	}
+	w := s.want(set.OBS, "", "")
+	for i := range w.Cameras {
+		if picks[i] != "" {
+			w.Cameras[i].Choice, w.Cameras[i].Vdo = picks[i], ""
+		}
+		if olds[i] != "" {
+			w.Cameras[i].Old = olds[i]
+		}
+	}
+	return w, nil
 }
 
 // obsSetup is "Configurar OBS" (and "Reparar"): it reaches OBS, turning
@@ -228,33 +389,54 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		Camera string `json:"camera"`
 		// Old is the camera before the panel saved its form, to hide it.
 		Old string `json:"old"`
+		// Cameras, when sent, is the new camera list.
+		Cameras []setupCamera `json:"cameras"`
 	}
 	if !decode(w, r, &req) {
 		return
+	}
+	if req.Cameras != nil {
+		if msg := checkCameras(req.Cameras, s.Store.Settings().OBS.CameraList()); msg != "" {
+			fail(w, http.StatusBadRequest, msg)
+			return
+		}
 	}
 	if !s.setupOBSMu.TryLock() {
 		fail(w, http.StatusConflict, i18n.T("api.obs.a_configurar"))
 		return
 	}
 	defer s.setupOBSMu.Unlock()
-	cfg, st, ok := s.reachOBS(isLoopback(r.RemoteAddr))
+	here := isLoopback(r.RemoteAddr)
+	// With OBS out of reach the list is not saved: the panel keeps it to send again.
+	cfg, st, ok := s.reachOBS(here)
 	if !ok {
 		reply(w, setupReply{Report: obsws.Report{Steps: []obsws.Step{st}}})
 		return
 	}
-	o := s.Store.Settings().OBS
-	rep, err := s.OBS.Setup(cfg, s.want(o, req.Camera, req.Old), true, s.fitCamera)
+	aim := s.want(s.Store.Settings().OBS, req.Camera, req.Old)
+	if req.Cameras != nil {
+		var err error
+		if aim, err = s.listCameras(req.Cameras); !s.save(w, err) {
+			return
+		}
+	}
+	rep, err := s.OBS.Setup(cfg, aim, true, s.fitCamera)
 	if err != nil {
-		// The scenes made so far keep their names for the next run; the
-		// cameras, half set up, stay as they were.
-		names := obsws.Report{Graphics: rep.Graphics}
+		// The scenes made so far keep their names for the next run, and a
+		// phone source made so far keeps its id; the other cameras, half set
+		// up, stay as they were.
+		names := obsws.Report{Graphics: rep.Graphics, Phones: rep.Phones}
 		for _, c := range rep.Cameras {
-			names.Cameras = append(names.Cameras, obsws.ReportCamera{Scene: c.Scene})
+			rc := obsws.ReportCamera{Scene: c.Scene}
+			if _, ok := rep.Phones[c.Source]; ok {
+				rc.Source = c.Source
+			}
+			names.Cameras = append(names.Cameras, rc)
 		}
 		if serr := s.saveCameras(names); serr != nil {
 			s.Log(i18n.T("log.obs.erro", "err", serr))
 		}
-		fail(w, http.StatusBadGateway, err.Error())
+		replyCode(w, http.StatusBadGateway, map[string]any{"error": err.Error(), "saved": req.Cameras != nil})
 		return
 	}
 	if !s.save(w, s.saveCameras(rep)) {
@@ -277,7 +459,10 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.checkOBS()
-	reply(w, setupReply{rep, rep.Ready})
+	if !here {
+		rep.Phones = nil // the stream ids are secrets; the panel asks for one camera's link behind the PIN
+	}
+	reply(w, setupReply{rep, rep.Ready, req.Cameras != nil})
 }
 
 // saveCameras keeps the graphics scene and the cameras' scenes and
@@ -291,6 +476,10 @@ func (s *Server) saveCameras(rep obsws.Report) error {
 		cams := o.CameraList()
 		for i, c := range rep.Cameras[:min(len(rep.Cameras), len(cams))] {
 			cams[i].Scene = cmp.Or(c.Scene, cams[i].Scene)
+			// A phone's id goes with its source; another camera in its place drops it.
+			if id, ok := rep.Phones[c.Source]; ok || c.Source != "" && cams[i].Source != "" && c.Source != cams[i].Source {
+				cams[i].Vdo = id
+			}
 			cams[i].Source = cmp.Or(c.Source, cams[i].Source)
 		}
 		o.Cameras = cams

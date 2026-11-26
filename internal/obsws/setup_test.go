@@ -888,3 +888,126 @@ func TestSetupCameraTwoWithoutSource(t *testing.T) {
 		t.Errorf("fits %v", r.fits)
 	}
 }
+
+// setupWant runs Configurar OBS (apply) or the health check on w.
+func (r *run) setupWant(w Want, apply bool) Report {
+	r.t.Helper()
+	w.OverlayURL, w.OverlayPorts = overlayURL, [2]int{8765, 8775}
+	var fit func(int, string, string) error
+	if apply {
+		fit = func(int, string, string) error { return nil }
+	}
+	rep, err := r.c.Setup(r.cfg, w, apply, fit)
+	if err != nil {
+		r.t.Fatal(err)
+	}
+	return rep
+}
+
+// A phone camera gets a browser source on its VDO.Ninja view link, kept
+// loaded off air; the next runs find it by its link and put the link back.
+func TestSetupPhone(t *testing.T) {
+	m := newModel()
+	m.devices = []map[string]any{device("Logitech C920")}
+	r := newRun(t, m)
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "device:" + device("Logitech C920")["itemValue"].(string)}, {Choice: "vdo"}}}, true)
+	wantResults(t, rep, map[string]string{"camera": "created", "camera-2": "created", "order-2": "fixed"})
+	if len(rep.Cameras) != 2 || rep.Cameras[1].Source != "Telemóvel 1" || len(rep.Phones) != 1 {
+		t.Fatalf("cameras %+v phones %v", rep.Cameras, rep.Phones)
+	}
+	id, scene := rep.Phones["Telemóvel 1"], rep.Cameras[1].Scene
+	in := m.input("Telemóvel 1")
+	if in == nil || in.kind != "browser_source" {
+		t.Fatalf("phone source %+v", in)
+	}
+	if id == "" || str(in.settings["url"]) != VDOView(id) || in.settings["width"] != 1920.0 || in.settings["height"] != 1080.0 ||
+		in.settings["shutdown"] != false || in.settings["restart_when_active"] != false || in.settings["is_local_file"] != false {
+		t.Errorf("phone settings %v, id %q", in.settings, id)
+	}
+	if got := m.order(scene); !slices.Equal(got, []string{"Telemóvel 1", rep.Graphics}) {
+		t.Errorf("camera 2's scene %v", got)
+	}
+
+	saved := Want{Graphics: rep.Graphics, Cameras: []WantCamera{{Choice: "source:Logitech C920", Scene: rep.Cameras[0].Scene},
+		{Choice: "source:Telemóvel 1", Scene: scene, Vdo: id}}}
+	m.wrote()
+	if rep := r.setupWant(saved, true); !rep.Ready || rep.Phones["Telemóvel 1"] != id || rep.Cameras[1].Source != "Telemóvel 1" {
+		t.Errorf("again: ready %v cameras %+v phones %v %v", rep.Ready, rep.Cameras, rep.Phones, rep.Problems())
+	}
+	if w := m.wrote(); slices.Contains(w, "CreateInput") {
+		t.Errorf("again wrote %v", w)
+	}
+	if h := r.setupWant(saved, false); !h.Ready {
+		t.Errorf("health %v", h.Problems())
+	}
+
+	in.settings["url"] = "https://vdo.ninja/?view=someoneelse"
+	h := r.setupWant(saved, false)
+	if h.Ready || results(h)["camera-2"] != "failed" || detail(h, "camera-2") != i18n.T("obs.setup.telemovel_endereco", "fonte", "Telemóvel 1") {
+		t.Errorf("health of a moved link: %s %q", results(h)["camera-2"], detail(h, "camera-2"))
+	}
+	rep = r.setupWant(saved, true)
+	if results(rep)["camera-2"] != "fixed" || str(in.settings["url"]) != VDOView(id) || in.settings["width"] != 1920.0 {
+		t.Errorf("fix: %s %q settings %v", results(rep)["camera-2"], detail(rep, "camera-2"), in.settings)
+	}
+	if h := r.setupWant(saved, false); !h.Ready {
+		t.Errorf("health after the fix %v", h.Problems())
+	}
+}
+
+// A second phone through the DroidCam plugin: the plugin is offered with a
+// source already there, and the new source takes the phone no source uses.
+func TestSetupSecondDroidCam(t *testing.T) {
+	m := newModel()
+	m.kinds = []string{"browser_source", PluginKind}
+	m.put("Cena", "DroidCam", PluginKind, map[string]any{"device_list": "A"})
+	m.phones = []map[string]any{{"itemName": "Phone A", "itemEnabled": true, "itemValue": "A"},
+		{"itemName": "Phone B", "itemEnabled": true, "itemValue": "B"},
+		{"itemName": "Use WiFi IP", "itemEnabled": true, "itemValue": "dev_id_wifi"}}
+	r := newRun(t, m)
+	list, err := r.c.Cameras(r.cfg)
+	if err != nil || !slices.ContainsFunc(list, func(c Choice) bool { return c.Value == "plugin" }) {
+		t.Fatalf("choices %v %v", list, err)
+	}
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "source:DroidCam"}, {Choice: "plugin"}}}, true)
+	cam := m.input("DroidCam 2")
+	if results(rep)["camera-2"] != "created" || rep.Cameras[1].Source != "DroidCam 2" || cam == nil || cam.settings["device_list"] != "B" ||
+		!slices.Equal(m.pressed, []string{"DroidCam 2/connect"}) {
+		t.Errorf("camera 2 %s %q %+v pressed %v", results(rep)["camera-2"], detail(rep, "camera-2"), cam, m.pressed)
+	}
+	if m.input("DroidCam").settings["device_list"] != "A" {
+		t.Errorf("first source moved: %v", m.input("DroidCam").settings)
+	}
+}
+
+// Two new phones in one run each get their own source and id.
+func TestSetupTwoNewPhones(t *testing.T) {
+	m := newModel()
+	m.devices = []map[string]any{device("Logitech C920")}
+	r := newRun(t, m)
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "device:" + device("Logitech C920")["itemValue"].(string)}, {Choice: "vdo"}, {Choice: "vdo"}}}, true)
+	wantResults(t, rep, map[string]string{"camera": "created", "camera-2": "created", "camera-3": "created"})
+	if len(rep.Cameras) != 3 || rep.Cameras[1].Source != "Telemóvel 1" || rep.Cameras[2].Source != "Telemóvel 2" {
+		t.Fatalf("cameras %+v", rep.Cameras)
+	}
+	a, b := rep.Phones["Telemóvel 1"], rep.Phones["Telemóvel 2"]
+	if a == "" || b == "" || a == b || str(m.input("Telemóvel 2").settings["url"]) != VDOView(b) {
+		t.Errorf("phones %v", rep.Phones)
+	}
+}
+
+// Two new DroidCam plugin sources in one run take different phones.
+func TestSetupTwoNewPlugins(t *testing.T) {
+	m := newModel()
+	m.kinds = []string{"browser_source", PluginKind}
+	m.phones = []map[string]any{{"itemName": "Phone A", "itemEnabled": true, "itemValue": "A"},
+		{"itemName": "Phone B", "itemEnabled": true, "itemValue": "B"},
+		{"itemName": "Use WiFi IP", "itemEnabled": true, "itemValue": "dev_id_wifi"}}
+	r := newRun(t, m)
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "plugin"}, {Choice: "plugin"}}}, true)
+	wantResults(t, rep, map[string]string{"camera": "created", "camera-2": "created"})
+	one, two := m.input("DroidCam"), m.input("DroidCam 2")
+	if rep.Cameras[1].Source != "DroidCam 2" || one == nil || two == nil || one.settings["device_list"] != "A" || two.settings["device_list"] != "B" {
+		t.Errorf("cameras %+v, %+v %+v", rep.Cameras, one, two)
+	}
+}

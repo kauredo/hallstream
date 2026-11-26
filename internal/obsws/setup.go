@@ -32,11 +32,12 @@ type Step struct {
 }
 
 // Choice is a camera the volunteer can pick: a source already in OBS
-// ("source:<name>"), a video capture device to add ("device:<id>") or the
-// DroidCam OBS plugin ("plugin").
+// ("source:<name>"), a video capture device to add ("device:<id>"), the
+// DroidCam OBS plugin ("plugin") or a new phone through VDO.Ninja ("vdo",
+// which the panel offers itself).
 type Choice struct {
 	Value    string `json:"value"`
-	Type     string `json:"type"` // source, device, plugin
+	Type     string `json:"type"` // source, device, plugin, phone
 	Label    string `json:"label"`
 	DroidCam bool   `json:"droidcam"`
 }
@@ -50,6 +51,8 @@ type WantCamera struct {
 	Scene string
 	// Old is the camera before; it is hidden in the scene when another replaces it.
 	Old string
+	// Vdo is the stream id of a saved phone camera, whose Choice is its source.
+	Vdo string
 }
 
 // Want is what the setup aims for.
@@ -75,6 +78,8 @@ type Report struct {
 	Graphics string         `json:"graphics"`
 	Cameras  []ReportCamera `json:"cameras"`
 	Choices  []Choice       `json:"choices,omitempty"`
+	// Phones is each phone camera's stream id, by source.
+	Phones map[string]string `json:"phones,omitempty"`
 	// Ready: nothing is missing or wrong (the camera fit aside).
 	Ready bool `json:"ready"`
 }
@@ -160,6 +165,8 @@ type setup struct {
 	scenes []string // every scene in OBS
 	n      int      // the camera being set up, from 1
 	cam    WantCamera
+	vdo    string  // the stream id of the camera being set up, when it is a phone
+	made   []input // the inputs this run created, for the next camera's names and checks
 }
 
 type input struct {
@@ -213,7 +220,8 @@ func (s *setup) run(fit func(int, string, string) error) {
 	s.at = graphics
 	s.overlay(in)
 	for i, w := range s.want.Cameras {
-		s.n, s.cam = i+1, w
+		s.n, s.cam, s.vdo = i+1, w, ""
+		in, s.made = append(in, s.made...), nil
 		scene := w.Scene
 		if scene == "" {
 			scene = uniqueSourceName(in, s.scenes, i18n.T("obs.cena_camara", "n", s.n))
@@ -225,6 +233,12 @@ func (s *setup) run(fit func(int, string, string) error) {
 			s.hideOld(cam, graphics)
 			s.order(graphics, cam)
 			rc.Source = cam
+			if cam != "" && s.vdo != "" {
+				if s.rep.Phones == nil {
+					s.rep.Phones = map[string]string{}
+				}
+				s.rep.Phones[cam] = s.vdo
+			}
 			if slices.Contains(s.scenes, scene) {
 				rc.Scene = scene
 			}
@@ -373,7 +387,7 @@ func (s *setup) inputs() []input {
 		return nil
 	}
 	for i := range r.Inputs {
-		if k := r.Inputs[i].Kind; k == "browser_source" || k == dshowKind {
+		if k := r.Inputs[i].Kind; k == "browser_source" || k == dshowKind || k == PluginKind {
 			var st struct {
 				Settings map[string]any `json:"inputSettings"`
 			}
@@ -464,6 +478,7 @@ func (s *setup) overlay(in []input) string {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_grafismo", "erro", re.Comment)
 			return ""
 		}
+		s.made = append(s.made, input{Name: name, Kind: "browser_source", Settings: settings})
 		st.Result, st.Detail = "created", i18n.T("obs.setup.criei_grafismo", "fonte", name)
 		return name
 	}
@@ -585,7 +600,16 @@ func (s *setup) camera(in []input) string {
 	}
 	var name, note string
 	switch {
-	case s.n > 1:
+	case w == "vdo" || s.cam.Vdo != "":
+		saved := ""
+		if w != "vdo" {
+			saved = strings.TrimPrefix(w, "source:")
+		}
+		var done bool
+		if name, note, done = s.phone(&st, in, saved); done {
+			return name
+		}
+	case s.n > 1 && w != "plugin" && !strings.HasPrefix(w, "device:"):
 		// Cameras 2 and 3 come from the settings and are never picked here.
 		name = strings.TrimPrefix(w, "source:")
 		if name == "" {
@@ -611,8 +635,9 @@ func (s *setup) camera(in []input) string {
 			return s.addDevice(&st, in, id)
 		}
 	case w == "plugin":
+		others := s.others()
 		for _, x := range in {
-			if x.Kind == PluginKind {
+			if x.Kind == PluginKind && !slices.Contains(others, x.Name) {
 				name = x.Name
 			}
 		}
@@ -663,6 +688,82 @@ func (s *setup) camera(in []input) string {
 	}
 	st.Result, st.Detail = "fixed", note+i18n.T("obs.setup.pus_fonte", "fonte", name)
 	return name
+}
+
+// phone finds the phone camera's browser source: the one on its view link,
+// else the saved source (its link put back), else a new one. With done the
+// step is decided.
+func (s *setup) phone(st *Step, in []input, saved string) (name, note string, done bool) {
+	id := s.cam.Vdo
+	if id == "" {
+		var err error
+		if id, err = NewVDOID(); err != nil {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_telemovel", "erro", err)
+			return "", "", true
+		}
+	}
+	s.vdo = id
+	for _, x := range in {
+		if x.Kind == "browser_source" && str(x.Settings["url"]) == VDOView(id) {
+			return x.Name, "", false
+		}
+	}
+	for _, x := range in {
+		if saved == "" || x.Name != saved || x.Kind != "browser_source" {
+			continue
+		}
+		if !s.apply {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.telemovel_endereco", "fonte", x.Name)
+			return x.Name, "", true
+		}
+		if re := s.call("SetInputSettings", map[string]any{"inputName": x.Name, "inputSettings": map[string]any{"url": VDOView(id)}, "overlay": true}, nil); re != nil {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_corrigiu_telemovel", "fonte", x.Name, "erro", re.Comment)
+			return x.Name, "", true
+		}
+		note = i18n.T("obs.setup.telemovel_corrigido", "fonte", x.Name)
+		st.Result, st.Detail = "fixed", note
+		return x.Name, note + " ", false
+	}
+	if !s.apply {
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_telemovel", "n", s.n)
+		return "", "", true
+	}
+	return s.addPhone(st, in, id), "", true
+}
+
+// addPhone adds a browser source on the phone's view link, named
+// "Telemóvel N". It stays loaded off air, so the phone never reconnects.
+func (s *setup) addPhone(st *Step, in []input, id string) string {
+	var name string
+	for k := 1; ; k++ {
+		if name = i18n.T("obs.setup.telemovel_nome", "n", k); uniqueSourceName(in, s.scenes, name) == name {
+			break
+		}
+	}
+	settings := map[string]any{"url": VDOView(id), "width": 1920, "height": 1080, "is_local_file": false,
+		"shutdown": false, "restart_when_active": false}
+	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": "browser_source",
+		"inputSettings": settings}, nil); re != nil {
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_telemovel", "erro", re.Comment)
+		return ""
+	}
+	s.made = append(s.made, input{Name: name, Kind: "browser_source", Settings: settings})
+	st.Result, st.Detail = "created", i18n.T("obs.setup.juntei_telemovel", "fonte", name)
+	return name
+}
+
+// others are the sources the other cameras ended with or ask for.
+func (s *setup) others() []string {
+	var out []string
+	for _, c := range s.rep.Cameras {
+		out = append(out, c.Source)
+	}
+	for i, c := range s.want.Cameras {
+		if name, ok := strings.CutPrefix(c.Choice, "source:"); ok && i+1 != s.n {
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // auto finds the camera with none chosen: a DroidCam source, else a camera
@@ -720,16 +821,14 @@ func (s *setup) use(st *Step, in []input, c Choice) string {
 }
 
 // choices: the video sources in OBS, the capture devices no source uses yet
-// and the DroidCam plugin when it has no source, DroidCam first.
+// and the DroidCam plugin, for one more phone, DroidCam first.
 func (s *setup) choices(in []input) []Choice {
 	var list []Choice
 	used := map[string]bool{}
-	plugin := false
 	for _, x := range in {
 		if x.Kind == dshowKind {
 			used[str(x.Settings["video_device_id"])] = true
 		}
-		plugin = plugin || x.Kind == PluginKind
 		if isVideo(x.Kind) && x.Name != probeName {
 			list = append(list, Choice{"source:" + x.Name, "source", x.Name, isDroidCam(x)})
 		}
@@ -738,7 +837,7 @@ func (s *setup) choices(in []input) []Choice {
 		Kinds []string `json:"inputKinds"`
 	}
 	s.call("GetInputKindList", map[string]bool{"unversioned": true}, &kinds)
-	if slices.Contains(kinds.Kinds, PluginKind) && !plugin {
+	if slices.Contains(kinds.Kinds, PluginKind) {
 		list = append(list, Choice{"plugin", "plugin", "DroidCam OBS (plugin)", true})
 	}
 	if slices.Contains(kinds.Kinds, dshowKind) {
@@ -807,13 +906,21 @@ func (s *setup) addDevice(st *Step, in []input, id string) string {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_camara", "camara", name, "erro", re.Comment)
 		return ""
 	}
+	s.made = append(s.made, input{Name: name, Kind: dshowKind, Settings: map[string]any{"video_device_id": id}})
 	st.Result, st.Detail = "created", i18n.T("obs.setup.juntei_camara", "camara", name)
 	return name
 }
 
 // addPlugin adds a DroidCam OBS source and connects it to the first phone
-// or tablet it sees by cable; over Wi-Fi it needs its IP, set once in OBS.
+// or tablet it sees by cable that no other DroidCam source uses; over Wi-Fi
+// it needs its IP, set once in OBS.
 func (s *setup) addPlugin(st *Step, in []input) string {
+	used := []string{"dev_id_wifi"}
+	for _, x := range in {
+		if x.Kind == PluginKind {
+			used = append(used, str(x.Settings["device_list"]))
+		}
+	}
 	name := uniqueSourceName(in, s.scenes, "DroidCam")
 	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": PluginKind,
 		"inputSettings": map[string]any{}}, nil); re != nil {
@@ -821,12 +928,15 @@ func (s *setup) addPlugin(st *Step, in []input) string {
 		return ""
 	}
 	st.Result = "created"
+	made := input{Name: name, Kind: PluginKind, Settings: map[string]any{}}
+	defer func() { s.made = append(s.made, made) }()
 	for _, d := range s.listItems(name, "device_list") {
-		if d.Value == "dev_id_wifi" {
+		if slices.Contains(used, d.Value) {
 			continue
 		}
 		if s.call("SetInputSettings", map[string]any{"inputName": name, "inputSettings": map[string]any{"device_list": d.Value}}, nil) == nil &&
 			s.call("PressInputPropertiesButton", map[string]string{"inputName": name, "propertyName": "connect"}, nil) == nil {
+			made.Settings["device_list"] = d.Value
 			st.Detail = i18n.T("obs.setup.juntei_ligada", "fonte", name, "aparelho", d.Name)
 			return name
 		}

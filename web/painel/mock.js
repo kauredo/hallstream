@@ -241,7 +241,7 @@
   var camsQ = (/[?&]cams=([a-z0-9]+)/.exec(location.search) || [])[1];
   var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }];
   if (camsQ === 'noscene') db.settings.obs.cameras = [CAMS[0], CAMS[1], Object.assign({}, CAMS[2], { scene: '' })];
-  else if (camsQ === 'vdo') db.settings.obs.cameras = [CAMS[0], { source: 'Telemóvel 1', scene: 'Câmara 2', label: 'Bancada', vdo: 'mockmockmockmockmock' }, CAMS[2]];
+  else if (camsQ === 'vdo') db.settings.obs.cameras = [CAMS[0], { source: 'Telemóvel 1', scene: 'Câmara 2', label: 'Bancada', vdo: 'mockmockmockmockmock', has_vdo: true }, CAMS[2]];
   else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(3, Math.max(1, +camsQ || 1)));
   var liveQ = /[?&]live=([0-3])/.exec(location.search);
   db.obsLive = liveQ ? +liveQ[1] : 1;
@@ -272,9 +272,9 @@
     if (!(b && b.cameras)) return [Object.assign({}, old[0] || { label: '' }, { source: 'DroidCam Video', scene: 'Câmara 1' })].concat(old.slice(1));
     return b.cameras.map(function (r, i) {
       var was = old[r.was - 1] || {}, c = { source: '', scene: was.scene || 'Câmara ' + (i + 1), label: r.label };
-      var saved = old.filter(function (o) { return o.vdo && r.choice === 'vdo:' + o.vdo; })[0];
-      if (saved) { c.source = saved.source; c.vdo = saved.vdo; }
-      else if (/^vdo/.test(r.choice)) { c.source = 'Telemóvel ' + (++phones + 1); c.vdo = ('mock' + Math.random().toString(36).slice(2) + 'xxxxxxxxxxxxxxxx').slice(0, 20); }
+      // A saved phone keeps its id while its row keeps its source, as on the server.
+      if (was.vdo && r.choice === 'source:' + was.source) { c.source = was.source; c.vdo = was.vdo; c.has_vdo = true; }
+      else if (r.choice === 'vdo') { c.source = 'Telemóvel ' + (++phones + 1); c.vdo = ('mock' + Math.random().toString(36).slice(2) + 'xxxxxxxxxxxxxxxx').slice(0, 20); c.has_vdo = true; }
       else if (/^source:/.test(r.choice)) c.source = r.choice.slice(7);
       else if (r.choice === 'plugin') c.source = 'DroidCam';
       else c.source = (cameras.filter(function (x) { return x.value === r.choice; })[0] || { label: 'DroidCam Video' }).label;
@@ -283,6 +283,11 @@
   }
   function setupReport(b) {
     var step = function (id, label, result, detail) { return { id: id, label: label, result: result, detail: detail }; };
+    // ?setupfail=noobs: OBS does not answer, so a camera list is not saved.
+    if (/[?&]setupfail=noobs\b/.test(location.search)) {
+      return { ok: false, ready: false, saved: false, camera: '', graphics: '', cameras: null, steps: [
+        step('websocket', 'Ligação ao OBS', 'failed', 'O OBS não responde em 127.0.0.1:4455.')] };
+    }
     if (obsMode === 'choose' && !(b && b.camera)) {
       return { ok: false, ready: false, camera: '', graphics: 'Grafismo', cameras: [{ source: '', scene: 'Câmara 1' }], choices: cameras, steps: [
         step('websocket', 'Ligação ao OBS', 'ok', 'O OBS responde.'),
@@ -299,7 +304,7 @@
     db.settings.obs.graphics_scene = 'Grafismo';
     db.settings.obs.cameras = setupCameras(b);
     db.settings.obs.camera_source = db.settings.obs.cameras[0].source;
-    return { ok: true, ready: true, camera: db.settings.obs.camera_source, graphics: 'Grafismo', cameras: db.settings.obs.cameras.map(function (c) { return { source: c.source, scene: c.scene }; }), steps: [
+    return { ok: true, ready: true, saved: !!(b && b.cameras), camera: db.settings.obs.camera_source, graphics: 'Grafismo', cameras: db.settings.obs.cameras.map(function (c) { return { source: c.source, scene: c.scene }; }), steps: [
       step('websocket', 'Ligação ao OBS', 'fixed', 'Liguei o servidor WebSocket do OBS, com uma palavra-passe nova. Abri o OBS.'),
       step('graphics', 'Cena do grafismo (Grafismo)', 'created', 'Criei a cena Grafismo.'),
       step('overlay', 'Grafismo (fonte Navegador)', 'fixed', 'Corrigi a fonte Hallstream overlay: o endereço era http://127.0.0.1:8766/overlay, não estava na cena.'),
@@ -570,6 +575,10 @@
     }
     if (p === '/api/youtube/history') return reply(200, ytHistory(u.searchParams));
     if (p === '/api/obs/cameras') return reply(200, { cameras: cameras });
+    if ((r = /^\/api\/obs\/cameras\/([1-3])\/link$/.exec(p))) {
+      var pc = (db.settings.obs.cameras || [])[+r[1] - 1];
+      return pc && pc.vdo ? reply(200, { link: 'https://vdo.ninja/?push=' + pc.vdo + '&webcam&autostart&facing=rear&quality=0&audiodevice=0' }) : err(404, '404 page not found');
+    }
     if (p === '/api/obs/camera/live') {
       if (/[?&]camerr=1\b/.test(location.search)) return err(502, 'o OBS não mudou para a cena "Câmara ' + b.index + '": fake');
       db.obsLive = b.index; emit();

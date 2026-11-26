@@ -88,15 +88,17 @@ type Server struct {
 	nextQueued atomic.Bool
 	fixMu      sync.Mutex
 	fix        fixtures
-	syncMu     sync.Mutex // SyncGame reads and publishes as one step
-	setupOBSMu sync.Mutex // one Configurar OBS or health check at a time
-	launchMu   sync.Mutex // never start OBS twice
+	syncMu     sync.Mutex  // SyncGame reads and publishes as one step
+	setupOBSMu sync.Mutex  // one Configurar OBS or health check at a time
+	setupOn    atomic.Bool // setupOBSMu is held: camera health rounds keep off OBS
+	launchMu   sync.Mutex  // never start OBS twice
+	roundMu    sync.Mutex  // one camera health round at a time
 	obsMu      sync.Mutex
 	health     obsHealth
-	camLooks   map[string]camLook // each camera's last look, by scene and source (under obsMu)
-	camStates  []camState         // the cameras' health (under obsMu)
-	frames     []obsws.Frames     // OBS's frame counts, one per health round, the last minute (under obsMu)
-	stream     *obsws.Stream      // nil when OBS can't be asked
+	camVitals  map[string]obsws.Vitals // each camera's health, by scene and source (under obsMu)
+	camStates  []camState              // the cameras' health (under obsMu)
+	frames     []frameSample           // OBS's frame counts, one per health round, the last minute (under obsMu)
+	stream     *obsws.Stream           // nil when OBS can't be asked
 
 	ytMu        sync.Mutex
 	yt          ytSaved

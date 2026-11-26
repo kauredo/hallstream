@@ -78,9 +78,9 @@ func (s *Server) obsRoutes() {
 	// POST: listing devices may add and remove a hidden source in OBS.
 	m.HandleFunc("POST /api/obs/cameras", func(w http.ResponseWriter, r *http.Request) {
 		// Not during a setup, which may add the same hidden source.
-		s.setupOBSMu.Lock()
+		s.lockSetup()
 		list, err := s.OBS.Cameras(obsConfig(s.Store.Settings().OBS))
-		s.setupOBSMu.Unlock()
+		s.unlockSetup()
 		if err != nil {
 			fail(w, http.StatusBadGateway, err.Error())
 			return
@@ -401,11 +401,11 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if !s.setupOBSMu.TryLock() {
+	if !s.tryLockSetup() {
 		fail(w, http.StatusConflict, i18n.T("api.obs.a_configurar"))
 		return
 	}
-	defer s.setupOBSMu.Unlock()
+	defer s.unlockSetup()
 	here := isLoopback(r.RemoteAddr)
 	// With OBS out of reach the list is not saved: the panel keeps it to send again.
 	cfg, st, ok := s.reachOBS(here)
@@ -689,10 +689,31 @@ func (s *Server) checkOBS() {
 
 // refreshOBS is checkOBS unless a setup is running, which checks at its end.
 func (s *Server) refreshOBS() {
-	if s.setupOBSMu.TryLock() {
+	if s.tryLockSetup() {
 		s.checkOBS()
-		s.setupOBSMu.Unlock()
+		s.unlockSetup()
 	}
+}
+
+// lockSetup takes setupOBSMu and marks it held, so a camera health round
+// stops before its next request. A round never takes setupOBSMu itself,
+// so a setup never waits for one or fails because of one.
+func (s *Server) lockSetup() {
+	s.setupOBSMu.Lock()
+	s.setupOn.Store(true)
+}
+
+func (s *Server) tryLockSetup() bool {
+	if !s.setupOBSMu.TryLock() {
+		return false
+	}
+	s.setupOn.Store(true)
+	return true
+}
+
+func (s *Server) unlockSetup() {
+	s.setupOn.Store(false)
+	s.setupOBSMu.Unlock()
 }
 
 func (s *Server) obsStatus() map[string]any {

@@ -2,6 +2,7 @@ package web
 
 import (
 	"cmp"
+	"errors"
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
@@ -15,14 +16,21 @@ type camState struct {
 	State string `json:"state"`
 }
 
-// camLook is a camera's last look and the state judged from it.
-type camLook struct {
-	look  obsws.Look
-	state string
+// frameSample is OBS's frame counts as one round read them.
+type frameSample struct {
+	obsws.Frames
+	at time.Time
 }
 
-// frameSamples is one minute of 10 s rounds, both ends included.
-const frameSamples = 7
+// The skipped frames cover the samples of the last frameWindow; they show
+// once the samples span at least frameSpan, and only when more than
+// 1/skippedShare of the frames were skipped, so a stray frame, or the
+// rounds' own screenshots, never warn.
+const (
+	frameWindow  = 65 * time.Second
+	frameSpan    = 50 * time.Second
+	skippedShare = 100
+)
 
 // RunCameraHealth looks at every camera every 10 s. It never returns.
 func (s *Server) RunCameraHealth() {
@@ -31,11 +39,11 @@ func (s *Server) RunCameraHealth() {
 	}
 }
 
-// busy: a squeeze or a camera switch is sending to OBS. They share the one
-// connection, and a screenshot between two squeeze steps would make it
-// stutter on air.
+// busy: a squeeze, a camera switch, or a setup or health check is sending
+// to OBS. They share the one connection, and a screenshot between two
+// squeeze steps would make it stutter on air.
 func (s *Server) busy() bool {
-	if s.Camera.Moving() {
+	if s.Camera.Moving() || s.setupOn.Load() {
 		return true
 	}
 	if !s.switchMu.TryLock() {
@@ -45,46 +53,57 @@ func (s *Server) busy() bool {
 	return false
 }
 
-// cameraRound looks at each camera once and reads OBS's frame counts. It
-// skips the round, keeping the last states and looks, when OBS is off or
-// not connected, during a setup or health check, and while a squeeze or a
-// switch runs.
+// cameraRound looks at each camera once and reads OBS's frame counts. With
+// OBS off or not connected it forgets every state and sample. It skips the
+// round, keeping the last states, while another round, a setup or health
+// check, a squeeze or a switch runs, and stops when one starts during it.
 func (s *Server) cameraRound() {
 	o := s.Store.Settings().OBS
-	if connected, _ := s.OBS.Status(); !o.Enabled || !connected || s.busy() {
+	if connected, _ := s.OBS.Status(); !o.Enabled || !connected {
+		s.obsMu.Lock()
+		s.camVitals, s.camStates, s.frames = nil, nil, nil
+		s.obsMu.Unlock()
 		return
 	}
-	if !s.setupOBSMu.TryLock() {
+	if !s.roundMu.TryLock() {
 		return
 	}
-	defer s.setupOBSMu.Unlock()
+	defer s.roundMu.Unlock()
+	if s.busy() {
+		return
+	}
 	cfg := obsConfig(o)
 	s.obsMu.Lock()
-	looks := s.camLooks
+	vitals := s.camVitals
 	s.obsMu.Unlock()
-	next := map[string]camLook{}
+	next := map[string]obsws.Vitals{}
 	states := []camState{}
 	for i, cam := range o.CameraList() {
 		if cam.Source == "" {
 			continue
 		}
 		key := cam.Scene + "\x00" + cam.Source
-		prev := looks[key]
-		if s.busy() {
-			return
-		}
+		prev := vitals[key]
 		cur := prev
-		if l, err := s.OBS.LookAt(cfg, cam.Scene, cam.Source); err == nil {
-			cur = camLook{l, obsws.Judge(prev.look, l)}
-			if prev.state != "" && cur.state != prev.state {
-				s.logHealth(cmp.Or(cam.Label, cam.Source), cur.state)
-			}
+		l, err := s.OBS.LookAt(cfg, cam.Scene, cam.Source, s.busy)
+		switch {
+		case errors.Is(err, obsws.ErrBusy):
+			return
+		case errors.Is(err, obsws.ErrNotShown):
+			// Another scene is on program: nothing to judge.
+		case err != nil:
+			cur = prev.Failed()
+		default:
+			cur = prev.See(l)
+		}
+		if prev.State != "" && cur.State != "" && cur.State != prev.State {
+			s.logHealth(cmp.Or(cam.Label, cam.Source), cur.State)
 		}
 		next[key] = cur
-		states = append(states, camState{i + 1, cur.state})
+		states = append(states, camState{i + 1, cur.State})
 	}
 	s.obsMu.Lock()
-	s.camLooks, s.camStates = next, states
+	s.camVitals, s.camStates = next, states
 	s.obsMu.Unlock()
 	if s.busy() {
 		return
@@ -95,12 +114,19 @@ func (s *Server) cameraRound() {
 	}
 	s.obsMu.Lock()
 	defer s.obsMu.Unlock()
-	if n := len(s.frames); n > 0 && f.Total < s.frames[n-1].Total {
-		s.frames = nil // OBS started again
+	s.addFrames(frameSample{f, time.Now()})
+}
+
+// addFrames keeps sample and the ones from the frameWindow before it. A
+// count lower than the last one (OBS started again) starts the samples
+// again. The caller holds obsMu.
+func (s *Server) addFrames(f frameSample) {
+	if n := len(s.frames); n > 0 && (f.Total < s.frames[n-1].Total || f.Skipped < s.frames[n-1].Skipped) {
+		s.frames = nil
 	}
 	s.frames = append(s.frames, f)
-	if n := len(s.frames); n > frameSamples {
-		s.frames = s.frames[n-frameSamples:]
+	for len(s.frames) > 1 && f.at.Sub(s.frames[0].at) > frameWindow {
+		s.frames = s.frames[1:]
 	}
 }
 
@@ -116,15 +142,19 @@ func (s *Server) logHealth(name, state string) {
 }
 
 // skipped is OBS's skipped and total frames over the last minute, or nil
-// before a minute of samples or when none were skipped. The caller holds
-// obsMu.
+// before the samples span frameSpan or when at most 1/skippedShare of the
+// frames were skipped. The caller holds obsMu.
 func (s *Server) skipped() map[string]float64 {
-	if len(s.frames) < frameSamples {
+	if len(s.frames) < 2 {
 		return nil
 	}
 	first, last := s.frames[0], s.frames[len(s.frames)-1]
-	if last.Skipped-first.Skipped <= 0 {
+	if last.at.Sub(first.at) < frameSpan {
 		return nil
 	}
-	return map[string]float64{"frames": last.Skipped - first.Skipped, "total": last.Total - first.Total}
+	n, total := last.Skipped-first.Skipped, last.Total-first.Total
+	if n*skippedShare <= total || n <= 0 {
+		return nil
+	}
+	return map[string]float64{"frames": n, "total": total}
 }

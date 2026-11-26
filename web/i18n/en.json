@@ -828,7 +828,7 @@
   "painel.camaras.nome": "Name on the panel",
   "painel.camaras.outra_cena": "OBS is showing a scene that isn't any camera's.",
   "painel.camaras.parada": "Picture frozen",
-  "painel.camaras.parada_dica": "The picture hasn't changed in 10 seconds. On a phone, check whether the screen turned off or the app closed.",
+  "painel.camaras.parada_dica": "The picture hasn't changed in 20 seconds. On a phone, check whether the screen turned off or the app closed.",
   "painel.camaras.qr_alt": "QR code to connect camera {n}'s phone",
   "painel.camaras.qr_dica": "On the phone that will film, scan this code with its camera and open the link in the browser. Turn the phone sideways and keep it on the charger.",
   "painel.camaras.saltou": "OBS skipped {n} of {total} frames in the last minute: the PC can't keep up.",

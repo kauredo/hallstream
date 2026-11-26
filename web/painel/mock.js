@@ -253,7 +253,8 @@
   var obsMode = (/[?&]obs=([a-z]+)/.exec(location.search) || [])[1] || 'off';
   var obsLive = obsMode === 'live' ? Date.now() - 4723000 : 0;
   function streamNow() { return obsMode === 'off' ? null : { active: !!obsLive, reconnecting: false, duration_ms: obsLive ? Date.now() - obsLive : 0 }; }
-  // Camera health: ?health=ok (default), noimage, frozen, mixed (ok, no_image, frozen for cameras 1 to 3), skipped.
+  // Camera health: ?health=ok (default), noimage, frozen, mixed (ok, no_image, frozen for cameras 1 to 3), skipped,
+  // none (a server older than camera health: no cameras or skipped in the status).
   var healthQ = (/[?&]health=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
   function camHealth() {
     var one = { noimage: 'no_image', frozen: 'frozen' }[healthQ] || 'ok';
@@ -267,6 +268,7 @@
       ? { checked: true, ready: false, problems: ['A fonte Hallstream overlay está mal: o endereço era http://127.0.0.1:8766/overlay.'] }
       : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Câmara 1 não tem câmara.'] }
       : { checked: true, ready: true, problems: [] };
+    if (healthQ === 'none') return { connected: true, error: '', health: h, stream: streamNow() };
     return { connected: true, error: '', health: h, stream: streamNow(), cameras: camHealth(),
       skipped: healthQ === 'skipped' ? { frames: 214, total: 3600 } : null };
   }

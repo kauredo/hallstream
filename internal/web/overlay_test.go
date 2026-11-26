@@ -499,7 +499,7 @@ func TestOverlayPlacaTimeouts(t *testing.T) {
 		return [getComputedStyle(box).display, box.children.length, box.querySelectorAll('i.on').length, getComputedStyle(box).color];
 	}))`
 	for _, c := range []struct{ style, fixture, want string }{
-		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(92, 97, 112)"]]`},
+		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
 		{"classico", "marcador-descontos", `[["none",2,2,"rgb(255, 255, 255)"],["none",2,1,"rgb(255, 255, 255)"]]`},

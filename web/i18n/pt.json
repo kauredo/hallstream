@@ -69,6 +69,7 @@
   "api.nao_mudei_arranque": "Não consegui mudar o arranque com o Windows: {err}",
   "api.nome_vazio": "O nome não pode ficar vazio.",
   "api.obs.a_configurar": "O OBS já está a ser configurado. Espere um pouco.",
+  "api.obs.camaras_invalidas": "A lista de câmaras não serve: tem de ter de uma a três câmaras, cada uma uma vez.",
   "api.obs.jogo_no_ar": "O jogo está no ar. Termine a transmissão antes do teste.",
   "api.obs.nao_transmitiu": "O OBS não começou a transmitir. Veja no portátil se o OBS mostra um aviso. Se tiver uma conta do YouTube ligada em Definições > Transmissão, desligue-a e tente outra vez.",
   "api.obs.teste_no_ar": "O teste está no ar. Carregue em Terminar teste primeiro.",

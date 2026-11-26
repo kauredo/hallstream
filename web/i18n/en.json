@@ -69,6 +69,7 @@
   "api.nao_mudei_arranque": "I couldn't change the Windows startup setting: {err}",
   "api.nome_vazio": "The name can't be empty.",
   "api.obs.a_configurar": "OBS is already being set up. Please wait a moment.",
+  "api.obs.camaras_invalidas": "That camera list won't do: it needs one to three cameras, each once.",
   "api.obs.jogo_no_ar": "The game is on air. End the stream before the test.",
   "api.obs.nao_transmitiu": "OBS didn't start streaming. Check the laptop to see if OBS shows a warning. If a YouTube account is connected in Settings > Stream, disconnect it and try again.",
   "api.obs.teste_no_ar": "The test is on air. Press End test first.",

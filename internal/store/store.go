@@ -61,6 +61,8 @@ type Camera struct {
 	Source string `json:"source"`
 	Scene  string `json:"scene"`
 	Label  string `json:"label"`
+	// Vdo is the VDO.Ninja stream id of a phone camera; only the server writes it.
+	Vdo string `json:"vdo,omitempty"`
 }
 
 // CameraList is the cameras, or camera_source alone for settings from

@@ -565,7 +565,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.OBS.Cameras, req.OBS.GraphicsScene, req.OBS.CameraFulls = cur.OBS.Cameras, cur.OBS.GraphicsScene, cur.OBS.CameraFulls
 		if req.OBS.CameraSource != cur.OBS.CameraSource && len(req.OBS.Cameras) > 0 {
 			req.OBS.Cameras = slices.Clone(req.OBS.Cameras)
-			req.OBS.Cameras[0].Source = req.OBS.CameraSource
+			req.OBS.Cameras[0].Source, req.OBS.Cameras[0].Vdo = req.OBS.CameraSource, ""
 		}
 		if req.OBS.CameraFit != "fill" {
 			req.OBS.CameraFit = "contain"

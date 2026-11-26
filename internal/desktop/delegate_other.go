@@ -6,4 +6,4 @@ package desktop
 func onReopen(f func()) bool { return true }
 
 // onQuit does nothing: only macOS has a Dock menu with its own Quit.
-func onQuit(f func()) bool { return true }
+func onQuit(f func(reply func(yes bool))) bool { return true }

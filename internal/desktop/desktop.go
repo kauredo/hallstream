@@ -17,3 +17,6 @@ type Tray struct {
 	Quit        func() // cleans up; runs once, before Run returns
 	Log         func(string)
 }
+
+// logLine is Tray.Log once Run starts, for problems Ask can only log.
+var logLine = func(string) {}

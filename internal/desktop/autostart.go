@@ -5,6 +5,9 @@ import (
 	"encoding/xml"
 	"path/filepath"
 	"strings"
+	"unicode"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // bundleID names the Mac app, and its LaunchAgent.
@@ -37,16 +40,34 @@ func launchAgent(label, bundle string) []byte {
 	return b.Bytes()
 }
 
-// autostartEntry is the XDG autostart .desktop file for the executable.
-func autostartEntry(exe string) []byte {
-	quote := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "`", "\\`", `$`, `\$`)
+// undeleted is exe without the " (deleted)" Linux adds to the path of a
+// program replaced while it runs.
+func undeleted(exe string) string { return strings.TrimSuffix(exe, " (deleted)") }
+
+// Desktop Entry spec escapes. Exec is quoted: inside the quotes ", `, $
+// and \ take a backslash, and % is %% so it is not a field code. The
+// string escapes then apply to every value, Exec included, so each of
+// those backslashes, and any in Path, is doubled: a \ in the path is \\\\
+// in Exec.
+var (
+	execQuote = strings.NewReplacer(`\`, `\\\\`, `"`, `\\"`, "`", "\\\\`", `$`, `\\$`, `%`, `%%`)
+	strEscape = strings.NewReplacer(`\`, `\\`)
+)
+
+// autostartEntry is the XDG autostart .desktop file for the executable. A
+// path with a control character in it can't be written there.
+func autostartEntry(exe string) ([]byte, error) {
+	exe = undeleted(exe)
+	if strings.ContainsFunc(exe, unicode.IsControl) {
+		return nil, i18n.Err("app.arranque_caminho")
+	}
 	return []byte("[Desktop Entry]\n" +
 		"Type=Application\n" +
 		"Name=Hallstream\n" +
-		`Exec="` + quote.Replace(exe) + "\"\n" +
-		"Path=" + filepath.Dir(exe) + "\n" +
+		`Exec="` + execQuote.Replace(exe) + "\"\n" +
+		"Path=" + strEscape.Replace(filepath.Dir(exe)) + "\n" +
 		"X-GNOME-Autostart-enabled=true\n" +
-		"Terminal=false\n")
+		"Terminal=false\n"), nil
 }
 
 // translocated reports whether macOS runs a quarantined copy from a

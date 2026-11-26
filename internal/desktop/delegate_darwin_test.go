@@ -5,25 +5,26 @@ import (
 	"time"
 )
 
+// TestDelegateHooks also passes with -count=2: adding a handler twice is
+// fine.
 func TestDelegateHooks(t *testing.T) {
-	cases := []struct {
-		name  string
-		hook  func(func()) bool
-		event func()
-	}{
-		{"reopen", onReopen, hallstreamReopen},
-		{"quit", onQuit, hallstreamQuit},
+	ran := make(chan string, 2)
+	if !onReopen(func() { ran <- "reopen" }) {
+		t.Fatal("reopen: could not add the handler to systray's app delegate")
 	}
-	for _, c := range cases {
-		ran := make(chan struct{}, 1)
-		if !c.hook(func() { ran <- struct{}{} }) {
-			t.Fatalf("%s: could not add the handler to systray's app delegate", c.name)
-		}
-		c.event()
+	if !onQuit(func(reply func(bool)) { ran <- "quit" }) {
+		t.Fatal("quit: could not add the handler to systray's app delegate")
+	}
+	hallstreamReopen()
+	hallstreamQuit()
+	for range 2 {
 		select {
 		case <-ran:
 		case <-time.After(time.Second):
-			t.Errorf("%s: the event did not reach the program", c.name)
+			t.Fatal("an event did not reach the program")
 		}
+	}
+	if !hookReopen() || !hookTerminate() {
+		t.Error("adding the same handler again failed")
 	}
 }

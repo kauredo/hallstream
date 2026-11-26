@@ -39,15 +39,11 @@ func Fatal(msg string) { alert(msg, "critical") }
 // Warn shows a problem the program can carry on with.
 func Warn(msg string) { alert(msg, "warning") }
 
-// alert passes msg as an argument, never inside the script, so a quote in
-// it is only ever data.
 func alert(msg, kind string) {
 	if Console {
 		fmt.Println(msg)
 	}
-	exec.Command("/usr/bin/osascript", "-e", "on run argv",
-		"-e", `display alert "Hallstream" message (item 1 of argv) as `+kind,
-		"-e", "end run", msg).Run()
+	exec.Command("/usr/bin/osascript", alertArgs(msg, kind)...).Run()
 }
 
 // Ask shows a yes/no question; true is yes. No is the default button.
@@ -56,9 +52,7 @@ func Ask(msg string) bool {
 		fmt.Println(msg)
 	}
 	yes := i18n.T("app.sim")
-	out, err := exec.Command("/usr/bin/osascript", "-e", "on run argv",
-		"-e", `display dialog (item 1 of argv) with title "Hallstream" buttons {(item 2 of argv), (item 3 of argv)} default button (item 2 of argv) with icon caution`,
-		"-e", "end run", msg, i18n.T("app.nao"), yes).Output()
+	out, err := exec.Command("/usr/bin/osascript", askArgs(msg, i18n.T("app.nao"), yes)...).Output()
 	return err == nil && strings.Contains(string(out), "button returned:"+yes)
 }
 

@@ -21,42 +21,57 @@ const Console = true
 var Shortcut func() (string, error)
 
 // Fatal shows why the program can't start: in a zenity box when there is
-// one, else on the console, waiting for Enter when it is a terminal.
+// one, else on the console, waiting for Enter when it is a terminal, else
+// in a notification. The caller has already logged it.
 func Fatal(msg string) {
 	fmt.Println(msg)
-	if zenity("--error", msg) == nil {
+	if _, err := zenity(zenityArgs("--error", msg)); err == nil {
 		return
 	}
 	if _, err := unix.IoctlGetTermios(int(os.Stdin.Fd()), unix.TCGETS); err == nil {
 		fmt.Println(i18n.T("app.enter_fecha"))
 		fmt.Scanln()
+		return
+	}
+	if path, err := exec.LookPath("notify-send"); err == nil {
+		exec.Command(path, notifyArgs(msg)...).Run()
 	}
 }
 
 // Warn shows a problem the program can carry on with.
 func Warn(msg string) {
 	fmt.Println(msg)
-	zenity("--warning", msg)
+	zenity(zenityArgs("--warning", msg))
 }
 
 // Ask shows a yes/no question; true is yes. No is the default button.
 // Without zenity there is no one to ask (the console closes with Ctrl+C),
-// so it says yes.
+// so it says yes; it does the same, and logs why, when zenity fails.
 func Ask(msg string) bool {
 	fmt.Println(msg)
-	if _, err := exec.LookPath("zenity"); err != nil {
+	yes, err := zenity(zenityArgs("--question", msg, "--ok-label="+i18n.T("app.sim"), "--cancel-label="+i18n.T("app.nao"), "--default-cancel"))
+	if err != nil {
+		if !errors.Is(err, errNoZenity) {
+			logLine(i18n.T("app.zenity_falhou", "err", err))
+		}
 		return true
 	}
-	return zenity("--question", msg, "--ok-label="+i18n.T("app.sim"), "--cancel-label="+i18n.T("app.nao"), "--default-cancel") == nil
+	return yes
 }
 
-// zenity shows a box; the error is also how it answers no.
-func zenity(kind, msg string, extra ...string) error {
+var errNoZenity = errors.New("no zenity, or no display for it")
+
+// zenity runs zenity with args; see zenityAnswer. With no display zenity
+// would fail with the same exit code as No, so it does not run.
+func zenity(args []string) (yes bool, _ error) {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		return false, errNoZenity
+	}
 	path, err := exec.LookPath("zenity")
 	if err != nil {
-		return err
+		return false, errNoZenity
 	}
-	return exec.Command(path, append([]string{kind, "--title=Hallstream", "--text=" + msg}, extra...)...).Run()
+	return zenityAnswer(exec.Command(path, args...).Run())
 }
 
 // CopyText puts s on the clipboard with the first tool it finds.
@@ -92,8 +107,16 @@ var Autostart = func(on bool) error {
 	if err != nil {
 		return err
 	}
+	// A program replaced while it runs is "<path> (deleted)" here.
+	if _, err := os.Stat(undeleted(exe)); err != nil {
+		return err
+	}
+	entry, err := autostartEntry(exe)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(file, autostartEntry(exe), 0o644)
+	return os.WriteFile(file, entry, 0o644)
 }

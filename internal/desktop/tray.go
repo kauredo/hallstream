@@ -23,8 +23,16 @@ func (t Tray) Run() {
 			systray.Quit()
 		})
 	}
-	onReopen(t.Panel)
-	onQuit(func() { sair() })
+	logLine = t.Log
+	if !onReopen(t.Panel) {
+		t.Log(i18n.T("app.dock_falhou", "evento", "reopen"))
+	}
+	// macOS ends the app itself once the reply is yes, so this path does
+	// not call systray.Quit: that waits on the main thread, which AppKit
+	// holds while it waits for the reply.
+	if !onQuit(func(reply func(bool)) { terminate(&asking, t.ConfirmQuit, quit, reply, t.Log) }) {
+		t.Log(i18n.T("app.dock_falhou", "evento", "terminate"))
+	}
 	systray.Run(func() {
 		watchSignals(func() {
 			quit()
@@ -83,4 +91,19 @@ func confirmThenQuit(asking *sync.Mutex, confirm func() bool, stop func()) bool 
 	}
 	stop()
 	return true
+}
+
+// terminate answers the system's request to end the app: it runs cleanup
+// and replies yes, unless confirm says no or a question is already open.
+// It replies exactly once, after a panic too (a no, logged).
+func terminate(asking *sync.Mutex, confirm func() bool, cleanup func(), reply func(bool), log func(string)) {
+	yes := false
+	defer func() {
+		if r := recover(); r != nil {
+			yes = false
+			log(i18n.T("app.sair_falhou", "err", r))
+		}
+		reply(yes)
+	}()
+	yes = confirmThenQuit(asking, confirm, cleanup)
 }

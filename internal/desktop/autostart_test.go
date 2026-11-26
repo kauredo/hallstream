@@ -6,11 +6,11 @@ import (
 )
 
 func TestLaunchAgent(t *testing.T) {
-	got := string(launchAgent(bundleID, "/Users/a/A&B/Hallstream.app"))
+	got := string(launchAgent(bundleID, `/Users/a/A&B <"x">/Hallstream.app`))
 	for _, want := range []string{
 		"<string>com.hallstream.app</string>",
 		"<string>/usr/bin/open</string>",
-		"<string>/Users/a/A&amp;B/Hallstream.app</string>",
+		"<string>/Users/a/A&amp;B &lt;&#34;x&#34;&gt;/Hallstream.app</string>",
 		"<key>RunAtLoad</key>\n\t<true/>",
 	} {
 		if !strings.Contains(got, want) {
@@ -20,19 +20,30 @@ func TestLaunchAgent(t *testing.T) {
 }
 
 func TestAutostartEntry(t *testing.T) {
-	got := string(autostartEntry(`/home/a/My "club"/Hallstream/Hallstream`))
-	for _, want := range []string{
-		"[Desktop Entry]\n",
-		`Exec="/home/a/My \"club\"/Hallstream/Hallstream"` + "\n",
-		`Path=/home/a/My "club"/Hallstream` + "\n",
-		"Terminal=false\n",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("entry lacks %q:\n%s", want, got)
+	cases := []struct{ exe, exec, path string }{
+		{`/home/a/My "club"/Hallstream/Hallstream`, `"/home/a/My \\"club\\"/Hallstream/Hallstream"`, `/home/a/My "club"/Hallstream`},
+		{"/x/$a`b/h", "\"/x/\\\\$a\\\\`b/h\"", "/x/$a`b"},
+		{`/x/a\b/h`, `"/x/a\\\\b/h"`, `/x/a\\b`},
+		{"/x/100%/h", `"/x/100%%/h"`, "/x/100%"},
+		{"/x/a b/h (deleted)", `"/x/a b/h"`, "/x/a b"},
+	}
+	for _, c := range cases {
+		b, err := autostartEntry(c.exe)
+		if err != nil {
+			t.Errorf("%s: %v", c.exe, err)
+			continue
+		}
+		got := string(b)
+		for _, want := range []string{"[Desktop Entry]\n", "Exec=" + c.exec + "\n", "Path=" + c.path + "\n", "Terminal=false\n"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: entry lacks %q:\n%s", c.exe, want, got)
+			}
 		}
 	}
-	if got := string(autostartEntry("/x/$a`b\\c/h")); !strings.Contains(got, "Exec=\"/x/\\$a\\`b\\\\c/h\"\n") {
-		t.Errorf("not escaped:\n%s", got)
+	for _, exe := range []string{"/x/a\nb/h", "/x/a\tb/h", "/x/a\x7fb/h"} {
+		if _, err := autostartEntry(exe); err == nil {
+			t.Errorf("%q: a control character went into the entry", exe)
+		}
 	}
 }
 

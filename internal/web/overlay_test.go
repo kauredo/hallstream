@@ -505,6 +505,8 @@ func TestOverlayTimeoutMarks(t *testing.T) {
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
 		{"pavilhao", "marcador-descontos", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
 		{"pavilhao", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos-cor", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos-claro", `[["flex",2,1,"rgb(255, 255, 255)"],["flex",2,0,"rgb(7, 11, 18)"]]`},
 		{"classico", "marcador-descontos", `[["none",2,2,"rgb(255, 255, 255)"],["none",2,1,"rgb(255, 255, 255)"]]`},
 	} {
 		t.Run(c.style+"/"+c.fixture, func(t *testing.T) {
@@ -520,6 +522,37 @@ func TestOverlayTimeoutMarks(t *testing.T) {
 			}
 			if got != c.want {
 				t.Errorf("timeout marks %s, want %s", got, c.want)
+			}
+		})
+	}
+}
+
+// Pavilhão puts the visitor's crest on the visitor's colour and keeps its score black; a missing,
+// neutral or club-like colour gives a black crest too.
+func TestOverlayPavilhaoAwayCrest(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const cells = `JSON.stringify(['.tile', '.sc'].map((c) => getComputedStyle(document.querySelector('#s-marcador .sb-row.away ' + c)).backgroundColor))`
+	for _, c := range []struct{ fixture, want string }{
+		{"marcador-descontos-cor", `["rgb(180, 65, 12)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos-claro", `["rgb(242, 214, 73)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos", `["rgb(20, 21, 23)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos-perto", `["rgb(20, 21, 23)","rgb(20, 21, 23)"]`},
+	} {
+		t.Run(c.fixture, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style=pavilhao&state=/overlay/fixtures/"+c.fixture+".json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fmt.Sprintf(screenIs, "marcador")); err != nil {
+				t.Fatal(err)
+			}
+			got, err := chromedp.Run(tab, chromedp.Evaluate[string](cells))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.want {
+				t.Errorf("away crest and score backgrounds %s, want %s", got, c.want)
 			}
 		})
 	}

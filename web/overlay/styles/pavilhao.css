@@ -94,7 +94,11 @@ html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per, html[d
 html[data-style="pavilhao"] .sb-row { position: relative; height: 52px; box-sizing: border-box; }
 html[data-style="pavilhao"] .sb-row.away { height: 56px; border-top: 4px solid var(--mt-line); }
 html[data-style="pavilhao"] .sb-row.home { --tile: var(--red); --on-tile: var(--on-red); }
-html[data-style="pavilhao"] .sb-row.away { --tile: var(--mt-black); --on-tile: #FFFFFF; }
+/* The visitor's crest sits on its own colour, the score stays black. The crest goes black too when the colour is
+   neutral or close to the club's (html.away-plain), and its marks go ink on a colour too light for white (html.away-light). */
+html[data-style="pavilhao"] .sb-row.away { --tile: var(--away); --on-tile: #FFFFFF; }
+html[data-style="pavilhao"].away-light .sb-row.away { --on-tile: var(--ink); }
+html[data-style="pavilhao"].away-plain .sb-row.away { --tile: var(--mt-black); --on-tile: #FFFFFF; }
 /* Crests: a team with none gets an outlined shield, never its initials. */
 html[data-style="pavilhao"] .sb-row .tile { width: 52px; height: 52px; box-sizing: border-box; background: var(--tile); color: var(--on-tile); }
 html[data-style="pavilhao"] .sb-row .tile img { width: 26px; height: 31px; }

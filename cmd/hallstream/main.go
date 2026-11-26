@@ -265,6 +265,7 @@ func main() {
 	safely(i18n.T("log.tarefa.camara"), srv.RunCamera)
 	safely(i18n.T("log.tarefa.cenas"), srv.RunScenes)
 	safely("OBS", srv.RunOBS)
+	safely(i18n.T("log.tarefa.saude_camaras"), srv.RunCameraHealth)
 	safely("YouTube", srv.RunYouTube)
 	safely(i18n.T("log.tarefa.proximo"), srv.WatchNext)
 	safely(i18n.T("log.tarefa.envios"), srv.RunUploads)

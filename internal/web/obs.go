@@ -697,13 +697,21 @@ func (s *Server) refreshOBS() {
 
 func (s *Server) obsStatus() map[string]any {
 	connected, obsErr := s.OBS.Status()
+	on := s.Store.Settings().OBS.Enabled
 	s.obsMu.Lock()
 	defer s.obsMu.Unlock()
-	h := s.health
+	h, cams, skipped := s.health, s.camStates, s.skipped()
+	if !connected || !on {
+		cams, skipped = nil, nil
+	}
 	if !connected {
 		h = obsHealth{Problems: []string{}}
 	}
-	return map[string]any{"connected": connected, "error": obsErr, "health": h, "stream": s.stream}
+	if cams == nil {
+		cams = []camState{}
+	}
+	return map[string]any{"connected": connected, "error": obsErr, "health": h, "stream": s.stream,
+		"cameras": cams, "skipped": skipped}
 }
 
 // RunOBS starts OBS with the program when set to, then keeps the stream

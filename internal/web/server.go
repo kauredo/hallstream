@@ -93,7 +93,10 @@ type Server struct {
 	launchMu   sync.Mutex // never start OBS twice
 	obsMu      sync.Mutex
 	health     obsHealth
-	stream     *obsws.Stream // nil when OBS can't be asked
+	camLooks   map[string]camLook // each camera's last look, by scene and source (under obsMu)
+	camStates  []camState         // the cameras' health (under obsMu)
+	frames     []obsws.Frames     // OBS's frame counts, one per health round, the last minute (under obsMu)
+	stream     *obsws.Stream      // nil when OBS can't be asked
 
 	ytMu        sync.Mutex
 	yt          ytSaved

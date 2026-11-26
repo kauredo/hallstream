@@ -120,11 +120,15 @@ func cameraOne(o store.OBS, source string) bool {
 }
 
 // followCamera moves the camera with the screen. The time-out switch goes
-// first, so the squeeze moves the camera that is live after it.
+// first, so the squeeze moves the camera that is live after it. The screen
+// is read under switchMu, so a follow that waited there for another acts on
+// the screen as it is now, never on one a newer follow has already left.
 func (s *Server) followCamera() error {
 	if s.camErr != nil {
 		return s.camErr
 	}
+	s.switchMu.Lock()
+	defer s.switchMu.Unlock()
 	screen := s.State.Snapshot().Screen.Current
 	terr := s.timeoutSwitch(screen == "desconto")
 	return errors.Join(terr, s.Camera.Follow(screen))
@@ -132,14 +136,15 @@ func (s *Server) followCamera() error {
 
 // timeoutSwitch puts settings.obs.timeout_camera on air at full screen as
 // desconto starts, and the camera that was live back, in the window, as it
-// ends. Repeating the same side returns the last result.
+// ends. Repeating the same side returns the last result; a start skipped
+// because OBS had not said which camera is live runs again once it has.
+// The caller holds switchMu.
 func (s *Server) timeoutSwitch(in bool) error {
-	s.switchMu.Lock()
-	defer s.switchMu.Unlock()
-	if in == s.toIn {
+	live := s.State.Snapshot().OBS.LiveCamera
+	if in == s.toIn && !(in && s.toRetry && live != 0) {
 		return s.toErr
 	}
-	s.toIn = in
+	s.toIn, s.toRetry, s.toErr = in, false, nil
 	s.liveMu.Lock()
 	back := s.returnTo
 	s.returnTo = 0
@@ -147,24 +152,41 @@ func (s *Server) timeoutSwitch(in bool) error {
 
 	o := s.Store.Settings().OBS
 	cams := o.CameraList()
-	live := s.State.Snapshot().OBS.LiveCamera
-	n := back
-	if in {
-		n = o.TimeoutCamera
+	if !in {
+		switch {
+		case back == 0 || back == live:
+			return nil
+		case !o.Enabled:
+			return s.timeoutSkip(i18n.Err("log.camara.desconto_obs_desligado", "n", back))
+		case back > len(cams) || cams[back-1].Scene == "":
+			return s.timeoutSkip(i18n.Err("log.camara.desconto_sem_volta", "n", back))
+		}
+		return s.timeoutTo(back, cams[back-1], i18n.T("log.camara.desconto_volta", "n", back))
 	}
-	s.toErr = nil
-	if !o.Enabled || n < 1 || n > len(cams) || cams[n-1].Scene == "" || n == live {
+	n := o.TimeoutCamera
+	if !o.Enabled || n < 1 || n > len(cams) || n == live {
 		return nil
 	}
-	if in {
-		if legacy, _ := s.Camera.Legacy(); live == 0 || legacy {
-			return nil
-		}
-		s.liveMu.Lock()
-		s.returnTo = live
-		s.liveMu.Unlock()
+	if legacy, _ := s.Camera.Legacy(); legacy {
+		return nil
 	}
-	warning, err := s.switchTo(n, cams[n-1])
+	if cams[n-1].Scene == "" {
+		return s.timeoutSkip(i18n.Err("log.camara.desconto_sem_cena", "n", n))
+	}
+	if live == 0 {
+		s.toRetry = true
+		return s.timeoutSkip(i18n.Err("log.camara.desconto_sem_live", "n", n))
+	}
+	s.liveMu.Lock()
+	s.returnTo = live
+	s.liveMu.Unlock()
+	return s.timeoutTo(n, cams[n-1], i18n.T("log.camara.desconto_troca", "n", n))
+}
+
+// timeoutTo switches to camera n for the time-out switch and logs done, or
+// why it failed. The caller holds switchMu.
+func (s *Server) timeoutTo(n int, cam store.Camera, done string) error {
+	warning, err := s.switchTo(n, cam)
 	if warning != "" {
 		s.Log(i18n.T("log.camara.nao_pus", "camara", n, "err", warning))
 	}
@@ -176,12 +198,16 @@ func (s *Server) timeoutSwitch(in bool) error {
 		s.Log(s.toErr.Error())
 		return s.toErr
 	}
-	if in {
-		s.Log(i18n.T("log.camara.desconto_troca", "n", n))
-	} else {
-		s.Log(i18n.T("log.camara.desconto_volta", "n", n))
-	}
+	s.Log(done)
 	return nil
+}
+
+// timeoutSkip logs why the time-out switch left a camera out and keeps it
+// as the result. The caller holds switchMu.
+func (s *Server) timeoutSkip(why error) error {
+	s.toErr = why
+	s.Log(why.Error())
+	return why
 }
 
 // RunCamera keeps the OBS camera with the screen (automatic changes too) and
@@ -261,7 +287,9 @@ func (s *Server) sceneSeen(name string, event bool) {
 			s.expect = s.expect[i+1:]
 		} else {
 			s.expect = nil // an OBS click; a switch whose event never came is over
-			s.returnTo = 0 // a switch made in OBS during a time-out stays
+			if name != s.onAir {
+				s.returnTo = 0 // a switch made in OBS during a time-out stays
+			}
 		}
 	}
 	if len(s.expect) > 0 {
@@ -349,7 +377,7 @@ func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
 		if k >= 0 {
 			s.expect[k].until = time.Now().Add(expectFor) // the transition starts now
 		}
-		s.program = cam.Scene
+		s.program, s.onAir = cam.Scene, cam.Scene
 		s.State.SetLiveCamera(n)
 		return nil
 	}

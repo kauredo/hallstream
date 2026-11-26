@@ -48,7 +48,8 @@ func Auth(password, salt, challenge string) string {
 	return base64.StdEncoding.EncodeToString(h[:])
 }
 
-func dial(cfg Config) (*websocket.Conn, error) {
+// dial connects and identifies, subscribed to the events in the events mask.
+func dial(cfg Config, events int) (*websocket.Conn, error) {
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	wc, err := websocket.NewConfig("ws://"+addr, "http://localhost/")
 	if err != nil {
@@ -72,7 +73,7 @@ func dial(cfg Config) (*websocket.Conn, error) {
 		conn.Close()
 		return nil, err
 	}
-	id := map[string]any{"rpcVersion": 1, "eventSubscriptions": 0}
+	id := map[string]any{"rpcVersion": 1, "eventSubscriptions": events}
 	if a := hello.Authentication; a != nil {
 		id["authentication"] = Auth(cfg.Password, a.Salt, a.Challenge)
 	}
@@ -114,7 +115,7 @@ func receive(conn *websocket.Conn, op int, into any) error {
 
 // Test opens one connection with cfg and closes it.
 func Test(cfg Config) error {
-	conn, err := dial(cfg)
+	conn, err := dial(cfg, 0)
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ func (c *Client) request(cfg Config, typ string, data, into any) (bool, error) {
 		c.conn = nil
 	}
 	if c.conn == nil {
-		conn, err := dial(cfg)
+		conn, err := dial(cfg, 0)
 		if err != nil {
 			return false, err
 		}

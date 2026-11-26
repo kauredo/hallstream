@@ -58,7 +58,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 
 ## Phase B: multiple cameras
 
-1. "Configurar OBS" builds one scene per camera (`Câmara 1` to `Câmara 3`), each nesting one shared `Grafismo` scene that holds the overlay.
+1. "Configurar OBS" builds one scene per camera (`Câmara 1` to `Câmara 3`), each nesting one shared `Grafismo` scene that holds the overlay. Done: the old `Hallstream` scene stays and still counts as ready while one camera is set; cameras 2 and 3 come from the settings until the panel can add them.
 2. The panel gets camera buttons and shows which camera is live.
 3. At a timeout, a chosen camera shows picture-in-picture.
 4. Onboarding adds cameras: DroidCam, a video device, or VDO.Ninja through a QR code on the panel.

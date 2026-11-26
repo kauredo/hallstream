@@ -1,8 +1,10 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"maps"
 	"net"
 	"net/http"
 	"strconv"
@@ -22,6 +24,9 @@ var errNotLive error = i18n.Key("api.obs.nao_transmitiu")
 // startPolls times 300 ms is how long a start waits for OBS to send: the
 // connection to YouTube comes first.
 var startPolls = 100
+
+// fitWait is how long a setup's fit waits between tries for a new camera's picture.
+var fitWait = 1500 * time.Millisecond
 
 // obsHealth is the last health check: what is missing or wrong in OBS.
 type obsHealth struct {
@@ -43,16 +48,26 @@ func local(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// want is the setup's aim; old is the camera before ("" for the saved one).
+// want is the setup's aim: the saved scenes and cameras, with camera as
+// camera 1's choice ("" for the saved one) and old the camera before it
+// ("" for the saved one).
 func (s *Server) want(o store.OBS, camera, old string) obsws.Want {
-	if camera == "" && o.CameraSource != "" {
-		camera = "source:" + o.CameraSource
+	w := obsws.Want{OverlayURL: obsws.OverlayURL(s.Port), OverlayPorts: [2]int{FirstPort, LastPort},
+		Graphics: o.GraphicsScene}
+	for i, c := range o.CameraList() {
+		wc := obsws.WantCamera{Choice: "source:" + c.Source, Scene: c.Scene}
+		if i == 0 {
+			switch {
+			case camera != "":
+				wc.Choice = camera
+			case c.Source == "":
+				wc.Choice = ""
+			}
+			wc.Old = cmp.Or(old, o.CameraSource)
+		}
+		w.Cameras = append(w.Cameras, wc)
 	}
-	if old == "" {
-		old = o.CameraSource
-	}
-	return obsws.Want{OverlayURL: obsws.OverlayURL(s.Port), OverlayPorts: [2]int{FirstPort, LastPort},
-		Camera: camera, Old: old}
+	return w
 }
 
 func (s *Server) obsRoutes() {
@@ -230,7 +245,19 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	o := s.Store.Settings().OBS
 	rep, err := s.OBS.Setup(cfg, s.want(o, req.Camera, req.Old), true, s.fitCamera)
 	if err != nil {
+		// The scenes made so far keep their names for the next run; the
+		// cameras, half set up, stay as they were.
+		names := obsws.Report{Graphics: rep.Graphics}
+		for _, c := range rep.Cameras {
+			names.Cameras = append(names.Cameras, obsws.ReportCamera{Scene: c.Scene})
+		}
+		if serr := s.saveCameras(names); serr != nil {
+			s.Log(i18n.T("log.obs.erro", "err", serr))
+		}
 		fail(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if !s.save(w, s.saveCameras(rep)) {
 		return
 	}
 	rep.Steps = append([]obsws.Step{st}, rep.Steps...)
@@ -253,15 +280,43 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	reply(w, setupReply{rep, rep.Ready})
 }
 
-// fitCamera keeps cam as the camera and fits it. A camera just added may
-// take a few seconds to send a picture.
-func (s *Server) fitCamera(cam string) error {
+// saveCameras keeps the graphics scene and the cameras' scenes and
+// sources a setup ended with. Camera 1's source is also camera_source.
+func (s *Server) saveCameras(rep obsws.Report) error {
 	_, err := s.Store.UpdateSettings(func(set *store.Settings) {
-		if set.OBS.CameraSource != cam {
-			set.OBS.CameraSource, set.OBS.CameraFull = cam, nil
+		o := &set.OBS
+		if rep.Graphics != "" {
+			o.GraphicsScene = rep.Graphics
 		}
-		set.OBS.Enabled = true
+		cams := o.CameraList()
+		for i, c := range rep.Cameras[:min(len(rep.Cameras), len(cams))] {
+			cams[i].Scene = cmp.Or(c.Scene, cams[i].Scene)
+			cams[i].Source = cmp.Or(c.Source, cams[i].Source)
+		}
+		o.Cameras = cams
+		if o.CameraSource != cams[0].Source {
+			o.CameraSource, o.CameraFull = cams[0].Source, nil
+		}
 	})
+	return err
+}
+
+// fitCamera keeps cam as camera n, in scene, and fits it. A camera just
+// added may take a few seconds to send a picture.
+func (s *Server) fitCamera(n int, scene, cam string) (err error) {
+	rep := obsws.Report{Cameras: make([]obsws.ReportCamera, n)}
+	rep.Cameras[n-1] = obsws.ReportCamera{Source: cam, Scene: scene}
+	if err := s.saveCameras(rep); err != nil {
+		return err
+	}
+	// A camera not fitted in its scene may sit there untransformed while its
+	// saved placement still matches, so Check would never fit it.
+	defer func() {
+		if err != nil {
+			s.forgetFull(n, cam)
+		}
+	}()
+	_, err = s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = true })
 	if err != nil {
 		return err
 	}
@@ -269,11 +324,28 @@ func (s *Server) fitCamera(cam string) error {
 		return s.camErr
 	}
 	for i := 0; ; i++ {
-		_, err = s.Camera.FitNow()
+		_, err = s.Camera.FitIn(scene, cam)
 		if err == nil || i == 5 {
 			return err
 		}
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(fitWait)
+	}
+}
+
+// forgetFull drops camera n's saved placement, so the next Check fits it.
+func (s *Server) forgetFull(n int, source string) {
+	_, err := s.Store.UpdateSettings(func(set *store.Settings) {
+		o := &set.OBS
+		if o.CameraFulls[source] != nil {
+			o.CameraFulls = maps.Clone(o.CameraFulls)
+			delete(o.CameraFulls, source)
+		}
+		if n == 1 {
+			o.CameraFull = nil
+		}
+	})
+	if err != nil {
+		s.Log(i18n.T("log.camara.nao_guardei_posicao", "err", err))
 	}
 }
 

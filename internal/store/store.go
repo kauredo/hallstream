@@ -32,12 +32,53 @@ type OBS struct {
 	CameraFit    string `json:"camera_fit"` // "contain" or "fill"
 	// CameraFull is the last full-screen placement; only the camera changes it.
 	CameraFull *obsws.Full `json:"camera_full"`
+	// Cameras are up to MaxCameras cameras, camera 1 first; empty in
+	// settings from before 0.2 (see CameraList). Only the server writes them.
+	Cameras []Camera `json:"cameras"`
+	// GraphicsScene is the scene that holds the overlay, nested in each
+	// camera's scene; "" until Configurar OBS made it.
+	GraphicsScene string `json:"graphics_scene"`
+	// CameraFulls is each camera's last full-screen placement, by source
+	// name. CameraFull keeps camera 1's too, for older versions.
+	CameraFulls map[string]*obsws.Full `json:"camera_fulls"`
 	// SetupAt is when "Configurar OBS" last got OBS ready; only the server sets it.
 	SetupAt string `json:"setup_at"`
 	// Launch starts OBS with the program (Windows); it turns on with the
 	// first good setup.
 	Launch      bool `json:"launch"`
 	CloseOnExit bool `json:"close_on_exit"`
+}
+
+// MaxCameras is how many cameras the program drives.
+const MaxCameras = 3
+
+// Camera is one camera: its OBS source, the scene the program made for it
+// and the name the volunteer gave it ("" shows "Câmara N").
+type Camera struct {
+	Source string `json:"source"`
+	Scene  string `json:"scene"`
+	Label  string `json:"label"`
+}
+
+// CameraList is the cameras, or camera_source alone for settings from
+// before there were several.
+func (o OBS) CameraList() []Camera {
+	if len(o.Cameras) == 0 {
+		return []Camera{{Source: o.CameraSource}}
+	}
+	return slices.Clone(o.Cameras[:min(len(o.Cameras), MaxCameras)])
+}
+
+// FullFor is source's saved full-screen placement: camera_fulls, else
+// camera_full when source is camera 1.
+func (o OBS) FullFor(source string) *obsws.Full {
+	if f := o.CameraFulls[source]; f != nil {
+		return f
+	}
+	if source == o.CameraSource {
+		return o.CameraFull
+	}
+	return nil
 }
 
 type Settings struct {

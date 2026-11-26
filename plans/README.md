@@ -13,7 +13,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 005 | Futsal | P2 | M | 002, 003, 004 (merged) | DONE: merged #31 (6141979) |
 | 006 | Handball | P2 | L | 005 | DONE: merged #32 (1c8e28a) |
 | 007 | Soccer | P3 | L | 005, 006 | DONE: merged #33 (a6ba610) |
-| 008 | "Configurar OBS" builds one scene per camera, nesting a shared Grafismo scene | P1 | L | none | TODO |
+| 008 | "Configurar OBS" builds one scene per camera, nesting a shared Grafismo scene | P1 | L | none | IN REVIEW: branch 02-feat/camera-scenes |
 | 009 | Camera buttons on Ecrãs switch the live camera, and the squeeze follows it | P1 | L | 008 | TODO |
 | 010 | A chosen camera fills the time-out window | P2 | M | 009 | TODO |
 | 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | TODO |

@@ -13,12 +13,12 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 005 | Futsal | P2 | M | 002, 003, 004 (merged) | DONE: merged #31 (6141979) |
 | 006 | Handball | P2 | L | 005 | DONE: merged #32 (1c8e28a) |
 | 007 | Soccer | P3 | L | 005, 006 | DONE: merged #33 (a6ba610) |
-| 008 | "Configurar OBS" builds one scene per camera, nesting a shared Grafismo scene | P1 | L | none | IN REVIEW: branch 02-feat/camera-scenes |
-| 009 | Camera buttons on Ecrãs switch the live camera, and the squeeze follows it | P1 | L | 008 | IN REVIEW: branch 03-feat/camera-switching |
-| 010 | A chosen camera fills the time-out window | P2 | M | 009 | IN REVIEW: branch 04-feat/timeout-camera |
-| 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | IN REVIEW: branch 05-feat/add-cameras |
-| 012 | A health line per camera | P2 | M | 009 | IN REVIEW: branch 06-feat/camera-health |
-| 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | IN REVIEW: branch 07-docs/camera-guide |
+| 008 | "Configurar OBS" builds one scene per camera, nesting a shared Grafismo scene | P1 | L | none | DONE: merged #46 (73e5004), released in v0.1.3 |
+| 009 | Camera buttons on Ecrãs switch the live camera, and the squeeze follows it | P1 | L | 008 | DONE: merged #47 (d6a3e63), released in v0.1.3 |
+| 010 | A chosen camera fills the time-out window | P2 | M | 009 | DONE: merged #48 (c2e892e), released in v0.1.3 |
+| 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | DONE: merged #49 (72bce29), released in v0.1.3 |
+| 012 | A health line per camera | P2 | M | 009 | DONE: merged #50 (fbc47c0), released in v0.1.3 |
+| 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | DONE: merged #51 (6f80eb7), released in v0.1.3 |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

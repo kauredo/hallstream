@@ -195,9 +195,12 @@ func TestWatchSilenceIsAnError(t *testing.T) {
 }
 
 func TestWatchPingKeepsItAlive(t *testing.T) {
-	shortWatch(t, 20*time.Millisecond, 150*time.Millisecond)
+	// The silence is 20 pings long, so a slow CI machine can't end the watch
+	// between two answers; the loop still runs past twice the silence.
+	const silence = 400 * time.Millisecond
+	shortWatch(t, 20*time.Millisecond, silence)
 	got, res := watchFor(t, fakeOBS(t, "", &fake{program: "Jogo"}))
-	for range 15 { // 300 ms of answers, twice the silence
+	for start := time.Now(); time.Since(start) < 2*silence; {
 		next(t, got)
 	}
 	select {

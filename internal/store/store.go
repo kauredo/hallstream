@@ -11,6 +11,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -436,14 +437,26 @@ type Store struct {
 	promo    Promo
 }
 
-// DataDir is the dados folder next to the executable, or in the working
-// directory under `go run`.
+// DataDir is the dados folder next to the executable, in the working
+// directory under `go run`, or in Application Support for a macOS app.
 func DataDir() string {
-	dir, _ := os.Getwd()
-	if exe, err := os.Executable(); err == nil && !strings.Contains(exe, "go-build") {
-		dir = filepath.Dir(exe)
+	wd, _ := os.Getwd()
+	exe, _ := os.Executable()
+	config, _ := os.UserConfigDir()
+	return dataDir(runtime.GOOS, exe, wd, config)
+}
+
+// dataDir picks the dados folder. Inside a macOS app bundle the program
+// can't write beside itself (the bundle is signed, and a quarantined copy
+// runs read-only), so it uses Application Support instead.
+func dataDir(goos, exe, wd, configDir string) string {
+	switch {
+	case exe == "" || strings.Contains(exe, "go-build"):
+		return filepath.Join(wd, "dados")
+	case goos == "darwin" && strings.Contains(exe, ".app/Contents/MacOS/") && configDir != "":
+		return filepath.Join(configDir, "Hallstream", "dados")
 	}
-	return filepath.Join(dir, "dados")
+	return filepath.Join(filepath.Dir(exe), "dados")
 }
 
 func Open(dir string) (*Store, error) {

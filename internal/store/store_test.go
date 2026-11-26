@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/kauredo/hallstream/internal/club"
@@ -12,6 +13,27 @@ import (
 )
 
 func ptr[T any](v T) *T { return &v }
+
+func TestDataDir(t *testing.T) {
+	const app = "/Applications/Hallstream.app/Contents/MacOS/Hallstream"
+	const support = "/Users/a/Library/Application Support"
+	cases := []struct{ goos, exe, wd, config, want string }{
+		{"linux", "/home/a/Hallstream/Hallstream", "/w", "/home/a/.config", "/home/a/Hallstream/dados"},
+		{"darwin", app, "/w", support, support + "/Hallstream/dados"},
+		{"darwin", app, "/w", "", "/Applications/Hallstream.app/Contents/MacOS/dados"},
+		{"linux", app, "/w", support, "/Applications/Hallstream.app/Contents/MacOS/dados"},
+		{"darwin", "/private/var/folders/x/go-build123/b001/exe/hallstream", "/w", support, "/w/dados"},
+		{"linux", "", "/w", "", "/w/dados"},
+	}
+	if runtime.GOOS == "windows" {
+		cases = append(cases, struct{ goos, exe, wd, config, want string }{"windows", `C:\x\Hallstream.exe`, `C:\w`, `C:\a`, `C:\x\dados`})
+	}
+	for _, c := range cases {
+		if got := dataDir(c.goos, c.exe, c.wd, c.config); got != filepath.FromSlash(c.want) {
+			t.Errorf("dataDir(%q, %q) = %q, want %q", c.goos, c.exe, got, c.want)
+		}
+	}
+}
 
 // A direct link keeps its roster entry even when another player, earlier in
 // the list, could take it by athlete id.

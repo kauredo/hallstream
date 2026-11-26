@@ -399,8 +399,8 @@ func TestOverlaySoccerCards(t *testing.T) {
 	if got := counts("away"); got != "y1" {
 		t.Errorf("away counts %q, want \"y1\" (a red at 0 is not drawn)", got)
 	}
-	if got := read(`(document.querySelector('[data-add]').classList.contains('blank') ? '' : document.querySelector('[data-add] b').textContent)`); got != "90+4'" {
-		t.Errorf("added time %q, want 90+4'", got)
+	if got := read(`(document.querySelector('[data-add]').classList.contains('blank') ? '' : document.querySelector('[data-add] b').textContent)`); got != "+4'" {
+		t.Errorf("added time %q, want +4'", got)
 	}
 	load("marcador")
 	if got := counts("home") + counts("away"); got != "" {

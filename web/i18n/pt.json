@@ -542,7 +542,7 @@
   "overlay.cartao.vermelho": "CARTÃO VERMELHO",
   "overlay.cartoes": "CARTÕES",
   "overlay.cartoes_aria": "{a} amarelos, {v} vermelhos",
-  "overlay.compensacao": "{fim}+{n}'",
+  "overlay.compensacao": "+{n}'",
   "overlay.data_linha": "{dia_semana}, {dia} {mes}",
   "overlay.desconto.tempo_de_jogo": "TEMPO DE JOGO",
   "overlay.desconto.titulo": "DESCONTO<span>DE TEMPO</span>",

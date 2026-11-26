@@ -531,9 +531,9 @@
       n.y += kind.yellows;
       n.r += kind.reds;
     }
-    // "90+4'": the half's end minute and the minutes the referee announced.
+    // "+4'": the minutes the referee announced, never the match minute, so it cannot contradict the clock.
     const added = v.penalties === 'cards' ? Math.max(0, Math.min(+live.stoppage || 0, rules.stoppage_max ?? 0)) : 0;
-    v.addTime = added ? t('overlay.compensacao', { fim: (+live.period_end || 0) > 0 ? Math.floor(live.period_end / 600) : '', n: added }) : '';
+    v.addTime = added ? t('overlay.compensacao', { n: added }) : '';
     // A sets sport (volleyball): the sets won go in the big score, the finished sets in their own list.
     v.sets = rules.scoring === 'sets';
     const setList = v.sets && Array.isArray(st.sets) ? st.sets : [];

@@ -37,6 +37,8 @@ mkdir -p dist/YouTube
 # A .txt opens with a double click on Windows; the guide is Markdown-light.
 /bin/cp -f docs/youtube/SETUP.md dist/YouTube/LIGAR-YOUTUBE.txt
 /bin/cp -f docs/youtube/SETUP.en.md dist/YouTube/CONNECT-YOUTUBE.txt
+/bin/cp -f docs/cameras/GUIDE.md dist/CAMARAS.txt
+/bin/cp -f docs/cameras/GUIDE.en.md dist/CAMERAS.txt
 rm -f dist/Hallstream-$version.zip
-(cd dist && zip -q -X -9 Hallstream-$version.zip "Hallstream.exe" "Hallstream (32-bit).exe" LEIA-ME.txt READ-ME.txt LICENSE.txt THIRD-PARTY-NOTICES.txt YouTube/CONNECT-YOUTUBE.txt YouTube/LIGAR-YOUTUBE.txt)
+(cd dist && zip -q -X -9 Hallstream-$version.zip "Hallstream.exe" "Hallstream (32-bit).exe" LEIA-ME.txt READ-ME.txt LICENSE.txt THIRD-PARTY-NOTICES.txt CAMARAS.txt CAMERAS.txt YouTube/CONNECT-YOUTUBE.txt YouTube/LIGAR-YOUTUBE.txt)
 ls -lh dist

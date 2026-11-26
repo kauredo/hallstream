@@ -85,6 +85,9 @@ jobs:
 
   macos:
     runs-on: macos-latest
+    # The signing secrets can live in the release environment, which only
+    # tags reach. Dry runs take no environment, so they need no approval.
+    environment: ${{ startsWith(github.ref, 'refs/tags/') && 'release' || '' }}
     permissions:
       contents: read
     steps:
@@ -173,6 +176,8 @@ jobs:
 
       - name: Sign and notarise the app, then the DMG
         if: startsWith(github.ref, 'refs/tags/')
+        # Two notarisations of up to 30 minutes each, plus the stapling.
+        timeout-minutes: 75
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -181,16 +186,43 @@ jobs:
           set -euo pipefail
           notarise() {
             local out="$RUNNER_TEMP/notary.json" status id
+            rm -f "$out"
             xcrun notarytool submit "$1" --key "$P8" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" \
               --wait --timeout 30m --output-format json > "$out" || true
+            if [ ! -s "$out" ]; then
+              echo "::error::notarytool submit gave no result for $1"
+              exit 1
+            fi
             cat "$out"
-            status=$(plutil -extract status raw -o - "$out")
-            id=$(plutil -extract id raw -o - "$out")
+            status=$(plutil -extract status raw -o - "$out" 2>/dev/null) || status="unknown (no status in the result)"
+            id=$(plutil -extract id raw -o - "$out" 2>/dev/null) || id=""
             if [ "$status" != Accepted ]; then
-              xcrun notarytool log "$id" --key "$P8" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" || true
+              if [ -n "$id" ]; then
+                xcrun notarytool log "$id" --key "$P8" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" || true
+              fi
               echo "::error::Notarisation of $1 ended as $status"
               exit 1
             fi
+          }
+          # The ticket can reach Apple's CDN a little after the Accepted status.
+          staple() {
+            local try
+            for try in 1 2 3 4 5; do
+              if xcrun stapler staple "$1"; then return 0; fi
+              if [ "$try" -lt 5 ]; then echo "Stapling $1 failed (try $try of 5), trying again in 15 seconds"; sleep 15; fi
+            done
+            echo "::error::Could not staple the notarisation ticket to $1 after 5 tries"
+            exit 1
+          }
+          # hdiutil create sometimes fails with "Resource busy" on the runners.
+          make_dmg() {
+            local try
+            for try in 1 2 3; do
+              if hdiutil create -volname Hallstream -srcfolder dist/mac-dmg -ov -format UDZO "$1"; then return 0; fi
+              if [ "$try" -lt 3 ]; then echo "hdiutil create failed (try $try of 3), trying again in 5 seconds"; sleep 5; fi
+            done
+            echo "::error::hdiutil create failed 3 times"
+            exit 1
           }
 
           app=dist/mac/Hallstream.app
@@ -199,16 +231,16 @@ jobs:
           ditto -c -k --keepParent "$app" "$RUNNER_TEMP/Hallstream.zip"
           notarise "$RUNNER_TEMP/Hallstream.zip"
           # Stapled, the app opens on a Mac with no internet.
-          xcrun stapler staple "$app"
+          staple "$app"
           xcrun stapler validate "$app"
           rm -rf dist/mac-dmg/Hallstream.app
           ditto "$app" dist/mac-dmg/Hallstream.app
 
           dmg="dist/Hallstream-$VERSION-macos.dmg"
-          hdiutil create -volname Hallstream -srcfolder dist/mac-dmg -ov -format UDZO "$dmg"
+          make_dmg "$dmg"
           codesign --timestamp --sign "$IDENTITY" "$dmg"
           notarise "$dmg"
-          xcrun stapler staple "$dmg"
+          staple "$dmg"
           spctl -a -t open --context context:primary-signature -vv "$dmg" 2>&1 | tee "$RUNNER_TEMP/spctl.txt"
           grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/spctl.txt"
 
@@ -220,15 +252,26 @@ jobs:
           set -euo pipefail
           mnt="$RUNNER_TEMP/dmg"
           hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "dist/Hallstream-$VERSION-macos.dmg"
+          trap 'hdiutil detach "$mnt" || hdiutil detach -force "$mnt"' EXIT
           want=$'.\n./Applications\n./CAMARAS.txt\n./CAMERAS.txt\n./Hallstream.app\n./LEIA-ME.txt\n./LICENSE.txt\n./READ-ME.txt\n./THIRD-PARTY-NOTICES.txt\n./YouTube\n./YouTube/CONNECT-YOUTUBE.txt\n./YouTube/LIGAR-YOUTUBE.txt'
           got=$(cd "$mnt" && find . -maxdepth 2 ! -path './Hallstream.app/*' | LC_ALL=C sort)
           [[ "$got" == "$want" ]] || { echo "Unexpected DMG contents:"; echo "$got"; exit 1; }
-          lipo -archs "$mnt/Hallstream.app/Contents/MacOS/Hallstream"
+          bin="$mnt/Hallstream.app/Contents/MacOS/Hallstream"
+          archs=$(lipo -archs "$bin")
+          [ "$archs" = "x86_64 arm64" ] || { echo "::error::The app holds \"$archs\", not \"x86_64 arm64\""; exit 1; }
+          for arch in x86_64 arm64; do
+            minos=$(vtool -arch "$arch" -show-build "$bin" | awk '$1 == "minos" { print $2 }')
+            [ "$minos" = 13.0 ] || { echo "::error::The $arch slice wants macOS \"$minos\", not 13.0"; exit 1; }
+          done
+          # build.sh gives a version that is not X.Y.Z the bundle version 0.0.0.
+          want_short=0.0.0
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then want_short=$VERSION; fi
+          short=$(plutil -extract CFBundleShortVersionString raw -o - "$mnt/Hallstream.app/Contents/Info.plist")
+          [ "$short" = "$want_short" ] || { echo "::error::CFBundleShortVersionString is \"$short\", not \"$want_short\""; exit 1; }
           if [ "$TAG" = true ]; then
             spctl -a -t exec -vv "$mnt/Hallstream.app" 2>&1 | tee "$RUNNER_TEMP/spctl-app.txt"
             grep -q "source=Notarized Developer ID" "$RUNNER_TEMP/spctl-app.txt"
           fi
-          hdiutil detach "$mnt"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -266,15 +309,24 @@ jobs:
           cat SHA256SUMS
           echo "VERSION=$v" >> "$GITHUB_ENV"
 
-      - name: Publish the release
+      # A draft first, so nobody sees a release with half its files.
+      - name: Make the draft release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
+          draft: true
           files: |
             dist/Hallstream-${{ env.VERSION }}.zip
             dist/Hallstream-${{ env.VERSION }}-macos.dmg
             dist/SHA256SUMS
           generate_release_notes: true
           fail_on_unmatched_files: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ steps.release.outputs.id }}
+        run: gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false --silent
 
       # A release published with GITHUB_TOKEN starts no other workflow, so
       # site.yml would not fire: the hook is called here instead.

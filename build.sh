@@ -97,7 +97,13 @@ ditto $app dist/mac-dmg/Hallstream.app
 ln -s /Applications dist/mac-dmg/Applications
 texts dist/mac-dmg darwin
 if [[ -z $HALLSTREAM_SIGN ]]; then
-	hdiutil create -quiet -volname Hallstream -srcfolder dist/mac-dmg -ov -format UDZO dist/Hallstream-$version-macos.dmg
+	# hdiutil create sometimes fails with "Resource busy", so it gets three tries.
+	for try in 1 2 3; do
+		hdiutil create -quiet -volname Hallstream -srcfolder dist/mac-dmg -ov -format UDZO dist/Hallstream-$version-macos.dmg && break
+		(( try < 3 )) || { print -u2 "build.sh: hdiutil create failed 3 times"; exit 1 }
+		print -u2 "build.sh: hdiutil create failed (try $try of 3), trying again in 5 seconds"
+		sleep 5
+	done
 fi
 
 else

@@ -96,8 +96,12 @@ type CameraSettings struct {
 	Fit          string // full screen: "contain" or "fill"
 	TimeoutScene string // set and present in OBS: the old two-scene mode
 	GameScene    string
-	Full         *Full            // Source's placement
-	Fulls        map[string]*Full // every camera's placement, by source
+	Full         *Full
+	// Scene is the live camera's scene; "" is the program scene (the old
+	// layout, or the live camera not known).
+	Scene string
+	// Fulls are the saved full-screen placements by source (camera_fulls).
+	Fulls map[string]*Full
 }
 
 // Full is the camera's full-screen placement and what it was made for.
@@ -198,7 +202,7 @@ func (c *Camera) squeeze(in bool) error {
 		}
 		return c.OBS.SetScene(set.Config, scene)
 	}
-	it, err := c.resolve(set)
+	it, err := c.resolveIn(set, set.Scene)
 	if err != nil {
 		return err
 	}
@@ -235,7 +239,7 @@ func (c *Camera) Check() error {
 	if busy || in {
 		return nil
 	}
-	it, err := c.resolve(set)
+	it, err := c.resolveIn(set, set.Scene)
 	if err != nil {
 		return err
 	}
@@ -261,7 +265,7 @@ type FitReport struct {
 func (c *Camera) FitNow() (FitReport, error) {
 	set := c.Settings()
 	set.Full = nil
-	return c.fitIn(set, "")
+	return c.fitIn(set, set.Scene)
 }
 
 // FitIn puts source in scene, on program or not, at full screen with its
@@ -299,6 +303,48 @@ func (c *Camera) fitIn(set CameraSettings, scene string) (FitReport, error) {
 	}
 	return FitReport{it.name, it.srcW, it.srcH, it.canvas.W, it.canvas.H}, nil
 }
+
+// Place puts source in scene where the screen needs it, at once: in the
+// time-out window when the last screen followed was desconto, else at its
+// full-screen placement; and shows those boxes to the overlay. Then it runs
+// then (when not nil) before any squeeze can start, so the server switches
+// OBS to scene there and a time-out that comes in meanwhile squeezes the new
+// camera. placed is why the camera could not be placed, which does not stop
+// then; err is what then returned.
+func (c *Camera) Place(scene, source string, then func() error) (placed, err error) {
+	c.follow.Lock()
+	defer c.follow.Unlock()
+	placed = c.place(scene, source, c.in)
+	if then != nil {
+		err = then()
+	}
+	return placed, err
+}
+
+func (c *Camera) place(scene, source string, window bool) error {
+	set := c.Settings()
+	if legacy, err := c.legacy(set); !set.Enabled || legacy || err != nil {
+		return err
+	}
+	set.Source, set.Full = source, nil // Full belongs to the live camera
+	it, err := c.resolveIn(set, scene)
+	if err != nil {
+		return err
+	}
+	full, _ := c.full(set, it)
+	win := c.window(it)
+	c.show(it, full, win)
+	target := full
+	if window {
+		target = win
+	}
+	c.move(it, target, target, false)
+	c.Stop() // the switch must not go out before the camera is in place
+	return nil
+}
+
+// Legacy reports whether the old two-scene mode applies.
+func (c *Camera) Legacy() (bool, error) { return c.legacy(c.Settings()) }
 
 // Sources lists the inputs of the program scene, top first, and the one
 // that would be picked with no camera set.
@@ -409,8 +455,6 @@ func pick(items []sceneItem, name string) *sceneItem {
 	return best
 }
 
-func (c *Camera) resolve(set CameraSettings) (item, error) { return c.resolveIn(set, "") }
-
 // resolveIn finds the camera in scene; "" is the program scene.
 func (c *Camera) resolveIn(set CameraSettings, scene string) (item, error) {
 	var v struct {
@@ -465,7 +509,11 @@ func (c *Camera) full(set CameraSettings, it item) (Place, bool) {
 	if set.Fit == "fill" {
 		fit = "fill"
 	}
-	if f := set.Full; f != nil && f.SourceWidth == it.srcW && f.SourceHeight == it.srcH &&
+	saved := set.Full
+	if f := set.Fulls[it.name]; f != nil {
+		saved = f
+	}
+	if f := saved; f != nil && f.SourceWidth == it.srcW && f.SourceHeight == it.srcH &&
 		f.CanvasWidth == it.canvas.W && f.CanvasHeight == it.canvas.H && f.Fit == fit {
 		return f.Place, false
 	}

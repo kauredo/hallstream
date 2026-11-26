@@ -73,6 +73,11 @@ type Server struct {
 	progMu     sync.Mutex
 	prog       setupProgress
 	camErr     error      // overlay.css lacks the time-out window
+	switchMu   sync.Mutex // one camera switch at a time
+	liveMu     sync.Mutex
+	program    string     // the program scene last seen (under liveMu)
+	expect     []pending  // the scenes the program switched to whose events have not come, oldest first (under liveMu)
+	watch      watchFunc  // obsws.Watch; tests put a fake in
 	promoMu    sync.Mutex // SyncPromo
 	nextMu     sync.Mutex // one RefreshNext at a time
 	nextQueued atomic.Bool
@@ -119,6 +124,9 @@ func New(s *Server) *Server {
 	s.ytBusy, s.ytAgain = map[string]bool{}, map[string]bool{}
 	if s.ytSleep == nil {
 		s.ytSleep = time.Sleep
+	}
+	if s.watch == nil {
+		s.watch = obsws.Watch
 	}
 	s.loadYouTube()
 	s.newUploads()

@@ -968,3 +968,23 @@ func TestDecodeListAndNews(t *testing.T) {
 		t.Errorf("a new one: %+v mark %d", f, k.high)
 	}
 }
+
+func TestSetLiveCamera(t *testing.T) {
+	m, _ := newTest()
+	ch, _ := m.Subscribe()
+	m.SetLiveCamera(2)
+	if n := m.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+	select {
+	case <-ch:
+	default:
+		t.Error("no change sent")
+	}
+	m.SetLiveCamera(2)
+	select {
+	case <-ch:
+		t.Error("the same camera sent a change")
+	default:
+	}
+}

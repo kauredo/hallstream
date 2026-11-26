@@ -194,6 +194,7 @@
       },
       screen: db.screen,
       lower_third: db.lower_third,
+      obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive },
       promo: Object.assign({}, db.promoShow, { mini: db.promo.clips.filter(function (c) { return c.id === db.promo.timeout_clip; })[0] || null }),
       demo: db.demo
     };
@@ -234,6 +235,15 @@
     var f = fd.get('file');
     return f ? URL.createObjectURL(f) : '';
   }
+
+  // Cameras: ?cams=1|2|3|noscene (camera 3 without a scene yet), the one on program ?live=0|1|2|3
+  // (0: a scene that is no camera's), and ?camerr=1 makes OBS refuse a switch.
+  var camsQ = (/[?&]cams=([a-z0-9]+)/.exec(location.search) || [])[1];
+  var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }];
+  if (camsQ === 'noscene') db.settings.obs.cameras = [CAMS[0], CAMS[1], Object.assign({}, CAMS[2], { scene: '' })];
+  else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(3, Math.max(1, +camsQ || 1)));
+  var liveQ = /[?&]live=([0-3])/.exec(location.search);
+  db.obsLive = liveQ ? +liveQ[1] : 1;
 
   // OBS as the panel sees it: ?obs=off (default), ready, problem, live, nokey, choose.
   var obsMode = (/[?&]obs=([a-z]+)/.exec(location.search) || [])[1] || 'off';
@@ -540,6 +550,11 @@
     }
     if (p === '/api/youtube/history') return reply(200, ytHistory(u.searchParams));
     if (p === '/api/obs/cameras') return reply(200, { cameras: cameras });
+    if (p === '/api/obs/camera/live') {
+      if (/[?&]camerr=1\b/.test(location.search)) return err(502, 'o OBS não mudou para a cena "Câmara ' + b.index + '": fake');
+      db.obsLive = b.index; emit();
+      return reply(200, { ok: true, live_camera: b.index, warning: '' });
+    }
     if (p === '/api/obs/setup') return reply(200, setupReport(b));
     if (p === '/api/system/autostart') { db.settings.start_with_windows = !!b.on; return reply(200, { ok: true, on: !!b.on }); }
     if (p === '/api/obs/sources') return reply(200, { scene: 'Jogo', auto: 'DroidCam', sources: [{ name: 'Hallstream', kind: 'browser_source' }, { name: 'DroidCam', kind: 'dshow_input' }, { name: 'Fundo', kind: 'image_source' }] });

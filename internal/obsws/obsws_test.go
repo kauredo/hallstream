@@ -23,6 +23,24 @@ type fake struct {
 	sets    []map[string]any // sceneItemTransform of each SetSceneItemTransform
 	asked   []string         // request types in order
 	setIn   []string         // the sceneName of each SetSceneItemTransform
+	conns   []*websocket.Conn
+	subs    []int // each connection's eventSubscriptions
+}
+
+func (f *fake) joined(ws *websocket.Conn, events int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.conns = append(f.conns, ws)
+	f.subs = append(f.subs, events)
+}
+
+// emit sends an event to every connection.
+func (f *fake) emit(typ string, data map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, ws := range f.conns {
+		send(ws, 5, map[string]any{"eventType": typ, "eventIntent": EventScenes, "eventData": data})
+	}
 }
 
 func (f *fake) answer(typ string, d map[string]any) (bool, int, any) {
@@ -88,6 +106,11 @@ type answerer interface {
 	answer(typ string, d map[string]any) (bool, int, any)
 }
 
+// watched is a fake that keeps its connections, to send events on them.
+type watched interface {
+	joined(ws *websocket.Conn, events int)
+}
+
 // fakeOBS asks for auth, checks it, and answers requests from f.
 func fakeOBS(t *testing.T, password string, f answerer) Config {
 	srv := httptest.NewServer(websocket.Handler(func(ws *websocket.Conn) {
@@ -95,9 +118,13 @@ func fakeOBS(t *testing.T, password string, f answerer) Config {
 			"authentication": map[string]string{"challenge": "ch", "salt": "sa"}})
 		var id struct {
 			Authentication string `json:"authentication"`
+			Events         int    `json:"eventSubscriptions"`
 		}
 		if receive(ws, 1, &id) != nil || id.Authentication != Auth(password, "sa", "ch") {
 			return // OBS closes on bad auth
+		}
+		if w, ok := f.(watched); ok {
+			w.joined(ws, id.Events)
 		}
 		send(ws, 2, map[string]any{"negotiatedRpcVersion": 1})
 		for {
@@ -114,6 +141,9 @@ func fakeOBS(t *testing.T, password string, f answerer) Config {
 			ok, code, data := f.answer(req.RequestType, d)
 			if code == hangUp {
 				return
+			}
+			if code == silent {
+				continue
 			}
 			resp := map[string]any{"requestType": req.RequestType, "requestId": req.RequestID,
 				"requestStatus": map[string]any{"result": ok, "code": code, "comment": "fake"}}
@@ -176,6 +206,9 @@ func TestRequestError(t *testing.T) {
 
 // hangUp makes the fake close the connection instead of answering.
 const hangUp = -1
+
+// silent makes the fake send no answer and keep the connection.
+const silent = -2
 
 type dropFirst struct {
 	mu   sync.Mutex

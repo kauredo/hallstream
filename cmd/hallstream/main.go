@@ -263,6 +263,7 @@ func main() {
 		}
 	}
 	safely(i18n.T("log.tarefa.camara"), srv.RunCamera)
+	safely(i18n.T("log.tarefa.cenas"), srv.RunScenes)
 	safely("OBS", srv.RunOBS)
 	safely("YouTube", srv.RunYouTube)
 	safely(i18n.T("log.tarefa.proximo"), srv.WatchNext)

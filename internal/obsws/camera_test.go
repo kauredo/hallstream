@@ -455,3 +455,147 @@ func TestStopEndsTheTweenAtItsTarget(t *testing.T) {
 	}
 	r.c.Stop() // nothing running: returns at once
 }
+
+// twoScenes gives the rig two camera scenes, A in Câmara 1 (on program) and
+// B in Câmara 2, both 1280x720 below the graphics.
+func twoScenes(r *rig) {
+	scene := func(id int, source string) []map[string]any {
+		it := item3(1280, 720)
+		cam, graphics := it[1], it[2]
+		cam["sceneItemId"], cam["sceneItemIndex"], cam["sourceName"] = id, 0, source
+		graphics["sceneItemId"], graphics["sceneItemIndex"], graphics["sourceName"], graphics["inputKind"] = id+1, 1, "Grafismo", nil
+		return []map[string]any{cam, graphics}
+	}
+	r.f.scenes = []string{"Câmara 1", "Câmara 2"}
+	r.f.program = "Câmara 1"
+	r.f.byScene = map[string][]map[string]any{"Câmara 1": scene(1, "A"), "Câmara 2": scene(3, "B")}
+}
+
+func TestSqueezeFollowsLiveScene(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	r.set.Scene, r.set.Source = "Câmara 2", "B"
+	if err := r.c.Follow("desconto"); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	r.f.mu.Lock()
+	defer r.f.mu.Unlock()
+	if len(r.f.setIn) == 0 || slices.ContainsFunc(r.f.setIn, func(s string) bool { return s != "Câmara 2" }) {
+		t.Errorf("transforms sent to %v", r.f.setIn)
+	}
+}
+
+func TestPlaceWindowAtOnce(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	r.c.in = true // the last screen followed was desconto
+	if err, _ := r.c.Place("Câmara 2", "B", nil); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	sets := r.f.transforms()
+	if len(sets) != 1 || !near(sets[0]["positionX"].(float64), 416) || !near(sets[0]["scaleX"].(float64), 1.125) {
+		t.Errorf("transforms %v", sets)
+	}
+	if r.win == nil || *r.win != window {
+		t.Errorf("overlay window %v", r.win)
+	}
+	if r.f.setIn[0] != "Câmara 2" || r.f.scene() != "Câmara 1" {
+		t.Errorf("placed in %q, program %q", r.f.setIn[0], r.f.scene())
+	}
+}
+
+func TestPlaceUsesItsOwnFull(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	own := &Full{Place: Place{Rect: Rect{10, 20, 1900, 1060}}, SourceWidth: 1280, SourceHeight: 720, CanvasWidth: 1920, CanvasHeight: 1080, Fit: "contain"}
+	r.set.Full = &Full{Place: Place{Rect: canvas}, SourceWidth: 1280, SourceHeight: 720, CanvasWidth: 1920, CanvasHeight: 1080, Fit: "contain"}
+	r.set.Fulls = map[string]*Full{"B": own}
+	if err, _ := r.c.Place("Câmara 2", "B", nil); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	if end := last(t, r.f); !near(end["positionX"].(float64), 10) || !near(end["positionY"].(float64), 20) {
+		t.Errorf("placed at %v", end)
+	}
+	if len(r.saved) != 0 {
+		t.Errorf("saved %+v", r.saved)
+	}
+}
+
+// Camera A's placement (set.Full) is never B's: B with none saved gets a new one.
+func TestPlaceNeverTakesTheLiveCamerasFull(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	r.set.Source = "A"
+	r.set.Full = &Full{Place: Place{Rect: Rect{10, 20, 1900, 1060}}, SourceWidth: 1280, SourceHeight: 720, CanvasWidth: 1920, CanvasHeight: 1080, Fit: "contain"}
+	var savedFor []string
+	r.c.Save = func(source string, f Full) { savedFor = append(savedFor, source) }
+	if err, _ := r.c.Place("Câmara 2", "B", nil); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	if end := last(t, r.f); !near(end["positionX"].(float64), 0) || !near(end["scaleX"].(float64), 1.5) {
+		t.Errorf("placed at %v, not B's own fit", end)
+	}
+	if !slices.Equal(savedFor, []string{"B"}) {
+		t.Errorf("saved for %v", savedFor)
+	}
+}
+
+// With OBS control off or the old two-scene mode, Place moves nothing but
+// still runs then.
+func TestPlaceNoOps(t *testing.T) {
+	for name, set := range map[string]func(r *rig){
+		"disabled": func(r *rig) { r.set.Enabled = false },
+		"legacy": func(r *rig) {
+			r.f.scenes = append(r.f.scenes, "Desconto")
+			r.set.TimeoutScene, r.set.GameScene = "Desconto", "Câmara 1"
+		},
+	} {
+		r := newRig(t, 1280, 720)
+		twoScenes(r)
+		set(r)
+		ran := false
+		placed, err := r.c.Place("Câmara 2", "B", func() error { ran = true; return nil })
+		if placed != nil || err != nil || !ran {
+			t.Errorf("%s: placed %v, err %v, ran %v", name, placed, err, ran)
+		}
+		if n := len(r.f.transforms()); n != 0 {
+			t.Errorf("%s: %d transforms", name, n)
+		}
+	}
+}
+
+// A time-out that comes in while then runs (the switch) waits for it, and
+// squeezes the camera then switched to.
+func TestPlaceHoldsTheSqueezeUntilTheSwitch(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	r.set.Scene, r.set.Source = "Câmara 1", "A"
+	followed := make(chan struct{})
+	early := false
+	_, err := r.c.Place("Câmara 2", "B", func() error {
+		go func() { r.c.Follow("desconto"); close(followed) }()
+		select {
+		case <-followed:
+			early = true
+		case <-time.After(50 * time.Millisecond):
+		}
+		r.mu.Lock()
+		r.set.Scene, r.set.Source = "Câmara 2", "B"
+		r.mu.Unlock()
+		return nil
+	})
+	if err != nil || early {
+		t.Fatalf("err %v, squeezed during the switch %v", err, early)
+	}
+	<-followed
+	r.wait(t)
+	r.f.mu.Lock()
+	defer r.f.mu.Unlock()
+	if slices.Contains(r.f.setIn, "Câmara 1") {
+		t.Errorf("the old camera moved: %v", r.f.setIn)
+	}
+}

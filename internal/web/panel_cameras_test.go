@@ -116,3 +116,22 @@ func TestPanelTimeoutCamera(t *testing.T) {
 		t.Errorf("one camera shows the time-out camera: %v %v", shown, err)
 	}
 }
+
+func TestPanelCameraHealth(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&health=mixed")
+	if err := until(tab, `[...document.querySelectorAll("#cams .cam-saude")].map(e => e.dataset.state).join() === "ok,no_image,frozen"`+
+		` && document.querySelector('[data-cam="2"] .cam-saude').title !== "" && document.querySelector('[data-cam="1"] .cam-saude').title === ""`+
+		` && document.querySelector("#camFrames").textContent === ""`); err != nil {
+		t.Fatalf("health lines: %v", err)
+	}
+	tab = cameraPanel(t, "&cams=3&live=1&health=skipped")
+	if err := until(tab, `/214/.test(document.querySelector("#camFrames").textContent)`); err != nil {
+		t.Fatalf("no skipped frames line: %v", err)
+	}
+	// One camera: the card shows only for a problem, with the fix written out.
+	tab = cameraPanel(t, "&cams=1&health=noimage")
+	if err := until(tab, `!document.querySelector("#camCard").hidden && document.querySelectorAll("#cams .cam").length === 0`+
+		` && !!document.querySelector("#camSaude .cam-dica")`); err != nil {
+		t.Fatalf("one camera with no picture: %v", err)
+	}
+}

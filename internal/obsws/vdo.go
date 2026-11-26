@@ -3,7 +3,6 @@ package obsws
 import (
 	"crypto/rand"
 	"net/url"
-	"strings"
 )
 
 const vdoSite = "https://vdo.ninja/"
@@ -48,18 +47,4 @@ func NewVDOID() (string, error) {
 		b[i] = chars[c[0]%36]
 	}
 	return string(b), nil
-}
-
-// IsVDOView reports whether u is VDOView for some id, and which.
-func IsVDOView(u string) (id string, ok bool) {
-	rest, found := strings.CutPrefix(u, vdoSite+"?view=")
-	if !found {
-		return "", false
-	}
-	id, _, _ = strings.Cut(rest, "&")
-	id, err := url.QueryUnescape(id)
-	if err != nil || id == "" || VDOView(id) != u {
-		return "", false
-	}
-	return id, true
 }

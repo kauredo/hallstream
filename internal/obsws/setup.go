@@ -166,6 +166,7 @@ type setup struct {
 	n      int      // the camera being set up, from 1
 	cam    WantCamera
 	vdo    string // the stream id of the camera being set up, when it is a phone
+	made   []input // the inputs this run created, for the next camera's names and checks
 }
 
 type input struct {
@@ -220,6 +221,7 @@ func (s *setup) run(fit func(int, string, string) error) {
 	s.overlay(in)
 	for i, w := range s.want.Cameras {
 		s.n, s.cam, s.vdo = i+1, w, ""
+		in, s.made = append(in, s.made...), nil
 		scene := w.Scene
 		if scene == "" {
 			scene = uniqueSourceName(in, s.scenes, i18n.T("obs.cena_camara", "n", s.n))
@@ -476,6 +478,7 @@ func (s *setup) overlay(in []input) string {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_grafismo", "erro", re.Comment)
 			return ""
 		}
+		s.made = append(s.made, input{Name: name, Kind: "browser_source", Settings: settings})
 		st.Result, st.Detail = "created", i18n.T("obs.setup.criei_grafismo", "fonte", name)
 		return name
 	}
@@ -744,6 +747,7 @@ func (s *setup) addPhone(st *Step, in []input, id string) string {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_telemovel", "erro", re.Comment)
 		return ""
 	}
+	s.made = append(s.made, input{Name: name, Kind: "browser_source", Settings: settings})
 	st.Result, st.Detail = "created", i18n.T("obs.setup.juntei_telemovel", "fonte", name)
 	return name
 }
@@ -902,6 +906,7 @@ func (s *setup) addDevice(st *Step, in []input, id string) string {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_camara", "camara", name, "erro", re.Comment)
 		return ""
 	}
+	s.made = append(s.made, input{Name: name, Kind: dshowKind, Settings: map[string]any{"video_device_id": id}})
 	st.Result, st.Detail = "created", i18n.T("obs.setup.juntei_camara", "camara", name)
 	return name
 }
@@ -923,12 +928,15 @@ func (s *setup) addPlugin(st *Step, in []input) string {
 		return ""
 	}
 	st.Result = "created"
+	made := input{Name: name, Kind: PluginKind, Settings: map[string]any{}}
+	defer func() { s.made = append(s.made, made) }()
 	for _, d := range s.listItems(name, "device_list") {
 		if slices.Contains(used, d.Value) {
 			continue
 		}
 		if s.call("SetInputSettings", map[string]any{"inputName": name, "inputSettings": map[string]any{"device_list": d.Value}}, nil) == nil &&
 			s.call("PressInputPropertiesButton", map[string]string{"inputName": name, "propertyName": "connect"}, nil) == nil {
+			made.Settings["device_list"] = d.Value
 			st.Detail = i18n.T("obs.setup.juntei_ligada", "fonte", name, "aparelho", d.Name)
 			return name
 		}

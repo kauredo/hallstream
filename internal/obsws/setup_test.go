@@ -920,7 +920,7 @@ func TestSetupPhone(t *testing.T) {
 	if in == nil || in.kind != "browser_source" {
 		t.Fatalf("phone source %+v", in)
 	}
-	if got, ok := IsVDOView(str(in.settings["url"])); !ok || got != id || in.settings["width"] != 1920.0 || in.settings["height"] != 1080.0 ||
+	if id == "" || str(in.settings["url"]) != VDOView(id) || in.settings["width"] != 1920.0 || in.settings["height"] != 1080.0 ||
 		in.settings["shutdown"] != false || in.settings["restart_when_active"] != false || in.settings["is_local_file"] != false {
 		t.Errorf("phone settings %v, id %q", in.settings, id)
 	}
@@ -977,5 +977,37 @@ func TestSetupSecondDroidCam(t *testing.T) {
 	}
 	if m.input("DroidCam").settings["device_list"] != "A" {
 		t.Errorf("first source moved: %v", m.input("DroidCam").settings)
+	}
+}
+
+// Two new phones in one run each get their own source and id.
+func TestSetupTwoNewPhones(t *testing.T) {
+	m := newModel()
+	m.devices = []map[string]any{device("Logitech C920")}
+	r := newRun(t, m)
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "device:" + device("Logitech C920")["itemValue"].(string)}, {Choice: "vdo"}, {Choice: "vdo"}}}, true)
+	wantResults(t, rep, map[string]string{"camera": "created", "camera-2": "created", "camera-3": "created"})
+	if len(rep.Cameras) != 3 || rep.Cameras[1].Source != "Telemóvel 1" || rep.Cameras[2].Source != "Telemóvel 2" {
+		t.Fatalf("cameras %+v", rep.Cameras)
+	}
+	a, b := rep.Phones["Telemóvel 1"], rep.Phones["Telemóvel 2"]
+	if a == "" || b == "" || a == b || str(m.input("Telemóvel 2").settings["url"]) != VDOView(b) {
+		t.Errorf("phones %v", rep.Phones)
+	}
+}
+
+// Two new DroidCam plugin sources in one run take different phones.
+func TestSetupTwoNewPlugins(t *testing.T) {
+	m := newModel()
+	m.kinds = []string{"browser_source", PluginKind}
+	m.phones = []map[string]any{{"itemName": "Phone A", "itemEnabled": true, "itemValue": "A"},
+		{"itemName": "Phone B", "itemEnabled": true, "itemValue": "B"},
+		{"itemName": "Use WiFi IP", "itemEnabled": true, "itemValue": "dev_id_wifi"}}
+	r := newRun(t, m)
+	rep := r.setupWant(Want{Cameras: []WantCamera{{Choice: "plugin"}, {Choice: "plugin"}}}, true)
+	wantResults(t, rep, map[string]string{"camera": "created", "camera-2": "created"})
+	one, two := m.input("DroidCam"), m.input("DroidCam 2")
+	if rep.Cameras[1].Source != "DroidCam 2" || one == nil || two == nil || one.settings["device_list"] != "A" || two.settings["device_list"] != "B" {
+		t.Errorf("cameras %+v, %+v %+v", rep.Cameras, one, two)
 	}
 }

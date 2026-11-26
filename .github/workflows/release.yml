@@ -321,7 +321,9 @@ jobs:
           want=$'Hallstream/\nHallstream/CAMARAS.txt\nHallstream/CAMERAS.txt\nHallstream/Hallstream\nHallstream/LEIA-ME.txt\nHallstream/LICENSE.txt\nHallstream/READ-ME.txt\nHallstream/THIRD-PARTY-NOTICES.txt\nHallstream/YouTube/\nHallstream/YouTube/CONNECT-YOUTUBE.txt\nHallstream/YouTube/LIGAR-YOUTUBE.txt'
           got=$(tar -tzf "$tgz" | LC_ALL=C sort)
           [[ "$got" == "$want" ]] || { echo "Unexpected tarball contents:"; echo "$got"; exit 1; }
-          tar -tvzf "$tgz" | grep -q '^-rwxr-xr-x .* Hallstream/Hallstream$'
+          # grep -q in a pipe would cut tar off and fail the step under pipefail.
+          long=$(tar -tvzf "$tgz")
+          grep -q '^-rwxr-xr-x .* Hallstream/Hallstream$' <<<"$long"
           file dist/linux/Hallstream/Hallstream | tee "$RUNNER_TEMP/file.txt"
           grep -q "statically linked" "$RUNNER_TEMP/file.txt"
 

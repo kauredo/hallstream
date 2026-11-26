@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -118,12 +119,69 @@ func cameraOne(o store.OBS, source string) bool {
 	return !slices.ContainsFunc(o.CameraList()[1:], func(c store.Camera) bool { return c.Source == source })
 }
 
-// followCamera moves the camera with the screen.
+// followCamera moves the camera with the screen. The time-out switch goes
+// first, so the squeeze moves the camera that is live after it.
 func (s *Server) followCamera() error {
 	if s.camErr != nil {
 		return s.camErr
 	}
-	return s.Camera.Follow(s.State.Snapshot().Screen.Current)
+	screen := s.State.Snapshot().Screen.Current
+	terr := s.timeoutSwitch(screen == "desconto")
+	return errors.Join(terr, s.Camera.Follow(screen))
+}
+
+// timeoutSwitch puts settings.obs.timeout_camera on air at full screen as
+// desconto starts, and the camera that was live back, in the window, as it
+// ends. Repeating the same side returns the last result.
+func (s *Server) timeoutSwitch(in bool) error {
+	s.switchMu.Lock()
+	defer s.switchMu.Unlock()
+	if in == s.toIn {
+		return s.toErr
+	}
+	s.toIn = in
+	s.liveMu.Lock()
+	back := s.returnTo
+	s.returnTo = 0
+	s.liveMu.Unlock()
+
+	o := s.Store.Settings().OBS
+	cams := o.CameraList()
+	live := s.State.Snapshot().OBS.LiveCamera
+	n := back
+	if in {
+		n = o.TimeoutCamera
+	}
+	s.toErr = nil
+	if !o.Enabled || n < 1 || n > len(cams) || cams[n-1].Scene == "" || n == live {
+		return nil
+	}
+	if in {
+		if legacy, _ := s.Camera.Legacy(); live == 0 || legacy {
+			return nil
+		}
+		s.liveMu.Lock()
+		s.returnTo = live
+		s.liveMu.Unlock()
+	}
+	warning, err := s.switchTo(n, cams[n-1])
+	if warning != "" {
+		s.Log(i18n.T("log.camara.nao_pus", "camara", n, "err", warning))
+	}
+	if err != nil {
+		s.liveMu.Lock()
+		s.returnTo = 0
+		s.liveMu.Unlock()
+		s.toErr = i18n.Err("log.camara.desconto_falhou", "err", err)
+		s.Log(s.toErr.Error())
+		return s.toErr
+	}
+	if in {
+		s.Log(i18n.T("log.camara.desconto_troca", "n", n))
+	} else {
+		s.Log(i18n.T("log.camara.desconto_volta", "n", n))
+	}
+	return nil
 }
 
 // RunCamera keeps the OBS camera with the screen (automatic changes too) and
@@ -203,6 +261,7 @@ func (s *Server) sceneSeen(name string, event bool) {
 			s.expect = s.expect[i+1:]
 		} else {
 			s.expect = nil // an OBS click; a switch whose event never came is over
+			s.returnTo = 0 // a switch made in OBS during a time-out stays
 		}
 	}
 	if len(s.expect) > 0 {
@@ -436,6 +495,9 @@ func (s *Server) cameraRoutes() {
 			fail(w, http.StatusBadGateway, err.Error())
 			return
 		}
+		s.liveMu.Lock()
+		s.returnTo = 0 // the volunteer's pick stays after the time-out
+		s.liveMu.Unlock()
 		reply(w, map[string]any{"ok": true, "live_camera": req.Index, "warning": warning})
 	})
 }

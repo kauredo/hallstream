@@ -41,21 +41,40 @@ type Choice struct {
 	DroidCam bool   `json:"droidcam"`
 }
 
-// Want is what the setup aims for.
-type Want struct {
-	OverlayURL   string
-	OverlayPorts [2]int // the ports the program may run on: a browser source at /overlay on one of them is ours
-	// Camera is a Choice value, or "" to find one: a DroidCam source first.
-	Camera string
+// WantCamera is one camera the setup aims for.
+type WantCamera struct {
+	// Choice is a Choice value, or "" to find one (camera 1 only): a
+	// DroidCam source first.
+	Choice string
+	// Scene is the saved scene name; "" before the first setup.
+	Scene string
 	// Old is the camera before; it is hidden in the scene when another replaces it.
 	Old string
 }
 
-// Report is the checklist and the camera it ended with.
+// Want is what the setup aims for.
+type Want struct {
+	OverlayURL   string
+	OverlayPorts [2]int // the ports the program may run on: a browser source at /overlay on one of them is ours
+	// Graphics is the saved overlay scene name; "" before the first setup.
+	Graphics string
+	// Cameras is 1 to 3 cameras, camera 1 first.
+	Cameras []WantCamera
+}
+
+// ReportCamera is the scene and source a camera ended with.
+type ReportCamera struct {
+	Source string `json:"source"`
+	Scene  string `json:"scene"`
+}
+
+// Report is the checklist and the scenes and cameras it ended with.
 type Report struct {
-	Steps   []Step   `json:"steps"`
-	Camera  string   `json:"camera"`
-	Choices []Choice `json:"choices,omitempty"`
+	Steps    []Step         `json:"steps"`
+	Camera   string         `json:"camera"` // camera 1's source
+	Graphics string         `json:"graphics"`
+	Cameras  []ReportCamera `json:"cameras"`
+	Choices  []Choice       `json:"choices,omitempty"`
 	// Ready: nothing is missing or wrong (the camera fit aside).
 	Ready bool `json:"ready"`
 }
@@ -72,24 +91,41 @@ func (r Report) Problems() []string {
 }
 
 // Setup checks OBS against w and, with apply, fixes what it can: the
-// scene, the overlay browser source, the camera, their order, the canvas
-// size and the program scene, then fit(camera). It never deletes or changes
-// a source the user made, other than the overlay's own settings. Without
-// apply it only reports (the health check). The error is for a lost
-// connection; whatever OBS refuses becomes a failed step.
-func (c *Client) Setup(cfg Config, w Want, apply bool, fit func(camera string) error) (Report, error) {
+// graphics scene with the overlay browser source, one scene per camera
+// with the camera and the graphics scene above it, the canvas size and the
+// program scene, then fit(n, scene, camera) for each camera. It never
+// deletes or changes a source or scene the user made, other than the
+// overlay's own settings. Without apply it only reports (the health
+// check), and with one camera it also accepts the old Hallstream scene.
+// The error is for a lost connection; whatever OBS refuses becomes a
+// failed step.
+func (c *Client) Setup(cfg Config, w Want, apply bool, fit func(n int, scene, camera string) error) (Report, error) {
 	s := &setup{c: c, cfg: cfg, apply: apply, want: w}
 	s.run(fit)
 	if s.err != nil {
 		return Report{}, s.err
 	}
-	s.rep.Ready = true
-	for _, st := range s.rep.Steps {
-		if (st.Result == "failed" || st.Result == "choose") && st.ID != "fit" {
-			s.rep.Ready = false
+	s.ready()
+	if !apply && !s.rep.Ready && len(w.Cameras) <= 1 {
+		old := &setup{c: c, cfg: cfg, want: w}
+		old.legacy(s.rep.Cameras)
+		if old.err != nil {
+			return Report{}, old.err
+		}
+		if old.ready(); old.rep.Ready {
+			return old.rep, nil
 		}
 	}
 	return s.rep, nil
+}
+
+func (s *setup) ready() {
+	s.rep.Ready = true
+	for _, st := range s.rep.Steps {
+		if (st.Result == "failed" || st.Result == "choose") && !strings.HasPrefix(st.ID, "fit") {
+			s.rep.Ready = false
+		}
+	}
 }
 
 // Cameras lists what "Câmara" can offer: video sources in OBS, the video
@@ -113,13 +149,17 @@ func (c *Client) Cameras(cfg Config) ([]Choice, error) {
 }
 
 type setup struct {
-	c     *Client
-	cfg   Config
-	apply bool
-	want  Want
-	rep   Report
-	err   error  // the connection failed: stop
-	scene string // where new sources go
+	c      *Client
+	cfg    Config
+	apply  bool
+	want   Want
+	rep    Report
+	err    error    // the connection failed: stop
+	scene  string   // where new sources go
+	at     string   // the scene being checked
+	scenes []string // every scene in OBS
+	n      int      // the camera being set up, from 1
+	cam    WantCamera
 }
 
 type input struct {
@@ -147,12 +187,95 @@ func (s *setup) call(typ string, data, into any) *RequestError {
 
 func (s *setup) add(st Step) { s.rep.Steps = append(s.rep.Steps, st) }
 
-func (s *setup) run(fit func(string) error) {
+func (s *setup) run(fit func(int, string, string) error) {
 	busy := s.busy()
-	if !s.ensureScene() || s.err != nil {
+	in := s.inputs()
+	if s.err != nil {
 		return
 	}
-	s.scene = SceneName
+	graphics := s.want.Graphics
+	if graphics == "" {
+		graphics = i18n.T("obs.cena_grafismo")
+	}
+	if !s.listScenes("graphics", graphics) {
+		return
+	}
+	if s.want.Graphics == "" {
+		graphics = uniqueSourceName(in, s.scenes, graphics)
+	}
+	if !s.ensureScene("graphics", graphics) && s.apply || s.err != nil {
+		return
+	}
+	if slices.Contains(s.scenes, graphics) {
+		s.rep.Graphics = graphics
+	}
+	s.at = graphics
+	s.overlay(in)
+	for i, w := range s.want.Cameras {
+		s.n, s.cam = i+1, w
+		scene := w.Scene
+		if scene == "" {
+			scene = uniqueSourceName(in, s.scenes, i18n.T("obs.cena_camara", "n", s.n))
+		}
+		var rc ReportCamera
+		if s.ensureScene(s.id("scene"), scene) || !s.apply {
+			s.at, s.scene = scene, scene
+			cam := s.camera(in)
+			s.hideOld(cam, graphics)
+			s.order(graphics, cam)
+			rc.Source = cam
+			if slices.Contains(s.scenes, scene) {
+				rc.Scene = scene
+			}
+		}
+		if s.err != nil {
+			return
+		}
+		if i == 0 {
+			s.rep.Camera = rc.Source
+		}
+		s.rep.Cameras = append(s.rep.Cameras, rc)
+	}
+	s.video(busy)
+	var live []string
+	for _, c := range s.rep.Cameras {
+		if c.Scene != "" {
+			live = append(live, c.Scene)
+		}
+	}
+	first := ""
+	if len(s.rep.Cameras) > 0 {
+		first = s.rep.Cameras[0].Scene
+	}
+	s.program(busy, live, first)
+	if !s.apply || fit == nil {
+		return
+	}
+	for i, c := range s.rep.Cameras {
+		if c.Source == "" || c.Scene == "" || s.err != nil {
+			continue
+		}
+		s.n = i + 1
+		st := Step{ID: s.id("fit"), Label: i18n.T("obs.setup.ajuste"), Result: "ok", Detail: i18n.T("obs.setup.ajuste_ok")}
+		if err := fit(s.n, c.Scene, c.Source); err != nil {
+			st.Result, st.Detail = "failed", err.Error()
+		}
+		s.add(st)
+	}
+}
+
+// legacy checks the layout before several cameras: the camera and the
+// overlay in the one Hallstream scene. On program it also accepts the
+// camera scenes the new layout has.
+func (s *setup) legacy(cams []ReportCamera) {
+	busy := s.busy()
+	s.n, s.at = 1, SceneName
+	if len(s.want.Cameras) > 0 {
+		s.cam = s.want.Cameras[0]
+	}
+	if !s.listScenes("scene", SceneName) || !s.ensureScene("scene", SceneName) {
+		return
+	}
 	in := s.inputs()
 	overlay := s.overlay(in)
 	cam := s.camera(in)
@@ -160,17 +283,24 @@ func (s *setup) run(fit func(string) error) {
 		return
 	}
 	s.rep.Camera = cam
-	s.hideOld(cam, overlay)
 	s.order(overlay, cam)
 	s.video(busy)
-	s.program(busy)
-	if s.apply && cam != "" && fit != nil && s.err == nil {
-		st := Step{ID: "fit", Label: i18n.T("obs.setup.ajuste"), Result: "ok", Detail: i18n.T("obs.setup.ajuste_ok")}
-		if err := fit(cam); err != nil {
-			st.Result, st.Detail = "failed", err.Error()
+	live := []string{SceneName}
+	for _, c := range cams {
+		if c.Scene != "" {
+			live = append(live, c.Scene)
 		}
-		s.add(st)
 	}
+	s.program(busy, live, SceneName)
+}
+
+// id is a step's id for the camera being set up: "camera" for camera 1,
+// "camera-2" for camera 2.
+func (s *setup) id(base string) string {
+	if s.n <= 1 {
+		return base
+	}
+	return base + "-" + strconv.Itoa(s.n)
 }
 
 // busy reports whether OBS is streaming or recording: the canvas can't change then.
@@ -183,32 +313,48 @@ func (s *setup) busy() bool {
 	return st.Active || rec.Active
 }
 
-func (s *setup) ensureScene() bool {
-	st := Step{ID: "scene", Label: i18n.T("obs.setup.cena", "cena", SceneName), Result: "ok", Detail: i18n.T("obs.setup.cena_existe")}
-	defer func() { s.add(st) }()
+func sceneLabel(id, name string) string {
+	if id == "graphics" {
+		return i18n.T("obs.setup.cena_grafismo", "cena", name)
+	}
+	return i18n.T("obs.setup.cena", "cena", name)
+}
+
+// listScenes reads the scenes once; when OBS refuses, the step id fails.
+func (s *setup) listScenes(id, name string) bool {
 	var r struct {
 		Scenes []struct {
 			Name string `json:"sceneName"`
 		} `json:"scenes"`
 	}
 	if re := s.call("GetSceneList", nil, &r); re != nil {
-		st.Result, st.Detail = "failed", i18n.T("obs.setup.sem_lista_cenas", "erro", re.Comment)
+		s.add(Step{ID: id, Label: sceneLabel(id, name), Result: "failed", Detail: i18n.T("obs.setup.sem_lista_cenas", "erro", re.Comment)})
 		return false
 	}
+	s.scenes = nil
 	for _, sc := range r.Scenes {
-		if sc.Name == SceneName {
-			return true
-		}
+		s.scenes = append(s.scenes, sc.Name)
 	}
-	if !s.apply {
-		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_cena", "cena", SceneName)
+	return true
+}
+
+// ensureScene reports whether the scene exists, making it with apply.
+func (s *setup) ensureScene(id, name string) bool {
+	st := Step{ID: id, Label: sceneLabel(id, name), Result: "ok", Detail: i18n.T("obs.setup.cena_existe")}
+	defer func() { s.add(st) }()
+	if slices.Contains(s.scenes, name) {
 		return true
 	}
-	if re := s.call("CreateScene", map[string]string{"sceneName": SceneName}, nil); re != nil {
+	if !s.apply {
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_cena", "cena", name)
+		return false
+	}
+	if re := s.call("CreateScene", map[string]string{"sceneName": name}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_cena", "erro", re.Comment)
 		return false
 	}
-	st.Result, st.Detail = "created", i18n.T("obs.setup.criei_cena", "cena", SceneName)
+	s.scenes = append(s.scenes, name)
+	st.Result, st.Detail = "created", i18n.T("obs.setup.criei_cena", "cena", name)
 	return true
 }
 
@@ -234,12 +380,14 @@ func (s *setup) inputs() []input {
 	return r.Inputs
 }
 
-// items is the scene's items; none when the scene is missing.
-func (s *setup) items() []sceneItem {
+// items is the checked scene's items; none when the scene is missing.
+func (s *setup) items() []sceneItem { return s.itemsIn(s.at) }
+
+func (s *setup) itemsIn(scene string) []sceneItem {
 	var r struct {
 		Items []sceneItem `json:"sceneItems"`
 	}
-	if s.call("GetSceneItemList", map[string]string{"sceneName": SceneName}, &r) != nil {
+	if s.call("GetSceneItemList", map[string]string{"sceneName": scene}, &r) != nil {
 		return nil
 	}
 	return r.Items
@@ -307,7 +455,7 @@ func (s *setup) overlay(in []input) string {
 			return ""
 		}
 		name := uniqueName(in, OverlayName)
-		if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name,
+		if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name,
 			"inputKind": "browser_source", "inputSettings": settings}, nil); re != nil {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_grafismo", "erro", re.Comment)
 			return ""
@@ -359,10 +507,10 @@ func (s *setup) overlay(in []input) string {
 // show puts the source in the scene (it == nil) or unhides its item.
 func (s *setup) show(it *sceneItem, name string) *RequestError {
 	if it == nil {
-		return s.call("CreateSceneItem", map[string]any{"sceneName": SceneName, "sourceName": name, "sceneItemEnabled": true}, nil)
+		return s.call("CreateSceneItem", map[string]any{"sceneName": s.at, "sourceName": name, "sceneItemEnabled": true}, nil)
 	}
 	if !it.Enabled {
-		return s.call("SetSceneItemEnabled", map[string]any{"sceneName": SceneName, "sceneItemId": it.ID, "sceneItemEnabled": true}, nil)
+		return s.call("SetSceneItemEnabled", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemEnabled": true}, nil)
 	}
 	return nil
 }
@@ -370,6 +518,19 @@ func (s *setup) show(it *sceneItem, name string) *RequestError {
 func uniqueName(in []input, name string) string {
 	taken := func(n string) bool {
 		return slices.ContainsFunc(in, func(x input) bool { return x.Name == n })
+	}
+	out := name
+	for i := 2; taken(out); i++ {
+		out = name + " " + strconv.Itoa(i)
+	}
+	return out
+}
+
+// uniqueSourceName avoids scene names too: OBS names are unique across
+// inputs and scenes.
+func uniqueSourceName(in []input, scenes []string, name string) string {
+	taken := func(n string) bool {
+		return slices.Contains(scenes, n) || slices.ContainsFunc(in, func(x input) bool { return x.Name == n })
 	}
 	out := name
 	for i := 2; taken(out); i++ {
@@ -416,8 +577,11 @@ func deviceName(id string) string {
 
 func (s *setup) camera(in []input) string {
 	st := Step{ID: "camera", Label: i18n.T("obs.setup.camara"), Result: "ok"}
+	if s.n > 1 {
+		st.ID, st.Label = s.id("camera"), i18n.T("obs.setup.camara_n", "n", s.n)
+	}
 	defer func() { s.add(st) }()
-	w := s.want.Camera
+	w := s.cam.Choice
 	byName := func(n string) *input {
 		for i := range in {
 			if in[i].Name == n {
@@ -428,6 +592,13 @@ func (s *setup) camera(in []input) string {
 	}
 	var name, note string
 	switch {
+	case s.n > 1:
+		// Cameras 2 and 3 come from the settings and are never picked here.
+		name = strings.TrimPrefix(w, "source:")
+		if !strings.HasPrefix(w, "source:") || byName(name) == nil {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_n_sumiu", "n", s.n, "camara", name)
+			return ""
+		}
 	case strings.HasPrefix(w, "device:"):
 		id := strings.TrimPrefix(w, "device:")
 		for _, x := range in {
@@ -472,6 +643,12 @@ func (s *setup) camera(in []input) string {
 			return name
 		}
 	}
+	for i, c := range s.rep.Cameras {
+		if c.Source == name {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_repetida", "n", s.n, "outra", i+1)
+			return ""
+		}
+	}
 	it := find(s.items(), name)
 	if it != nil && it.Enabled {
 		if st.Detail == "" {
@@ -480,7 +657,7 @@ func (s *setup) camera(in []input) string {
 		return name
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_fora_cena", "camara", name, "cena", SceneName)
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_fora_cena", "camara", name, "cena", s.at)
 		return name
 	}
 	if re := s.show(it, name); re != nil {
@@ -492,26 +669,34 @@ func (s *setup) camera(in []input) string {
 }
 
 // auto finds the camera with none chosen: a DroidCam source, else a camera
-// already in the scene, else the only choice. With several, the volunteer
-// picks.
+// already in the scene or in the old Hallstream scene, else the only
+// choice. With several, the volunteer picks.
 func (s *setup) auto(st *Step, in []input, note string) string {
-	items := s.items()
+	lists := [][]sceneItem{s.items()}
+	if s.at != SceneName && slices.Contains(s.scenes, SceneName) {
+		lists = append(lists, s.itemsIn(SceneName))
+	}
+	shown := func(name string) bool {
+		return slices.ContainsFunc(lists, func(items []sceneItem) bool { return find(items, name) != nil })
+	}
 	var best string
 	for _, x := range in {
-		if isDroidCam(x) && (best == "" || find(items, x.Name) != nil) {
+		if isDroidCam(x) && (best == "" || shown(x.Name)) {
 			best = x.Name
 		}
 	}
 	if best != "" {
 		return best
 	}
-	for i := len(items) - 1; i >= 0; i-- {
-		if isVideo(items[i].Kind) && items[i].Name != probeName {
-			return items[i].Name
+	for _, items := range lists {
+		for i := len(items) - 1; i >= 0; i-- {
+			if isVideo(items[i].Kind) && items[i].Name != probeName {
+				return items[i].Name
+			}
 		}
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_camara", "cena", SceneName)
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_camara", "cena", s.at)
 		return ""
 	}
 	list := s.choices(in)
@@ -620,7 +805,7 @@ func (s *setup) devices(in []input) []listItem {
 
 func (s *setup) addDevice(st *Step, in []input, id string) string {
 	name := uniqueName(in, deviceName(id))
-	if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name, "inputKind": dshowKind,
+	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": dshowKind,
 		"inputSettings": map[string]any{"video_device_id": id}}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_camara", "camara", name, "erro", re.Comment)
 		return ""
@@ -633,7 +818,7 @@ func (s *setup) addDevice(st *Step, in []input, id string) string {
 // or tablet it sees by cable; over Wi-Fi it needs its IP, set once in OBS.
 func (s *setup) addPlugin(st *Step, in []input) string {
 	name := uniqueName(in, "DroidCam")
-	if re := s.call("CreateInput", map[string]any{"sceneName": SceneName, "inputName": name, "inputKind": PluginKind,
+	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": PluginKind,
 		"inputSettings": map[string]any{}}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_droidcam", "erro", re.Comment)
 		return ""
@@ -655,41 +840,51 @@ func (s *setup) addPlugin(st *Step, in []input) string {
 
 // hideOld hides other cameras in the scene, so the new one is the only one
 // shown. They stay in OBS.
-func (s *setup) hideOld(cam, overlay string) {
+func (s *setup) hideOld(cam, graphics string) {
 	if !s.apply || cam == "" {
 		return
 	}
 	for _, it := range s.items() {
-		if it.Name == cam || it.Name == overlay || !it.Enabled || !(it.Name == s.want.Old || isCapture(it.Kind)) {
+		if it.Name == cam || it.Name == graphics || !it.Enabled || !(it.Name == s.cam.Old || isCapture(it.Kind)) {
 			continue
 		}
-		if s.call("SetSceneItemEnabled", map[string]any{"sceneName": SceneName, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil) == nil {
-			s.add(Step{ID: "old-camera", Label: i18n.T("obs.setup.camara_antiga"), Result: "fixed",
+		if s.call("SetSceneItemEnabled", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil) == nil {
+			s.add(Step{ID: s.id("old-camera"), Label: i18n.T("obs.setup.camara_antiga"), Result: "fixed",
 				Detail: i18n.T("obs.setup.escondi", "fonte", it.Name)})
 		}
 	}
 }
 
-func (s *setup) order(overlay, cam string) {
+// order puts above (the graphics scene, or the overlay in the old layout)
+// in the scene, shown, above the camera.
+func (s *setup) order(above, cam string) {
 	items := s.items()
-	o, c := find(items, overlay), find(items, cam)
-	if o == nil || c == nil {
+	c := find(items, cam)
+	if c == nil {
 		return
 	}
-	st := Step{ID: "order", Label: i18n.T("obs.setup.ordem"), Result: "ok", Detail: i18n.T("obs.setup.ordem_ok")}
+	st := Step{ID: s.id("order"), Label: i18n.T("obs.setup.ordem"), Result: "ok", Detail: i18n.T("obs.setup.ordem_ok")}
 	defer func() { s.add(st) }()
-	if o.Index > c.Index {
+	o := find(items, above)
+	if o != nil && o.Enabled && o.Index > c.Index {
 		return
 	}
 	if !s.apply {
-		st.Result, st.Detail = "failed", i18n.T("obs.setup.ordem_mal")
+		st.Result, st.Detail = "failed", i18n.T("obs.setup.grafismo_na_cena", "cena", s.at, "grafismo", above)
 		return
 	}
-	if re := s.call("SetSceneItemIndex", map[string]any{"sceneName": SceneName, "sceneItemId": o.ID, "sceneItemIndex": len(items) - 1}, nil); re != nil {
+	if re := s.show(o, above); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_ordem", "erro", re.Comment)
 		return
 	}
-	st.Result, st.Detail = "fixed", i18n.T("obs.setup.pus_por_cima")
+	items = s.items()
+	if o, c = find(items, above), find(items, cam); o != nil && c != nil && o.Index < c.Index {
+		if re := s.call("SetSceneItemIndex", map[string]any{"sceneName": s.at, "sceneItemId": o.ID, "sceneItemIndex": len(items) - 1}, nil); re != nil {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_ordem", "erro", re.Comment)
+			return
+		}
+	}
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.pus_grafismo", "grafismo", above, "cena", s.at)
 }
 
 func (s *setup) video(busy bool) {
@@ -727,8 +922,9 @@ func (s *setup) video(busy bool) {
 	st.Result, st.Detail = "fixed", i18n.T("obs.setup.mudei_resolucao", "resolucao", was)
 }
 
-func (s *setup) program(busy bool) {
-	st := Step{ID: "program", Label: i18n.T("obs.setup.no_ar"), Result: "ok", Detail: i18n.T("obs.setup.no_ar_ok", "cena", SceneName)}
+// program wants one of the live scenes on program, else first.
+func (s *setup) program(busy bool, live []string, first string) {
+	st := Step{ID: "program", Label: i18n.T("obs.setup.no_ar"), Result: "ok", Detail: i18n.T("obs.setup.no_ar_ok", "cena", first)}
 	defer func() { s.add(st) }()
 	var sc struct {
 		Name string `json:"sceneName"`
@@ -741,7 +937,8 @@ func (s *setup) program(busy bool) {
 	if cur == "" {
 		cur = sc.Old
 	}
-	if cur == SceneName {
+	if slices.Contains(live, cur) {
+		st.Detail = i18n.T("obs.setup.no_ar_ok", "cena", cur)
 		return
 	}
 	if busy {
@@ -752,11 +949,11 @@ func (s *setup) program(busy bool) {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.no_ar_mal", "cena", cur)
 		return
 	}
-	if re := s.call("SetCurrentProgramScene", map[string]string{"sceneName": SceneName}, nil); re != nil {
+	if re := s.call("SetCurrentProgramScene", map[string]string{"sceneName": first}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_mudou_cena", "erro", re.Comment)
 		return
 	}
-	st.Result, st.Detail = "fixed", i18n.T("obs.setup.mudei_cena", "antes", cur, "cena", SceneName)
+	st.Result, st.Detail = "fixed", i18n.T("obs.setup.mudei_cena", "antes", cur, "cena", first)
 }
 
 // OverlayURL is the overlay's address on port.

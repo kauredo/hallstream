@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/kauredo/hallstream/internal/club"
+	"github.com/kauredo/hallstream/internal/obsws"
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -412,5 +413,51 @@ func TestSportOf(t *testing.T) {
 	s.SaveGame(Game{GroupID: g.ID})
 	if got := s.GameSport(); got != "futsal" {
 		t.Errorf("GameSport on the futsal escalão = %q", got)
+	}
+}
+
+func TestCameraList(t *testing.T) {
+	if got := (OBS{CameraSource: "DroidCam"}).CameraList(); !reflect.DeepEqual(got, []Camera{{Source: "DroidCam"}}) {
+		t.Errorf("old settings: %+v", got)
+	}
+	if got := (OBS{}).CameraList(); !reflect.DeepEqual(got, []Camera{{}}) {
+		t.Errorf("automatic camera: %+v", got)
+	}
+	o := OBS{Cameras: []Camera{{Source: "A"}, {Source: "B"}, {Source: "C"}, {Source: "D"}}}
+	got := o.CameraList()
+	if len(got) != MaxCameras || got[2].Source != "C" {
+		t.Errorf("four cameras: %+v", got)
+	}
+	got[0].Source = "X"
+	if o.Cameras[0].Source != "A" {
+		t.Error("CameraList shares the settings' slice")
+	}
+}
+
+func TestFullFor(t *testing.T) {
+	one, two := &obsws.Full{Fit: "contain"}, &obsws.Full{Fit: "fill"}
+	o := OBS{CameraSource: "DroidCam", CameraFull: one}
+	if o.FullFor("DroidCam") != one || o.FullFor("Tablet") != nil {
+		t.Error("without camera_fulls")
+	}
+	o.CameraFulls = map[string]*obsws.Full{"DroidCam": two, "Tablet": two}
+	if o.FullFor("DroidCam") != two || o.FullFor("Tablet") != two || o.FullFor("Other") != nil {
+		t.Error("with camera_fulls")
+	}
+}
+
+func TestOldSettingsHaveNoCameras(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"obs":{"camera_source":"DroidCam"}}`), 0o644)
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := s.Settings().OBS
+	if o.Cameras != nil || o.GraphicsScene != "" || o.CameraFulls != nil {
+		t.Errorf("new keys not empty: %+v", o)
+	}
+	if got := o.CameraList(); !reflect.DeepEqual(got, []Camera{{Source: "DroidCam"}}) {
+		t.Errorf("CameraList %+v", got)
 	}
 }

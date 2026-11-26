@@ -114,9 +114,9 @@ type Full struct {
 type Camera struct {
 	OBS      *Client
 	Settings func() CameraSettings
-	Save     func(Full)               // keeps a new full-screen placement
-	Show     func(full, window *Rect) // where the picture is, in overlay px; nil when unknown
-	Window   Rect                     // the time-out window, in 1920x1080 overlay px
+	Save     func(source string, f Full) // keeps a source's new full-screen placement
+	Show     func(full, window *Rect)    // where the picture is, in overlay px; nil when unknown
+	Window   Rect                        // the time-out window, in 1920x1080 overlay px
 	Dur      time.Duration
 	Ease     func(float64) float64
 	Step     time.Duration
@@ -256,9 +256,17 @@ type FitReport struct {
 }
 
 // FitNow puts the camera at full screen with the chosen fit, at once.
-func (c *Camera) FitNow() (FitReport, error) {
+func (c *Camera) FitNow() (FitReport, error) { return c.fitIn(c.Settings(), "") }
+
+// FitIn is FitNow for source in scene, on program or not.
+func (c *Camera) FitIn(scene, source string) (FitReport, error) {
 	set := c.Settings()
-	it, err := c.resolve(set)
+	set.Source = source
+	return c.fitIn(set, scene)
+}
+
+func (c *Camera) fitIn(set CameraSettings, scene string) (FitReport, error) {
+	it, err := c.resolveIn(set, scene)
 	if err != nil {
 		return FitReport{}, err
 	}
@@ -310,22 +318,28 @@ func (c *Camera) legacy(set CameraSettings) (bool, error) {
 	return false, nil
 }
 
-func (c *Camera) items(cfg Config) (string, []sceneItem, error) {
-	var sc struct {
-		Name string `json:"sceneName"`
-		Old  string `json:"currentProgramSceneName"`
-	}
-	if err := c.OBS.Request(cfg, "GetCurrentProgramScene", nil, &sc); err != nil {
-		return "", nil, err
-	}
-	if sc.Name == "" {
-		sc.Name = sc.Old
+func (c *Camera) items(cfg Config) (string, []sceneItem, error) { return c.itemsIn(cfg, "") }
+
+// itemsIn lists scene's items; "" is the program scene.
+func (c *Camera) itemsIn(cfg Config, scene string) (string, []sceneItem, error) {
+	if scene == "" {
+		var sc struct {
+			Name string `json:"sceneName"`
+			Old  string `json:"currentProgramSceneName"`
+		}
+		if err := c.OBS.Request(cfg, "GetCurrentProgramScene", nil, &sc); err != nil {
+			return "", nil, err
+		}
+		scene = sc.Name
+		if scene == "" {
+			scene = sc.Old
+		}
 	}
 	var r struct {
 		Items []sceneItem `json:"sceneItems"`
 	}
-	err := c.OBS.Request(cfg, "GetSceneItemList", map[string]string{"sceneName": sc.Name}, &r)
-	return sc.Name, r.Items, err
+	err := c.OBS.Request(cfg, "GetSceneItemList", map[string]string{"sceneName": scene}, &r)
+	return scene, r.Items, err
 }
 
 // pick finds the camera: the named source, else the top shown DroidCam
@@ -364,7 +378,10 @@ func pick(items []sceneItem, name string) *sceneItem {
 	return best
 }
 
-func (c *Camera) resolve(set CameraSettings) (item, error) {
+func (c *Camera) resolve(set CameraSettings) (item, error) { return c.resolveIn(set, "") }
+
+// resolveIn finds the camera in scene; "" is the program scene.
+func (c *Camera) resolveIn(set CameraSettings, scene string) (item, error) {
 	var v struct {
 		W float64 `json:"baseWidth"`
 		H float64 `json:"baseHeight"`
@@ -372,7 +389,7 @@ func (c *Camera) resolve(set CameraSettings) (item, error) {
 	if err := c.OBS.Request(set.Config, "GetVideoSettings", nil, &v); err != nil {
 		return item{}, err
 	}
-	scene, items, err := c.items(set.Config)
+	scene, items, err := c.itemsIn(set.Config, scene)
 	if err != nil {
 		return item{}, err
 	}
@@ -423,7 +440,7 @@ func (c *Camera) full(set CameraSettings, it item) (Place, bool) {
 	}
 	f := Full{Fit(fit, it.srcW, it.srcH, it.canvas), it.srcW, it.srcH, it.canvas.W, it.canvas.H, fit}
 	if c.Save != nil {
-		c.Save(f)
+		c.Save(it.name, f)
 	}
 	return f.Place, true
 }

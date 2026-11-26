@@ -505,8 +505,10 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	req := s.Store.Settings()
-	// Decoding would merge into the steps map the store shares with req.
+	// Decoding would merge into the steps map, the cameras and the
+	// placements the store shares with req.
 	req.FirstSetup = store.FirstSetup{}
+	req.OBS.Cameras, req.OBS.CameraFulls = nil, nil
 	if !decode(w, r, &req) {
 		return
 	}
@@ -545,6 +547,12 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.OBS.CameraFull = cur.OBS.CameraFull
 		if req.OBS.CameraSource != cur.OBS.CameraSource {
 			req.OBS.CameraFull = nil // refit the new camera
+		}
+		// Configurar OBS owns the cameras and their scenes.
+		req.OBS.Cameras, req.OBS.GraphicsScene, req.OBS.CameraFulls = cur.OBS.Cameras, cur.OBS.GraphicsScene, cur.OBS.CameraFulls
+		if req.OBS.CameraSource != cur.OBS.CameraSource && len(req.OBS.Cameras) > 0 {
+			req.OBS.Cameras = slices.Clone(req.OBS.Cameras)
+			req.OBS.Cameras[0].Source = req.OBS.CameraSource
 		}
 		if req.OBS.CameraFit != "fill" {
 			req.OBS.CameraFit = "contain"

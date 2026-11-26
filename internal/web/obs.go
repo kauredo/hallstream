@@ -1,6 +1,7 @@
 package web
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"net"
@@ -43,16 +44,26 @@ func local(host string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// want is the setup's aim; old is the camera before ("" for the saved one).
+// want is the setup's aim: the saved scenes and cameras, with camera as
+// camera 1's choice ("" for the saved one) and old the camera before it
+// ("" for the saved one).
 func (s *Server) want(o store.OBS, camera, old string) obsws.Want {
-	if camera == "" && o.CameraSource != "" {
-		camera = "source:" + o.CameraSource
+	w := obsws.Want{OverlayURL: obsws.OverlayURL(s.Port), OverlayPorts: [2]int{FirstPort, LastPort},
+		Graphics: o.GraphicsScene}
+	for i, c := range o.CameraList() {
+		wc := obsws.WantCamera{Choice: "source:" + c.Source, Scene: c.Scene}
+		if i == 0 {
+			switch {
+			case camera != "":
+				wc.Choice = camera
+			case c.Source == "":
+				wc.Choice = ""
+			}
+			wc.Old = cmp.Or(old, o.CameraSource)
+		}
+		w.Cameras = append(w.Cameras, wc)
 	}
-	if old == "" {
-		old = o.CameraSource
-	}
-	return obsws.Want{OverlayURL: obsws.OverlayURL(s.Port), OverlayPorts: [2]int{FirstPort, LastPort},
-		Camera: camera, Old: old}
+	return w
 }
 
 func (s *Server) obsRoutes() {
@@ -233,6 +244,9 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadGateway, err.Error())
 		return
 	}
+	if !s.save(w, s.saveCameras(rep)) {
+		return
+	}
 	rep.Steps = append([]obsws.Step{st}, rep.Steps...)
 	if yt, on := s.ytSetupStep(); on {
 		rep.Steps = append(rep.Steps, yt)
@@ -253,15 +267,36 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	reply(w, setupReply{rep, rep.Ready})
 }
 
-// fitCamera keeps cam as the camera and fits it. A camera just added may
-// take a few seconds to send a picture.
-func (s *Server) fitCamera(cam string) error {
+// saveCameras keeps the graphics scene and the cameras' scenes and
+// sources a setup ended with. Camera 1's source is also camera_source.
+func (s *Server) saveCameras(rep obsws.Report) error {
 	_, err := s.Store.UpdateSettings(func(set *store.Settings) {
-		if set.OBS.CameraSource != cam {
-			set.OBS.CameraSource, set.OBS.CameraFull = cam, nil
+		o := &set.OBS
+		if rep.Graphics != "" {
+			o.GraphicsScene = rep.Graphics
 		}
-		set.OBS.Enabled = true
+		cams := o.CameraList()
+		for i, c := range rep.Cameras[:min(len(rep.Cameras), len(cams))] {
+			cams[i].Scene = cmp.Or(c.Scene, cams[i].Scene)
+			cams[i].Source = cmp.Or(c.Source, cams[i].Source)
+		}
+		o.Cameras = cams
+		if o.CameraSource != cams[0].Source {
+			o.CameraSource, o.CameraFull = cams[0].Source, nil
+		}
 	})
+	return err
+}
+
+// fitCamera keeps cam as camera n, in scene, and fits it. A camera just
+// added may take a few seconds to send a picture.
+func (s *Server) fitCamera(n int, scene, cam string) error {
+	rep := obsws.Report{Cameras: make([]obsws.ReportCamera, n)}
+	rep.Cameras[n-1] = obsws.ReportCamera{Source: cam, Scene: scene}
+	if err := s.saveCameras(rep); err != nil {
+		return err
+	}
+	_, err := s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = true })
 	if err != nil {
 		return err
 	}
@@ -269,7 +304,7 @@ func (s *Server) fitCamera(cam string) error {
 		return s.camErr
 	}
 	for i := 0; ; i++ {
-		_, err = s.Camera.FitNow()
+		_, err = s.Camera.FitIn(scene, cam)
 		if err == nil || i == 5 {
 			return err
 		}

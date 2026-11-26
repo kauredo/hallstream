@@ -24,6 +24,7 @@
     settings: {
       fpb_base_url: 'https://calendariofpb.pt', phone_access: false, pin: '',
       obs: { enabled: true, host: '127.0.0.1', port: 4455, password: '', timeout_scene: '', game_scene: 'Jogo', camera_source: '', camera_fit: 'contain', camera_full: null,
+        cameras: [{ source: '', scene: '', label: '' }], graphics_scene: '', camera_fulls: {},
         setup_at: '', launch: false, close_on_exit: false },
       start_with_windows: false,
       auto_screens: true, instagram: '', club: { name: 'CASA', short: 'CAS', primary: '#2F4B7C', secondary: '#1C1A17', crest: '/assets/crest.svg', sport: 'basketball', country: 'PT' },
@@ -242,7 +243,7 @@
     if (obsMode === 'off') return { connected: false, error: 'O OBS não responde em 127.0.0.1:4455', health: { checked: false, ready: false, problems: [] }, stream: null };
     var h = obsMode === 'problem'
       ? { checked: true, ready: false, problems: ['A fonte Hallstream overlay está mal: o endereço era http://127.0.0.1:8766/overlay.'] }
-      : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Hallstream não tem câmara.'] }
+      : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Câmara 1 não tem câmara.'] }
       : { checked: true, ready: true, problems: [] };
     return { connected: true, error: '', health: h, stream: streamNow() };
   }
@@ -254,25 +255,29 @@
   function setupReport(b) {
     var step = function (id, label, result, detail) { return { id: id, label: label, result: result, detail: detail }; };
     if (obsMode === 'choose' && !(b && b.camera)) {
-      return { ok: false, ready: false, camera: '', choices: cameras, steps: [
+      return { ok: false, ready: false, camera: '', graphics: 'Grafismo', cameras: [{ source: '', scene: 'Câmara 1' }], choices: cameras, steps: [
         step('websocket', 'Ligação ao OBS', 'ok', 'O OBS responde.'),
-        step('scene', 'Cena Hallstream', 'created', 'Criei a cena Hallstream.'),
+        step('graphics', 'Cena do grafismo (Grafismo)', 'created', 'Criei a cena Grafismo.'),
         step('overlay', 'Grafismo (fonte Navegador)', 'created', 'Criei a fonte Hallstream overlay, 1920x1080, com o som pelo OBS.'),
+        step('scene', 'Cena Câmara 1', 'created', 'Criei a cena Câmara 1.'),
         step('camera', 'Câmara', 'choose', 'O OBS tem várias câmaras. Escolha uma e carregue em Usar esta câmara.'),
         step('video', 'Resolução 1920x1080', 'ok', 'O OBS já está em 1920x1080.'),
-        step('program', 'Cena no ar', 'fixed', 'Mudei o OBS da cena Cena para Hallstream.')] };
+        step('program', 'Cena no ar', 'fixed', 'Mudei o OBS da cena Cena para Câmara 1.')] };
     }
     obsMode = 'ready';
     cameras[0] = { value: 'source:DroidCam Video', type: 'source', label: 'DroidCam Video', droidcam: true };
     db.settings.obs.setup_at = new Date().toISOString(); db.settings.obs.launch = true; db.settings.obs.camera_source = 'DroidCam Video';
-    return { ok: true, ready: true, camera: 'DroidCam Video', steps: [
+    db.settings.obs.graphics_scene = 'Grafismo';
+    db.settings.obs.cameras = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }];
+    return { ok: true, ready: true, camera: 'DroidCam Video', graphics: 'Grafismo', cameras: [{ source: 'DroidCam Video', scene: 'Câmara 1' }], steps: [
       step('websocket', 'Ligação ao OBS', 'fixed', 'Liguei o servidor WebSocket do OBS, com uma palavra-passe nova. Abri o OBS.'),
-      step('scene', 'Cena Hallstream', 'created', 'Criei a cena Hallstream.'),
+      step('graphics', 'Cena do grafismo (Grafismo)', 'created', 'Criei a cena Grafismo.'),
       step('overlay', 'Grafismo (fonte Navegador)', 'fixed', 'Corrigi a fonte Hallstream overlay: o endereço era http://127.0.0.1:8766/overlay, não estava na cena.'),
+      step('scene', 'Cena Câmara 1', 'created', 'Criei a cena Câmara 1.'),
       step('camera', 'Câmara', 'created', 'Juntei a câmara DroidCam Video à cena.'),
-      step('order', 'Grafismo por cima da câmara', 'fixed', 'Pus o grafismo por cima da câmara.'),
+      step('order', 'Grafismo por cima da câmara', 'fixed', 'Pus a cena Grafismo por cima da câmara na cena Câmara 1.'),
       step('video', 'Resolução 1920x1080', 'fixed', 'Mudei a resolução de 1280x720 para 1920x1080.'),
-      step('program', 'Cena no ar', 'ok', 'O OBS mostra a cena Hallstream.'),
+      step('program', 'Cena no ar', 'ok', 'O OBS mostra a cena Câmara 1.'),
       step('fit', 'Câmara ajustada ao ecrã', 'ok', 'A câmara ocupa o ecrã inteiro.')] };
   }
 

@@ -16,11 +16,13 @@ type fake struct {
 	mu      sync.Mutex
 	scenes  []string
 	program string
-	items   []map[string]any // as GetSceneItemList sends them
+	items   []map[string]any            // as GetSceneItemList sends them
+	byScene map[string][]map[string]any // each scene's items instead, when set
 	canvasW int
 	canvasH int
 	sets    []map[string]any // sceneItemTransform of each SetSceneItemTransform
 	asked   []string         // request types in order
+	setIn   []string         // the sceneName of each SetSceneItemTransform
 }
 
 func (f *fake) answer(typ string, d map[string]any) (bool, int, any) {
@@ -42,11 +44,20 @@ func (f *fake) answer(typ string, d map[string]any) (bool, int, any) {
 	case "GetVideoSettings":
 		return true, 100, map[string]any{"baseWidth": f.canvasW, "baseHeight": f.canvasH}
 	case "GetSceneItemList":
+		if f.byScene != nil {
+			return true, 100, map[string]any{"sceneItems": f.byScene[d["sceneName"].(string)]}
+		}
 		return true, 100, map[string]any{"sceneItems": f.items}
 	case "SetSceneItemTransform":
 		id := int(d["sceneItemId"].(float64))
 		tr := d["sceneItemTransform"].(map[string]any)
-		for _, it := range f.items {
+		scene, _ := d["sceneName"].(string)
+		f.setIn = append(f.setIn, scene)
+		items := f.items
+		if f.byScene != nil {
+			items = f.byScene[scene]
+		}
+		for _, it := range items {
 			if it["sceneItemId"] == id {
 				cur := it["sceneItemTransform"].(map[string]any)
 				for k, v := range tr {

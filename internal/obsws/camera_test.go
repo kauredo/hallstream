@@ -2,6 +2,7 @@ package obsws
 
 import (
 	"math"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -109,7 +110,7 @@ func newRig(t *testing.T, srcW, srcH float64) *rig {
 	r.c = &Camera{
 		OBS:      &Client{},
 		Settings: func() CameraSettings { r.mu.Lock(); defer r.mu.Unlock(); return r.set },
-		Save:     func(f Full) { r.mu.Lock(); r.saved = append(r.saved, f); r.set.Full = &f; r.mu.Unlock() },
+		Save:     func(_ string, f Full) { r.mu.Lock(); r.saved = append(r.saved, f); r.set.Full = &f; r.mu.Unlock() },
 		Show:     func(_, w *Rect) { r.mu.Lock(); r.win = w; r.mu.Unlock() },
 		Window:   window,
 		Dur:      150 * time.Millisecond,
@@ -341,6 +342,30 @@ func TestFitNowOtherCanvas(t *testing.T) {
 	// The overlay still gets 1920x1080 px.
 	if r.win == nil || *r.win != window {
 		t.Errorf("overlay window %v", r.win)
+	}
+}
+
+func TestFitInOtherScene(t *testing.T) {
+	r := newRig(t, 1920, 1080)
+	other := item3(1280, 720)
+	cam, graphics := other[1], other[2]
+	cam["sceneItemId"], cam["sceneItemIndex"], cam["sourceName"] = 7, 0, "DroidCam"
+	graphics["sceneItemId"], graphics["sceneItemIndex"], graphics["sourceName"], graphics["inputKind"] = 8, 1, "Grafismo", nil
+	r.f.byScene = map[string][]map[string]any{"Jogo": r.f.items, "Câmara 2": {cam, graphics}}
+	var saved []string
+	r.c.Save = func(source string, _ Full) { saved = append(saved, source) }
+	rep, err := r.c.FitIn("Câmara 2", "DroidCam")
+	if err != nil || rep.Source != "DroidCam" || rep.SourceWidth != 1280 {
+		t.Fatalf("%+v %v", rep, err)
+	}
+	r.wait(t)
+	r.f.mu.Lock()
+	defer r.f.mu.Unlock()
+	if len(r.f.setIn) == 0 || slices.ContainsFunc(r.f.setIn, func(s string) bool { return s != "Câmara 2" }) {
+		t.Errorf("transforms sent to %v", r.f.setIn)
+	}
+	if !slices.Equal(saved, []string{"DroidCam"}) || r.f.program != "Jogo" {
+		t.Errorf("saved %v, program %q", saved, r.f.program)
 	}
 }
 

@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -63,11 +64,23 @@ func (s *Server) newCamera() {
 			return obsws.CameraSettings{
 				Config:  obsws.Config{Host: o.Host, Port: o.Port, Password: o.Password},
 				Enabled: o.Enabled, Source: o.CameraSource, Fit: o.CameraFit,
-				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.CameraFull,
+				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.FullFor(o.CameraSource),
 			}
 		},
-		Save: func(f obsws.Full) {
-			if _, err := s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.CameraFull = &f }); err != nil {
+		Save: func(source string, f obsws.Full) {
+			_, err := s.Store.UpdateSettings(func(set *store.Settings) {
+				fulls := maps.Clone(set.OBS.CameraFulls)
+				if fulls == nil {
+					fulls = map[string]*obsws.Full{}
+				}
+				fulls[source] = &f
+				set.OBS.CameraFulls = fulls
+				// An automatic camera ("") is camera 1 too.
+				if source == set.OBS.CameraSource || set.OBS.CameraSource == "" {
+					set.OBS.CameraFull = &f
+				}
+			})
+			if err != nil {
 				s.Log(i18n.T("log.camara.nao_guardei_posicao", "err", err))
 			}
 		},

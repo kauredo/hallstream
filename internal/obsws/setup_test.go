@@ -1,6 +1,7 @@
 package obsws
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -25,6 +26,7 @@ type model struct {
 	streaming bool
 	next      int
 	writes    []string
+	wroteIn   []string // the sceneName of each write that had one
 	pressed   []string
 }
 
@@ -67,6 +69,12 @@ func (m *model) put(scene, name, kind string, settings map[string]any) {
 	m.items[scene] = append(m.items[scene], &mItem{m.next, name, true})
 }
 
+// nest puts scene child in scene.
+func (m *model) nest(scene, child string) {
+	m.next++
+	m.items[scene] = append(m.items[scene], &mItem{m.next, child, true})
+}
+
 func (m *model) item(scene string, id int) (int, *mItem) {
 	for i, it := range m.items[scene] {
 		if it.id == id {
@@ -87,10 +95,13 @@ func copyMap(in map[string]any) map[string]any {
 func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	sname, _ := d["sceneName"].(string)
 	if !strings.HasPrefix(typ, "Get") {
 		m.writes = append(m.writes, typ)
+		if sname != "" {
+			m.wroteIn = append(m.wroteIn, sname)
+		}
 	}
-	sname, _ := d["sceneName"].(string)
 	iname, _ := d["inputName"].(string)
 	id := 0
 	if f, ok := d["sceneItemId"].(float64); ok {
@@ -108,7 +119,7 @@ func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 		}
 		return true, 100, map[string]any{"scenes": list}
 	case "CreateScene":
-		if slices.Contains(m.scenes, sname) {
+		if slices.Contains(m.scenes, sname) || m.input(sname) != nil {
 			return false, 601, nil
 		}
 		m.scenes = append(m.scenes, sname)
@@ -139,8 +150,12 @@ func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 		}
 		var list []map[string]any
 		for i, it := range m.items[sname] {
-			list = append(list, map[string]any{"sceneItemId": it.id, "sceneItemIndex": i, "sourceName": it.source,
-				"inputKind": m.input(it.source).kind, "sceneItemEnabled": it.enabled})
+			item := map[string]any{"sceneItemId": it.id, "sceneItemIndex": i, "sourceName": it.source,
+				"inputKind": nil, "sourceType": "OBS_SOURCE_TYPE_SCENE", "sceneItemEnabled": it.enabled}
+			if in := m.input(it.source); in != nil {
+				item["inputKind"], item["sourceType"] = in.kind, "OBS_SOURCE_TYPE_INPUT"
+			}
+			list = append(list, item)
 		}
 		return true, 100, map[string]any{"sceneItems": list}
 	case "CreateInput":
@@ -189,6 +204,9 @@ func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 		return true, 100, nil
 	case "CreateSceneItem":
 		src, _ := d["sourceName"].(string)
+		if m.input(src) == nil && !slices.Contains(m.scenes, src) {
+			return false, NotFound, nil
+		}
 		m.next++
 		m.items[sname] = append(m.items[sname], &mItem{m.next, src, true})
 		return true, 100, map[string]any{"sceneItemId": m.next}
@@ -246,30 +264,63 @@ func device(name string) map[string]any {
 }
 
 type run struct {
-	t      *testing.T
-	m      *model
-	cfg    Config
-	c      Client
-	fitted []string
+	t        *testing.T
+	m        *model
+	cfg      Config
+	c        Client
+	fitted   []string // the sources fitted
+	fits     []string // "n scene source" of each fit
+	graphics string   // the saved scenes, as the server keeps them
+	scenes   []string
+	extra    []string // the choices of cameras 2 and 3
 }
 
 func newRun(t *testing.T, m *model) *run {
 	return &run{t: t, m: m, cfg: fakeOBS(t, "", m)}
 }
 
+func (r *run) want(camera, old string) Want {
+	w := Want{OverlayURL: overlayURL, OverlayPorts: [2]int{8765, 8775}, Graphics: r.graphics}
+	for i, choice := range append([]string{camera}, r.extra...) {
+		c := WantCamera{Choice: choice}
+		if i == 0 {
+			c.Old = old
+		}
+		if i < len(r.scenes) {
+			c.Scene = r.scenes[i]
+		}
+		w.Cameras = append(w.Cameras, c)
+	}
+	return w
+}
+
 func (r *run) setup(camera, old string) Report {
 	r.t.Helper()
-	rep, err := r.c.Setup(r.cfg, Want{OverlayURL: overlayURL, OverlayPorts: [2]int{8765, 8775}, Camera: camera, Old: old}, true,
-		func(cam string) error { r.fitted = append(r.fitted, cam); return nil })
+	rep, err := r.c.Setup(r.cfg, r.want(camera, old), true, func(n int, scene, cam string) error {
+		r.fitted = append(r.fitted, cam)
+		r.fits = append(r.fits, fmt.Sprintf("%d %s %s", n, scene, cam))
+		return nil
+	})
 	if err != nil {
 		r.t.Fatal(err)
+	}
+	if rep.Graphics != "" {
+		r.graphics = rep.Graphics
+	}
+	for i, c := range rep.Cameras {
+		if i == len(r.scenes) {
+			r.scenes = append(r.scenes, "")
+		}
+		if c.Scene != "" {
+			r.scenes[i] = c.Scene
+		}
 	}
 	return rep
 }
 
 func (r *run) health(camera string) Report {
 	r.t.Helper()
-	rep, err := r.c.Setup(r.cfg, Want{OverlayURL: overlayURL, OverlayPorts: [2]int{8765, 8775}, Camera: camera}, false, nil)
+	rep, err := r.c.Setup(r.cfg, r.want(camera, ""), false, nil)
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -333,19 +384,22 @@ func TestSetupEmptyWithVirtualWebcam(t *testing.T) {
 		t.Fatalf("health of an empty OBS %+v", h)
 	}
 	rep := r.setup("", "")
-	wantResults(t, rep, map[string]string{"scene": "created", "overlay": "created", "camera": "created",
+	wantResults(t, rep, map[string]string{"graphics": "created", "scene": "created", "overlay": "created", "camera": "created",
 		"order": "fixed", "video": "fixed", "program": "fixed", "fit": "ok"})
 	if !rep.Ready || rep.Camera != "DroidCam Video" || !slices.Equal(r.fitted, []string{"DroidCam Video"}) {
 		t.Errorf("ready %v camera %q fitted %v", rep.Ready, rep.Camera, r.fitted)
 	}
-	if got := m.order(SceneName); !slices.Equal(got, []string{"DroidCam Video", OverlayName}) {
+	if got := m.order(r.scenes[0]); !slices.Equal(got, []string{"DroidCam Video", r.graphics}) {
 		t.Errorf("scene %v", got)
+	}
+	if got := m.order(r.graphics); !slices.Equal(got, []string{OverlayName}) {
+		t.Errorf("graphics %v", got)
 	}
 	ov := m.input(OverlayName).settings
 	if ov["url"] != overlayURL || ov["width"] != 1920.0 || ov["height"] != 1080.0 || ov["reroute_audio"] != true {
 		t.Errorf("overlay %v", ov)
 	}
-	if m.input(probeName) != nil || m.program != SceneName || m.baseW != 1920 || m.outH != 1080 {
+	if m.input(probeName) != nil || m.program != r.scenes[0] || m.baseW != 1920 || m.outH != 1080 {
 		t.Errorf("probe left, program %q, canvas %dx%d", m.program, m.baseW, m.baseH)
 	}
 	if id := m.input("DroidCam Video").settings["video_device_id"]; id != device("DroidCam Video")["itemValue"] {
@@ -362,7 +416,7 @@ func TestSetupExistingUserSetup(t *testing.T) {
 	m.program = "Jogo"
 	r := newRun(t, m)
 	rep := r.setup("", "")
-	wantResults(t, rep, map[string]string{"scene": "created", "overlay": "fixed", "camera": "fixed", "order": "fixed", "program": "fixed"})
+	wantResults(t, rep, map[string]string{"graphics": "created", "scene": "created", "overlay": "fixed", "camera": "fixed", "order": "fixed", "program": "fixed"})
 	if rep.Camera != "Tablet" {
 		t.Errorf("camera %q", rep.Camera)
 	}
@@ -372,8 +426,11 @@ func TestSetupExistingUserSetup(t *testing.T) {
 	if got := m.order("Jogo"); !slices.Equal(got, []string{"Tablet", "Grafismo", "Logo"}) {
 		t.Errorf("user scene changed: %v", got)
 	}
-	if got := m.order(SceneName); !slices.Equal(got, []string{"Tablet", "Grafismo"}) {
+	if got := m.order(r.scenes[0]); !slices.Equal(got, []string{"Tablet", r.graphics}) {
 		t.Errorf("scene %v", got)
+	}
+	if got := m.order(r.graphics); !slices.Equal(got, []string{"Grafismo"}) {
+		t.Errorf("graphics %v", got)
 	}
 	r.again("source:Tablet")
 }
@@ -446,8 +503,11 @@ func TestSetupSwapCamera(t *testing.T) {
 	m.put("Outra", "Câmara HDMI", "dshow_input", map[string]any{"video_device_id": "Cam Link 4K:x"})
 	rep := r.setup("source:Câmara HDMI", "DroidCam Video")
 	wantResults(t, rep, map[string]string{"camera": "fixed", "old-camera": "fixed", "order": "fixed"})
-	if got := m.order(SceneName); !slices.Equal(got, []string{"(DroidCam Video)", "Câmara HDMI", OverlayName}) {
+	if got := m.order(r.scenes[0]); !slices.Equal(got, []string{"(DroidCam Video)", "Câmara HDMI", r.graphics}) {
 		t.Errorf("scene %v", got)
+	}
+	if got := m.order(r.graphics); !slices.Equal(got, []string{OverlayName}) {
+		t.Errorf("graphics %v", got)
 	}
 	if m.input("DroidCam Video") == nil || r.fitted[len(r.fitted)-1] != "Câmara HDMI" {
 		t.Errorf("old camera removed or new not fitted: %v", r.fitted)
@@ -515,7 +575,221 @@ func TestSetupSwapFromNDI(t *testing.T) {
 	r := newRun(t, m)
 	r.setup("source:NDI Bancada", "")
 	r.setup("source:Webcam", "NDI Bancada")
-	if got := m.order(SceneName); !slices.Equal(got, []string{"(NDI Bancada)", "Webcam", OverlayName}) {
+	if got := m.order(r.scenes[0]); !slices.Equal(got, []string{"(NDI Bancada)", "Webcam", r.graphics}) {
 		t.Errorf("scene %v", got)
+	}
+	if got := m.order(r.graphics); !slices.Equal(got, []string{OverlayName}) {
+		t.Errorf("graphics %v", got)
+	}
+}
+
+func TestSetupBuildsGraphicsAndCameraScene(t *testing.T) {
+	m := newModel()
+	m.devices = []map[string]any{device("Webcam")}
+	r := newRun(t, m)
+	rep := r.setup("", "")
+	if !rep.Ready || !slices.Contains(m.scenes, "Grafismo") || !slices.Contains(m.scenes, "Câmara 1") {
+		t.Fatalf("ready %v scenes %v %v", rep.Ready, m.scenes, rep.Problems())
+	}
+	if got := m.order("Grafismo"); !slices.Equal(got, []string{OverlayName}) {
+		t.Errorf("Grafismo %v", got)
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"Webcam", "Grafismo"}) {
+		t.Errorf("Câmara 1 %v", got)
+	}
+	if m.program != "Câmara 1" || rep.Graphics != "Grafismo" || !slices.Equal(rep.Cameras, []ReportCamera{{"Webcam", "Câmara 1"}}) {
+		t.Errorf("program %q graphics %q cameras %v", m.program, rep.Graphics, rep.Cameras)
+	}
+	r.again("source:Webcam")
+}
+
+// oldLayout is OBS as 0.1 left it: Hallstream with the camera and the overlay, on program.
+func oldLayout() *model {
+	m := newModel()
+	m.put(SceneName, "Tablet", "dshow_input", map[string]any{"video_device_id": "Tablet:x"})
+	m.put(SceneName, OverlayName, "browser_source", map[string]any{"url": overlayURL, "width": 1920.0, "height": 1080.0, "reroute_audio": true})
+	m.program = SceneName
+	return m
+}
+
+func TestSetupFromOldLayout(t *testing.T) {
+	m := oldLayout()
+	r := newRun(t, m)
+	rep := r.setup("source:Tablet", "")
+	if !rep.Ready {
+		t.Errorf("not ready: %v", rep.Problems())
+	}
+	if got := m.order(SceneName); !slices.Equal(got, []string{"Tablet", OverlayName}) {
+		t.Errorf("Hallstream changed: %v", got)
+	}
+	if slices.Contains(m.wroteIn, SceneName) {
+		t.Errorf("wrote to Hallstream: %v %v", m.writes, m.wroteIn)
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"Tablet", "Grafismo"}) {
+		t.Errorf("Câmara 1 %v", got)
+	}
+	if got := m.order("Grafismo"); !slices.Equal(got, []string{OverlayName}) {
+		t.Errorf("Grafismo %v", got)
+	}
+	if m.program != "Câmara 1" {
+		t.Errorf("program %q", m.program)
+	}
+	r.again("source:Tablet")
+}
+
+func TestSetupThreeCameras(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B", "C"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := newRun(t, m)
+	r.extra = []string{"source:B", "source:C"}
+	rep := r.setup("source:A", "")
+	if !rep.Ready {
+		t.Errorf("not ready: %v", rep.Problems())
+	}
+	for i, n := range []string{"A", "B", "C"} {
+		scene := fmt.Sprintf("Câmara %d", i+1)
+		if got := m.order(scene); !slices.Equal(got, []string{n, "Grafismo"}) {
+			t.Errorf("%s %v", scene, got)
+		}
+	}
+	if want := []string{"1 Câmara 1 A", "2 Câmara 2 B", "3 Câmara 3 C"}; !slices.Equal(r.fits, want) {
+		t.Errorf("fits %v", r.fits)
+	}
+	wantResults(t, rep, map[string]string{"camera-2": "fixed", "order-3": "fixed", "fit-3": "ok"})
+	r.again("source:A")
+}
+
+func TestSetupCameraTwoGone(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	rep := r.setup("source:A", "")
+	if results(rep)["camera-2"] != "failed" || !strings.Contains(detail(rep, "camera-2"), "câmara 2 (B) já não existe") || rep.Ready {
+		t.Errorf("camera-2 %s %q ready %v", results(rep)["camera-2"], detail(rep, "camera-2"), rep.Ready)
+	}
+	if results(rep)["camera"] != "fixed" || !slices.Equal(m.order("Câmara 1"), []string{"A", "Grafismo"}) || !slices.Equal(r.fits, []string{"1 Câmara 1 A"}) {
+		t.Errorf("camera 1 %s %v fits %v", results(rep)["camera"], m.order("Câmara 1"), r.fits)
+	}
+}
+
+func TestSetupSameSourceTwice(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	r := newRun(t, m)
+	r.extra = []string{"source:A"}
+	rep := r.setup("source:A", "")
+	if results(rep)["camera-2"] != "failed" || !strings.Contains(detail(rep, "camera-2"), "câmara 1") || rep.Ready {
+		t.Errorf("camera-2 %s %q", results(rep)["camera-2"], detail(rep, "camera-2"))
+	}
+	if len(m.order("Câmara 2")) != 0 {
+		t.Errorf("Câmara 2 %v", m.order("Câmara 2"))
+	}
+}
+
+func TestSetupNameTaken(t *testing.T) {
+	m := newModel()
+	m.put("Jogo", "Tablet", "dshow_input", map[string]any{"video_device_id": "Tablet:x"})
+	m.put("Jogo", "Grafismo", "browser_source", map[string]any{"url": overlayURL, "width": 1920.0, "height": 1080.0, "reroute_audio": true})
+	m.put("Câmara 1", "Logo", "image_source", map[string]any{})
+	r := newRun(t, m)
+	rep := r.setup("", "")
+	if rep.Graphics != "Grafismo 2" || len(rep.Cameras) != 1 || rep.Cameras[0].Scene != "Câmara 1 2" || !rep.Ready {
+		t.Fatalf("graphics %q cameras %v %v", rep.Graphics, rep.Cameras, rep.Problems())
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"Logo"}) || slices.Contains(m.wroteIn, "Câmara 1") {
+		t.Errorf("the user's Câmara 1 changed: %v", got)
+	}
+	if got := m.order("Câmara 1 2"); !slices.Equal(got, []string{"Tablet", "Grafismo 2"}) {
+		t.Errorf("Câmara 1 2 %v", got)
+	}
+	r.again("source:Tablet")
+}
+
+func TestSetupSavedNamesWin(t *testing.T) {
+	m := newModel()
+	m.put("Graphics", OverlayName, "browser_source", map[string]any{"url": overlayURL, "width": 1920.0, "height": 1080.0, "reroute_audio": true})
+	m.put("Camera 1", "Webcam", "dshow_input", map[string]any{"video_device_id": "Webcam:x"})
+	m.nest("Camera 1", "Graphics")
+	m.program = "Camera 1"
+	r := newRun(t, m)
+	r.graphics, r.scenes = "Graphics", []string{"Camera 1"}
+	r.again("source:Webcam")
+	if slices.Contains(m.scenes, "Grafismo") || slices.Contains(m.scenes, "Câmara 1") {
+		t.Errorf("made new scenes: %v", m.scenes)
+	}
+}
+
+func TestSetupKeepsCameraTwoLive(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	m.put("Cena", "B", "dshow_input", map[string]any{"video_device_id": "B:x"})
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	r.setup("source:A", "")
+	m.program = r.scenes[1]
+	r.again("source:A")
+	if m.program != "Câmara 2" {
+		t.Errorf("program %q", m.program)
+	}
+}
+
+func TestSetupStreamingKeepsProgram(t *testing.T) {
+	m := oldLayout()
+	m.streaming = true
+	r := newRun(t, m)
+	rep := r.setup("source:Tablet", "")
+	if results(rep)["program"] != "later" || !rep.Ready {
+		t.Errorf("program %s ready %v %v", results(rep)["program"], rep.Ready, rep.Problems())
+	}
+	if slices.Contains(m.writes, "SetCurrentProgramScene") || m.program != SceneName {
+		t.Errorf("switched scene while streaming: %q", m.program)
+	}
+	if !slices.Equal(m.order("Câmara 1"), []string{"Tablet", "Grafismo"}) || !slices.Equal(m.order("Grafismo"), []string{OverlayName}) {
+		t.Errorf("Câmara 1 %v Grafismo %v", m.order("Câmara 1"), m.order("Grafismo"))
+	}
+}
+
+func TestHealthOldLayoutReady(t *testing.T) {
+	m := oldLayout()
+	r := newRun(t, m)
+	if h := r.health("source:Tablet"); !h.Ready {
+		t.Errorf("health %v", h.Problems())
+	}
+	if w := m.wrote(); len(w) != 0 {
+		t.Errorf("health wrote %v", w)
+	}
+}
+
+func TestHealthOldLayoutTwoCameras(t *testing.T) {
+	m := oldLayout()
+	m.put("Cena", "B", "dshow_input", map[string]any{"video_device_id": "B:x"})
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	if h := r.health("source:Tablet"); h.Ready {
+		t.Error("two cameras: the old layout counted as ready")
+	}
+}
+
+func TestHealthOldLayoutBroken(t *testing.T) {
+	m := newModel()
+	m.put(SceneName, "Tablet", "dshow_input", map[string]any{"video_device_id": "Tablet:x"})
+	m.program = SceneName
+	r := newRun(t, m)
+	h := r.health("source:Tablet")
+	if h.Ready || !strings.Contains(strings.Join(h.Problems(), " "), "Grafismo") {
+		t.Errorf("health %v", h.Problems())
+	}
+}
+
+func TestHealthAfterStreamingSetup(t *testing.T) {
+	m := oldLayout()
+	m.streaming = true
+	r := newRun(t, m)
+	r.setup("source:Tablet", "")
+	if h := r.health("source:Tablet"); !h.Ready {
+		t.Errorf("health %v", h.Problems())
 	}
 }

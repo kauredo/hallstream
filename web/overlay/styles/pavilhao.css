@@ -82,9 +82,10 @@ html[data-style="pavilhao"] .sb { align-items: stretch; filter: drop-shadow(0 4p
 html[data-style="pavilhao"] .sb-edge { display: none; }
 html[data-style="pavilhao"] .sb-teams { position: relative; width: 296px; background: var(--mt-board); }
 /* No title strip; the head keeps the dead-link dot and, in a sets sport, names the set over the home name. */
-html[data-style="pavilhao"] .sb-head { position: absolute; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; box-shadow: none; }
+html[data-style="pavilhao"] .sb-head { position: absolute; z-index: 2; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; box-shadow: none; }
+html[data-style="pavilhao"] .sb-dot { top: 3px; right: 4px; box-shadow: 0 0 0 2px var(--ink); }
 html[data-style="pavilhao"] .sb-head > span:first-child > :not(span.only-sets) { display: none; }
-html[data-style="pavilhao"] .sb-head > span:first-child { position: absolute; left: 66px; top: 6px; padding: 0; color: var(--ink); opacity: 0.75; }
+html[data-style="pavilhao"] .sb-head > span:first-child { position: absolute; left: 70px; top: 6px; padding: 0; color: var(--ink); opacity: 0.75; }
 html[data-style="pavilhao"] .sb-head .only-sets[data-b="periodShort"],
 html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per, html[data-style="pavilhao"] .sb-shot span {
   font-weight: 800; font-stretch: 85%; font-size: 13px; line-height: 1; letter-spacing: 0.06em;
@@ -109,7 +110,7 @@ html[data-style="pavilhao"] .tos i { width: 14px; height: 6px; box-sizing: borde
 html[data-style="pavilhao"] .tos i.on { background: currentColor; }
 html[data-style="pavilhao"] .sb-row .nm,
 html[data-style="pavilhao"] .sb-row.home .nm, html[data-style="pavilhao"] .sb-row.away .nm {
-  width: 136px; height: 52px; padding: 3px 8px 0 14px; background: transparent; box-shadow: none; color: var(--ink);
+  width: 136px; height: 52px; padding: 3px 8px 0 18px; background: transparent; box-shadow: inset 4px 0 0 var(--mt-line); color: var(--ink);
   font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; letter-spacing: 0;
 }
 html[data-style="pavilhao"][data-scoring="sets"] .sb-row.home .nm { padding-top: 17px; }
@@ -149,7 +150,7 @@ html[data-style="pavilhao"] .sb-f .bonus {
 }
 html[data-style="pavilhao"] .sb-f.bonus .bonus { display: flex; }
 /* Handball: the players out, the soonest return and the shirt number, one size, the score bigger still. */
-html[data-style="pavilhao"][data-penalties="suspensions"] .sb-fouls { width: 168px; }
+html[data-style="pavilhao"][data-penalties="suspensions"] .sb-fouls { width: 184px; }
 html[data-style="pavilhao"] .susp .out { align-items: center; gap: 10px; }
 html[data-style="pavilhao"] .susp .out b { font-weight: 800; font-stretch: 75%; font-size: 30px; }
 html[data-style="pavilhao"] .susp time, html[data-style="pavilhao"] .susp time.soon { color: #FFFFFF; font-weight: 600; font-size: 30px; }
@@ -167,7 +168,8 @@ html[data-style="pavilhao"] .sb-shot { width: auto; height: 40px; gap: 8px; back
 html[data-style="pavilhao"] .sb-shot span { color: var(--mt-label); }
 html[data-style="pavilhao"] .sb-shot b,
 html[data-style="pavilhao"][data-penalties="cards"] .sb-shot.sb-add b { font-weight: 800; font-stretch: 75%; font-size: 30px; color: #FFFFFF; }
-html[data-style="pavilhao"] .sb-shot b.hot { background: none; padding: 0; box-shadow: none; color: var(--gold); }
+/* A running-out shot clock is a chip of the accent with ink on it, so a white accent still differs from plain white. */
+html[data-style="pavilhao"] .sb-shot b.hot { background: var(--gold); color: var(--ink); padding: 0 4px; box-shadow: none; }
 /* Volleyball: the finished sets on the team rows, headed like the stat cell. */
 html[data-style="pavilhao"][data-scoring="sets"] .sb-time { position: relative; padding: 0; }
 html[data-style="pavilhao"][data-scoring="sets"] .sb-per { position: absolute; left: 0; right: 0; top: 6px; text-align: center; }

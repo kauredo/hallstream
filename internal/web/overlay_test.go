@@ -524,3 +524,31 @@ func TestOverlayTimeoutMarks(t *testing.T) {
 		})
 	}
 }
+
+// With the box gone the grey dot shows on the scoreboard, on top of every cell.
+func TestOverlayDeadLinkDotShows(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	// The overlay takes no pointer events and the hidden screens lie over it, transparent; the probe
+	// turns pointer events on and looks for the topmost element of the scoreboard screen.
+	const onTop = `(() => {
+		if (!document.getElementById('probe')) document.head.insertAdjacentHTML('beforeend', '<style id="probe">* { pointer-events: auto !important; }</style>');
+		const scr = document.getElementById('s-marcador'), dot = scr.querySelector('.sb-dot'), r = dot.getBoundingClientRect();
+		const top = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find((e) => scr.contains(e) && e !== scr);
+		return r.width > 0 && getComputedStyle(dot).opacity === '1' && top === dot;
+	})()`
+	for _, style := range []string{"classico", "lombada", "cor", "placa", "pavilhao"} {
+		t.Run(style, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador-edge.json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fmt.Sprintf(screenIs, "marcador")+" && "+dotOn); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, onTop); err != nil {
+				t.Errorf("the dead-link dot is hidden: %v", err)
+			}
+		})
+	}
+}

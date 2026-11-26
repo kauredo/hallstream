@@ -324,3 +324,44 @@ func TestOverlayHandballBugStaysInFrame(t *testing.T) {
 		}
 	}
 }
+
+// Two-digit shirt numbers and a return at 01:59 keep each suspension line inside its cell, at least
+// 4 px from its edge, and
+// handball's bug stays within basketball's width + 10%.
+func TestOverlayHandballSuspensionsFit(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	width := func(style, fx string) float64 {
+		if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, fmt.Sprintf(screenIs, "marcador")+` && document.fonts.status === "loaded"`); err != nil {
+			t.Fatal(err)
+		}
+		w, err := chromedp.Run(tab, chromedp.Evaluate[float64](`document.querySelector('.sb').getBoundingClientRect().width`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return w
+	}
+	for _, style := range store.Styles {
+		t.Run(style, func(t *testing.T) {
+			basket := width(style, "marcador")
+			hand := width(style, "handball/marcador-exclusoes-largo")
+			spill, err := chromedp.Run(tab, chromedp.Evaluate[string](`JSON.stringify([...document.querySelectorAll('[data-susp] .out')].map((o) => {
+				const cell = o.closest('.sb-f').getBoundingClientRect(), r = o.getBoundingClientRect();
+				return Math.round(r.right - cell.right);
+			}).filter((d) => d > -4))`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if spill != "[]" {
+				t.Errorf("a suspension line ends this many px from its cell's edge or past it (want under -4): %s", spill)
+			}
+			if hand > basket*1.1 {
+				t.Errorf("handball's bug is %.0f px wide, basketball's %.0f px", hand, basket)
+			}
+		})
+	}
+}

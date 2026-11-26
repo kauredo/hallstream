@@ -565,7 +565,7 @@ func TestOverlayDeadLinkDotShows(t *testing.T) {
 }
 
 // Placa fits a three-digit score in its cell and keeps the clock panel's width when the clock shows
-// tenths; on Placa and Pavilhão a sets sport names the current set at the head of the clock panel.
+// tenths; on Placa and Pavilhão a sets sport names the current set over the names and heads the set list PARCIAIS.
 func TestOverlayPlateAndCourtBugs(t *testing.T) {
 	tab := chrome(t)
 	srv := httptest.NewServer(newServerFiles(t, assets.FS))
@@ -604,12 +604,13 @@ func TestOverlayPlateAndCourtBugs(t *testing.T) {
 	for _, style := range []string{"placa", "pavilhao"} {
 		t.Run(style+"/set name", func(t *testing.T) {
 			got := eval(style, "volleyball/marcador", `(() => {
-				const scr = document.getElementById('s-marcador'), s = scr.querySelector('.sb-head [data-b="periodShort"]').getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
-				const centred = Math.abs((s.left + s.right) / 2 - (p.left + p.right) / 2) < 2 && s.top >= p.top && s.bottom <= p.bottom;
-				return scr.querySelector('.sb-head [data-b="periodShort"]').textContent + ' ' + centred + ' ' + getComputedStyle(scr.querySelector('.sb-per')).visibility;
+				const scr = document.getElementById('s-marcador'), set = scr.querySelector('.sb-head [data-b="periodShort"]'), per = scr.querySelector('.sb-per');
+				const s = set.getBoundingClientRect(), r = scr.querySelector('.sb-row.home').getBoundingClientRect(), teams = scr.querySelector('.sb-teams').getBoundingClientRect();
+				const overNames = s.width > 0 && s.right <= teams.right && s.top >= r.top && s.bottom <= (r.top + r.bottom) / 2;
+				return set.textContent + ' ' + overNames + ' ' + per.textContent + ' ' + getComputedStyle(per).visibility;
 			})()`)
-			if got != "SET 3 true hidden" {
-				t.Errorf("set name, whether it heads the clock panel, the panel's own heading: %q, want \"SET 3 true hidden\"", got)
+			if got != "SET 3 true PARCIAIS visible" {
+				t.Errorf("set name, whether it sits over the names, the panel's heading: %q, want \"SET 3 true PARCIAIS visible\"", got)
 			}
 		})
 	}

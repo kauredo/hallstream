@@ -82,11 +82,11 @@ html[data-style="pavilhao"] .sb { align-items: stretch; filter: drop-shadow(0 4p
 html[data-style="pavilhao"] .sb-edge { display: none; }
 html[data-style="pavilhao"] .sb-teams { width: 296px; background: var(--mt-board); }
 /* No title strip. The head's box spans the bug: it keeps the dead-link dot in the clock cell's top right corner
-   and, in a sets sport, names the set at the head of the clock cell, in place of the set list's own heading. */
+   and, in a sets sport, names the set over the home name. */
 html[data-style="pavilhao"] .sb-head { position: absolute; z-index: 2; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; box-shadow: none; }
 html[data-style="pavilhao"] .sb-dot { top: 7px; right: 6px; box-shadow: 0 0 0 2px var(--ink); }
 html[data-style="pavilhao"] .sb-head > span:first-child > :not(span.only-sets) { display: none; }
-html[data-style="pavilhao"] .sb-head > span:first-child { position: absolute; right: 0; top: 6px; width: 136px; padding: 0; text-align: center; color: var(--mt-label); }
+html[data-style="pavilhao"] .sb-head > span:first-child { position: absolute; left: 70px; top: 6px; padding: 0; color: var(--ink); opacity: 0.75; }
 html[data-style="pavilhao"] .sb-head .only-sets[data-b="periodShort"],
 html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per, html[data-style="pavilhao"] .sb-shot span {
   font-weight: 800; font-stretch: 85%; font-size: 13px; line-height: 1; letter-spacing: 0.06em;
@@ -114,6 +114,7 @@ html[data-style="pavilhao"] .sb-row.home .nm, html[data-style="pavilhao"] .sb-ro
   width: 136px; height: 52px; padding: 3px 8px 0 18px; background: transparent; box-shadow: inset 4px 0 0 var(--mt-line); color: var(--ink);
   font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; letter-spacing: 0;
 }
+html[data-style="pavilhao"][data-scoring="sets"] .sb-row.home .nm { padding-top: 17px; }
 html[data-style="pavilhao"] .sb-row.serving .nm { padding-right: 34px; }
 html[data-style="pavilhao"] .sb-row.serving .nm::after { box-shadow: 0 0 0 2px var(--ink); }
 html[data-style="pavilhao"] .sb-row .sc {
@@ -172,7 +173,7 @@ html[data-style="pavilhao"][data-penalties="cards"] .sb-shot.sb-add b { font-wei
 html[data-style="pavilhao"] .sb-shot b.hot { background: var(--gold); color: var(--ink); padding: 0 4px; box-shadow: none; }
 /* Volleyball: the finished sets on the team rows, headed like the stat cell. */
 html[data-style="pavilhao"][data-scoring="sets"] .sb-time { position: relative; padding: 0; }
-html[data-style="pavilhao"][data-scoring="sets"] .sb-per { position: absolute; visibility: hidden; }
+html[data-style="pavilhao"][data-scoring="sets"] .sb-per { position: absolute; left: 0; right: 0; top: 6px; text-align: center; }
 html[data-style="pavilhao"][data-scoring="sets"] .sb-tbox { align-self: stretch; flex: 1; justify-content: center; }
 html[data-style="pavilhao"] .sb-setlist .sr { height: 52px; padding-top: 17px; font-weight: 800; font-stretch: 75%; font-size: 22px; }
 html[data-style="pavilhao"] .sb-setlist .sr > div { padding: 0 4px; }

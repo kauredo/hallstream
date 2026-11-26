@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kauredo/hallstream/internal/obsws"
@@ -150,5 +152,45 @@ func TestSetupSavesTheList(t *testing.T) {
 	want := []store.Camera{{Source: "A", Scene: "Câmara 1", Label: "Campo"}, {Source: "C", Scene: "Câmara 3"}}
 	if !slices.Equal(o.Cameras, want) || o.TimeoutCamera != 2 {
 		t.Errorf("cameras %+v timeout_camera %d", o.Cameras, o.TimeoutCamera)
+	}
+}
+
+// The QR code holds the phone's push link, a secret: other devices need the
+// PIN, and nothing keeps a copy.
+func TestPhoneQR(t *testing.T) {
+	s := newServer(t)
+	s.Store.UpdateSettings(func(set *store.Settings) {
+		set.PhoneAccess, set.PIN = true, "1234"
+		set.OBS.Cameras = []store.Camera{{Source: "DroidCam"}, {Source: "Telemóvel 1", Vdo: "abc"}}
+	})
+	get := func(path, from, host, pin string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", path, nil)
+		req.RemoteAddr, req.Host = from, host
+		if pin != "" {
+			req.Header.Set("X-PIN", pin)
+		}
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, req)
+		return w
+	}
+	const qr2, phone, pc, here = "/api/obs/cameras/2/qr.svg", "192.168.1.20:5000", "127.0.0.1:5000", "127.0.0.1:8765"
+	if w := get(qr2, phone, here, ""); w.Code != http.StatusUnauthorized {
+		t.Errorf("phone without the PIN: %d", w.Code)
+	}
+	w := get(qr2, phone, here, "1234")
+	if w.Code != 200 || !strings.HasPrefix(w.Body.String(), "<svg") || w.Header().Get("Cache-Control") != "no-store" ||
+		w.Header().Get("Content-Type") != "image/svg+xml" {
+		t.Errorf("phone with the PIN: %d %q %v", w.Code, w.Body.String()[:min(20, w.Body.Len())], w.Header())
+	}
+	if w := get(qr2, pc, here, ""); w.Code != 200 {
+		t.Errorf("the PC: %d", w.Code)
+	}
+	for _, p := range []string{"/api/obs/cameras/1/qr.svg", "/api/obs/cameras/4/qr.svg", "/api/obs/cameras/0/qr.svg", "/api/obs/cameras/x/qr.svg"} {
+		if w := get(p, pc, here, ""); w.Code != http.StatusNotFound {
+			t.Errorf("%s: %d", p, w.Code)
+		}
+	}
+	if w := get(qr2, pc, "evil.example", ""); w.Code != http.StatusForbidden {
+		t.Errorf("another host: %d", w.Code)
 	}
 }

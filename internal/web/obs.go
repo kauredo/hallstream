@@ -16,6 +16,7 @@ import (
 	"github.com/kauredo/hallstream/internal/obsws"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/youtube"
+	"rsc.io/qr"
 )
 
 // errNotLive: OBS took StartStream but never sent, as when a YouTube account
@@ -89,6 +90,7 @@ func (s *Server) obsRoutes() {
 		}
 		reply(w, map[string]any{"cameras": list})
 	})
+	m.HandleFunc("GET /api/obs/cameras/{n}/qr.svg", s.phoneQR)
 	m.HandleFunc("GET /api/obs/stream", func(w http.ResponseWriter, r *http.Request) { reply(w, s.streamState()) })
 	m.HandleFunc("POST /api/obs/stream/start", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -131,6 +133,27 @@ func (s *Server) obsRoutes() {
 		s.streamCall(w, s.OBS.StopStream, false, s.ytEnd)
 	})
 	m.HandleFunc("POST /api/system/autostart", s.autostart)
+}
+
+// phoneQR draws camera n's VDO.Ninja push link. The link lets whoever has
+// it send a picture to that camera, so it sits behind the PIN and no cache.
+func (s *Server) phoneQR(w http.ResponseWriter, r *http.Request) {
+	n, _ := strconv.Atoi(r.PathValue("n"))
+	cams := s.Store.Settings().OBS.CameraList()
+	if n < 1 || n > len(cams) || cams[n-1].Vdo == "" {
+		http.NotFound(w, r)
+		return
+	}
+	code, err := qr.Encode(obsws.VDOPush(cams[n-1].Vdo), qr.M)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, i18n.T("api.promo.sem_qr", "err", err))
+		return
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Content-Security-Policy", "script-src 'none'")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(qrSVG(code))
 }
 
 // streamCall runs call on OBS, then done (when set), and answers with the

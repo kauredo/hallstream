@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"runtime"
 	"runtime/debug"
 	"slices"
 	"strconv"
@@ -520,9 +521,11 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		// The panel offers the desktop shortcut on the PC itself only.
 		"shortcut":  s.Shortcut != nil && isLoopback(r.RemoteAddr),
 		"autostart": s.Autostart != nil && isLoopback(r.RemoteAddr),
-		// This system can start and close OBS by itself.
-		"obs_app": s.OBSApp.Start != nil,
-		"uploads": s.uploads.Status(),
+		// This system can start OBS, and close it, by itself.
+		"obs_app":   s.OBSApp.Start != nil,
+		"obs_close": s.OBSApp.Close != nil,
+		"os":        runtime.GOOS,
+		"uploads":   s.uploads.Status(),
 	})
 }
 

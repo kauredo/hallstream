@@ -565,6 +565,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		if req.OBS.CameraFit != "fill" {
 			req.OBS.CameraFit = "contain"
 		}
+		if req.OBS.TimeoutCamera < 0 || req.OBS.TimeoutCamera > store.MaxCameras {
+			req.OBS.TimeoutCamera = 0
+		}
 		*cur = req
 	})
 	if !s.save(w, err) {

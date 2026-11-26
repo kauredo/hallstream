@@ -41,6 +41,9 @@ type OBS struct {
 	// CameraFulls is each camera's last full-screen placement, by source
 	// name. CameraFull keeps camera 1's too, for older versions.
 	CameraFulls map[string]*obsws.Full `json:"camera_fulls"`
+	// TimeoutCamera is the camera that goes on air in the time-out window,
+	// 1 to MaxCameras; 0 keeps the live camera (the default).
+	TimeoutCamera int `json:"timeout_camera"`
 	// SetupAt is when "Configurar OBS" last got OBS ready; only the server sets it.
 	SetupAt string `json:"setup_at"`
 	// Launch starts OBS with the program (Windows); it turns on with the

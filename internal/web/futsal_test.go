@@ -86,7 +86,7 @@ func TestMarcarPageFutsal(t *testing.T) {
 		t.Fatalf("futsal shows more than +1: %v", err)
 	}
 	fouls(t, s, "home", 5)
-	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "5" && document.querySelector('.casa .faltas').hasAttribute("data-warn") && !document.querySelector('.casa .faltas').hasAttribute("data-bonus")`); err != nil {
+	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "5" && document.querySelector('.casa .faltas').hasAttribute("data-warn") && !document.querySelector('.casa .faltas').hasAttribute("data-bonus") && getComputedStyle(document.querySelector('.casa .faltas .conta')).backgroundColor === getComputedStyle(document.querySelector('.casa .aviso')).backgroundColor`); err != nil {
 		t.Fatalf("at five fouls: %v", err)
 	}
 	fouls(t, s, "home", 1)

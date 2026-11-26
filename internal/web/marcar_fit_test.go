@@ -11,8 +11,9 @@ import (
 )
 
 // fitOverflow lists what does not fit the viewport: a page taller than it, a
-// button in the team columns or the strip not wholly inside it, and suspension
-// chips that leave their row or wrap onto a second one.
+// button in the team columns or the strip not wholly inside it, suspension
+// chips that leave their row or wrap onto a second one, and a pencil less than
+// 8 px from the clock's digits.
 const fitOverflow = `(() => {
 	const H = innerHeight, W = innerWidth, bad = [];
 	const h = document.scrollingElement.scrollHeight;
@@ -32,6 +33,10 @@ const fitOverflow = `(() => {
 		}
 		if (tops.size > 1) bad.push(box.dataset.susp + " chips on " + tops.size + " rows");
 	}
+	const pen = document.querySelector('.lapis').getBoundingClientRect(), range = document.createRange();
+	range.selectNodeContents(document.querySelector('#tempo'));
+	const time = range.getBoundingClientRect();
+	if (pen.width && time.width && pen.left - 8 < time.right && pen.right + 8 > time.left && pen.top - 8 < time.bottom && pen.bottom + 8 > time.top) bad.push("pencil " + [pen.left, pen.top, pen.right, pen.bottom].map(Math.round) + " within 8 px of the time " + [time.left, time.top, time.right, time.bottom].map(Math.round));
 	return bad.join("; ");
 })()`
 
@@ -64,6 +69,7 @@ func TestMarcarPageFits(t *testing.T) {
 	fouls(t, basket, "away", 5)
 	do(futsal, p("home", 1), source.Action{Do: "period_next"}, p("away", 1))
 	fouls(t, futsal, "home", 6)
+	fouls(t, futsal, "away", 5)
 	do(handball, source.Action{Do: "period_next"}, p("home", 1), p("away", 1))
 	for _, team := range []string{"home", "away"} {
 		for i := 0; i < 3; i++ {
@@ -73,7 +79,7 @@ func TestMarcarPageFits(t *testing.T) {
 	do(handball, source.Action{Do: "suspension_number", ID: handball.Manual.Score().HomeSusp[1].ID, Number: "77"})
 	do(handball, source.Action{Do: "suspension_end", ID: handball.Manual.Score().AwaySusp[2].ID}, source.Action{Do: "suspension", Team: "away"})
 	do(volley, p("home", 1), p("away", 1), source.Action{Do: "serve", Team: "home"})
-	do(soccer, p("home", 1), source.Action{Do: "period_next"}, source.Action{Do: "stoppage", N: 3},
+	do(soccer, p("home", 1), source.Action{Do: "period_next"}, source.Action{Do: "clock_set", Tenths: 55500}, source.Action{Do: "stoppage", N: 3},
 		source.Action{Do: "card", Team: "away", Number: "6", Kind: "yellow"},
 		source.Action{Do: "card", Team: "away", Number: "11", Kind: "yellow"},
 		source.Action{Do: "card", Team: "away", Number: "4", Kind: "red"},
@@ -96,7 +102,7 @@ func TestMarcarPageFits(t *testing.T) {
 		ready string
 	}{
 		{"basketball", basket, manual},
-		{"futsal", futsal, manual + ` && document.querySelector('.casa .faltas').hasAttribute('data-bonus')`},
+		{"futsal", futsal, manual + ` && document.querySelector('.casa .faltas').hasAttribute('data-bonus') && document.querySelector('.fora .faltas').hasAttribute('data-warn')`},
 		{"handball", handball, manual + ` && document.querySelectorAll('.exc').length === 6 && document.querySelector('#anular').classList.contains('duas')`},
 		{"volleyball", volley, manual},
 		{"soccer", soccer, manual + ` && document.querySelectorAll('.fora .reg').length === 3 && document.querySelector('#anular').classList.contains('duas')`},

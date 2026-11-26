@@ -563,9 +563,7 @@
       const b = box.children[i], [time, no] = b.children;
       b.disabled = input !== 'manual';
       if (time.textContent !== x.left) time.textContent = x.left || '';
-      const shown = x.number || '';
-      if (no.textContent !== String(shown)) no.textContent = shown;
-      no.classList.toggle('sem', !x.number);
+      if (no.textContent !== String(x.number || '')) no.textContent = x.number || '';
       const name = x.number ? '' : t('marcar.exclusao_sem_numero', { tempo: x.left || '' });
       if ((b.getAttribute('aria-label') || '') !== name) name ? b.setAttribute('aria-label', name) : b.removeAttribute('aria-label');
       b.dataset.number = x.number || '';

@@ -132,9 +132,9 @@ func TestMarcarPageHandball(t *testing.T) {
 	if err := until(tab, `document.querySelector('.casa [data-do="suspension"]').getAttribute('aria-label').startsWith("Exclusão de 2 minutos, ")`); err != nil {
 		t.Errorf("the +2' button has no label: %v", err)
 	}
-	// With no number yet the number band stays empty and keeps its height.
-	if err := until(tab, `(() => { const b = document.querySelector('.casa .exc b'); return b.textContent === "" && b.classList.contains("sem") && getComputedStyle(b).visibility === "hidden" && document.querySelector('.casa .exc').getAttribute('aria-label').includes("sem número"); })()`); err != nil {
-		t.Errorf("the unnumbered chip's number band is not empty and hidden: %v", err)
+	// With no number yet the number band is drawn, filled and empty.
+	if err := until(tab, `(() => { const b = document.querySelector('.casa .exc b'), c = getComputedStyle(b); window.band = c.backgroundColor; return b.textContent === "" && c.visibility === "visible" && b.offsetHeight > 0 && c.backgroundColor !== "rgba(0, 0, 0, 0)" && document.querySelector('.casa .exc').getAttribute('aria-label').includes("sem número"); })()`); err != nil {
+		t.Errorf("the unnumbered chip's number band is not drawn empty: %v", err)
 	}
 	// The chip opens the number field; "Feito" shows the number on it.
 	tap(`.casa .exc`)
@@ -144,7 +144,7 @@ func TestMarcarPageHandball(t *testing.T) {
 	if err := run(`(document.querySelector('#exclusaoNumero').value = "7", document.querySelector('#exclusaoFeito').click(), true)`); err != nil {
 		t.Fatal(err)
 	}
-	if err := until(tab, `!document.querySelector('#exclusao').open && document.querySelector('.casa .exc b').textContent === "7" && !document.querySelector('.casa .exc b').classList.contains('sem') && !document.querySelector('.casa .exc').hasAttribute('aria-label')`); err != nil {
+	if err := until(tab, `!document.querySelector('#exclusao').open && document.querySelector('.casa .exc b').textContent === "7" && getComputedStyle(document.querySelector('.casa .exc b')).backgroundColor === window.band && !document.querySelector('.casa .exc').hasAttribute('aria-label')`); err != nil {
 		t.Fatalf("the number did not show: %v", err)
 	}
 	// "Acabou" removes it.

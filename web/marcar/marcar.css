@@ -108,10 +108,8 @@ body.sets .somar button:nth-child(n + 2), body.um .somar button:nth-child(n + 2)
 .descontos .valor { align-items: baseline; gap: 5px; line-height: 30px; }
 .conta { font-weight: 800; font-stretch: var(--estreito); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
 .restam { font-weight: 600; font-stretch: var(--estreito); font-size: 15px; line-height: 1; }
-/* At foul_warn the numeral turns gold; on a light ground gold would not read, so it is underlined in gold there. */
-.faltas[data-warn] .conta { color: var(--ouro); }
-.equipa[data-claro] .faltas[data-warn] .conta { color: inherit; box-shadow: inset 0 -4px 0 var(--ouro); }
-.faltas[data-bonus] .conta { color: inherit; box-shadow: none; }
+/* At foul_warn the numeral sits on the bonus chip's gold, with no word. */
+.faltas[data-warn] .conta { padding: 0 6px; border-radius: 3px; background: var(--ouro); color: var(--marcador); }
 .aviso { display: none; padding: 4px 6px 3px; border-radius: 3px; background: var(--ouro); color: var(--marcador);
   font-size: 12px; font-weight: 800; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
 .faltas[data-bonus] .aviso { display: block; }
@@ -138,6 +136,9 @@ body.nofouls .faltas, body.semdescontos .descontos { display: none; }
 body.susp .rec.exclusoes, body.sets .sets-rec, body.cartoes .cartoes-rec, body.cartoes .trocas-rec { display: flex; }
 body.susp .acao.exclusoes, body.sets .servico, body.cartoes .acao.cartao, body.cartoes .acao.troca { display: flex; }
 body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); }
+/* The visitor's band mirrors the club's: suspensions at the outer edge, timeouts by the strip. */
+body.susp .fora .registos { grid-template-columns: auto minmax(0, 1fr); }
+body.susp .fora .rec.descontos { order: -1; }
 
 /* Three chips a side fit one row: the number sits in a band under the time. */
 .chips { display: flex; flex-wrap: nowrap; gap: 6px; min-height: 30px; align-items: center; }
@@ -148,7 +149,6 @@ body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 
 .exc:active { background: var(--marcador); color: var(--soalho); }
 .exc span { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 6px; font-size: 19px; }
 .exc b { flex: none; height: 17px; display: flex; align-items: center; justify-content: center; padding: 0 6px; background: var(--sobre); color: var(--cor); font-size: 14px; }
-.exc b.sem { visibility: hidden; }
 
 .servico::before { content: ""; flex: none; width: 16px; height: 16px; border: 3px solid currentColor; border-radius: 50%; }
 .servico.on { background: var(--sobre); color: var(--cor); border-color: transparent; }
@@ -187,16 +187,18 @@ body.offline .ponto { background: transparent; box-shadow: inset 0 0 0 2px curre
 .periodo svg { width: 18px; height: 18px; }
 .periodo:active { background: rgba(242, 228, 201, .28); }
 
-/* The clock tile: cream while it runs, Lâmpada only when stopped; the pencil says a tap sets it. */
+/* The clock tile: cream while it runs, Lâmpada only when stopped; the pencil says a tap sets it.
+   The pencil keeps a band at the top to itself, and the time shrinks only when the tile is too short for it. */
 .relogio {
-  flex: 1; min-height: 0; position: relative;
+  flex: 1; min-height: 0; position: relative; container-type: size;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  border: 0; border-radius: var(--canto); padding: 0;
+  border: 0; border-radius: var(--canto); padding: 42px 0 0;
   background: rgba(242, 228, 201, .08); color: var(--lampada);
 }
 body.corre .relogio { color: var(--soalho); }
 .relogio .tempo { font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums;
-  font-size: clamp(48px, min(20dvh, 9.5vw), 80px); line-height: 1; letter-spacing: -.01em; }
+  font-size: min(clamp(48px, min(20dvh, 9.5vw), 80px), 100cqh); line-height: 1; letter-spacing: -.01em; }
+.relogio:has(.compensa:not(:empty)) .tempo { font-size: min(clamp(48px, min(20dvh, 9.5vw), 80px), 100cqh - 44px); }
 .relogio .compensa { font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; font-size: 32px; line-height: 1; color: var(--soalho); }
 .relogio .compensa:empty { display: none; }
 .lapis { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; color: rgba(242, 228, 201, .7); }

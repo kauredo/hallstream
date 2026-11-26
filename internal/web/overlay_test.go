@@ -399,8 +399,8 @@ func TestOverlaySoccerCards(t *testing.T) {
 	if got := counts("away"); got != "y1" {
 		t.Errorf("away counts %q, want \"y1\" (a red at 0 is not drawn)", got)
 	}
-	if got := read(`(document.querySelector('[data-add]').classList.contains('blank') ? '' : document.querySelector('[data-add] b').textContent)`); got != "90+4'" {
-		t.Errorf("added time %q, want 90+4'", got)
+	if got := read(`(document.querySelector('[data-add]').classList.contains('blank') ? '' : document.querySelector('[data-add] b').textContent)`); got != "+4'" {
+		t.Errorf("added time %q, want +4'", got)
 	}
 	load("marcador")
 	if got := counts("home") + counts("away"); got != "" {
@@ -487,10 +487,11 @@ func TestOverlayRefitsNamesWhenAFontLandsLate(t *testing.T) {
 	}
 }
 
-// Placa draws each team's timeouts under its name, filled for each one left and outlined for each
-// taken, only from the phone scorer: a console always sends 0 taken. The away marks turn ink when
-// the away colour is too light for the white plate, and the other looks never show them.
-func TestOverlayPlacaTimeouts(t *testing.T) {
+// Placa draws each team's timeouts under its name and Pavilhão under its crest, filled for each one
+// left and outlined for each taken, only from the phone scorer: a console always sends 0 taken.
+// Placa's away marks turn ink when the away colour is too light for the white plate, and the other
+// looks never show them.
+func TestOverlayTimeoutMarks(t *testing.T) {
 	tab := chrome(t)
 	srv := httptest.NewServer(newServerFiles(t, assets.FS))
 	t.Cleanup(srv.Close)
@@ -500,8 +501,13 @@ func TestOverlayPlacaTimeouts(t *testing.T) {
 	}))`
 	for _, c := range []struct{ style, fixture, want string }{
 		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(26, 31, 35)"]]`},
+		{"placa", "marcador-descontos-cor", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(180, 65, 12)"]]`},
 		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos-cor", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos-claro", `[["flex",2,1,"rgb(255, 255, 255)"],["flex",2,0,"rgb(7, 11, 18)"]]`},
 		{"classico", "marcador-descontos", `[["none",2,2,"rgb(255, 255, 255)"],["none",2,1,"rgb(255, 255, 255)"]]`},
 	} {
 		t.Run(c.style+"/"+c.fixture, func(t *testing.T) {
@@ -517,6 +523,128 @@ func TestOverlayPlacaTimeouts(t *testing.T) {
 			}
 			if got != c.want {
 				t.Errorf("timeout marks %s, want %s", got, c.want)
+			}
+		})
+	}
+}
+
+// Pavilhão puts the visitor's crest on the visitor's colour and keeps its score black; a missing,
+// neutral or club-like colour gives a black crest too.
+func TestOverlayPavilhaoAwayCrest(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const cells = `JSON.stringify(['.tile', '.sc'].map((c) => getComputedStyle(document.querySelector('#s-marcador .sb-row.away ' + c)).backgroundColor))`
+	for _, c := range []struct{ fixture, want string }{
+		{"marcador-descontos-cor", `["rgb(180, 65, 12)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos-claro", `["rgb(242, 214, 73)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos", `["rgb(20, 21, 23)","rgb(20, 21, 23)"]`},
+		{"marcador-descontos-perto", `["rgb(20, 21, 23)","rgb(20, 21, 23)"]`},
+	} {
+		t.Run(c.fixture, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style=pavilhao&state=/overlay/fixtures/"+c.fixture+".json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fmt.Sprintf(screenIs, "marcador")); err != nil {
+				t.Fatal(err)
+			}
+			got, err := chromedp.Run(tab, chromedp.Evaluate[string](cells))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.want {
+				t.Errorf("away crest and score backgrounds %s, want %s", got, c.want)
+			}
+		})
+	}
+}
+
+// With the box gone the grey dot shows on the scoreboard, on top of every cell.
+func TestOverlayDeadLinkDotShows(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	// The overlay takes no pointer events and the hidden screens lie over it, transparent; the probe
+	// turns pointer events on and looks for the topmost element of the scoreboard screen.
+	const onTop = `(() => {
+		if (!document.getElementById('probe')) document.head.insertAdjacentHTML('beforeend', '<style id="probe">* { pointer-events: auto !important; }</style>');
+		const scr = document.getElementById('s-marcador'), dot = scr.querySelector('.sb-dot'), r = dot.getBoundingClientRect();
+		const top = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).find((e) => scr.contains(e) && e !== scr);
+		return r.width > 0 && getComputedStyle(dot).opacity === '1' && top === dot;
+	})()`
+	for _, style := range []string{"classico", "lombada", "cor", "placa", "pavilhao"} {
+		t.Run(style, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/marcador-edge.json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fmt.Sprintf(screenIs, "marcador")+" && "+dotOn); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, onTop); err != nil {
+				t.Errorf("the dead-link dot is hidden: %v", err)
+			}
+			if style != "placa" && style != "pavilhao" {
+				return
+			}
+			// On these two the dot belongs to the link, not to a team: it sits in the clock panel.
+			in, err := chromedp.Run(tab, chromedp.Evaluate[bool](`(() => {
+				const scr = document.getElementById('s-marcador'), dot = scr.querySelector('.sb-dot'), d = dot.getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
+				return d.left >= p.left && d.right <= p.right && d.top >= p.top && d.bottom <= p.bottom;
+			})()`))
+			if err != nil || !in {
+				t.Errorf("the dead-link dot is not inside the clock panel: %v %v", in, err)
+			}
+		})
+	}
+}
+
+// Placa fits a three-digit score in its cell and keeps the clock panel's width when the clock shows
+// tenths; on Placa and Pavilhão a sets sport names the current set over the names and heads the set list PARCIAIS.
+func TestOverlayPlateAndCourtBugs(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	eval := func(style, fx, expr string) string {
+		t.Helper()
+		if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, fmt.Sprintf(screenIs, "marcador")+` && document.fonts.status === "loaded"`); err != nil {
+			t.Fatal(err)
+		}
+		got, err := chromedp.Run(tab, chromedp.Evaluate[string](expr))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	const panel = `String(document.querySelector('#s-marcador .sb-time').getBoundingClientRect().width)`
+	t.Run("placa/three digits", func(t *testing.T) {
+		got := eval("placa", "marcador-edge", `(() => {
+			const sc = document.querySelector('#s-marcador .sb-row.home .sc'), v = sc.querySelector('[data-b]'), c = sc.getBoundingClientRect(), r = v.getBoundingClientRect();
+			return v.textContent + ' ' + (r.left >= c.left && r.right <= c.right);
+		})()`)
+		if got != "102 true" {
+			t.Errorf("home score and whether it fits its cell: %q, want \"102 true\"", got)
+		}
+	})
+	t.Run("placa/clock panel", func(t *testing.T) {
+		tenths := eval("placa", "marcador-edge", panel)
+		minutes := eval("placa", "marcador-descontos", panel)
+		if tenths != minutes {
+			t.Errorf("the clock panel is %s px wide at 9.4 and %s px at 07:03", tenths, minutes)
+		}
+	})
+	for _, style := range []string{"placa", "pavilhao"} {
+		t.Run(style+"/set name", func(t *testing.T) {
+			got := eval(style, "volleyball/marcador", `(() => {
+				const scr = document.getElementById('s-marcador'), set = scr.querySelector('.sb-head [data-b="periodShort"]'), per = scr.querySelector('.sb-per');
+				const s = set.getBoundingClientRect(), r = scr.querySelector('.sb-row.home').getBoundingClientRect(), teams = scr.querySelector('.sb-teams').getBoundingClientRect();
+				const overNames = s.width > 0 && s.right <= teams.right && s.top >= r.top && s.bottom <= (r.top + r.bottom) / 2;
+				return set.textContent + ' ' + overNames + ' ' + per.textContent + ' ' + getComputedStyle(per).visibility;
+			})()`)
+			if got != "SET 3 true PARCIAIS visible" {
+				t.Errorf("set name, whether it sits over the names, the panel's heading: %q, want \"SET 3 true PARCIAIS visible\"", got)
 			}
 		})
 	}

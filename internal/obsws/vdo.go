@@ -16,7 +16,7 @@ const vdoSite = "https://vdo.ninja/"
 //   - quality: https://docs.vdo.ninja/advanced-settings/video-parameters/and-quality.md
 //   - audiodevice: https://docs.vdo.ninja/advanced-settings/setup-parameters/audiodevice.md
 func VDOPush(id string) string {
-	return vdoSite + "?push=" + url.QueryEscape(id) + "&webcam&autostart&facing=rear&quality=0&audiodevice=0"
+	return vdoSite + "?push=" + url.QueryEscape(id) + "&webcam&autostart&facing=rear&quality=0&audiodevice=0&forcelandscape"
 }
 
 // VDOView is the link the OBS browser source opens to show that phone.

@@ -45,9 +45,13 @@ func TestPanelCameras(t *testing.T) {
 
 func TestPanelOneCameraNoCard(t *testing.T) {
 	tab := cameraPanel(t, "&cams=1")
-	// The card stays hidden after the status and the first live state came in.
-	if err := until(tab, `document.querySelector("#liveScore").textContent !== "" && document.querySelector("#camCard").hidden`); err != nil {
+	// The card stays hidden once drawn with the status in.
+	if err := until(tab, `document.querySelector("#camCard").dataset.cams === "1" && document.querySelector("#camCard").hidden`); err != nil {
 		t.Fatalf("one camera shows the camera card: %v", err)
+	}
+	tab = cameraPanel(t, "&cams=2")
+	if err := until(tab, `document.querySelector("#camCard").dataset.cams === "2" && !document.querySelector("#camCard").hidden`); err != nil {
+		t.Fatalf("two cameras show no camera card: %v", err)
 	}
 }
 

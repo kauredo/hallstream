@@ -142,6 +142,9 @@ func fakeOBS(t *testing.T, password string, f answerer) Config {
 			if code == hangUp {
 				return
 			}
+			if code == silent {
+				continue
+			}
 			resp := map[string]any{"requestType": req.RequestType, "requestId": req.RequestID,
 				"requestStatus": map[string]any{"result": ok, "code": code, "comment": "fake"}}
 			if data != nil {
@@ -203,6 +206,9 @@ func TestRequestError(t *testing.T) {
 
 // hangUp makes the fake close the connection instead of answering.
 const hangUp = -1
+
+// silent makes the fake send no answer and keep the connection.
+const silent = -2
 
 type dropFirst struct {
 	mu   sync.Mutex

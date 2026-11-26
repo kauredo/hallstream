@@ -997,6 +997,7 @@
     var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '', scene: '', label: '' }];
     var connected = !!(S.status && S.status.obs && S.status.obs.connected);
     card.hidden = !obsOn() || !connected || cams.length < 2;
+    if (S.status) card.dataset.cams = cams.length; // drawn with the status in (the tests wait for it)
     if (card.hidden) return;
     var key = JSON.stringify(cams);
     if (key !== camKey) {
@@ -1018,6 +1019,15 @@
     });
     var msg = $('#camMsg');
     if (!S.camBusy && msg.className !== 'msg err') msg.textContent = live ? '' : t('painel.camaras.outra_cena');
+  }
+
+  // A refused switch or a camera not placed says so under the buttons for a few seconds.
+  var camErrTimer = null;
+  function cameraError(text) {
+    var cm = $('#camMsg');
+    cm.className = 'msg err'; cm.textContent = text;
+    clearTimeout(camErrTimer);
+    camErrTimer = setTimeout(function () { cm.className = 'msg'; cm.textContent = ''; updateCameraButtons(); }, 6000);
   }
 
   var ltTimer = null;
@@ -1050,11 +1060,12 @@
         S.camBusy = +cam.dataset.cam;
         $all('#cams .cam').forEach(function (x) { x.disabled = true; });
         cam.querySelector('.cam-estado').textContent = t('painel.camaras.a_mudar');
+        clearTimeout(camErrTimer);
         cm.className = 'msg'; cm.textContent = '';
         api('POST', '/api/obs/camera/live', { index: +cam.dataset.cam }).then(function (r) {
           if (S.state) S.state.obs = { live_camera: r.live_camera };
-          if (r.warning) { cm.className = 'msg err'; cm.textContent = r.warning; }
-        }, function (err) { cm.className = 'msg err'; cm.textContent = err.message; })
+          if (r.warning) cameraError(r.warning);
+        }, function (err) { cameraError(err.message); })
           .then(function () { S.camBusy = false; updateCameraButtons(); });
         return;
       }

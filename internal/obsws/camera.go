@@ -304,20 +304,24 @@ func (c *Camera) fitIn(set CameraSettings, scene string) (FitReport, error) {
 	return FitReport{it.name, it.srcW, it.srcH, it.canvas.W, it.canvas.H}, nil
 }
 
-// Squeezed reports whether the camera is in the time-out window (the last
-// screen followed was desconto).
-func (c *Camera) Squeezed() bool {
+// Place puts source in scene where the screen needs it, at once: in the
+// time-out window when the last screen followed was desconto, else at its
+// full-screen placement; and shows those boxes to the overlay. Then it runs
+// then (when not nil) before any squeeze can start, so the server switches
+// OBS to scene there and a time-out that comes in meanwhile squeezes the new
+// camera. placed is why the camera could not be placed, which does not stop
+// then; err is what then returned.
+func (c *Camera) Place(scene, source string, then func() error) (placed, err error) {
 	c.follow.Lock()
 	defer c.follow.Unlock()
-	return c.in
+	placed = c.place(scene, source, c.in)
+	if then != nil {
+		err = then()
+	}
+	return placed, err
 }
 
-// Place puts source in scene at its full-screen placement, or in the
-// time-out window, at once, and shows those boxes to the overlay. The
-// server calls it before it switches to that scene.
-func (c *Camera) Place(scene, source string, window bool) error {
-	c.follow.Lock()
-	defer c.follow.Unlock()
+func (c *Camera) place(scene, source string, window bool) error {
 	set := c.Settings()
 	if legacy, err := c.legacy(set); !set.Enabled || legacy || err != nil {
 		return err

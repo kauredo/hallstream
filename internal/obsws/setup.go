@@ -165,7 +165,7 @@ type setup struct {
 	scenes []string // every scene in OBS
 	n      int      // the camera being set up, from 1
 	cam    WantCamera
-	vdo    string // the stream id of the camera being set up, when it is a phone
+	vdo    string  // the stream id of the camera being set up, when it is a phone
 	made   []input // the inputs this run created, for the next camera's names and checks
 }
 

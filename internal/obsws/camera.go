@@ -404,20 +404,7 @@ func (c *Camera) itemsIn(cfg Config, scene string) (string, []sceneItem, error) 
 	return scene, r.Items, err
 }
 
-// program is the program scene's name.
-func (c *Camera) program(cfg Config) (string, error) {
-	var sc struct {
-		Name string `json:"sceneName"`
-		Old  string `json:"currentProgramSceneName"`
-	}
-	if err := c.OBS.Request(cfg, "GetCurrentProgramScene", nil, &sc); err != nil {
-		return "", err
-	}
-	if sc.Name == "" {
-		return sc.Old, nil
-	}
-	return sc.Name, nil
-}
+func (c *Camera) program(cfg Config) (string, error) { return c.OBS.program(cfg) }
 
 // pick finds the camera: the named source, else the top shown DroidCam
 // input below the browser source, else the top shown video capture there.
@@ -562,6 +549,13 @@ func (c *Camera) move(it item, target, other Place, animate bool) {
 		c.moving = true
 		go c.run()
 	}
+}
+
+// Moving reports whether a tween is running.
+func (c *Camera) Moving() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.moving
 }
 
 // Stop ends a running tween at its target and waits for it (2 s at most),

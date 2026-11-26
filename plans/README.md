@@ -19,7 +19,8 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | DONE: merged #49 (72bce29), released in v0.1.3 |
 | 012 | A health line per camera | P2 | M | 009 | DONE: merged #50 (fbc47c0), released in v0.1.3 |
 | 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | DONE: merged #51 (6f80eb7), released in v0.1.3 |
-| 015 | Camera extras: four cameras, a camera for Nada and Desconto, cameras without the corner graphics, an inset of a second camera | P2 | L | 008 to 013 | IN PROGRESS: stack #62 to #67 (stack #68), in review |
+| 014 | macOS and Linux releases next to the Windows zip | P1 | L | none | TODO |
+| 015 | Camera extras: four cameras, a camera for Nada and Desconto, cameras without the corner graphics, an inset of a second camera | P2 | L | 008 to 013 | DONE: merged #62 to #67 (47f0922) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

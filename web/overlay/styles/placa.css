@@ -44,7 +44,7 @@ html[data-style="placa"] .sb { align-items: stretch; filter: drop-shadow(0 0 0 t
 html[data-style="placa"] .sb-edge { display: none; }
 html[data-style="placa"] .sb-teams { position: relative; width: 282px; }
 /* The head row goes; a sets sport names its set in the top padding over the names, as the stat column heads its own. */
-html[data-style="placa"] .sb-head { position: absolute; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; }
+html[data-style="placa"] .sb-head { position: absolute; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; z-index: 2; }
 html[data-style="placa"] .sb-head > span:first-child > :not(span.only-sets) { display: none; }
 html[data-style="placa"] .sb-head > span:first-child { position: absolute; left: 68px; top: 3px; }
 html[data-style="placa"][data-scoring="sets"] .sb-row .nm { margin-top: 6px; }

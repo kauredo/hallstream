@@ -549,6 +549,68 @@ func TestOverlayDeadLinkDotShows(t *testing.T) {
 			if err := until(tab, onTop); err != nil {
 				t.Errorf("the dead-link dot is hidden: %v", err)
 			}
+			if style != "placa" && style != "pavilhao" {
+				return
+			}
+			// On these two the dot belongs to the link, not to a team: it sits in the clock panel.
+			in, err := chromedp.Run(tab, chromedp.Evaluate[bool](`(() => {
+				const scr = document.getElementById('s-marcador'), d = scr.querySelector('.sb-dot').getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
+				return d.left >= p.left && d.right <= p.right && d.top >= p.top && d.bottom <= p.bottom;
+			})()`))
+			if err != nil || !in {
+				t.Errorf("the dead-link dot is outside the clock panel: %v %v", in, err)
+			}
+		})
+	}
+}
+
+// Placa fits a three-digit score in its cell and keeps the clock panel's width when the clock shows
+// tenths; on Placa and Pavilhão a sets sport names the current set at the head of the clock panel.
+func TestOverlayPlateAndCourtBugs(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	eval := func(style, fx, expr string) string {
+		t.Helper()
+		if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+style+"&state=/overlay/fixtures/"+fx+".json")); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, fmt.Sprintf(screenIs, "marcador")+` && document.fonts.status === "loaded"`); err != nil {
+			t.Fatal(err)
+		}
+		got, err := chromedp.Run(tab, chromedp.Evaluate[string](expr))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	const panel = `String(document.querySelector('#s-marcador .sb-time').getBoundingClientRect().width)`
+	t.Run("placa/three digits", func(t *testing.T) {
+		got := eval("placa", "marcador-edge", `(() => {
+			const sc = document.querySelector('#s-marcador .sb-row.home .sc'), v = sc.querySelector('[data-b]'), c = sc.getBoundingClientRect(), r = v.getBoundingClientRect();
+			return v.textContent + ' ' + (r.left >= c.left && r.right <= c.right);
+		})()`)
+		if got != "102 true" {
+			t.Errorf("home score and whether it fits its cell: %q, want \"102 true\"", got)
+		}
+	})
+	t.Run("placa/clock panel", func(t *testing.T) {
+		tenths := eval("placa", "marcador-edge", panel)
+		minutes := eval("placa", "marcador-descontos", panel)
+		if tenths != minutes {
+			t.Errorf("the clock panel is %s px wide at 9.4 and %s px at 07:03", tenths, minutes)
+		}
+	})
+	for _, style := range []string{"placa", "pavilhao"} {
+		t.Run(style+"/set name", func(t *testing.T) {
+			got := eval(style, "volleyball/marcador", `(() => {
+				const scr = document.getElementById('s-marcador'), s = scr.querySelector('.sb-head [data-b="periodShort"]').getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
+				const centred = Math.abs((s.left + s.right) / 2 - (p.left + p.right) / 2) < 2 && s.top >= p.top && s.bottom <= p.bottom;
+				return scr.querySelector('.sb-head [data-b="periodShort"]').textContent + ' ' + centred + ' ' + getComputedStyle(scr.querySelector('.sb-per')).visibility;
+			})()`)
+			if got != "SET 3 true hidden" {
+				t.Errorf("set name, whether it heads the clock panel, the panel's own heading: %q, want \"SET 3 true hidden\"", got)
+			}
 		})
 	}
 }

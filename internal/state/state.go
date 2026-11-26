@@ -275,6 +275,7 @@ type State struct {
 	Screen     Screen     `json:"screen"`
 	LowerThird LowerThird `json:"lower_third"`
 	Camera     *Camera    `json:"camera"`
+	OBS        OBS        `json:"obs"`
 	Promo      Promo      `json:"promo"`
 	Demo       bool       `json:"demo"`
 	// Input is where the score comes from: "console" or "manual" (settings.input).
@@ -294,6 +295,13 @@ type Rect struct {
 type Camera struct {
 	Full   Rect `json:"full"`
 	Window Rect `json:"window"`
+}
+
+// OBS is what the program knows of OBS that the panel shows live.
+type OBS struct {
+	// LiveCamera is the camera on program, 1 to 3; 0 when OBS shows another
+	// scene or is not known.
+	LiveCamera int `json:"live_camera"`
 }
 
 var Screens = []string{"marcador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo", "voltamos", "nada"}
@@ -633,6 +641,16 @@ func (m *Machine) SetCamera(c *Camera) {
 	m.mu.Lock()
 	if (c == nil) != (m.s.Camera == nil) || c != nil && *c != *m.s.Camera {
 		m.s.Camera = c
+		m.changed()
+	}
+	m.mu.Unlock()
+}
+
+// SetLiveCamera sets the camera on program; 0 is none or not known.
+func (m *Machine) SetLiveCamera(n int) {
+	m.mu.Lock()
+	if m.s.OBS.LiveCamera != n {
+		m.s.OBS.LiveCamera = n
 		m.changed()
 	}
 	m.mu.Unlock()

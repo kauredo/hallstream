@@ -62,10 +62,12 @@ func (s *Server) newCamera() {
 		OBS: s.OBS,
 		Settings: func() obsws.CameraSettings {
 			o := s.Store.Settings().OBS
+			scene, source := s.liveScene(o)
 			return obsws.CameraSettings{
 				Config:  obsws.Config{Host: o.Host, Port: o.Port, Password: o.Password},
-				Enabled: o.Enabled, Source: o.CameraSource, Fit: o.CameraFit,
-				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.FullFor(o.CameraSource), Fulls: o.CameraFulls,
+				Enabled: o.Enabled, Source: source, Fit: o.CameraFit,
+				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.FullFor(source),
+				Scene: scene, Fulls: o.CameraFulls,
 			}
 		},
 		Save: func(source string, f obsws.Full) {
@@ -140,6 +142,142 @@ func (s *Server) RunCamera() {
 	}
 }
 
+// liveScene is the program scene and its camera's source when the program
+// is a camera's scene, else "" and camera_source (the camera in whatever
+// scene is on program).
+func (s *Server) liveScene(o store.OBS) (scene, source string) {
+	s.liveMu.Lock()
+	program := s.program
+	s.liveMu.Unlock()
+	for _, c := range o.CameraList() {
+		if c.Scene != "" && c.Scene == program {
+			return c.Scene, c.Source
+		}
+	}
+	return "", o.CameraSource
+}
+
+// liveIndex is the camera whose scene is scene, 1 to 3, or 0. With one
+// camera the old Hallstream scene counts as camera 1.
+func liveIndex(o store.OBS, scene string) int {
+	cams := o.CameraList()
+	for i, c := range cams {
+		if c.Scene != "" && c.Scene == scene {
+			return i + 1
+		}
+	}
+	if len(cams) == 1 && scene == obsws.SceneName {
+		return 1
+	}
+	return 0
+}
+
+// programScene takes the program scene from the watch. A camera scene the
+// program did not switch to itself (a click in OBS) gets its camera placed
+// for the screen, so one left in the window does not stay small.
+func (s *Server) programScene(name string) {
+	o := s.Store.Settings().OBS
+	n := liveIndex(o, name)
+	s.liveMu.Lock()
+	s.program = name
+	expected := s.expect == name
+	s.expect = ""
+	s.liveMu.Unlock()
+	s.State.SetLiveCamera(n)
+	if n == 0 || expected || !o.Enabled || s.camErr != nil {
+		return
+	}
+	cam := o.CameraList()[n-1]
+	if cam.Scene != name {
+		return // the old Hallstream scene: the camera follows the program scene
+	}
+	s.once(i18n.T("log.tarefa.cenas"), func() {
+		if err := s.Camera.Place(cam.Scene, cam.Source, s.Camera.Squeezed()); err != nil {
+			s.Log(i18n.T("log.camara.nao_pus", "camara", n, "err", err))
+		}
+	})
+}
+
+// switchTo puts camera n in place (in the window or at full screen, at
+// once) and switches OBS to its scene. A failure to place comes back as
+// warning and does not stop the switch. The caller holds switchMu.
+func (s *Server) switchTo(n int, window bool) (warning string, err error) {
+	o := s.Store.Settings().OBS
+	cam := o.CameraList()[n-1]
+	s.liveMu.Lock()
+	onAir := s.program == cam.Scene
+	s.liveMu.Unlock()
+	// The camera on air is already in place, maybe half way through a squeeze.
+	if s.camErr == nil && !onAir {
+		if err := s.Camera.Place(cam.Scene, cam.Source, window); err != nil {
+			warning = err.Error()
+		}
+	}
+	s.liveMu.Lock()
+	s.expect = cam.Scene
+	s.liveMu.Unlock()
+	if err := s.OBS.SetScene(obsConfig(o), cam.Scene); err != nil {
+		s.liveMu.Lock()
+		s.expect = ""
+		s.liveMu.Unlock()
+		return warning, err
+	}
+	s.liveMu.Lock()
+	s.program = cam.Scene
+	s.liveMu.Unlock()
+	s.State.SetLiveCamera(n)
+	return warning, nil
+}
+
+// RunScenes keeps a watch on OBS's program scene while OBS control is on,
+// so obs.live_camera follows a switch made in OBS too. It never returns.
+func (s *Server) RunScenes() {
+	wait := time.Second
+	for {
+		o := s.Store.Settings().OBS
+		if !o.Enabled {
+			s.State.SetLiveCamera(0)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		cfg := obsConfig(o)
+		stop, done := make(chan struct{}), make(chan struct{})
+		go func() {
+			tick := time.NewTicker(5 * time.Second)
+			defer tick.Stop()
+			for {
+				select {
+				case <-done:
+					return
+				case <-tick.C:
+					if o := s.Store.Settings().OBS; !o.Enabled || obsConfig(o) != cfg {
+						close(stop)
+						return
+					}
+				}
+			}
+		}()
+		start, seen := time.Now(), false
+		err := obsws.Watch(cfg, stop, func(name string) { seen = true; s.programScene(name) })
+		close(done)
+		s.liveMu.Lock()
+		s.program, s.expect = "", ""
+		s.liveMu.Unlock()
+		s.State.SetLiveCamera(0)
+		if err == nil {
+			continue // the settings changed
+		}
+		if seen {
+			s.Log(i18n.T("log.obs.cenas_perdi", "err", err))
+		}
+		if time.Since(start) > time.Minute {
+			wait = time.Second
+		}
+		time.Sleep(wait)
+		wait = min(2*wait, 10*time.Second)
+	}
+}
+
 func (s *Server) cameraRoutes() {
 	s.mux.HandleFunc("GET /api/obs/sources", func(w http.ResponseWriter, r *http.Request) {
 		scene, list, auto, err := s.Camera.Sources()
@@ -164,5 +302,42 @@ func (s *Server) cameraRoutes() {
 			res["warning"] = i18n.T("api.camara.resolucao_base", "resolucao", fmt.Sprintf("%.0fx%.0f", rep.CanvasWidth, rep.CanvasHeight))
 		}
 		reply(w, res)
+	})
+	s.mux.HandleFunc("POST /api/obs/camera/live", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Index int `json:"index"`
+		}
+		if !decode(w, r, &req) {
+			return
+		}
+		o := s.Store.Settings().OBS
+		if !o.Enabled {
+			fail(w, http.StatusConflict, i18n.T("api.camara.obs_desligado"))
+			return
+		}
+		cams := o.CameraList()
+		if req.Index < 1 || req.Index > len(cams) {
+			fail(w, http.StatusBadRequest, i18n.T("api.camara.nao_existe", "n", req.Index))
+			return
+		}
+		if cams[req.Index-1].Scene == "" {
+			fail(w, http.StatusConflict, i18n.T("api.camara.sem_cena", "n", req.Index))
+			return
+		}
+		if s.State.Snapshot().Screen.Current == "desconto" {
+			// The old mode's time-out scene is on program; a switch would leave it.
+			if legacy, _ := s.Camera.Legacy(); legacy {
+				fail(w, http.StatusConflict, i18n.T("api.camara.modo_antigo"))
+				return
+			}
+		}
+		s.switchMu.Lock()
+		defer s.switchMu.Unlock()
+		warning, err := s.switchTo(req.Index, s.Camera.Squeezed())
+		if err != nil {
+			fail(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		reply(w, map[string]any{"ok": true, "live_camera": req.Index, "warning": warning})
 	})
 }

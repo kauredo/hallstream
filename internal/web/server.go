@@ -73,6 +73,10 @@ type Server struct {
 	progMu     sync.Mutex
 	prog       setupProgress
 	camErr     error      // overlay.css lacks the time-out window
+	switchMu   sync.Mutex // one camera switch at a time
+	liveMu     sync.Mutex
+	program    string     // the program scene last seen (under liveMu)
+	expect     string     // the scene the program last switched to, until its event (under liveMu)
 	promoMu    sync.Mutex // SyncPromo
 	nextMu     sync.Mutex // one RefreshNext at a time
 	nextQueued atomic.Bool

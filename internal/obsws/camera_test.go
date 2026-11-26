@@ -455,3 +455,70 @@ func TestStopEndsTheTweenAtItsTarget(t *testing.T) {
 	}
 	r.c.Stop() // nothing running: returns at once
 }
+
+// twoScenes gives the rig two camera scenes, A in Câmara 1 (on program) and
+// B in Câmara 2, both 1280x720 below the graphics.
+func twoScenes(r *rig) {
+	scene := func(id int, source string) []map[string]any {
+		it := item3(1280, 720)
+		cam, graphics := it[1], it[2]
+		cam["sceneItemId"], cam["sceneItemIndex"], cam["sourceName"] = id, 0, source
+		graphics["sceneItemId"], graphics["sceneItemIndex"], graphics["sourceName"], graphics["inputKind"] = id+1, 1, "Grafismo", nil
+		return []map[string]any{cam, graphics}
+	}
+	r.f.scenes = []string{"Câmara 1", "Câmara 2"}
+	r.f.program = "Câmara 1"
+	r.f.byScene = map[string][]map[string]any{"Câmara 1": scene(1, "A"), "Câmara 2": scene(3, "B")}
+}
+
+func TestSqueezeFollowsLiveScene(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	r.set.Scene, r.set.Source = "Câmara 2", "B"
+	if err := r.c.Follow("desconto"); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	r.f.mu.Lock()
+	defer r.f.mu.Unlock()
+	if len(r.f.setIn) == 0 || slices.ContainsFunc(r.f.setIn, func(s string) bool { return s != "Câmara 2" }) {
+		t.Errorf("transforms sent to %v", r.f.setIn)
+	}
+}
+
+func TestPlaceWindowAtOnce(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	if err := r.c.Place("Câmara 2", "B", true); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	sets := r.f.transforms()
+	if len(sets) != 1 || !near(sets[0]["positionX"].(float64), 416) || !near(sets[0]["scaleX"].(float64), 1.125) {
+		t.Errorf("transforms %v", sets)
+	}
+	if r.win == nil || *r.win != window {
+		t.Errorf("overlay window %v", r.win)
+	}
+	if r.f.setIn[0] != "Câmara 2" || r.f.scene() != "Câmara 1" {
+		t.Errorf("placed in %q, program %q", r.f.setIn[0], r.f.scene())
+	}
+}
+
+func TestPlaceUsesItsOwnFull(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	twoScenes(r)
+	own := &Full{Place: Place{Rect: Rect{10, 20, 1900, 1060}}, SourceWidth: 1280, SourceHeight: 720, CanvasWidth: 1920, CanvasHeight: 1080, Fit: "contain"}
+	r.set.Full = &Full{Place: Place{Rect: canvas}, SourceWidth: 1280, SourceHeight: 720, CanvasWidth: 1920, CanvasHeight: 1080, Fit: "contain"}
+	r.set.Fulls = map[string]*Full{"B": own}
+	if err := r.c.Place("Câmara 2", "B", false); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	if end := last(t, r.f); !near(end["positionX"].(float64), 10) || !near(end["positionY"].(float64), 20) {
+		t.Errorf("placed at %v", end)
+	}
+	if len(r.saved) != 0 {
+		t.Errorf("saved %+v", r.saved)
+	}
+}

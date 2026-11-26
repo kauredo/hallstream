@@ -1,10 +1,32 @@
 #!/bin/zsh
-# Build the Windows exes and the zip to hand over. Usage: ./build.sh 1.0.0
+# Build what to hand over. Usage: ./build.sh 1.0.0 [windows|macos]
+# windows (the default) makes the two exes and the zip. macos makes an
+# ad-hoc-signed Hallstream.app and, unless HALLSTREAM_SIGN is set, the DMG;
+# with it set, the release workflow signs the app and makes the DMG.
 set -e
 version=${1:-dev}
+target=${2:-windows}
 cd "${0:A:h}"
 go test ./...
 mkdir -p dist
+
+# The texts, licences and guides that ship beside the program, into $1.
+texts() {
+	/bin/cp -f LEIA-ME.txt $1/LEIA-ME.txt
+	/bin/cp -f READ-ME.txt $1/READ-ME.txt
+	# The AGPL text and the licences of the code linked into the binaries ship with them.
+	/bin/cp -f LICENSE $1/LICENSE.txt
+	scripts/notices.sh $1/THIRD-PARTY-NOTICES.txt $2
+	rm -rf $1/YouTube
+	mkdir -p $1/YouTube
+	# A .txt opens with a double click on Windows; the guide is Markdown-light.
+	/bin/cp -f docs/youtube/SETUP.md $1/YouTube/LIGAR-YOUTUBE.txt
+	/bin/cp -f docs/youtube/SETUP.en.md $1/YouTube/CONNECT-YOUTUBE.txt
+	/bin/cp -f docs/cameras/GUIDE.md $1/CAMARAS.txt
+	/bin/cp -f docs/cameras/GUIDE.en.md $1/CAMERAS.txt
+}
+
+if [[ $target == windows ]]; then
 
 # Icon, version and manifest go in rsrc_windows_*.syso, which go build picks
 # up for the matching GOARCH. They carry the version, so they are made here.
@@ -27,18 +49,59 @@ GOOS=windows GOARCH=amd64 go build -ldflags $flags -o "dist/Hallstream.exe" ./cm
 GOOS=windows GOARCH=386 go build -ldflags $flags -o "dist/Hallstream (32-bit).exe" ./cmd/hallstream
 rm -f cmd/hallstream/rsrc_windows_*.syso
 
-/bin/cp -f LEIA-ME.txt dist/LEIA-ME.txt
-/bin/cp -f READ-ME.txt dist/READ-ME.txt
-# The AGPL text and the licences of the code linked into the exes ship with them.
-/bin/cp -f LICENSE dist/LICENSE.txt
-scripts/notices.sh dist/THIRD-PARTY-NOTICES.txt
-rm -rf dist/YouTube
-mkdir -p dist/YouTube
-# A .txt opens with a double click on Windows; the guide is Markdown-light.
-/bin/cp -f docs/youtube/SETUP.md dist/YouTube/LIGAR-YOUTUBE.txt
-/bin/cp -f docs/youtube/SETUP.en.md dist/YouTube/CONNECT-YOUTUBE.txt
-/bin/cp -f docs/cameras/GUIDE.md dist/CAMARAS.txt
-/bin/cp -f docs/cameras/GUIDE.en.md dist/CAMERAS.txt
+texts dist windows
 rm -f dist/Hallstream-$version.zip
 (cd dist && zip -q -X -9 Hallstream-$version.zip "Hallstream.exe" "Hallstream (32-bit).exe" LEIA-ME.txt READ-ME.txt LICENSE.txt THIRD-PARTY-NOTICES.txt CAMARAS.txt CAMERAS.txt YouTube/CONNECT-YOUTUBE.txt YouTube/LIGAR-YOUTUBE.txt)
+
+elif [[ $target == macos ]]; then
+[[ $(uname) == Darwin ]] || { print -u2 "build.sh: the macos target builds on macOS only"; exit 1 }
+rm -rf dist/mac dist/mac-dmg
+app=dist/mac/Hallstream.app
+mkdir -p $app/Contents/MacOS $app/Contents/Resources
+# Go's build cache ignores MACOSX_DEPLOYMENT_TARGET, so -a keeps cgo objects
+# built for a newer macOS out of the binary, and the linker's warning fails it.
+export MACOSX_DEPLOYMENT_TARGET=13.0 CGO_ENABLED=1
+flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
+tmp=$(mktemp -d)
+for arch in amd64 arm64; do
+	GOARCH=$arch go build -a -ldflags $flags -o $tmp/hallstream-$arch ./cmd/hallstream 2>$tmp/build.log || { cat $tmp/build.log >&2; exit 1 }
+	cat $tmp/build.log >&2
+	if grep -q "built for newer" $tmp/build.log; then
+		print -u2 "build.sh: $arch linked an object built for a newer macOS than 13.0"
+		exit 1
+	fi
+done
+lipo -create -output $app/Contents/MacOS/Hallstream $tmp/hallstream-amd64 $tmp/hallstream-arm64
+
+# Apple wants numbers only in the bundle version.
+bundleversion=0.0.0
+if [[ $version =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then bundleversion=$version; fi
+sed "s/@VERSION@/$bundleversion/g" macres/Info.plist >$app/Contents/Info.plist
+/bin/cp -Rf macres/en.lproj macres/pt.lproj $app/Contents/Resources/
+
+iconset=$tmp/Hallstream.iconset
+mkdir -p $iconset
+for n in 16 32 128 256 512; do
+	sips -z $n $n web/assets/icon/icon-512.png --out $iconset/icon_${n}x$n.png >/dev/null
+	if (( n < 512 )); then
+		sips -z $((n * 2)) $((n * 2)) web/assets/icon/icon-512.png --out $iconset/icon_${n}x$n@2x.png >/dev/null
+	fi
+done
+iconutil -c icns -o $app/Contents/Resources/Hallstream.icns $iconset
+rm -rf $tmp
+
+codesign --force --sign - $app
+
+mkdir -p dist/mac-dmg
+ditto $app dist/mac-dmg/Hallstream.app
+ln -s /Applications dist/mac-dmg/Applications
+texts dist/mac-dmg darwin
+if [[ -z $HALLSTREAM_SIGN ]]; then
+	hdiutil create -quiet -volname Hallstream -srcfolder dist/mac-dmg -ov -format UDZO dist/Hallstream-$version-macos.dmg
+fi
+
+else
+print -u2 "build.sh: unknown target $target (windows or macos)"
+exit 1
+fi
 ls -lh dist

@@ -70,7 +70,8 @@ html[data-style="placa"] .sb-row .tile.no-img::before {
 }
 html[data-style="placa"] .sb-row.home { --away-mark: var(--red-text); }
 html[data-style="placa"] .sb-row.away { --away-mark: var(--away); }
-html[data-style="placa"].away-light .sb-row.away { --away-mark: var(--en-ink); }
+html[data-style="placa"].away-light .sb-row.away,
+html[data-style="placa"].away-plain .sb-row.away { --away-mark: var(--en-ink); }
 /* Names: overlay.js fits them at 24px; the first line is drawn 1.375x (33px), so the fit measures the bigger size. */
 html[data-style="placa"] .sb-row .nm {
   display: block; width: 122px; height: auto; margin-left: 10px; padding: 0; line-height: 34px; background: transparent;

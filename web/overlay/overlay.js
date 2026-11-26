@@ -1381,6 +1381,13 @@
     return 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4) > 0.30;
   }
 
+  // Two colours too alike to tell two teams apart, by the scorer page's rule (marcar.js awayColour).
+  function nearColour(a, b) {
+    const rgb = (c) => { const m = /^#([0-9a-f]{6})$/i.exec(String(c).trim()); return m ? [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) : null; };
+    const x = rgb(a), y = rgb(b);
+    return !!x && !!y && Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) < 120;
+  }
+
   // The club's colours (game.theme, keyed by custom property name) over the defaults in overlay.css.
   // A key the new theme lacks goes back to its default; a value only changes when the club does.
   let themeKeys = [];
@@ -1419,6 +1426,8 @@
     const awayColor = (!lk.neutralAway && v.away.color) || '#5C6170';
     root.style.setProperty('--away', awayColor);
     setClass(root, 'away-light', lightOnWhite(awayColor));
+    // No colour of its own: missing, neutral (the grey) or too close to the club's.
+    setClass(root, 'away-plain', awayColor.toUpperCase() === '#5C6170' || nearColour(((st.game || {}).theme || {}).red || '#2F4B7C', awayColor));
     root.style.setProperty('--next', (v.next && v.next.opponent && v.next.opponent.color) || '#5C6170');
     setClass(screens.voltamos, 'no-line', !v.backLine);
     setClass(screens.voltamos, 'no-score', !v.inPlay);

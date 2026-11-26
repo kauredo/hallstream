@@ -1,8 +1,5 @@
-// Hallstream scorer's page (/marcar): a phone held sideways at the hall's table keeps the score by hand.
-// It shows the live state (/api/events) and sends each tap to POST /api/marcar; the clock runs in the
-// program, so a phone that sleeps or reloads loses nothing. Until "Marcar daqui" the console stays on
-// air and every other control waits (docs/CONTRACT.md, "Scorer's page").
-// A long press on any + takes one away instead: points, a foul, a time-out.
+// Hallstream scorer's page (/marcar): a phone held sideways keeps the score by hand.
+// What it draws and sends: docs/CONTRACT.md, "Scorer's page".
 (() => {
   'use strict';
   const t = window.t;
@@ -10,13 +7,12 @@
   const $$ = (s) => [...document.querySelectorAll(s)];
   window.applyI18N();
 
-  let st = null;     // the live state
-  let score = null;  // the manual score (running, clock, length…) from /api/marcar
+  let st = null;
+  let score = null;  // from /api/marcar
   let input = '';
-  let undo = null;   // the action undo takes back next, from the program
+  let undo = null;
   let pinWait = null;
 
-  // ---------- talking to the program ----------
   async function api(method, body) {
     for (;;) {
       let res;
@@ -103,7 +99,6 @@
     f.hidden = !msg;
   }
 
-  // ---------- drawing ----------
   const rgb = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); return m ? [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) : null; };
   // Text on a team colour: whichever of Soalho claro and Marcador reads better on it.
   function ink(hex) {
@@ -131,7 +126,7 @@
     const s = Math.ceil(tenths / 10);
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   };
-  // The sport's rules from game.rules; a missing field reads as basketball's.
+  // A missing field reads as basketball's.
   function rulesOf() {
     const r = (st && st.game && st.game.rules) || {};
     return {
@@ -153,7 +148,6 @@
     for (let n = 1; n < p; n++) start += len(n);
     return start;
   }
-  // The tenths in a clock text, "MM:SS" or "S.T"; -1 when there is none.
   function clockTenths(text) {
     let m = /^(\d+):(\d+)$/.exec(text || '');
     if (m) return (+m[1] * 60 + +m[2]) * 10;
@@ -167,19 +161,15 @@
     if (away >= target && away - home >= r.winBy) return 'away';
     return '';
   }
-  // A regulation period in the sport's word, by rules.period_word.
   const regulationName = (word, n) => (word === 'half' ? t('marcar.parte', { n }) : t('marcar.periodo', { n }));
   function periodName(p, periods, word) {
     return p <= periods ? regulationName(word, p) : p === periods + 1 ? t('marcar.prolongamento') : t('marcar.prolongamento_n', { n: p - periods });
   }
-  // A length in tenths as "MM:SS".
   const mmss = (tenths) => { const s = Math.round(tenths / 10); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
-  // A set's score as "25–20", or a dash when it has no points (a console only sends who won).
+  // A dash when the set has no points: a console only sends who won.
   const setScoreText = (h, a) => (h === 0 && a === 0 ? '–' : `${h}–${a}`);
   const sigla = (team) => ((st && st.game && st.game[team]) || {}).short || '';
-  // The team's name in full, for the undo row; the sigla when there is no name.
   const teamName = (team) => { const tm = (st && st.game && st.game[team]) || {}; return tm.name || tm.short || ''; };
-  // What undo takes back, in the words of the tap and the team in full.
   function undoLabel(a) {
     if (!a) return '';
     const equipa = teamName(a.team);
@@ -200,7 +190,6 @@
       default: return '';
     }
   }
-  // The timeouts each team has in period p (a sets sport has the same in every set).
   const maxTOOf = (r, sets, p) => (sets || p <= r.half ? r.timeouts[0] : p <= r.periods ? r.timeouts[1] : r.timeouts[2]);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -228,7 +217,6 @@
     const rules = rulesOf();
     const { periods, bonus, warn, sets, foulMarks, word, freeKick, maxPoint, countUp, suspensions, cards, stopAtEnd } = rules;
     const penaltyWord = freeKick ? t('marcar.livre') : t('marcar.bonus');
-    // A sets sport has the same timeouts in every set.
     const maxTO = maxTOOf(rules, sets, period);
     document.body.classList.toggle('sets', sets);
     document.body.classList.toggle('nofouls', foulMarks === 0);
@@ -256,9 +244,7 @@
       const warning = fouls.querySelector('.aviso');
       if (warning.textContent !== penaltyWord) warning.textContent = penaltyWord;
     }
-    // The finished sets, as small scores in the set tile.
     const finished = $('#feitos'), done = sets && Array.isArray(st.sets) ? st.sets : [];
-    // Heads for the two columns, in the order the scores are written (home first).
     const head = document.createElement('span');
     head.className = 'cab';
     head.textContent = `${sigla('home')} – ${sigla('away')}`;
@@ -285,7 +271,6 @@
     document.body.classList.toggle('corre', running);
     const clock = l.clock || (score ? clockText(score.clock) : '');
     if ($('#tempo').textContent !== clock) $('#tempo').textContent = clock;
-    // Soccer's added time, as plain "+3'" under the clock; nothing when there is none.
     const added = Math.max(0, +l.stoppage || 0), addedText = cards && added > 0 ? `+${added}'` : '';
     if ($('#compensa').textContent !== addedText) $('#compensa').textContent = addedText;
     if ($('#compensacao').textContent !== `+${added}'`) $('#compensacao').textContent = `+${added}'`;
@@ -296,10 +281,8 @@
     if (!atEnd) endSince = 0;
     const go = $('#arrancar'), goText = $('#arrancarTexto');
     go.classList.toggle('seguinte', !!atEnd && !sets);
-    // The set can end once a side has the points with the lead; the button lights up to say so.
     const setOver = sets && !!setWon(rules, period, +l.home || 0, +l.away || 0) && (+l.home_sets || 0) < rules.setsToWin && (+l.away_sets || 0) < rules.setsToWin;
     go.classList.toggle('pronto', manual && setOver);
-    // Why "Set seguinte" waits: the points the leading side still needs, with the lead the set takes.
     const why = $('#falta'), won = (+l.home_sets || 0) >= rules.setsToWin || (+l.away_sets || 0) >= rules.setsToWin;
     why.hidden = !(sets && manual);
     if (sets && manual) {
@@ -314,20 +297,34 @@
     else { goText.textContent = running ? t('marcar.parar') : t('marcar.iniciar'); go.dataset.do = running ? 'clock_stop' : 'clock_start'; delete go.dataset.ask; go.disabled = false; }
     if (!atEnd && !sets) delete go.dataset.ask;
     for (const b of $$('.equipa button, #periodoBotao, #relogio')) b.disabled = !manual;
-    renderPeriods(l, period, { periods, word, cards });
+    renderPeriods(l, period, rules);
     const list = (a, tx) => (Array.isArray(a) ? a : []).filter((x) => x && x.team === tx);
     for (const tx of ['home', 'away']) {
       renderCards(tx, cards ? list(l.cards, tx) : []);
       renderSubs(tx, cards ? list(l.subs, tx) : []);
     }
-    const u = $('#anular'), label = undoLabel(undo);
+    const u = $('#anular'), label = undoLabel(undo), undoText = $('#anularTexto');
     u.disabled = !manual || !undo;
-    $('#anularTexto').innerHTML = label ? t('marcar.anular_isto', { o: `<b>${esc(label)}</b>` }) : t('marcar.anular');
+    const undoHTML = label ? t('marcar.anular_isto', { o: `<b>${esc(label)}</b>` }) : t('marcar.anular');
+    if (undoText.dataset.key !== undoHTML + manual) {
+      undoText.dataset.key = undoHTML + manual;
+      undoText.innerHTML = undoHTML;
+      fitUndo();
+    }
     if ($('#acertar').open && score) $('#acertarClock').textContent = l.clock || clockText(score.clock);
   }
 
-  // ---------- the period button's sheet: next period or full time, the one before, the length ----------
-  function renderPeriods(l, period, { periods, word, cards }) {
+  // A long team name narrows, then shrinks, the undo row's text before it is cut.
+  function fitUndo() {
+    const el = $('#anularTexto'), over = () => el.scrollWidth > el.clientWidth;
+    el.style.fontStretch = el.style.fontSize = '';
+    if (over()) el.style.fontStretch = '62%';
+    for (let px = 16; px > 12 && over(); px--) el.style.fontSize = `${px - 1}px`;
+  }
+  addEventListener('resize', fitUndo);
+  document.fonts.ready.then(fitUndo);
+
+  function renderPeriods(l, period, { periods, word, cards, overtimeLength }) {
     // Soccer has no period after the last half: the game ends there, after a confirmation.
     const end = cards && period >= periods, next = $('#seguinte');
     next.dataset.ask = end ? 'game_end' : 'period_next';
@@ -335,11 +332,12 @@
     next.disabled = end && !!l.over;
     $('#anterior').disabled = period <= 1;
     $('#periodosTitulo').innerHTML = periodName(period, periods, word);
-    const length = score ? score.length : 0;
+    // The steps set the regulation length; an overtime keeps its own.
+    const overtime = period > periods && overtimeLength > 0, length = overtime ? overtimeLength : score ? score.length : 0;
     $('#duracao').textContent = mmss(length);
     for (const b of $$('[data-length]')) {
       const to = length + +b.dataset.length;
-      b.disabled = to < 600 || to > MAX_CLOCK;
+      b.disabled = overtime || to < 600 || to > MAX_CLOCK;
     }
   }
   $('#periodoBotao').addEventListener('click', () => { if (score) $('#periodos').showModal(); });
@@ -350,7 +348,6 @@
     send({ do: 'period_length', tenths: score.length + +b.dataset.length }, t('marcar.ultimo.duracao'));
   });
 
-  // ---------- soccer: cards and substitutions ----------
   // One chip per booked shirt number, in the colour of its latest card; rebuilt only when the list changes.
   function renderCards(tx, cards) {
     const box = $(`[data-registo="${tx}"]`), key = JSON.stringify(cards);
@@ -373,7 +370,6 @@
       return s;
     }));
   }
-  // The count, then the last pair: who went off and who came on.
   function renderSubs(tx, subs) {
     const box = $(`[data-trocas="${tx}"]`), key = JSON.stringify(subs);
     if (box.dataset.key === key) return;
@@ -391,7 +387,7 @@
     };
     box.replaceChildren(count, ...(last ? [pair('sai', 'i-sai', last.out), pair('entra', 'i-entra', last.in)] : []));
   }
-  // The squad's numbers as big buttons for the home team, a typed number for the rest. Resolves with the number, '' when the scorer backs out.
+  // Resolves with the number, '' when the scorer backs out.
   function pickNumber(team, title) {
     return new Promise((resolve) => {
       const box = $('#numero'), field = $('#numeroCampo'), grid = $('#camisolas'), other = $('#numeroOutro');
@@ -420,7 +416,6 @@
       box.showModal();
     });
   }
-  // ---------- taps ----------
   const pending = new Set();
   let tagTimer = 0;
   function showTag(team, n) {
@@ -480,7 +475,6 @@
     send(a, undoLabel(a));
   });
 
-  // Soccer: a card or a substitution asks for the shirt number first; the stepper moves the added time by a minute.
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-pick]');
     if (!b || b.disabled) return;
@@ -498,7 +492,7 @@
     const number = await pickNumber(team, `${sigla(team)} · ${card}`);
     if (number) send({ do: 'card', team, number, kind: colour }, undoLabel({ do: 'card', team }));
   });
-  // Which card: resolves with "yellow" or "red", '' when the scorer backs out.
+  // Resolves with "yellow" or "red", '' when the scorer backs out.
   function pickCard(team) {
     return new Promise((resolve) => {
       const box = $('#cartao');
@@ -549,8 +543,7 @@
   }
   $('#confirmarNao').addEventListener('click', () => $('#confirmar').close());
 
-  // A running suspension is a chip with its time left and, once typed, the shirt number. The chips are
-  // rebuilt only when the set of suspensions changes, so a tap in progress never lands on a new button.
+  // Rebuilt only when the set of suspensions changes, so a tap in progress never lands on a new button.
   function renderChips(tx, list) {
     const box = $(`[data-susp="${tx}"]`), key = list.map((x) => x.id).join();
     if (box.dataset.key !== key) {
@@ -575,7 +568,6 @@
       b.dataset.left = x.left || '';
     });
   }
-  // A tap on a chip opens its number and its "Acabou".
   let suspOpen = 0;
   document.addEventListener('click', (e) => {
     const b = e.target.closest('.exc');
@@ -599,7 +591,6 @@
   // The live state can reach the page before the reply to its own tap, so Repor reads
   // the same period the header shows.
   const shownPeriod = () => +(st && st.live && st.live.period) || score.period;
-  // A tap on the clock opens the steps; each one applies at once.
   $('#relogio').addEventListener('click', () => {
     if (!score) return;
     $('#acertarRepor').textContent = t('marcar.acertar.repor', { tempo: clockText(periodStart(shownPeriod())) });
@@ -609,7 +600,6 @@
   $('#acertarRepor').addEventListener('click', () => score && send({ do: 'clock_set', tenths: periodStart(shownPeriod()) }, t('marcar.ultimo.relogio')));
   $('#acertarFechar').addEventListener('click', () => $('#acertar').close());
 
-  // ---------- start ----------
   async function start() {
     try { took(await api('GET')); } catch (err) { say(err.message); }
     listen();

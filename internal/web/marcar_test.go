@@ -416,10 +416,7 @@ func soccerScorer(t *testing.T) *Server {
 	return s
 }
 
-// The scorer's page for soccer: the added-time stepper behind the clock, the
-// card choice and shirt-number picker with a chip under the right team, the
-// substitution recorded as a count and the last pair, and the period sheet's
-// next half, then "Fim do jogo" behind a confirmation.
+// The scorer's page for soccer: added time, cards, substitutions and "Fim do jogo".
 func TestMarcarSoccerPage(t *testing.T) {
 	s := soccerScorer(t)
 	srv := httptest.NewServer(s)
@@ -462,14 +459,14 @@ func TestMarcarSoccerPage(t *testing.T) {
 	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "9").click(), true`); err != nil {
 		t.Fatal(err)
 	}
-	must(`!document.querySelector('#numero').open && document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelectorAll('.fora [data-registo] .reg').length === 0`, "the yellow is not a chip under the home team")
+	must(`!document.querySelector('#numero').open && document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelector('.casa [data-registo] .reg').className === "reg" && document.querySelectorAll('.fora [data-registo] .reg').length === 0`, "the yellow is not a chip under the home team")
 	tap(`.fora [data-pick="card"]`)
 	tap(`#cartao [data-kind="red"]`)
 	must(`document.querySelector('#numero').open && !document.querySelector('#numeroCampo').hidden && document.querySelector('#camisolas').hidden`, "the away picker is not a typed number")
 	if err := run(`(document.querySelector('#numeroCampo').value = "6", document.querySelector('#numeroFeito').click(), true)`); err != nil {
 		t.Fatal(err)
 	}
-	must(`document.querySelectorAll('.fora [data-registo] .reg').length === 1 && document.querySelector('.fora [data-registo] .reg').textContent === "6" && document.querySelectorAll('.casa [data-registo] .reg').length === 1`, "the red is not a chip under the away team")
+	must(`document.querySelectorAll('.fora [data-registo] .reg').length === 1 && document.querySelector('.fora [data-registo] .reg').textContent === "6" && document.querySelector('.fora [data-registo] .reg').classList.contains("r") && document.querySelectorAll('.casa [data-registo] .reg').length === 1`, "the red is not a chip under the away team")
 	// A substitution: off 7, on 14.
 	tap(`.casa [data-pick="sub"]`)
 	must(`document.querySelector('#numero').open && document.querySelector('#numeroTitulo').textContent.includes("Sai")`, "the substitution does not ask who goes off")
@@ -484,6 +481,11 @@ func TestMarcarSoccerPage(t *testing.T) {
 	if sc := s.Manual.Score(); len(sc.Cards) != 2 || len(sc.Subs) != 1 || sc.Stoppage != 1 {
 		t.Errorf("the scorer holds %d cards, %d subs, stoppage %d", len(sc.Cards), len(sc.Subs), sc.Stoppage)
 	}
+	// A second yellow for the same shirt keeps one chip, half yellow and half red.
+	if err := s.Manual.Do(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"}); err != nil {
+		t.Fatal(err)
+	}
+	must(`document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelector('.casa [data-registo] .reg').classList.contains("yr")`, "the second yellow is not one half-red chip")
 
 	// At 45:00 the clock button stays Iniciar: the clock runs on into added time.
 	if err := s.Manual.Do(source.Action{Do: "clock_set", Tenths: 27000}); err != nil {

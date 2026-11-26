@@ -1,9 +1,5 @@
-/* The scorer's table: a phone held sideways at the hall's table, in three columns with one job each.
-   Each team owns its column in its own colour, so a tired thumb can't score for the wrong side: the
-   name, the score, the score buttons, a band of records that look unlike buttons, then the outlined
-   actions. The middle is the Marcador strip: the period, the clock tile, undo and Iniciar/Parar. The
-   next period and the clock's steps sit one tap deeper, behind the period button and the clock. Tokens
-   come from the panel (docs/design-system.md); marcar.js sets --casa, --fora and their text colours. */
+/* Each team owns its column in its own colour, so a tired thumb can't score for the wrong side.
+   Tokens come from the panel (docs/design-system.md); marcar.js sets --casa, --fora and their text colours. */
 :root {
   --soalho: #F2E4C9;
   --soalho-claro: #F8EFDD;
@@ -11,7 +7,7 @@
   --lampada: #E5482A;
   --lampada-funda: #B8381E;
   --ouro: #D6BD2F;            /* the overlay's gold: the foul warning and the penalty chip */
-  --verde: #2E8A55;           /* live, and the player coming on */
+  --verde: #2E8A55;
   --letra: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --estreito: 74%;
   --largo: 113%;
@@ -20,11 +16,11 @@
   --tinta-2: #5C5346;
   --veu: rgba(28, 26, 23, .7);
   --carvao: #0E0D0B;          /* ink on Lâmpada: 4.9:1 where Marcador gives 4.3 */
-  --casa: #2F4B7C;            /* the two teams; marcar.js sets these from game.theme */
+  --casa: #2F4B7C;
   --fora: #F8EFDD;
   --sobre-casa: var(--soalho-claro);
   --sobre-fora: var(--marcador);
-  --cartao-amarelo: #F5C400;  /* the referee's cards: the same on every team's column */
+  --cartao-amarelo: #F5C400;
   --cartao-vermelho: #D7261E;
   --cartao-contorno: rgba(0, 0, 0, .4);
 }
@@ -45,6 +41,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .equipa :focus-visible { outline-color: var(--sobre); }
 [hidden] { display: none !important; }
 svg { display: block; flex: none; }
+.sprite { position: absolute; }
 
 .mesa {
   display: grid; grid-template-columns: minmax(0, 1fr) clamp(196px, 27.5vw, 260px) minmax(0, 1fr);
@@ -52,7 +49,6 @@ svg { display: block; flex: none; }
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* ---------- a team's column ---------- */
 .casa { --cor: var(--casa); --sobre: var(--sobre-casa); }
 .fora { --cor: var(--fora); --sobre: var(--sobre-fora); }
 .equipa {
@@ -66,7 +62,6 @@ svg { display: block; flex: none; }
   font-weight: 800; font-stretch: var(--largo); font-size: 22px; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* The visitor's column is mirrored to the right edge. */
 .fora .nome { text-align: right; }
 
 .pontos {
@@ -120,7 +115,6 @@ body.sets .somar button:nth-child(n + 2), body.um .somar button:nth-child(n + 2)
   font-size: 12px; font-weight: 800; line-height: 1; letter-spacing: .08em; text-transform: uppercase; }
 .faltas[data-bonus] .aviso { display: block; }
 
-/* The outlined actions: one per record, sharing the row. */
 .acoes { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
 .acao {
   height: 46px; min-width: 0; padding: 0 8px;
@@ -138,14 +132,12 @@ body.sets .somar button:nth-child(n + 2), body.um .somar button:nth-child(n + 2)
 .cs.r { background: var(--cartao-vermelho); }
 .acao .cs + .cs { margin-left: -3px; }
 
-/* Which records and actions a sport has. */
 .exclusoes, .sets-rec, .servico, .cartoes-rec, .trocas-rec, .acao.cartao, .acao.troca { display: none; }
 body.nofouls .faltas, body.semdescontos .descontos { display: none; }
 body.susp .rec.exclusoes, body.sets .sets-rec, body.cartoes .cartoes-rec, body.cartoes .trocas-rec { display: flex; }
 body.susp .acao.exclusoes, body.sets .servico, body.cartoes .acao.cartao, body.cartoes .acao.troca { display: flex; }
 body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); }
 
-/* Handball: one chip per running suspension, its time left and, once typed, the number; a tap opens it. */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
 .fora .chips { justify-content: flex-end; }
 .exc { display: flex; align-items: stretch; height: 44px; padding: 0; overflow: hidden; border: 0; border-radius: var(--raio);
@@ -156,12 +148,10 @@ body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 
 .exc b { display: flex; align-items: center; padding: 0 10px; background: var(--sobre); color: var(--cor); }
 .exc b[hidden] { display: none; }
 
-/* Volleyball: the serve is a ring on the team's own colour; on, the paper fill and a filled ring. */
 .servico::before { content: ""; flex: none; width: 16px; height: 16px; border: 3px solid currentColor; border-radius: 50%; }
 .servico.on { background: var(--sobre); color: var(--cor); border-color: transparent; }
 .servico.on::before { background: currentColor; }
 
-/* Soccer: one chip per booked shirt number; the substitutions as a count, then the last pair. */
 .registo { gap: 5px; flex-wrap: nowrap; overflow: hidden; }
 .reg { display: block; flex: none; font-style: normal; min-width: 20px; height: 24px; padding: 0 4px; border-radius: 3px;
   background: var(--cartao-amarelo); color: var(--marcador); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35);
@@ -173,7 +163,6 @@ body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 
 .equipa[data-claro] [data-trocas] .sai { color: var(--lampada-funda); }
 .equipa[data-claro] [data-trocas] .entra { color: var(--verde); }
 
-/* ---------- the middle strip ---------- */
 .mesa-centro {
   display: flex; flex-direction: column; gap: 8px;
   padding: 14px 12px;
@@ -236,7 +225,6 @@ body.corre #arrancar { background: var(--lampada); color: var(--carvao); }
 body.consola .relogio { color: var(--soalho); }
 /* The next period is not Iniciar: outlined, so a thumb that expects Iniciar sees the difference. */
 .arrancar.seguinte { background: transparent; color: var(--soalho); box-shadow: inset 0 0 0 3px var(--soalho); font-size: 20px; }
-/* The set can end: the button lights, as the clock's does while it runs. */
 .arrancar.pronto { background: var(--lampada); color: var(--carvao); }
 .arrancar:disabled { opacity: .4; cursor: default; }
 .mesa-centro button:disabled, .equipa button:disabled { cursor: default; }
@@ -248,8 +236,6 @@ body.consola .dica { display: flex; }
 body.consola .mesa-centro .anular { display: none; }
 body.consola .equipa button, body.consola .periodo, body.consola .relogio { opacity: .45; }
 
-/* ---------- a sets sport (volleyball) ----------
-   No clock and no period button: the tile says which set it is, with the finished ones under it. */
 .quadro-set { display: none; }
 body.sets .periodo, body.sets .relogio { display: none; }
 body.sets .quadro-set {
@@ -265,7 +251,6 @@ body.sets .quadro-set {
 .feitos .cab { font-size: 13px; font-weight: 700; letter-spacing: .06em; color: color-mix(in srgb, var(--soalho) 75%, transparent); }
 .falta { margin: 0; font-size: 15px; font-stretch: var(--estreito); font-weight: 600; line-height: 1.2; }
 
-/* ---------- connection lost ---------- */
 .faixa {
   position: fixed; left: 50%; bottom: 10px; translate: -50% 0; max-width: calc(100vw - 32px);
   padding: 8px 16px; border-radius: 999px;
@@ -274,7 +259,6 @@ body.sets .quadro-set {
 }
 body.offline .equipa button, body.offline .mesa-centro button { opacity: .45; pointer-events: none; }
 
-/* ---------- portrait ---------- */
 .rodar { display: none; }
 @media (orientation: portrait) {
   .mesa { display: none; }
@@ -282,7 +266,6 @@ body.offline .equipa button, body.offline .mesa-centro button { opacity: .45; po
 }
 .mesa[hidden] { display: none; }
 
-/* ---------- dialogs ---------- */
 dialog { border: 0; border-radius: var(--raio); padding: 16px 20px; background: var(--soalho-claro); color: var(--marcador); width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 16px); overflow: auto; margin: 8px auto auto; }
 dialog::backdrop { background: var(--veu); }
 dialog h2 { margin: 0 0 12px; text-wrap: balance; font-stretch: var(--estreito); font-size: 22px; border-bottom: 3px solid var(--marcador); padding-bottom: 4px; }

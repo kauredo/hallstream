@@ -2707,7 +2707,8 @@
       (saved.length > 1 ? '<label class="field cam-tcam" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam"' + (changed ? ' disabled' : '') + '>' +
         tcamOptions(saved, o.timeout_camera || 0, changed) + '</select></label><p class="hint cam-tcam-dica">' + (changed ? t('painel.camaras.desconto_guarde') : t('painel.definicoes.desconto_dica')) + '</p>' : '') +
       '<div class="row" style="margin-top:20px;align-items:center"><button class="btn primary" type="button" data-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +
-      '<span class="msg" id="camSetupMsg" role="status"></span></div>';
+      '<span class="msg" id="camSetupMsg" role="status"></span></div>' +
+      '<p class="hint">' + t('painel.camaras.guia') + '</p>';
   }
   function readCamRows(root, rows) {
     $all('.cam-row', root).forEach(function (el, i) {

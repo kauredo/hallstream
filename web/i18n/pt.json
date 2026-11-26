@@ -819,6 +819,7 @@
   "painel.camaras.fonte": "De onde vem a imagem",
   "painel.camaras.guardar": "Guardar e configurar o OBS",
   "painel.camaras.guarde_qr": "Guarde para ver o código QR.",
+  "painel.camaras.guia": "Duas ou três câmaras, por wifi ou por cabo: leia o guia <code>CAMARAS.txt</code>, na pasta do programa, ou <a href=\"https://github.com/kauredo/hallstream/blob/main/docs/cameras/GUIDE.md\" target=\"_blank\" rel=\"noopener\">abra-o na internet</a>.",
   "painel.camaras.internet": "Precisa de internet: o telemóvel e o OBS encontram-se através do VDO.Ninja. O resto do Hallstream funciona sem internet.",
   "painel.camaras.link": "Link do telemóvel da câmara {n}",
   "painel.camaras.link_dica": "Se este painel está aberto no telemóvel que vai filmar, copie o link e abra-o no navegador.",

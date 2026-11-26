@@ -10,109 +10,76 @@
 <link rel="stylesheet" href="/marcar/marcar.css">
 </head>
 <body class="consola">
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <symbol id="i-mais" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-troca" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h11M10 2l3 3-3 3"/><path d="M14 11H3M6 8l-3 3 3 3"/></g></symbol>
+  <symbol id="i-sai" viewBox="0 0 14 18"><path d="M7 2v13M2 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-entra" viewBox="0 0 14 18"><path d="M7 16V3M2 8l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
 <main class="mesa" id="mesa" hidden>
   <section class="equipa casa" data-team="home">
-    <header class="nome"><b class="sigla" data-v="homeShort"></b><span class="extenso" data-v="homeName"></span></header>
+    <h2 class="nome" data-v="homeName"></h2>
     <output class="pontos" aria-live="polite"><span class="n" data-v="home"></span><span class="ultimo" data-last="home" hidden></span></output>
     <div class="somar" role="group" data-i18n-attr="aria-label:marcar.pontos_casa">
       <button type="button" data-do="point" data-n="1" data-long>+1</button>
       <button type="button" data-do="point" data-n="2" data-long>+2</button>
       <button type="button" data-do="point" data-n="3" data-long>+3</button>
     </div>
-    <div class="linha cartoes">
-      <button type="button" class="cartao amarelo" data-pick="yellow"><i></i><span data-i18n="marcar.cartao_amarelo"></span></button>
-      <button type="button" class="cartao vermelho" data-pick="red"><i></i><span data-i18n="marcar.cartao_vermelho"></span></button>
-      <button type="button" class="troca" data-pick="sub"><span data-i18n="marcar.substituicao"></span></button>
+    <div class="registos">
+      <div class="rec faltas"><span class="rotulo" data-i18n="marcar.faltas"></span><span class="valor"><b class="conta" data-v="homeFouls"></b><span class="aviso"></span></span></div>
+      <div class="rec exclusoes"><span class="rotulo" data-i18n="marcar.exclusoes"></span><div class="chips" data-susp="home"></div></div>
+      <div class="rec sets-rec"><span class="rotulo" data-i18n="marcar.sets"></span><span class="valor"><b class="conta" data-v="homeSets"></b></span></div>
+      <div class="rec cartoes-rec"><span class="rotulo" data-i18n="marcar.cartoes"></span><div class="valor registo" data-registo="home"></div></div>
+      <div class="rec trocas-rec"><span class="rotulo" data-i18n="marcar.substituicoes"></span><span class="valor" data-trocas="home"></span></div>
+      <div class="rec descontos"><span class="rotulo" data-i18n="marcar.descontos"></span><span class="valor"><b class="conta" data-v="homeTimeoutsLeft"></b><span class="restam" data-v="homeTimeoutsWord"></span></span></div>
     </div>
-    <div class="registo" data-registo="home"></div>
-    <div class="linha faltas">
-      <span class="rotulo" data-i18n="marcar.faltas"></span>
-      <span class="aviso"></span>
-      <span class="marcas" data-marks="homeFouls"></span>
-      <b class="conta" data-v="homeFouls"></b>
-      <button type="button" class="mais" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta">+</button>
-    </div>
-    <div class="linha sets-linha">
-      <span class="rotulo" data-i18n="marcar.sets"></span>
-      <span></span>
-      <b class="conta" data-v="homeSets"></b>
-      <button type="button" class="servico" data-do="serve" data-n="1" data-i18n="marcar.servico"></button>
-    </div>
-    <div class="linha exclusoes">
-      <span class="rotulo" data-i18n="marcar.exclusoes"></span>
-      <button type="button" class="mais" data-do="suspension" data-n="1" data-i18n="marcar.exclusao"></button>
-      <div class="chips" data-susp="home"></div>
-    </div>
-    <div class="linha descontos">
-      <span class="rotulo" data-i18n="marcar.descontos"></span>
-      <span class="marcas" data-marks="homeTimeouts"></span>
-      <b class="conta" data-v="homeTimeouts"></b>
-      <button type="button" class="mais" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto">+</button>
+    <div class="acoes">
+      <button type="button" class="acao faltas" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.falta"></span></button>
+      <button type="button" class="acao exclusoes" data-do="suspension" data-n="1"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.exclusao"></span></button>
+      <button type="button" class="acao servico" data-do="serve" data-n="1"><span data-i18n="marcar.servico"></span></button>
+      <button type="button" class="acao cartao" data-pick="card"><i class="cs y" aria-hidden="true"></i><i class="cs r" aria-hidden="true"></i><span data-i18n="marcar.cartao"></span></button>
+      <button type="button" class="acao troca" data-pick="sub"><svg aria-hidden="true"><use href="#i-troca"/></svg><span data-i18n="marcar.substituicao"></span></button>
+      <button type="button" class="acao descontos" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.desconto"></span></button>
     </div>
   </section>
 
   <section class="mesa-centro">
-    <div class="estado" role="status"><i class="seg" aria-hidden="true"></i><span id="estado"></span></div>
-    <button type="button" class="anular" id="anular" data-do="undo"></button>
-    <div class="periodo">
-      <button type="button" class="seta" data-ask="period_back" data-i18n-attr="aria-label:marcar.periodo_anterior">‹</button>
-      <span id="periodo"></span>
-      <button type="button" class="seta" data-ask="period_next" data-i18n-attr="aria-label:marcar.periodo_seguinte">›</button>
+    <div class="estado" role="status"><i class="ponto" aria-hidden="true"></i><span id="estado"></span></div>
+    <button type="button" class="periodo" id="periodoBotao"><span id="periodo"></span><svg aria-hidden="true" viewBox="0 0 18 18"><path d="M7 3.5l5.5 5.5L7 14.5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="relogio" id="relogio" data-i18n-attr="aria-label:marcar.acertar_relogio"><span class="tempo" id="tempo"></span><span class="compensa" id="compensa"></span><svg class="lapis" aria-hidden="true" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3L5.5 13.5H2.5v-3z"/><path d="M9 4l3 3"/></g></svg></button>
+    <div class="quadro-set" id="quadroSet">
+      <span class="set-nome" id="setNome"></span>
+      <p class="feitos" id="feitos"></p>
+      <p class="falta" id="falta" hidden></p>
     </div>
-    <button type="button" class="relogio" id="relogio" data-i18n-attr="aria-label:marcar.acertar_relogio"></button>
-    <div class="compensacao" role="group" data-i18n-attr="aria-label:marcar.compensacao">
-      <button type="button" data-stoppage="-1" data-i18n-attr="aria-label:marcar.compensacao_menos">−</button>
-      <output><span data-i18n="marcar.compensacao"></span><b id="compensacao">+0'</b></output>
-      <button type="button" data-stoppage="1" data-i18n-attr="aria-label:marcar.compensacao_mais">+</button>
-    </div>
-    <div class="acerto" role="group" data-i18n-attr="aria-label:marcar.acertar_relogio">
-      <button type="button" data-do="clock_add" data-tenths="-10">−1 s</button>
-      <button type="button" data-do="clock_add" data-tenths="10">+1 s</button>
-    </div>
-    <p class="feitos" id="feitos" hidden></p>
-    <p class="falta" id="falta" hidden></p>
-    <button type="button" class="arrancar" id="arrancar"></button>
-    <button type="button" class="arrancar seguinte" id="fecho" hidden></button>
+    <button type="button" class="anular" id="anular" data-do="undo"><svg aria-hidden="true" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3L2 6l3 3"/><path d="M2 6h7.5a4 4 0 010 8H7"/></g></svg><span id="anularTexto"></span></button>
     <p class="dica" id="dica" data-i18n="marcar.dica_longo"></p>
+    <button type="button" class="arrancar" id="arrancar"><svg class="ic-iniciar" aria-hidden="true" viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z" fill="currentColor"/></svg><svg class="ic-parar" aria-hidden="true" viewBox="0 0 18 18"><path d="M6 3v12M12 3v12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span id="arrancarTexto"></span></button>
   </section>
 
   <section class="equipa fora" data-team="away">
-    <header class="nome"><b class="sigla" data-v="awayShort"></b><span class="extenso" data-v="awayName"></span></header>
+    <h2 class="nome" data-v="awayName"></h2>
     <output class="pontos" aria-live="polite"><span class="n" data-v="away"></span><span class="ultimo" data-last="away" hidden></span></output>
     <div class="somar" role="group" data-i18n-attr="aria-label:marcar.pontos_fora">
       <button type="button" data-do="point" data-n="1" data-long>+1</button>
       <button type="button" data-do="point" data-n="2" data-long>+2</button>
       <button type="button" data-do="point" data-n="3" data-long>+3</button>
     </div>
-    <div class="linha cartoes">
-      <button type="button" class="cartao amarelo" data-pick="yellow"><i></i><span data-i18n="marcar.cartao_amarelo"></span></button>
-      <button type="button" class="cartao vermelho" data-pick="red"><i></i><span data-i18n="marcar.cartao_vermelho"></span></button>
-      <button type="button" class="troca" data-pick="sub"><span data-i18n="marcar.substituicao"></span></button>
+    <div class="registos">
+      <div class="rec faltas"><span class="rotulo" data-i18n="marcar.faltas"></span><span class="valor"><b class="conta" data-v="awayFouls"></b><span class="aviso"></span></span></div>
+      <div class="rec exclusoes"><span class="rotulo" data-i18n="marcar.exclusoes"></span><div class="chips" data-susp="away"></div></div>
+      <div class="rec sets-rec"><span class="rotulo" data-i18n="marcar.sets"></span><span class="valor"><b class="conta" data-v="awaySets"></b></span></div>
+      <div class="rec cartoes-rec"><span class="rotulo" data-i18n="marcar.cartoes"></span><div class="valor registo" data-registo="away"></div></div>
+      <div class="rec trocas-rec"><span class="rotulo" data-i18n="marcar.substituicoes"></span><span class="valor" data-trocas="away"></span></div>
+      <div class="rec descontos"><span class="rotulo" data-i18n="marcar.descontos"></span><span class="valor"><b class="conta" data-v="awayTimeoutsLeft"></b><span class="restam" data-v="awayTimeoutsWord"></span></span></div>
     </div>
-    <div class="registo" data-registo="away"></div>
-    <div class="linha faltas">
-      <span class="rotulo" data-i18n="marcar.faltas"></span>
-      <span class="aviso"></span>
-      <span class="marcas" data-marks="awayFouls"></span>
-      <b class="conta" data-v="awayFouls"></b>
-      <button type="button" class="mais" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta">+</button>
-    </div>
-    <div class="linha sets-linha">
-      <span class="rotulo" data-i18n="marcar.sets"></span>
-      <span></span>
-      <b class="conta" data-v="awaySets"></b>
-      <button type="button" class="servico" data-do="serve" data-n="1" data-i18n="marcar.servico"></button>
-    </div>
-    <div class="linha exclusoes">
-      <span class="rotulo" data-i18n="marcar.exclusoes"></span>
-      <button type="button" class="mais" data-do="suspension" data-n="1" data-i18n="marcar.exclusao"></button>
-      <div class="chips" data-susp="away"></div>
-    </div>
-    <div class="linha descontos">
-      <span class="rotulo" data-i18n="marcar.descontos"></span>
-      <span class="marcas" data-marks="awayTimeouts"></span>
-      <b class="conta" data-v="awayTimeouts"></b>
-      <button type="button" class="mais" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto">+</button>
+    <div class="acoes">
+      <button type="button" class="acao faltas" data-do="foul" data-n="1" data-long data-i18n-attr="aria-label:marcar.juntar_falta"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.falta"></span></button>
+      <button type="button" class="acao exclusoes" data-do="suspension" data-n="1"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.exclusao"></span></button>
+      <button type="button" class="acao servico" data-do="serve" data-n="1"><span data-i18n="marcar.servico"></span></button>
+      <button type="button" class="acao cartao" data-pick="card"><i class="cs y" aria-hidden="true"></i><i class="cs r" aria-hidden="true"></i><span data-i18n="marcar.cartao"></span></button>
+      <button type="button" class="acao troca" data-pick="sub"><svg aria-hidden="true"><use href="#i-troca"/></svg><span data-i18n="marcar.substituicao"></span></button>
+      <button type="button" class="acao descontos" data-do="timeout" data-n="1" data-long data-i18n-attr="aria-label:marcar.pedir_desconto"><svg aria-hidden="true"><use href="#i-mais"/></svg><span data-i18n="marcar.desconto"></span></button>
     </div>
   </section>
 </main>
@@ -131,6 +98,22 @@
   </form>
 </dialog>
 
+<!-- The period button's actions: the next period (or the end of a soccer game), the one before, and the period's length. -->
+<dialog id="periodos">
+  <h2 id="periodosTitulo"></h2>
+  <div class="botoes">
+    <button type="button" class="anular" id="anterior" data-ask="period_back" data-i18n="marcar.periodo_anterior"></button>
+    <button type="button" class="arrancar" id="seguinte"></button>
+  </div>
+  <p class="rotulo-dialogo" data-i18n="marcar.duracao"></p>
+  <div class="passos duracao">
+    <button type="button" data-length="-600">−1 min</button>
+    <output id="duracao"></output>
+    <button type="button" data-length="600">+1 min</button>
+  </div>
+  <button type="button" class="anular fechar" id="periodosFechar" data-i18n="marcar.feito"></button>
+</dialog>
+
 <!-- Setting the clock: steps that apply at once, so a running clock never jumps back by the time spent typing. -->
 <dialog id="acertar">
   <h2 data-i18n="marcar.acertar.titulo"></h2>
@@ -142,6 +125,14 @@
     <button type="button" data-do="clock_add" data-tenths="10">+1 s</button>
     <button type="button" data-do="clock_add" data-tenths="100">+10 s</button>
     <button type="button" data-do="clock_add" data-tenths="600">+1 min</button>
+  </div>
+  <div class="compensacao" role="group" data-i18n-attr="aria-label:marcar.compensacao">
+    <p class="rotulo-dialogo" data-i18n="marcar.compensacao"></p>
+    <div class="passos">
+      <button type="button" data-stoppage="-1" data-i18n-attr="aria-label:marcar.compensacao_menos">−</button>
+      <output id="compensacao">+0'</output>
+      <button type="button" data-stoppage="1" data-i18n-attr="aria-label:marcar.compensacao_mais">+</button>
+    </div>
   </div>
   <div class="botoes">
     <button type="button" class="anular" id="acertarRepor"></button>
@@ -157,6 +148,16 @@
     <button type="button" class="anular" id="exclusaoAcabou" data-i18n="marcar.exclusao_acabou"></button>
     <button type="button" class="arrancar" id="exclusaoFeito" data-i18n="marcar.feito"></button>
   </div>
+</dialog>
+
+<!-- Which card, before its shirt number. -->
+<dialog id="cartao">
+  <h2 id="cartaoTitulo"></h2>
+  <div class="botoes cores">
+    <button type="button" class="anular" data-kind="yellow"><i class="cs y" aria-hidden="true"></i><span data-i18n="marcar.cartao_amarelo"></span></button>
+    <button type="button" class="anular" data-kind="red"><i class="cs r" aria-hidden="true"></i><span data-i18n="marcar.cartao_vermelho"></span></button>
+  </div>
+  <button type="button" class="anular fechar" id="cartaoCancelar" data-i18n="marcar.cancelar"></button>
 </dialog>
 
 <!-- A shirt number for a card or a substitution: the squad's numbers for the home team, a typed number for the rest. -->

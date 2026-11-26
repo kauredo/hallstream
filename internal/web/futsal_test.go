@@ -45,8 +45,9 @@ func fouls(t *testing.T, s *Server, team string, n int) {
 	}
 }
 
-// The scorer's page for futsal: halves, five foul marks, "Livre" at the sixth
-// foul, and "Repor" gives extra time its own 5:00.
+// The scorer's page for futsal: halves, the fouls as a numeral that turns gold
+// at five, "Livre" at the sixth foul, the period sheet's length steps, and
+// "Repor" gives extra time its own 5:00.
 func TestMarcarPageFutsal(t *testing.T) {
 	s := sportServer(t, newServerFiles(t, assets.FS), "futsal")
 	srv := httptest.NewServer(s)
@@ -59,24 +60,44 @@ func TestMarcarPageFutsal(t *testing.T) {
 	if err := until(tab, `!document.querySelector("#mesa").hidden && document.querySelector("#periodo").textContent.includes("parte")`); err != nil {
 		t.Fatalf("the period is not a half: %v", err)
 	}
-	if err := until(tab, `document.querySelectorAll('[data-marks="homeFouls"] i').length === 5`); err != nil {
-		t.Fatalf("not five foul marks: %v", err)
+	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "0" && getComputedStyle(document.querySelector('.casa .faltas')).display !== 'none'`); err != nil {
+		t.Fatalf("no fouls record: %v", err)
+	}
+	// The period button opens its sheet; a length step applies at once.
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('#periodoBotao').click(), true`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `document.querySelector('#periodos').open && document.querySelector('#duracao').textContent === "20:00" && document.querySelector('#anterior').disabled`); err != nil {
+		t.Fatalf("the period sheet: %v", err)
+	}
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('[data-length="600"]').click(), true`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `document.querySelector('#duracao').textContent === "21:00" && document.querySelector('#tempo').textContent === "21:00"`); err != nil {
+		t.Fatalf("+1 min on the length: %v (scorer length %d)", err, s.Manual.Score().Length)
+	}
+	time.Sleep(400 * time.Millisecond) // the page ignores the same tap again for 350 ms after its reply
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('[data-length="-600"]').click(), document.querySelector('#periodosFechar').click(), true`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `!document.querySelector('#periodos').open && document.querySelector('#duracao').textContent === "20:00"`); err != nil {
+		t.Fatalf("−1 min on the length: %v", err)
 	}
 	// A goal is 1: the page shows only +1, and the server refuses a bigger one.
 	if err := until(tab, `[...document.querySelectorAll('.casa .somar button')].filter((b) => getComputedStyle(b).display !== 'none').length === 1`); err != nil {
 		t.Fatalf("futsal shows more than +1: %v", err)
 	}
 	fouls(t, s, "home", 5)
-	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "5" && !document.querySelector('.casa .faltas').hasAttribute("data-bonus")`); err != nil {
+	if err := until(tab, `document.querySelector('[data-v="homeFouls"]').textContent === "5" && document.querySelector('.casa .faltas').hasAttribute("data-warn") && !document.querySelector('.casa .faltas').hasAttribute("data-bonus")`); err != nil {
 		t.Fatalf("at five fouls: %v", err)
 	}
 	fouls(t, s, "home", 1)
 	if err := until(tab, `document.querySelector('.casa .faltas').hasAttribute("data-bonus") && document.querySelector('.casa .aviso').textContent === "Livre"`); err != nil {
 		t.Fatalf("at six fouls: %v", err)
 	}
-	// Through the page's own arrow and confirm dialog, so its score follows.
+	// Through the period sheet's button and confirm dialog, so its score follows.
 	for i, want := range []string{"2", "Prolongamento"} {
-		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('[data-ask="period_next"]').click(), true`)); err != nil {
+		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('#seguinte').click(), true`)); err != nil {
 			t.Fatal(err)
 		}
 		if err := until(tab, `document.querySelector('#confirmar').open`); err != nil {
@@ -114,8 +135,22 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 	if err := until(tab, `[...document.querySelectorAll('.casa .somar button')].filter((b) => getComputedStyle(b).display !== 'none').length === 3`); err != nil {
 		t.Fatalf("basketball lost its +2 or +3: %v", err)
 	}
-	fouls(t, s, "home", 5)
-	if err := until(tab, `document.querySelector('.casa .faltas').hasAttribute("data-bonus") && document.querySelector('.casa .aviso').textContent === "Bónus"`); err != nil {
+	// Timeouts show what is left of the half's allowance.
+	if err := until(tab, `document.querySelector('[data-v="homeTimeoutsLeft"]').textContent === "2" && document.querySelector('[data-v="homeTimeoutsWord"]').textContent === "restam"`); err != nil {
+		t.Fatalf("basketball timeouts at the start: %v", err)
+	}
+	if err := s.Manual.Do(source.Action{Do: "timeout", Team: "home", N: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `document.querySelector('[data-v="homeTimeoutsLeft"]').textContent === "1" && document.querySelector('[data-v="homeTimeoutsWord"]').textContent === "resta"`); err != nil {
+		t.Fatalf("basketball timeouts after one: %v", err)
+	}
+	fouls(t, s, "home", 4)
+	if err := until(tab, `document.querySelector('.casa .faltas').hasAttribute("data-warn") && !document.querySelector('.casa .faltas').hasAttribute("data-bonus")`); err != nil {
+		t.Fatalf("basketball at four fouls: %v", err)
+	}
+	fouls(t, s, "home", 1)
+	if err := until(tab, `document.querySelector('.casa .faltas').hasAttribute("data-bonus") && !document.querySelector('.casa .faltas').hasAttribute("data-warn") && document.querySelector('.casa .aviso').textContent === "Bónus"`); err != nil {
 		t.Fatalf("basketball at five fouls: %v", err)
 	}
 	if err := until(tab, `document.querySelector("#periodo").textContent.includes("período")`); err != nil {

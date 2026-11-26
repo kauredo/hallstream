@@ -68,8 +68,8 @@ func TestMarcarPageHandball(t *testing.T) {
 		t.Fatalf("the button never woke after its wait: %v", err)
 	}
 
-	// Through the page's own arrow and confirm dialog: the second half starts at 30:00, which is not its end.
-	if err := run(`document.querySelector('[data-ask="period_next"]').click(), true`); err != nil {
+	// Through the period sheet's button and confirm dialog: the second half starts at 30:00, which is not its end.
+	if err := run(`document.querySelector('#seguinte').click(), true`); err != nil {
 		t.Fatal(err)
 	}
 	if err := until(tab, `document.querySelector('#confirmar').open`); err != nil {
@@ -102,7 +102,7 @@ func TestMarcarPageHandball(t *testing.T) {
 
 	// Extra time starts at the 60:00 played, and Repor says so.
 	time.Sleep(400 * time.Millisecond) // the page ignores the same tap again for 350 ms after its reply
-	if err := run(`document.querySelector('[data-ask="period_next"]').click(), true`); err != nil {
+	if err := run(`document.querySelector('#seguinte').click(), true`); err != nil {
 		t.Fatal(err)
 	}
 	if err := until(tab, `document.querySelector('#confirmar').open`); err != nil {

@@ -186,6 +186,9 @@ encolhe para a janela do grafismo e volta depois, na mesma cena.
 - Com duas ou três câmaras, Ecrãs tem um botão por câmara, e a que está
   no ar diz "No ar". Pode trocar de câmara no desconto: a imagem fica na
   janela.
+- Em Definições > Câmara no desconto escolha a câmara que entra no
+  desconto (o banco, por exemplo). No fim volta a câmara que estava no
+  ar. "Nenhuma" deixa a câmara que está no ar.
 
 Se o tablet rodar ou o DroidCam mudar de resolução, o programa volta a
 ajustar a câmara sozinho. Com "Imagem inteira", um tablet ao alto fica

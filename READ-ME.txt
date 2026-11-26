@@ -186,6 +186,9 @@ graphics window and comes back afterwards, in the same scene.
 - With two or three cameras, Screens has a button per camera, and the one
   on air says "On air". You can change camera during a timeout: the
   picture stays in the window.
+- In Settings > Camera during timeouts, choose the camera that goes on
+  air for the timeout (the bench, for example). At the end the camera
+  that was on air comes back. "None" keeps the camera on air.
 
 If the tablet rotates or DroidCam changes resolution, the program
 adjusts the camera again by itself. With "Full image", an upright

@@ -24,7 +24,7 @@
     settings: {
       fpb_base_url: 'https://calendariofpb.pt', phone_access: false, pin: '',
       obs: { enabled: true, host: '127.0.0.1', port: 4455, password: '', timeout_scene: '', game_scene: 'Jogo', camera_source: '', camera_fit: 'contain', camera_full: null,
-        cameras: [{ source: '', scene: '', label: '' }], graphics_scene: '', camera_fulls: {},
+        cameras: [{ source: '', scene: '', label: '' }], graphics_scene: '', camera_fulls: {}, timeout_camera: 0,
         setup_at: '', launch: false, close_on_exit: false },
       start_with_windows: false,
       auto_screens: true, instagram: '', club: { name: 'CASA', short: 'CAS', primary: '#2F4B7C', secondary: '#1C1A17', crest: '/assets/crest.svg', sport: 'basketball', country: 'PT' },
@@ -244,6 +244,9 @@
   else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(3, Math.max(1, +camsQ || 1)));
   var liveQ = /[?&]live=([0-3])/.exec(location.search);
   db.obsLive = liveQ ? +liveQ[1] : 1;
+  // The camera for time-outs: ?tcam=0|1|2|3.
+  var tcamQ = /[?&]tcam=([0-3])/.exec(location.search);
+  db.settings.obs.timeout_camera = tcamQ ? +tcamQ[1] : 0;
 
   // OBS as the panel sees it: ?obs=off (default), ready, problem, live, nokey, choose.
   var obsMode = (/[?&]obs=([a-z]+)/.exec(location.search) || [])[1] || 'off';

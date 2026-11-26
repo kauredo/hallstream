@@ -2160,6 +2160,7 @@
     var root = $('#definicoes'), s = S.settings;
     if (!s) { root.innerHTML = '<p class="hint">' + t('painel.a_carregar') + '</p>'; return; }
     var o = s.obs || {};
+    var obsCams = (o.cameras || []).slice(0, 3);
     var url = (S.status && S.status.overlay_url) || (location.origin + '/overlay');
     var html = '';
     var fs = S.setup;
@@ -2188,7 +2189,10 @@
       '<label class="field"><span>' + t('painel.definicoes.enquadramento') + '</span><select id="dObsFit">' +
       '<option value="contain"' + (o.camera_fit !== 'fill' ? ' selected' : '') + '>' + t('painel.definicoes.imagem_inteira') + '</option>' +
       '<option value="fill"' + (o.camera_fit === 'fill' ? ' selected' : '') + '>' + t('painel.definicoes.encher') + '</option></select></label>' +
+      (obsCams.length > 1 ? '<label class="field" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam">' +
+        tcamOptions(obsCams, o.timeout_camera || 0) + '</select></label>' : '') +
       '</div><p class="hint">' + t('painel.definicoes.camara_dica') + '</p>' +
+      (obsCams.length > 1 ? '<p class="hint">' + t('painel.definicoes.desconto_dica') + '</p>' : '') +
       '<div class="row" style="margin-top:12px"><button class="btn" data-act="obs-fit">' + t('painel.definicoes.ajustar') + '</button><span class="msg" id="dObsMsg"></span></div>' +
       (S.status && S.status.obs_app ?
         '<label class="switch" style="margin-top:12px"><input type="checkbox" id="dObsLaunch"' + (o.launch ? ' checked' : '') + '><i></i>' + t('painel.definicoes.abrir_obs') + '</label>' +
@@ -2568,6 +2572,15 @@
   }
 
   // The cameras OBS has, and the devices it could add; "" lets the program pick (DroidCam first).
+  // The time-out camera's options; a saved camera that is gone stays chosen, so a save keeps it.
+  function tcamOptions(cams, cur) {
+    var opt = function (v, label) { return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + esc(label) + '</option>'; };
+    var html = opt(0, t('painel.definicoes.desconto_nenhuma')) + cams.map(function (c, i) {
+      return opt(i + 1, c.label || t('painel.camaras.camara', { n: i + 1 }));
+    }).join('');
+    return cur > cams.length ? html + opt(cur, t('painel.definicoes.desconto_sem_camara', { n: cur })) : html;
+  }
+
   function camOptions(cur) {
     var list = S.obsCams || [], found = !cur, adds = '';
     var html = '<option value="">' + t('painel.camara.automatica') + '</option>';
@@ -2604,6 +2617,7 @@
     // A device to add becomes the camera only through Configurar OBS.
     var cam = $('#dObsCam').value;
     if (!/^(device:|plugin$)/.test(cam)) s.obs.camera_source = cam;
+    if ($('#dObsTcam')) s.obs.timeout_camera = parseInt($('#dObsTcam').value, 10) || 0;
     if ($('#dObsLaunch')) { s.obs.launch = $('#dObsLaunch').checked; s.obs.close_on_exit = $('#dObsClose').checked; }
     s.phone_access = $('#dPhone').checked;
     s.pin = $('#dPin').value.trim();

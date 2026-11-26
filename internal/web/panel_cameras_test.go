@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/chromedp/chromedp"
 
@@ -66,5 +67,52 @@ func TestPanelCameraRefused(t *testing.T) {
 	}
 	if err := until(tab, `document.querySelector('[data-cam="1"]').getAttribute("aria-pressed") === "true" && document.querySelector('[data-cam="2"]').getAttribute("aria-pressed") === "false"`); err != nil {
 		t.Errorf("camera 1 must stay on air: %v", err)
+	}
+}
+
+// settingsPanel opens Definições in the panel's mock with query added.
+func settingsPanel(t *testing.T, query string) context.Context {
+	t.Helper()
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	tab := chrome(t)
+	if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/painel?mock=1&obs=ready"+query+"#definicoes")); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `!!document.querySelector("#dObsFit")`); err != nil {
+		t.Fatalf("Definições never drew: %v", err)
+	}
+	return tab
+}
+
+func TestPanelTimeoutCamera(t *testing.T) {
+	tab := settingsPanel(t, "&cams=3&tcam=2")
+	if err := until(tab, `document.querySelector("#dObsTcam").value === "2" && document.querySelectorAll("#dObsTcam option").length === 4`); err != nil {
+		t.Fatalf("camera 2 not chosen: %v", err)
+	}
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector("#dObsTcam").value = "3", true`)); err != nil {
+		t.Fatal(err)
+	}
+	click(t, tab, `[data-act="save-settings"]`)
+	saved := 0.0
+	for end := time.Now().Add(5 * time.Second); saved != 3 && time.Now().Before(end); time.Sleep(50 * time.Millisecond) {
+		var err error
+		saved, err = chromedp.Run(tab, chromedp.Evaluate[float64](`fetch("/api/settings").then(r => r.json()).then(s => s.obs.timeout_camera)`, chromedp.EvalAwaitPromise))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if saved != 3 {
+		t.Errorf("saved timeout_camera %v", saved)
+	}
+
+	gone := settingsPanel(t, "&cams=2&tcam=3")
+	if err := until(gone, `document.querySelector("#dObsTcam").value === "3" && document.querySelector("#dObsTcam").selectedOptions[0].textContent.includes("3")`); err != nil {
+		t.Errorf("a camera that is gone must stay chosen: %v", err)
+	}
+
+	one := settingsPanel(t, "&cams=1")
+	if shown, err := chromedp.Run(one, chromedp.Evaluate[bool](`!!document.querySelector("#dObsTcamField")`)); err != nil || shown {
+		t.Errorf("one camera shows the time-out camera: %v %v", shown, err)
 	}
 }

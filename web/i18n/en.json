@@ -546,6 +546,7 @@
   "overlay.data_linha": "{dia_semana}, {dia} {mes}",
   "overlay.desconto.tempo_de_jogo": "GAME TIME",
   "overlay.desconto.titulo": "TIME<span>OUT</span>",
+  "overlay.descontos_restam": "{n} time-outs left",
   "overlay.desporto_omissao": "BASKET",
   "overlay.exclusao": "{n} out, back in {tempo}",
   "overlay.exclusoes": "SUSPENSIONS",

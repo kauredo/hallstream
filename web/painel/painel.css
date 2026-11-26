@@ -261,7 +261,7 @@ details > summary { cursor: pointer; min-height: 44px; display: flex; align-item
 }
 /* Off: an empty track with a hollow knob. On: the track filled, the knob solid. */
 .switch i::after {
-  content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%;
+  content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
   border: 2px solid var(--marcador); background: transparent; transition: transform .15s;
 }
 .switch input:checked + i { background: var(--marcador); }
@@ -270,7 +270,8 @@ details > summary { cursor: pointer; min-height: 44px; display: flex; align-item
 .switch:has(input:disabled) { cursor: not-allowed; color: var(--tinta-2); }
 .switch input:disabled + i { border-style: dashed; border-color: var(--tinta-2); }
 .switch input:disabled + i::after { border-color: var(--tinta-2); }
-.switch input:disabled:checked + i::after { background: var(--tinta-2); }
+.switch input:disabled:checked + i { background: transparent; }
+.switch input:disabled:checked + i::after { border-color: var(--tinta-2); background: var(--tinta-2); }
 @media (prefers-reduced-motion: reduce) { .switch i, .switch i::after, .btn { transition: none; } }
 
 /* The status line: like the results line in a programme, one row between hairlines. */

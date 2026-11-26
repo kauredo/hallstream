@@ -354,6 +354,8 @@ func TestFitInOtherScene(t *testing.T) {
 	r.f.byScene = map[string][]map[string]any{"Jogo": r.f.items, "Câmara 2": {cam, graphics}}
 	var saved []string
 	r.c.Save = func(source string, _ Full) { saved = append(saved, source) }
+	shown := 0
+	r.c.Show = func(_, _ *Rect) { shown++ }
 	rep, err := r.c.FitIn("Câmara 2", "DroidCam")
 	if err != nil || rep.Source != "DroidCam" || rep.SourceWidth != 1280 {
 		t.Fatalf("%+v %v", rep, err)
@@ -366,6 +368,64 @@ func TestFitInOtherScene(t *testing.T) {
 	}
 	if !slices.Equal(saved, []string{"DroidCam"}) || r.f.program != "Jogo" {
 		t.Errorf("saved %v, program %q", saved, r.f.program)
+	}
+	// The overlay draws what is on program, which is another scene.
+	if shown != 0 {
+		t.Errorf("told the overlay %d times about a scene off program", shown)
+	}
+}
+
+// otherScene puts camera B, 1280x720, alone in Câmara 2, beside the rig's Jogo.
+func otherScene(r *rig) {
+	cam := item3(1280, 720)[1]
+	cam["sceneItemId"], cam["sceneItemIndex"], cam["sourceName"] = 7, 0, "B"
+	r.f.byScene = map[string][]map[string]any{"Jogo": r.f.items, "Câmara 2": {cam}}
+}
+
+// Camera 2 is fitted with its own saved placement, never camera 1's.
+func TestFitInUsesItsOwnPlacement(t *testing.T) {
+	r := newRig(t, 1920, 1080)
+	otherScene(r)
+	one := Full{Place{Rect: canvas}, 1920, 1080, 1920, 1080, "contain"}
+	two := Full{Place{Rect: Rect{0, 12, 1920, 1056}}, 1280, 720, 1920, 1080, "contain"}
+	r.set.Source, r.set.Full = "Tablet", &one
+	r.set.Fulls = map[string]*Full{"Tablet": &one, "B": &two}
+	if _, err := r.c.FitIn("Câmara 2", "B"); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	if len(r.saved) != 0 {
+		t.Errorf("saved %+v over camera 2's own placement", r.saved)
+	}
+	if end := last(t, r.f); !near(end["positionY"].(float64), 12) {
+		t.Errorf("placed at %v, not camera 2's placement", end)
+	}
+}
+
+// A fit while a squeeze runs leaves the squeeze to end where it was going.
+func TestFitInWaitsForTheSqueeze(t *testing.T) {
+	r := newRig(t, 1920, 1080)
+	otherScene(r)
+	r.c.Dur = 200 * time.Millisecond
+	r.c.Follow("desconto")
+	time.Sleep(40 * time.Millisecond)
+	if _, err := r.c.FitIn("Câmara 2", "B"); err != nil {
+		t.Fatal(err)
+	}
+	r.wait(t)
+	r.f.mu.Lock()
+	defer r.f.mu.Unlock()
+	var jogo map[string]any
+	for i, s := range r.f.setIn {
+		if s == "Jogo" {
+			jogo = r.f.sets[i]
+		}
+	}
+	if jogo == nil || !near(jogo["positionX"].(float64), 416) {
+		t.Errorf("the squeeze stopped at %v", jogo)
+	}
+	if r.f.setIn[len(r.f.setIn)-1] != "Câmara 2" {
+		t.Errorf("camera 2 not fitted: %v", r.f.setIn)
 	}
 }
 

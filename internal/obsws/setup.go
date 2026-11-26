@@ -97,13 +97,13 @@ func (r Report) Problems() []string {
 // deletes or changes a source or scene the user made, other than the
 // overlay's own settings. Without apply it only reports (the health
 // check), and with one camera it also accepts the old Hallstream scene.
-// The error is for a lost connection; whatever OBS refuses becomes a
-// failed step.
+// The error is for a lost connection, and comes with the report so far,
+// whose scenes exist; whatever OBS refuses becomes a failed step.
 func (c *Client) Setup(cfg Config, w Want, apply bool, fit func(n int, scene, camera string) error) (Report, error) {
 	s := &setup{c: c, cfg: cfg, apply: apply, want: w}
 	s.run(fit)
 	if s.err != nil {
-		return Report{}, s.err
+		return s.rep, s.err
 	}
 	s.ready()
 	if !apply && !s.rep.Ready && len(w.Cameras) <= 1 {
@@ -203,11 +203,12 @@ func (s *setup) run(fit func(int, string, string) error) {
 	if s.want.Graphics == "" {
 		graphics = uniqueSourceName(in, s.scenes, graphics)
 	}
-	if !s.ensureScene("graphics", graphics) && s.apply || s.err != nil {
-		return
-	}
+	ok := s.ensureScene("graphics", graphics)
 	if slices.Contains(s.scenes, graphics) {
 		s.rep.Graphics = graphics
+	}
+	if !ok && s.apply || s.err != nil {
+		return
 	}
 	s.at = graphics
 	s.overlay(in)
@@ -228,13 +229,13 @@ func (s *setup) run(fit func(int, string, string) error) {
 				rc.Scene = scene
 			}
 		}
-		if s.err != nil {
-			return
-		}
 		if i == 0 {
 			s.rep.Camera = rc.Source
 		}
 		s.rep.Cameras = append(s.rep.Cameras, rc)
+		if s.err != nil {
+			return
+		}
 	}
 	s.video(busy)
 	var live []string
@@ -246,6 +247,9 @@ func (s *setup) run(fit func(int, string, string) error) {
 	first := ""
 	if len(s.rep.Cameras) > 0 {
 		first = s.rep.Cameras[0].Scene
+	}
+	if first == "" && len(live) > 0 {
+		first = live[0]
 	}
 	s.program(busy, live, first)
 	if !s.apply || fit == nil {
@@ -454,7 +458,7 @@ func (s *setup) overlay(in []input) string {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.falta_grafismo")
 			return ""
 		}
-		name := uniqueName(in, OverlayName)
+		name := uniqueSourceName(in, s.scenes, OverlayName)
 		if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name,
 			"inputKind": "browser_source", "inputSettings": settings}, nil); re != nil {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_criou_grafismo", "erro", re.Comment)
@@ -515,19 +519,8 @@ func (s *setup) show(it *sceneItem, name string) *RequestError {
 	return nil
 }
 
-func uniqueName(in []input, name string) string {
-	taken := func(n string) bool {
-		return slices.ContainsFunc(in, func(x input) bool { return x.Name == n })
-	}
-	out := name
-	for i := 2; taken(out); i++ {
-		out = name + " " + strconv.Itoa(i)
-	}
-	return out
-}
-
-// uniqueSourceName avoids scene names too: OBS names are unique across
-// inputs and scenes.
+// uniqueSourceName is name, numbered when an input or a scene has it: OBS
+// names are unique across inputs and scenes.
 func uniqueSourceName(in []input, scenes []string, name string) string {
 	taken := func(n string) bool {
 		return slices.Contains(scenes, n) || slices.ContainsFunc(in, func(x input) bool { return x.Name == n })
@@ -595,6 +588,10 @@ func (s *setup) camera(in []input) string {
 	case s.n > 1:
 		// Cameras 2 and 3 come from the settings and are never picked here.
 		name = strings.TrimPrefix(w, "source:")
+		if name == "" {
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_n_sem_fonte", "n", s.n)
+			return ""
+		}
 		if !strings.HasPrefix(w, "source:") || byName(name) == nil {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_n_sumiu", "n", s.n, "camara", name)
 			return ""
@@ -804,7 +801,7 @@ func (s *setup) devices(in []input) []listItem {
 }
 
 func (s *setup) addDevice(st *Step, in []input, id string) string {
-	name := uniqueName(in, deviceName(id))
+	name := uniqueSourceName(in, s.scenes, deviceName(id))
 	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": dshowKind,
 		"inputSettings": map[string]any{"video_device_id": id}}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_camara", "camara", name, "erro", re.Comment)
@@ -817,7 +814,7 @@ func (s *setup) addDevice(st *Step, in []input, id string) string {
 // addPlugin adds a DroidCam OBS source and connects it to the first phone
 // or tablet it sees by cable; over Wi-Fi it needs its IP, set once in OBS.
 func (s *setup) addPlugin(st *Step, in []input) string {
-	name := uniqueName(in, "DroidCam")
+	name := uniqueSourceName(in, s.scenes, "DroidCam")
 	if re := s.call("CreateInput", map[string]any{"sceneName": s.at, "inputName": name, "inputKind": PluginKind,
 		"inputSettings": map[string]any{}}, nil); re != nil {
 		st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_juntou_droidcam", "erro", re.Comment)

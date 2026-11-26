@@ -455,6 +455,7 @@
   "obs.setup.camara_antiga": "Old camera",
   "obs.setup.camara_fora_cena": "Camera {camara} isn't in scene {cena}.",
   "obs.setup.camara_n": "Camera {n}",
+  "obs.setup.camara_n_sem_fonte": "Camera {n} has no source chosen. Pick one in Settings.",
   "obs.setup.camara_n_sumiu": "Camera {n} ({camara}) is no longer in OBS. Pick another in Settings.",
   "obs.setup.camara_repetida": "Camera {n} is the same source as camera {outra}.",
   "obs.setup.camara_sumiu": "Camera {camara} no longer exists in OBS.",

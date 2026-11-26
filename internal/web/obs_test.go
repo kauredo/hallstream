@@ -62,6 +62,9 @@ func fakeOBSData(t *testing.T, password string, answer func(typ string, data jso
 			mu.Lock()
 			ok, code, data := answer(req.Type, req.Data)
 			mu.Unlock()
+			if code == hangUp {
+				return
+			}
 			resp := map[string]any{"requestType": req.Type, "requestId": req.ID,
 				"requestStatus": map[string]any{"result": ok, "code": code, "comment": "fake"}}
 			if data != nil {
@@ -75,6 +78,49 @@ func fakeOBSData(t *testing.T, password string, answer func(typ string, data jso
 	host, port, _ := net.SplitHostPort(srv.Listener.Addr().String())
 	p, _ := strconv.Atoi(port)
 	return host, p
+}
+
+// hangUp as the code makes the fake close the connection instead of answering.
+const hangUp = -1
+
+// A connection lost half way through Configurar OBS keeps the scenes made
+// so far, so the next run uses their names instead of "Grafismo 2".
+func TestSetupLostSavesScenes(t *testing.T) {
+	s := newServer(t)
+	scenes := []map[string]string{{"sceneName": "Cena"}}
+	gone := false
+	host, port := fakeOBSData(t, "", func(typ string, data json.RawMessage) (bool, int, any) {
+		if gone {
+			return false, hangUp, nil
+		}
+		switch typ {
+		case "GetStreamStatus", "GetRecordStatus":
+			return true, 100, map[string]any{"outputActive": false}
+		case "GetInputList":
+			return true, 100, map[string]any{"inputs": []any{}}
+		case "GetSceneList":
+			return true, 100, map[string]any{"scenes": scenes}
+		case "GetSceneItemList":
+			return true, 100, map[string]any{"sceneItems": []any{}}
+		case "CreateScene":
+			var d struct {
+				Name string `json:"sceneName"`
+			}
+			json.Unmarshal(data, &d)
+			scenes = append(scenes, map[string]string{"sceneName": d.Name})
+			gone = d.Name == "Câmara 1"
+		}
+		return true, 100, nil
+	})
+	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Host, set.OBS.Port = host, port })
+	var resp map[string]any
+	if code := call(t, s, "POST", "/api/obs/setup", map[string]string{}, &resp); code != http.StatusBadGateway {
+		t.Fatalf("%d %v", code, resp)
+	}
+	o := s.Store.Settings().OBS
+	if o.GraphicsScene != "Grafismo" || len(o.Cameras) != 1 || o.Cameras[0].Scene != "Câmara 1" || o.CameraSource != "" {
+		t.Errorf("graphics %q cameras %+v source %q", o.GraphicsScene, o.Cameras, o.CameraSource)
+	}
 }
 
 type fakeApp struct {

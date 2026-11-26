@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"maps"
 	"net"
 	"net/http"
 	"strconv"
@@ -23,6 +24,9 @@ var errNotLive error = i18n.Key("api.obs.nao_transmitiu")
 // startPolls times 300 ms is how long a start waits for OBS to send: the
 // connection to YouTube comes first.
 var startPolls = 100
+
+// fitWait is how long a setup's fit waits between tries for a new camera's picture.
+var fitWait = 1500 * time.Millisecond
 
 // obsHealth is the last health check: what is missing or wrong in OBS.
 type obsHealth struct {
@@ -241,6 +245,15 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	o := s.Store.Settings().OBS
 	rep, err := s.OBS.Setup(cfg, s.want(o, req.Camera, req.Old), true, s.fitCamera)
 	if err != nil {
+		// The scenes made so far keep their names for the next run; the
+		// cameras, half set up, stay as they were.
+		names := obsws.Report{Graphics: rep.Graphics}
+		for _, c := range rep.Cameras {
+			names.Cameras = append(names.Cameras, obsws.ReportCamera{Scene: c.Scene})
+		}
+		if serr := s.saveCameras(names); serr != nil {
+			s.Log(i18n.T("log.obs.erro", "err", serr))
+		}
 		fail(w, http.StatusBadGateway, err.Error())
 		return
 	}
@@ -290,13 +303,20 @@ func (s *Server) saveCameras(rep obsws.Report) error {
 
 // fitCamera keeps cam as camera n, in scene, and fits it. A camera just
 // added may take a few seconds to send a picture.
-func (s *Server) fitCamera(n int, scene, cam string) error {
+func (s *Server) fitCamera(n int, scene, cam string) (err error) {
 	rep := obsws.Report{Cameras: make([]obsws.ReportCamera, n)}
 	rep.Cameras[n-1] = obsws.ReportCamera{Source: cam, Scene: scene}
 	if err := s.saveCameras(rep); err != nil {
 		return err
 	}
-	_, err := s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = true })
+	// A camera not fitted in its scene may sit there untransformed while its
+	// saved placement still matches, so Check would never fit it.
+	defer func() {
+		if err != nil {
+			s.forgetFull(n, cam)
+		}
+	}()
+	_, err = s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = true })
 	if err != nil {
 		return err
 	}
@@ -308,7 +328,24 @@ func (s *Server) fitCamera(n int, scene, cam string) error {
 		if err == nil || i == 5 {
 			return err
 		}
-		time.Sleep(1500 * time.Millisecond)
+		time.Sleep(fitWait)
+	}
+}
+
+// forgetFull drops camera n's saved placement, so the next Check fits it.
+func (s *Server) forgetFull(n int, source string) {
+	_, err := s.Store.UpdateSettings(func(set *store.Settings) {
+		o := &set.OBS
+		if o.CameraFulls[source] != nil {
+			o.CameraFulls = maps.Clone(o.CameraFulls)
+			delete(o.CameraFulls, source)
+		}
+		if n == 1 {
+			o.CameraFull = nil
+		}
+	})
+	if err != nil {
+		s.Log(i18n.T("log.camara.nao_guardei_posicao", "err", err))
 	}
 }
 

@@ -455,6 +455,7 @@
   "obs.setup.camara_antiga": "Câmara antiga",
   "obs.setup.camara_fora_cena": "A câmara {camara} não aparece na cena {cena}.",
   "obs.setup.camara_n": "Câmara {n}",
+  "obs.setup.camara_n_sem_fonte": "A câmara {n} não tem fonte escolhida. Escolha uma em Definições.",
   "obs.setup.camara_n_sumiu": "A câmara {n} ({camara}) já não existe no OBS. Escolha outra em Definições.",
   "obs.setup.camara_repetida": "A câmara {n} é a mesma fonte da câmara {outra}.",
   "obs.setup.camara_sumiu": "A câmara {camara} já não existe no OBS.",

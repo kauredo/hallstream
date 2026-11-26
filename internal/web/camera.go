@@ -6,6 +6,7 @@ import (
 	"maps"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -64,7 +65,7 @@ func (s *Server) newCamera() {
 			return obsws.CameraSettings{
 				Config:  obsws.Config{Host: o.Host, Port: o.Port, Password: o.Password},
 				Enabled: o.Enabled, Source: o.CameraSource, Fit: o.CameraFit,
-				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.FullFor(o.CameraSource),
+				TimeoutScene: o.TimeoutScene, GameScene: o.GameScene, Full: o.FullFor(o.CameraSource), Fulls: o.CameraFulls,
 			}
 		},
 		Save: func(source string, f obsws.Full) {
@@ -75,8 +76,7 @@ func (s *Server) newCamera() {
 				}
 				fulls[source] = &f
 				set.OBS.CameraFulls = fulls
-				// An automatic camera ("") is camera 1 too.
-				if source == set.OBS.CameraSource || set.OBS.CameraSource == "" {
+				if cameraOne(set.OBS, source) {
 					set.OBS.CameraFull = &f
 				}
 			})
@@ -96,6 +96,15 @@ func (s *Server) newCamera() {
 		Ease:   tok.ease,
 		Step:   time.Second / 50,
 	}
+}
+
+// cameraOne reports whether source is camera 1. With camera_source "" the
+// automatic camera is, unless source is another camera's.
+func cameraOne(o store.OBS, source string) bool {
+	if o.CameraSource != "" {
+		return source == o.CameraSource
+	}
+	return !slices.ContainsFunc(o.CameraList()[1:], func(c store.Camera) bool { return c.Source == source })
 }
 
 // followCamera moves the camera with the screen.

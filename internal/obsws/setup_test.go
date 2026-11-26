@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/kauredo/hallstream/internal/i18n"
 )
 
 // model is a small OBS for the setup: scenes, inputs, devices, the canvas
@@ -160,7 +162,7 @@ func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 		return true, 100, map[string]any{"sceneItems": list}
 	case "CreateInput":
 		kind, _ := d["inputKind"].(string)
-		if m.input(iname) != nil {
+		if m.input(iname) != nil || slices.Contains(m.scenes, iname) {
 			return false, 601, nil
 		}
 		if !slices.Contains(m.kinds, kind) {
@@ -522,7 +524,8 @@ func TestSetupStreamingWrongSize(t *testing.T) {
 	m.streaming = true
 	r := newRun(t, m)
 	rep := r.setup("", "")
-	if results(rep)["video"] != "later" || !strings.Contains(detail(rep, "video"), "transmissão") || !rep.Ready || results(rep)["program"] != "later" {
+	if results(rep)["video"] != "later" || detail(rep, "video") != i18n.T("obs.setup.resolucao_depois", "resolucao", i18n.T("obs.setup.resolucao_saida", "base", "1920x1080", "saida", "1280x720")) ||
+		!rep.Ready || results(rep)["program"] != "later" {
 		t.Errorf("video %s: %s", results(rep)["video"], detail(rep, "video"))
 	}
 	if w := m.wrote(); slices.Contains(w, "SetVideoSettings") || slices.Contains(w, "SetCurrentProgramScene") || m.outW != 1280 {
@@ -562,7 +565,7 @@ func TestHealthCameraGone(t *testing.T) {
 	r.setup("", "")
 	m.answer("RemoveInput", map[string]any{"inputName": "DroidCam Video"})
 	h := r.health("source:DroidCam Video")
-	if h.Ready || results(h)["camera"] != "failed" || !strings.Contains(detail(h, "camera"), "já não existe") {
+	if h.Ready || results(h)["camera"] != "failed" || detail(h, "camera") != i18n.T("obs.setup.camara_sumiu_escolha", "camara", "DroidCam Video") {
 		t.Errorf("health %v", h.Problems())
 	}
 }
@@ -667,7 +670,7 @@ func TestSetupCameraTwoGone(t *testing.T) {
 	r := newRun(t, m)
 	r.extra = []string{"source:B"}
 	rep := r.setup("source:A", "")
-	if results(rep)["camera-2"] != "failed" || !strings.Contains(detail(rep, "camera-2"), "câmara 2 (B) já não existe") || rep.Ready {
+	if results(rep)["camera-2"] != "failed" || detail(rep, "camera-2") != i18n.T("obs.setup.camara_n_sumiu", "n", 2, "camara", "B") || rep.Ready {
 		t.Errorf("camera-2 %s %q ready %v", results(rep)["camera-2"], detail(rep, "camera-2"), rep.Ready)
 	}
 	if results(rep)["camera"] != "fixed" || !slices.Equal(m.order("Câmara 1"), []string{"A", "Grafismo"}) || !slices.Equal(r.fits, []string{"1 Câmara 1 A"}) {
@@ -681,7 +684,7 @@ func TestSetupSameSourceTwice(t *testing.T) {
 	r := newRun(t, m)
 	r.extra = []string{"source:A"}
 	rep := r.setup("source:A", "")
-	if results(rep)["camera-2"] != "failed" || !strings.Contains(detail(rep, "camera-2"), "câmara 1") || rep.Ready {
+	if results(rep)["camera-2"] != "failed" || detail(rep, "camera-2") != i18n.T("obs.setup.camara_repetida", "n", 2, "outra", 1) || rep.Ready {
 		t.Errorf("camera-2 %s %q", results(rep)["camera-2"], detail(rep, "camera-2"))
 	}
 	if len(m.order("Câmara 2")) != 0 {
@@ -791,5 +794,97 @@ func TestHealthAfterStreamingSetup(t *testing.T) {
 	r.setup("source:Tablet", "")
 	if h := r.health("source:Tablet"); !h.Ready {
 		t.Errorf("health %v", h.Problems())
+	}
+}
+
+// dropAfter answers from m until it has made scene, then hangs up on every
+// request, as OBS closing half way through.
+type dropAfter struct {
+	m     *model
+	scene string
+	mu    sync.Mutex
+	gone  bool
+}
+
+func (d *dropAfter) answer(typ string, data map[string]any) (bool, int, any) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.gone {
+		return false, hangUp, nil
+	}
+	ok, code, out := d.m.answer(typ, data)
+	d.gone = typ == "CreateScene" && data["sceneName"] == d.scene
+	return ok, code, out
+}
+
+// The scenes made before the connection dropped come back with the error,
+// so the server can keep their names for the next run.
+func TestSetupLostKeepsScenes(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	var c Client
+	cfg := fakeOBS(t, "", &dropAfter{m: m, scene: "Câmara 1"})
+	w := Want{OverlayURL: overlayURL, OverlayPorts: [2]int{8765, 8775}, Cameras: []WantCamera{{Choice: "source:A"}}}
+	rep, err := c.Setup(cfg, w, true, nil)
+	if err == nil {
+		t.Fatal("want the lost connection's error")
+	}
+	if rep.Graphics != "Grafismo" || len(rep.Cameras) != 1 || rep.Cameras[0].Scene != "Câmara 1" {
+		t.Errorf("graphics %q cameras %v", rep.Graphics, rep.Cameras)
+	}
+}
+
+// With camera 1's scene refused, camera 2's goes on program.
+func TestSetupProgramWithoutCameraOneScene(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	m.put("Cena", "B", "dshow_input", map[string]any{"video_device_id": "B:x"})
+	r := newRun(t, m)
+	r.scenes, r.extra = []string{"A"}, []string{"source:B"} // a saved name OBS now has as an input
+	rep := r.setup("source:A", "")
+	if results(rep)["scene"] != "failed" || m.program != "Câmara 2" {
+		t.Errorf("scene %s, program %q", results(rep)["scene"], m.program)
+	}
+}
+
+// OBS names are unique across scenes and inputs, so a device named like a
+// scene gets a number.
+func TestSetupDeviceNamedLikeScene(t *testing.T) {
+	m := newModel()
+	m.put("HD Webcam", "Logo", "image_source", map[string]any{})
+	m.devices = []map[string]any{device("HD Webcam")}
+	r := newRun(t, m)
+	rep := r.setup("", "")
+	if results(rep)["camera"] != "created" || rep.Camera != "HD Webcam 2" {
+		t.Errorf("camera %q %s: %s", rep.Camera, results(rep)["camera"], detail(rep, "camera"))
+	}
+}
+
+// A camera scene the user deleted comes back under its saved name.
+func TestSetupRemakesSavedScene(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	r := newRun(t, m)
+	r.scenes = []string{"Câmara Norte"}
+	rep := r.setup("source:A", "")
+	if results(rep)["scene"] != "created" || !slices.Equal(m.order("Câmara Norte"), []string{"A", "Grafismo"}) ||
+		slices.Contains(m.scenes, "Câmara 1") || rep.Cameras[0].Scene != "Câmara Norte" {
+		t.Errorf("scene %s, scenes %v, cameras %v", results(rep)["scene"], m.scenes, rep.Cameras)
+	}
+}
+
+// Camera 2 saved with no source fails its own step and says so; camera 1
+// is set up and fitted.
+func TestSetupCameraTwoWithoutSource(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	r := newRun(t, m)
+	r.extra = []string{"source:"}
+	rep := r.setup("source:A", "")
+	if results(rep)["camera-2"] != "failed" || detail(rep, "camera-2") != i18n.T("obs.setup.camara_n_sem_fonte", "n", 2) {
+		t.Errorf("camera-2 %s %q", results(rep)["camera-2"], detail(rep, "camera-2"))
+	}
+	if !slices.Equal(r.fits, []string{"1 Câmara 1 A"}) || results(rep)["fit"] != "ok" {
+		t.Errorf("fits %v", r.fits)
 	}
 }

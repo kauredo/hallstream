@@ -250,7 +250,7 @@ func (s *Server) liveScene(o store.OBS) (scene, source string) {
 	return "", o.CameraSource
 }
 
-// liveIndex is the camera whose scene is scene, 1 to 3, or 0. With one
+// liveIndex is the camera whose scene is scene, from 1, or 0. With one
 // camera the old Hallstream scene counts as camera 1.
 func liveIndex(o store.OBS, scene string) int {
 	cams := o.CameraList()

@@ -299,7 +299,7 @@ type Camera struct {
 
 // OBS is what the program knows of OBS that the panel shows live.
 type OBS struct {
-	// LiveCamera is the camera on program, 1 to 3; 0 when OBS shows another
+	// LiveCamera is the camera on program, from 1; 0 when OBS shows another
 	// scene or is not known.
 	LiveCamera int `json:"live_camera"`
 }

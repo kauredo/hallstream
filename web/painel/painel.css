@@ -392,6 +392,9 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
 /* Câmaras: a channel switch on the scorer's table. The camera on air is filled with ink and its
    number is lit; "No ar" says it in words too. */
 .cams { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+/* Four that don't fit one row go two by two, never three and one. */
+#camCard { container-type: inline-size; }
+@container (width < 408px) { #camCard[data-cams="4"] .cams { grid-template-columns: 1fr 1fr; } }
 .cam {
   display: grid; align-content: start; gap: 2px;
   min-height: 96px; padding: 12px; text-align: left;

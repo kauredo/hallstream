@@ -339,7 +339,9 @@ func TestCameraListValidation(t *testing.T) {
 		{"the same source twice", []setupCamera{{Choice: "source:A", Was: 1}, {Choice: "source:A"}}, 400},
 		{"the same phone twice", []setupCamera{{Choice: "vdo:abc", Was: 2}, {Choice: "vdo:abc"}}, 400},
 		{"a phone and its source", []setupCamera{{Choice: "vdo:abc", Was: 2}, {Choice: "source:Telemóvel 1"}}, 400},
-		{"four", []setupCamera{{Was: 1}, {Choice: "plugin"}, {Choice: "plugin"}, {Choice: "plugin"}}, 400},
+		{"camera 4 with no choice", []setupCamera{{Was: 1}, {Choice: "source:C", Was: 3}, {Choice: "vdo"}, {}}, 400},
+		{"five", []setupCamera{{Was: 1}, {Choice: "plugin"}, {Choice: "plugin"}, {Choice: "plugin"}, {Choice: "plugin"}}, 400},
+		{"four", []setupCamera{{Was: 1}, {Choice: "source:C", Was: 3}, {Choice: "vdo"}, {Choice: "plugin"}}, 200},
 		{"camera 1 automatic, two new phones", []setupCamera{{Was: 1}, {Choice: "vdo"}, {Choice: "vdo"}}, 200},
 		{"exactly three", []setupCamera{{Choice: "source:C", Was: 3}, {Choice: "source:Telemóvel 1", Was: 2}, {Choice: "source:A", Was: 1}}, 200},
 	} {

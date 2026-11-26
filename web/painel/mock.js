@@ -236,30 +236,30 @@
     return f ? URL.createObjectURL(f) : '';
   }
 
-  // Cameras: ?cams=1|2|3|noscene (camera 3 without a scene yet)|vdo (three, camera 2 a phone), the one on program ?live=0|1|2|3
+  // Cameras: ?cams=1|2|3|4|noscene (three, camera 3 without a scene yet)|vdo (three, camera 2 a phone), the one on program ?live=0|1|2|3|4
   // (0: a scene that is no camera's), and ?camerr=1 makes OBS refuse a switch.
   var camsQ = (/[?&]cams=([a-z0-9]+)/.exec(location.search) || [])[1];
-  var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }];
+  var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }, { source: 'Câmara USB', scene: 'Câmara 4', label: 'Cesto visitante' }];
   if (camsQ === 'noscene') db.settings.obs.cameras = [CAMS[0], CAMS[1], Object.assign({}, CAMS[2], { scene: '' })];
   else if (camsQ === 'vdo') db.settings.obs.cameras = [CAMS[0], { source: 'Telemóvel 1', scene: 'Câmara 2', label: 'Bancada', vdo: 'mockmockmockmockmock', has_vdo: true }, CAMS[2]];
-  else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(3, Math.max(1, +camsQ || 1)));
-  var liveQ = /[?&]live=([0-3])/.exec(location.search);
+  else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(4, Math.max(1, +camsQ || 1)));
+  var liveQ = /[?&]live=([0-4])/.exec(location.search);
   db.obsLive = liveQ ? +liveQ[1] : 1;
-  // The camera for time-outs: ?tcam=0|1|2|3.
-  var tcamQ = /[?&]tcam=([0-3])/.exec(location.search);
+  // The camera for time-outs: ?tcam=0|1|2|3|4.
+  var tcamQ = /[?&]tcam=([0-4])/.exec(location.search);
   db.settings.obs.timeout_camera = tcamQ ? +tcamQ[1] : 0;
 
   // OBS as the panel sees it: ?obs=off (default), ready, problem, live, nokey, choose.
   var obsMode = (/[?&]obs=([a-z]+)/.exec(location.search) || [])[1] || 'off';
   var obsLive = obsMode === 'live' ? Date.now() - 4723000 : 0;
   function streamNow() { return obsMode === 'off' ? null : { active: !!obsLive, reconnecting: false, duration_ms: obsLive ? Date.now() - obsLive : 0 }; }
-  // Camera health: ?health=ok (default), noimage, frozen, mixed (ok, no_image, frozen for cameras 1 to 3), skipped,
+  // Camera health: ?health=ok (default), noimage, frozen, mixed (ok, no_image, frozen for cameras 1 to 3, ok for camera 4), skipped,
   // none (a server older than camera health: no cameras or skipped in the status).
   var healthQ = (/[?&]health=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
   function camHealth() {
     var one = { noimage: 'no_image', frozen: 'frozen' }[healthQ] || 'ok';
     return (db.settings.obs.cameras || [{}]).map(function (c, i) {
-      return { index: i + 1, state: healthQ === 'mixed' ? ['ok', 'no_image', 'frozen'][i] : one };
+      return { index: i + 1, state: healthQ === 'mixed' ? ['ok', 'no_image', 'frozen', 'ok'][i] : one };
     });
   }
   function obsStatus() {
@@ -586,7 +586,7 @@
     }
     if (p === '/api/youtube/history') return reply(200, ytHistory(u.searchParams));
     if (p === '/api/obs/cameras') return reply(200, { cameras: cameras });
-    if ((r = /^\/api\/obs\/cameras\/([1-3])\/link$/.exec(p))) {
+    if ((r = /^\/api\/obs\/cameras\/([1-4])\/link$/.exec(p))) {
       var pc = (db.settings.obs.cameras || [])[+r[1] - 1];
       return pc && pc.vdo ? reply(200, { link: 'https://vdo.ninja/?push=' + pc.vdo + '&webcam&autostart&facing=rear&quality=0&audiodevice=0' }) : err(404, '404 page not found');
     }

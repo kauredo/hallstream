@@ -13,9 +13,14 @@ import (
 func TestPanelCameraList(t *testing.T) {
 	tab := settingsPanel(t, "&cams=vdo")
 	if err := until(tab, `document.querySelectorAll("#dCams .cam-row").length === 3 && document.querySelectorAll("#dCams .cx-qr img").length === 1 &&
-		!document.querySelector('[data-act="cam-add"]') && document.querySelector("#dCams .cam-row:nth-child(2) .cam-net") !== null`); err != nil {
+		!!document.querySelector('[data-act="cam-add"]') && document.querySelector("#dCams .cam-row:nth-child(2) .cam-net") !== null`); err != nil {
 		t.Fatalf("three rows, camera 2 a phone with its QR code: %v", err)
 	}
+	click(t, tab, `[data-act="cam-add"]`)
+	if err := until(tab, `document.querySelectorAll("#dCams .cam-row").length === 4 && document.activeElement.id === "dCam4" && !document.querySelector('[data-act="cam-add"]')`); err != nil {
+		t.Fatalf("a fourth row and no more: %v", err)
+	}
+	click(t, tab, `#dCams .cam-row:nth-child(4) [data-act="cam-remove"]`)
 	click(t, tab, `#dCams .cam-row:nth-child(2) [data-act="cam-remove"]`)
 	if err := until(tab, `document.querySelectorAll("#dCams .cam-row").length === 2 && document.activeElement.id === "dCam2" &&
 		document.querySelector("#dCam2").value === "source:HD Webcam" && !!document.querySelector('[data-act="cam-add"]') && document.querySelector("#dObsTcam").disabled`); err != nil {
@@ -53,6 +58,21 @@ func TestPanelWizardAnotherCamera(t *testing.T) {
 	click(t, tab, `[data-wz-act="cam-add"]`)
 	if err := until(tab, `!!document.querySelector("#wzBody .cam-row #wCam2") && !document.querySelector('[data-wz-act="cam-add"]')`); err != nil {
 		t.Fatalf("no camera 2 row: %v", err)
+	}
+	three := open("&cams=3")
+	if err := until(three, `!!document.querySelector('[data-wz-act="cam-add"]')`); err != nil {
+		t.Fatalf("three cameras saved: no Adicionar outra câmara: %v", err)
+	}
+	click(t, three, `[data-wz-act="cam-add"]`)
+	if err := until(three, `!!document.querySelector("#wzBody .cam-row #wCam4")`); err != nil {
+		t.Fatalf("no camera 4 row: %v", err)
+	}
+	four := open("&cams=4")
+	if err := until(four, `!!document.querySelector("#wzObsResult") && document.querySelector("#wzObsResult").textContent !== ""`); err != nil {
+		t.Fatal(err)
+	}
+	if shown, err := chromedp.Run(four, chromedp.Evaluate[bool](`!!document.querySelector('[data-wz-act="cam-add"]')`)); err != nil || shown {
+		t.Errorf("four cameras saved still offer another: %v %v", shown, err)
 	}
 	phone := open("&pc=0")
 	if err := until(phone, `!!document.querySelector("#wzBody") && document.querySelector("#wzBody").textContent !== ""`); err != nil {

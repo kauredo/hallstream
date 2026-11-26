@@ -278,8 +278,8 @@ type setupCamera struct {
 const maxCameraLabel = 24
 
 // checkCameras is what is wrong with the list, or "": it needs one to
-// MaxCameras cameras, each saved camera at most once, a choice for cameras
-// 2 and 3, and no source or phone twice.
+// MaxCameras cameras, each saved camera at most once, a choice for every
+// camera after the first, and no source or phone twice.
 func checkCameras(list []setupCamera, saved []store.Camera) string {
 	if len(list) < 1 || len(list) > store.MaxCameras {
 		return i18n.T("api.obs.camaras_invalidas")

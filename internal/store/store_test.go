@@ -423,10 +423,10 @@ func TestCameraList(t *testing.T) {
 	if got := (OBS{}).CameraList(); !reflect.DeepEqual(got, []Camera{{}}) {
 		t.Errorf("automatic camera: %+v", got)
 	}
-	o := OBS{Cameras: []Camera{{Source: "A"}, {Source: "B"}, {Source: "C"}, {Source: "D"}}}
+	o := OBS{Cameras: []Camera{{Source: "A"}, {Source: "B"}, {Source: "C"}, {Source: "D"}, {Source: "E"}}}
 	got := o.CameraList()
-	if len(got) != MaxCameras || got[2].Source != "C" {
-		t.Errorf("four cameras: %+v", got)
+	if len(got) != MaxCameras || got[3].Source != "D" {
+		t.Errorf("five cameras: %+v", got)
 	}
 	got[0].Source = "X"
 	if o.Cameras[0].Source != "A" {

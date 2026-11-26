@@ -236,11 +236,12 @@
     return f ? URL.createObjectURL(f) : '';
   }
 
-  // Cameras: ?cams=1|2|3|noscene (camera 3 without a scene yet), the one on program ?live=0|1|2|3
+  // Cameras: ?cams=1|2|3|noscene (camera 3 without a scene yet)|vdo (three, camera 2 a phone), the one on program ?live=0|1|2|3
   // (0: a scene that is no camera's), and ?camerr=1 makes OBS refuse a switch.
   var camsQ = (/[?&]cams=([a-z0-9]+)/.exec(location.search) || [])[1];
   var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }];
   if (camsQ === 'noscene') db.settings.obs.cameras = [CAMS[0], CAMS[1], Object.assign({}, CAMS[2], { scene: '' })];
+  else if (camsQ === 'vdo') db.settings.obs.cameras = [CAMS[0], { source: 'Telemóvel 1', scene: 'Câmara 2', label: 'Bancada', vdo: 'mockmockmockmockmock' }, CAMS[2]];
   else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(3, Math.max(1, +camsQ || 1)));
   var liveQ = /[?&]live=([0-3])/.exec(location.search);
   db.obsLive = liveQ ? +liveQ[1] : 1;
@@ -265,6 +266,21 @@
     { value: 'source:Câmara HDMI', type: 'source', label: 'Câmara HDMI', droidcam: false },
     { value: 'device:HD Webcam:\\\\?\\usb#vid_0c45', type: 'device', label: 'HD Webcam', droidcam: false }
   ];
+  // The cameras a setup ends with: the list it was sent (a new phone gets an id), else the saved ones.
+  function setupCameras(b) {
+    var old = db.settings.obs.cameras || [], phones = 0;
+    if (!(b && b.cameras)) return [Object.assign({}, old[0] || { label: '' }, { source: 'DroidCam Video', scene: 'Câmara 1' })].concat(old.slice(1));
+    return b.cameras.map(function (r, i) {
+      var was = old[r.was - 1] || {}, c = { source: '', scene: was.scene || 'Câmara ' + (i + 1), label: r.label };
+      var saved = old.filter(function (o) { return o.vdo && r.choice === 'vdo:' + o.vdo; })[0];
+      if (saved) { c.source = saved.source; c.vdo = saved.vdo; }
+      else if (/^vdo/.test(r.choice)) { c.source = 'Telemóvel ' + (++phones + 1); c.vdo = ('mock' + Math.random().toString(36).slice(2) + 'xxxxxxxxxxxxxxxx').slice(0, 20); }
+      else if (/^source:/.test(r.choice)) c.source = r.choice.slice(7);
+      else if (r.choice === 'plugin') c.source = 'DroidCam';
+      else c.source = (cameras.filter(function (x) { return x.value === r.choice; })[0] || { label: 'DroidCam Video' }).label;
+      return c;
+    });
+  }
   function setupReport(b) {
     var step = function (id, label, result, detail) { return { id: id, label: label, result: result, detail: detail }; };
     if (obsMode === 'choose' && !(b && b.camera)) {
@@ -281,8 +297,9 @@
     cameras[0] = { value: 'source:DroidCam Video', type: 'source', label: 'DroidCam Video', droidcam: true };
     db.settings.obs.setup_at = new Date().toISOString(); db.settings.obs.launch = true; db.settings.obs.camera_source = 'DroidCam Video';
     db.settings.obs.graphics_scene = 'Grafismo';
-    db.settings.obs.cameras = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }];
-    return { ok: true, ready: true, camera: 'DroidCam Video', graphics: 'Grafismo', cameras: [{ source: 'DroidCam Video', scene: 'Câmara 1' }], steps: [
+    db.settings.obs.cameras = setupCameras(b);
+    db.settings.obs.camera_source = db.settings.obs.cameras[0].source;
+    return { ok: true, ready: true, camera: db.settings.obs.camera_source, graphics: 'Grafismo', cameras: db.settings.obs.cameras.map(function (c) { return { source: c.source, scene: c.scene }; }), steps: [
       step('websocket', 'Ligação ao OBS', 'fixed', 'Liguei o servidor WebSocket do OBS, com uma palavra-passe nova. Abri o OBS.'),
       step('graphics', 'Cena do grafismo (Grafismo)', 'created', 'Criei a cena Grafismo.'),
       step('overlay', 'Grafismo (fonte Navegador)', 'fixed', 'Corrigi a fonte Hallstream overlay: o endereço era http://127.0.0.1:8766/overlay, não estava na cena.'),

@@ -416,6 +416,18 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
 #camMsg:empty { display: none; }
 #camMsg { margin-top: 12px; }
 
+/* Definições > Câmaras: one row per camera with hairlines between, a phone's QR code under its fields. */
+.cam-rows { margin-bottom: 8px; }
+.cam-row { padding: 16px 0; }
+.cam-row + .cam-row { border-top: 1px solid var(--regra); }
+.cam-row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-bottom: 8px; }
+.cam-row-head h3 { font-stretch: var(--estreito); font-weight: 800; font-size: 20px; line-height: 1.05; }
+.cam-net { margin-top: 12px; }
+.cam-row .cx-qr { margin-top: 12px; }
+.cam-add { margin-left: -18px; } /* its text lines up with the labels: padding and border */
+.cam-tcam { max-width: 420px; margin-top: 20px; }
+.cam-tcam-dica { margin-top: 8px; max-width: 60ch; }
+
 /* the thumbnails' parts */
 .pv-chao { fill: var(--campo); }
 .pv-linha { fill: none; stroke: var(--campo-linha); stroke-width: 1; }

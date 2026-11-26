@@ -63,7 +63,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 3. At a timeout, a chosen camera shows picture-in-picture. Done: "Câmara no desconto" in Definições puts that camera on air for the time-out, shrinking into the window with the hole, and the camera that was live comes back after; a switch by hand during the time-out stays.
 4. Onboarding adds cameras: DroidCam, a video device, or VDO.Ninja through a QR code on the panel. Done: Definições > Câmaras and the wizard add up to three cameras; a phone joins through VDO.Ninja from a QR code.
 5. Each camera gets a health line in the panel (no frames, low fps). Done: "Sem imagem" and "Imagem parada" per camera on the Ecrãs buttons, and OBS's skipped frames once for the whole program. obs-websocket has no frame rate per source, so "low fps" per camera is not measured.
-6. A guide covers two and three cameras on wifi and on cable, with the bandwidth each needs.
+6. A guide covers two and three cameras on wifi and on cable, with the bandwidth each needs. Done: `CAMARAS.txt` / `CAMERAS.txt` in the zip, from `docs/cameras/`.
 
 ## Phase C: sport profiles
 

@@ -18,7 +18,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 010 | A chosen camera fills the time-out window | P2 | M | 009 | IN REVIEW: branch 04-feat/timeout-camera |
 | 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | IN REVIEW: branch 05-feat/add-cameras |
 | 012 | A health line per camera | P2 | M | 009 | IN REVIEW: branch 06-feat/camera-health |
-| 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | TODO |
+| 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | IN REVIEW: branch 07-docs/camera-guide |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

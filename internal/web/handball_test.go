@@ -68,8 +68,8 @@ func TestMarcarPageHandball(t *testing.T) {
 		t.Fatalf("the button never woke after its wait: %v", err)
 	}
 
-	// Through the page's own arrow and confirm dialog: the second half starts at 30:00, which is not its end.
-	if err := run(`document.querySelector('[data-ask="period_next"]').click(), true`); err != nil {
+	// Through the period sheet's button and confirm dialog: the second half starts at 30:00, which is not its end.
+	if err := run(`document.querySelector('#seguinte').click(), true`); err != nil {
 		t.Fatal(err)
 	}
 	if err := until(tab, `document.querySelector('#confirmar').open`); err != nil {
@@ -102,7 +102,7 @@ func TestMarcarPageHandball(t *testing.T) {
 
 	// Extra time starts at the 60:00 played, and Repor says so.
 	time.Sleep(400 * time.Millisecond) // the page ignores the same tap again for 350 ms after its reply
-	if err := run(`document.querySelector('[data-ask="period_next"]').click(), true`); err != nil {
+	if err := run(`document.querySelector('#seguinte').click(), true`); err != nil {
 		t.Fatal(err)
 	}
 	if err := until(tab, `document.querySelector('#confirmar').open`); err != nil {
@@ -132,6 +132,10 @@ func TestMarcarPageHandball(t *testing.T) {
 	if err := until(tab, `document.querySelector('.casa [data-do="suspension"]').getAttribute('aria-label').startsWith("Exclusão de 2 minutos, ")`); err != nil {
 		t.Errorf("the +2' button has no label: %v", err)
 	}
+	// With no number yet the number band is drawn, filled and empty.
+	if err := until(tab, `(() => { const b = document.querySelector('.casa .exc b'), c = getComputedStyle(b); window.band = c.backgroundColor; return b.textContent === "" && c.visibility === "visible" && b.offsetHeight > 0 && c.backgroundColor !== "rgba(0, 0, 0, 0)" && document.querySelector('.casa .exc').getAttribute('aria-label').includes("sem número"); })()`); err != nil {
+		t.Errorf("the unnumbered chip's number band is not drawn empty: %v", err)
+	}
 	// The chip opens the number field; "Feito" shows the number on it.
 	tap(`.casa .exc`)
 	if err := until(tab, `document.querySelector('#exclusao').open`); err != nil {
@@ -140,7 +144,7 @@ func TestMarcarPageHandball(t *testing.T) {
 	if err := run(`(document.querySelector('#exclusaoNumero').value = "7", document.querySelector('#exclusaoFeito').click(), true)`); err != nil {
 		t.Fatal(err)
 	}
-	if err := until(tab, `!document.querySelector('#exclusao').open && document.querySelector('.casa .exc b').textContent === "7"`); err != nil {
+	if err := until(tab, `!document.querySelector('#exclusao').open && document.querySelector('.casa .exc b').textContent === "7" && getComputedStyle(document.querySelector('.casa .exc b')).backgroundColor === window.band && !document.querySelector('.casa .exc').hasAttribute('aria-label')`); err != nil {
 		t.Fatalf("the number did not show: %v", err)
 	}
 	// "Acabou" removes it.

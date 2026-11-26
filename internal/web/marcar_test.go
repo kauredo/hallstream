@@ -416,9 +416,7 @@ func soccerScorer(t *testing.T) *Server {
 	return s
 }
 
-// The scorer's page for soccer: the stepper for added time, the shirt-number
-// picker for cards and substitutions with a chip under the right team, the
-// button for the next half and then "Fim do jogo" behind a confirmation.
+// The scorer's page for soccer: added time, cards, substitutions and "Fim do jogo".
 func TestMarcarSoccerPage(t *testing.T) {
 	s := soccerScorer(t)
 	srv := httptest.NewServer(s)
@@ -443,27 +441,32 @@ func TestMarcarSoccerPage(t *testing.T) {
 		}
 	}
 	must(`!document.querySelector("#mesa").hidden && document.body.classList.contains("cartoes")`, "the page has no cards row")
-	hidden := `getComputedStyle(document.querySelector('#fecho')).visibility === 'hidden'`
-
-	// First half, 0:00: no button for the next half. Added time starts at +0'.
-	must(hidden, "the end button shows at the start of the game")
-	must(`document.querySelector('#compensacao').textContent === "+0'"`, "added time at the start")
+	// First half: the period sheet offers the next half. Added time starts at +0', with nothing under the clock.
+	tap(`#periodoBotao`)
+	must(`document.querySelector('#periodos').open && document.querySelector('#seguinte').textContent === "Parte seguinte" && document.querySelector('#seguinte').dataset.ask === "period_next"`, "the sheet has no next half")
+	tap(`#periodosFechar`)
+	tap(`#relogio`)
+	must(`document.querySelector('#acertar').open && document.querySelector('#compensacao').textContent === "+0'" && document.querySelector('#compensa').textContent === ""`, "added time at the start")
 	tap(`[data-stoppage="1"]`)
-	must(`document.querySelector('#compensacao').textContent === "+1'"`, "the stepper did not move")
+	must(`document.querySelector('#compensacao').textContent === "+1'" && document.querySelector('#compensa').textContent === "+1'"`, "the stepper did not move")
+	tap(`#acertarFechar`)
 
 	// A home yellow from the squad, an away red by typing the number.
-	tap(`.casa [data-pick="yellow"]`)
+	tap(`.casa [data-pick="card"]`)
+	must(`document.querySelector('#cartao').open`, "no choice of card")
+	tap(`#cartao [data-kind="yellow"]`)
 	must(`document.querySelector('#numero').open && document.querySelectorAll('#camisolas button').length === 3`, "the picker has no squad")
 	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "9").click(), true`); err != nil {
 		t.Fatal(err)
 	}
-	must(`!document.querySelector('#numero').open && document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelectorAll('.fora [data-registo] .reg').length === 0`, "the yellow is not a chip under the home team")
-	tap(`.fora [data-pick="red"]`)
+	must(`!document.querySelector('#numero').open && document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelector('.casa [data-registo] .reg').className === "reg" && document.querySelectorAll('.fora [data-registo] .reg').length === 0`, "the yellow is not a chip under the home team")
+	tap(`.fora [data-pick="card"]`)
+	tap(`#cartao [data-kind="red"]`)
 	must(`document.querySelector('#numero').open && !document.querySelector('#numeroCampo').hidden && document.querySelector('#camisolas').hidden`, "the away picker is not a typed number")
 	if err := run(`(document.querySelector('#numeroCampo').value = "6", document.querySelector('#numeroFeito').click(), true)`); err != nil {
 		t.Fatal(err)
 	}
-	must(`document.querySelectorAll('.fora [data-registo] .reg').length === 1 && document.querySelector('.fora [data-registo] .reg').textContent === "6" && document.querySelectorAll('.casa [data-registo] .reg').length === 1`, "the red is not a chip under the away team")
+	must(`document.querySelectorAll('.fora [data-registo] .reg').length === 1 && document.querySelector('.fora [data-registo] .reg').textContent === "6" && document.querySelector('.fora [data-registo] .reg').classList.contains("r") && document.querySelectorAll('.casa [data-registo] .reg').length === 1`, "the red is not a chip under the away team")
 	// A substitution: off 7, on 14.
 	tap(`.casa [data-pick="sub"]`)
 	must(`document.querySelector('#numero').open && document.querySelector('#numeroTitulo').textContent.includes("Sai")`, "the substitution does not ask who goes off")
@@ -474,26 +477,30 @@ func TestMarcarSoccerPage(t *testing.T) {
 	if err := run(`[...document.querySelectorAll('#camisolas button')].find((b) => b.textContent === "14").click(), true`); err != nil {
 		t.Fatal(err)
 	}
-	must(`!document.querySelector('#numero').open && [...document.querySelectorAll('.casa [data-registo] .reg')].some((e) => e.textContent === "7→14")`, "the substitution is not a chip under the home team")
+	must(`!document.querySelector('#numero').open && document.querySelector('.casa [data-trocas] .conta').textContent === "1" && document.querySelector('.casa [data-trocas] .sai').textContent === "7" && document.querySelector('.casa [data-trocas] .entra').textContent === "14"`, "the substitution is not recorded under the home team")
 	if sc := s.Manual.Score(); len(sc.Cards) != 2 || len(sc.Subs) != 1 || sc.Stoppage != 1 {
 		t.Errorf("the scorer holds %d cards, %d subs, stoppage %d", len(sc.Cards), len(sc.Subs), sc.Stoppage)
 	}
+	// A second yellow for the same shirt keeps one chip, half yellow and half red.
+	if err := s.Manual.Do(source.Action{Do: "card", Team: "home", Number: "9", Kind: "yellow"}); err != nil {
+		t.Fatal(err)
+	}
+	must(`document.querySelectorAll('.casa [data-registo] .reg').length === 1 && document.querySelector('.casa [data-registo] .reg').classList.contains("yr")`, "the second yellow is not one half-red chip")
 
-	// From 45:00 the first half offers the next one.
+	// At 45:00 the clock button stays Iniciar: the clock runs on into added time.
 	if err := s.Manual.Do(source.Action{Do: "clock_set", Tenths: 27000}); err != nil {
 		t.Fatal(err)
 	}
-	must(`getComputedStyle(document.querySelector('#fecho')).visibility === 'visible' && document.querySelector('#fecho').textContent === "Parte seguinte"`, "no next half at 45:00")
-	must(`document.querySelector('#arrancar').textContent === "Iniciar"`, "the clock button changed at 45:00")
+	must(`document.querySelector('#tempo').textContent === "45:00" && document.querySelector('#arrancar').textContent === "Iniciar"`, "the clock button changed at 45:00")
 
-	// Second half: no arrow for another period; "Fim do jogo" asks first, then ends the game.
+	// Second half: no next period in the sheet; "Fim do jogo" asks first, then ends the game.
 	if err := s.Manual.Do(source.Action{Do: "period_next"}); err != nil {
 		t.Fatal(err)
 	}
-	must(`getComputedStyle(document.querySelector('.seta[data-ask="period_next"]')).visibility === 'hidden'`, "the arrow for a third period is there")
-	must(`getComputedStyle(document.querySelector('#fecho')).visibility === 'visible' && document.querySelector('#fecho').textContent === "Fim do jogo"`, "no Fim do jogo in the second half")
-	tap(`#fecho`)
-	must(`document.querySelector('#confirmar').open && document.querySelector('#confirmarTitulo').textContent === "Acabar o jogo?"`, "no confirmation")
+	tap(`#periodoBotao`)
+	must(`document.querySelector('#periodos').open && document.querySelector('#seguinte').textContent === "Fim do jogo" && document.querySelector('#seguinte').dataset.ask === "game_end" && !document.querySelector('[data-ask="period_next"]')`, "no Fim do jogo in the second half")
+	tap(`#seguinte`)
+	must(`!document.querySelector('#periodos').open && document.querySelector('#confirmar').open && document.querySelector('#confirmarTitulo').textContent === "Acabar o jogo?"`, "no confirmation")
 	if s.Manual.Score().Over {
 		t.Fatal("the game ended before the confirmation")
 	}
@@ -501,7 +508,7 @@ func TestMarcarSoccerPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	eventually(t, func() bool { return s.State.Snapshot().Live.Over }, "live.over")
-	must(`document.querySelector('#fecho').disabled === true`, "the end button stays live after the game ended")
+	must(`document.querySelector('#seguinte').disabled === true`, "the end button stays live after the game ended")
 
 	if errs := problems(t, tab, messages, func(m chromedp.ConsoleMessage) bool {
 		return m.Type == chromedp.ConsoleError || m.IsException()

@@ -148,7 +148,7 @@ func TestMarcarPageVolleyball(t *testing.T) {
 		t.Fatalf("confirm dialog: %v", err)
 	}
 	run(`document.querySelector('#confirmarSim').click()`)
-	if err := until(tab, `document.querySelector('#periodo').textContent.includes("2") && document.querySelector('#feitos').textContent.includes("25–23")`); err != nil {
+	if err := until(tab, `document.querySelector('#setNome').textContent.includes("2") && document.querySelector('#feitos').textContent.includes("25–23")`); err != nil {
 		t.Fatalf("after the set: %v", err)
 	}
 	if st := s.State.Snapshot(); len(st.Sets) != 1 || st.Sets[0].Home != 25 || st.Sets[0].Away != 23 || st.Live.HomeSets != 1 {

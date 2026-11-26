@@ -23,7 +23,7 @@ type Profile struct {
 	OvertimeLength int    `json:"overtime_length"` // tenths in an overtime period; 0 = the regulation length
 	FoulsCarry     bool   `json:"fouls_carry"`     // fouls of the last regulation period run on through overtime
 	PeriodWord     string `json:"period_word"`     // "quarter", "half" or "set": which period labels the pages use
-	FoulMarks      int    `json:"foul_marks"`      // foul marks the scorer page draws per team; 0 = no fouls row
+	FoulMarks      int    `json:"foul_marks"`      // above 0, the scorer page keeps team fouls; 0 = no fouls record
 	FoulPenalty    string `json:"foul_penalty"`    // the on-air word at FoulBonus: "bonus" (basketball) or "free_kick" (futsal)
 
 	Cards       bool `json:"cards"`        // the sport has cards, substitutions, added time and an explicit end of game (soccer)

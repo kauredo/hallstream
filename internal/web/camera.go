@@ -195,9 +195,10 @@ func (s *Server) sceneSeen(name string, event bool) {
 	o := s.Store.Settings().OBS
 	n := liveIndex(o, name)
 	s.liveMu.Lock()
+	s.dropExpired()
 	expected := false
 	if event {
-		i := slices.Index(s.expect, name)
+		i := slices.IndexFunc(s.expect, func(e pending) bool { return e.scene == name })
 		if expected = i >= 0; expected {
 			s.expect = s.expect[i+1:]
 		} else {
@@ -226,6 +227,27 @@ func (s *Server) sceneSeen(name string, event bool) {
 	})
 }
 
+// pending is a scene the program switched to, waiting for its event until
+// until.
+type pending struct {
+	scene string
+	until time.Time
+}
+
+// expectFor is how long a switch waits for its event. OBS sends it about
+// 315 ms after a switch with the default 300 ms fade; 3 s also covers a
+// slow fade or a stinger. An event later than that finds the scene already
+// the program, so it places nothing.
+var expectFor = 3 * time.Second
+
+// dropExpired forgets the switches whose events never came (OBS skipped
+// it, or a transition far longer than expectFor), so the watch's answers
+// and liveAgain count again. The caller holds liveMu.
+func (s *Server) dropExpired() {
+	now := time.Now()
+	s.expect = slices.DeleteFunc(s.expect, func(e pending) bool { return now.After(e.until) })
+}
+
 // liveAgain works obs.live_camera out again from the program scene, for
 // settings that changed with no scene event (a camera removed, reordered
 // or given another scene).
@@ -233,6 +255,7 @@ func (s *Server) liveAgain() {
 	o := s.Store.Settings().OBS
 	s.liveMu.Lock()
 	defer s.liveMu.Unlock()
+	s.dropExpired()
 	if s.program != "" && len(s.expect) == 0 {
 		s.State.SetLiveCamera(liveIndex(o, s.program))
 	}
@@ -249,16 +272,23 @@ func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
 	s.liveMu.Unlock()
 	do := func() error {
 		s.liveMu.Lock()
-		s.expect = append(s.expect, cam.Scene)
+		s.expect = append(s.expect, pending{cam.Scene, time.Now().Add(expectFor)})
 		s.liveMu.Unlock()
 		err := s.OBS.SetScene(cfg, cam.Scene)
 		s.liveMu.Lock()
 		defer s.liveMu.Unlock()
+		k := len(s.expect) - 1
+		if k < 0 || s.expect[k].scene != cam.Scene {
+			k = -1 // the event came already, or the entry expired
+		}
 		if err != nil {
-			if k := len(s.expect) - 1; k >= 0 && s.expect[k] == cam.Scene {
+			if k >= 0 {
 				s.expect = s.expect[:k] // no event comes for a refused switch
 			}
 			return err
+		}
+		if k >= 0 {
+			s.expect[k].until = time.Now().Add(expectFor) // the transition starts now
 		}
 		s.program = cam.Scene
 		s.State.SetLiveCamera(n)

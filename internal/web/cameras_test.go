@@ -709,3 +709,31 @@ func TestScenesDisabledNeverWatches(t *testing.T) {
 		t.Errorf("live camera %d", n)
 	}
 }
+
+// A switch whose event never comes stops holding the program once its
+// deadline passes: the next answer from the watch counts again.
+func TestCameraLiveEventNeverComes(t *testing.T) {
+	f := newCamOBS("A", "B")
+	s := camServer(t, f, twoCams)
+	old := expectFor
+	expectFor = 50 * time.Millisecond
+	t.Cleanup(func() { expectFor = old })
+	s.programScene("Câmara 1")
+	s.bg.Wait()
+	switchCamera(t, s, 2)
+	s.sceneSeen("Câmara 1", false) // within the deadline: ignored
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Fatalf("answer during the switch: live camera %d", n)
+	}
+	time.Sleep(100 * time.Millisecond)
+	s.sceneSeen("Câmara 1", false)
+	s.bg.Wait()
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 1 {
+		t.Errorf("after the deadline: live camera %d", n)
+	}
+	s.liveMu.Lock()
+	defer s.liveMu.Unlock()
+	if len(s.expect) != 0 {
+		t.Errorf("expect %v", s.expect)
+	}
+}

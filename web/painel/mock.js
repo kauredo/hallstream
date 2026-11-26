@@ -24,7 +24,7 @@
     settings: {
       fpb_base_url: 'https://calendariofpb.pt', phone_access: false, pin: '',
       obs: { enabled: true, host: '127.0.0.1', port: 4455, password: '', timeout_scene: '', game_scene: 'Jogo', camera_source: '', camera_fit: 'contain', camera_full: null,
-        cameras: [{ source: '', scene: '', label: '' }], graphics_scene: '', camera_fulls: {}, timeout_camera: 0, screen_cameras: { desconto: 0 },
+        cameras: [{ source: '', scene: '', label: '', clean: false }], graphics_scene: '', camera_fulls: {}, timeout_camera: 0, screen_cameras: { desconto: 0 },
         setup_at: '', launch: false, close_on_exit: false },
       start_with_windows: false,
       auto_screens: true, instagram: '', club: { name: 'CASA', short: 'CAS', primary: '#2F4B7C', secondary: '#1C1A17', crest: '/assets/crest.svg', sport: 'basketball', country: 'PT' },
@@ -194,7 +194,7 @@
       },
       screen: db.screen,
       lower_third: db.lower_third,
-      obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive },
+      obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive, clean: obsMode !== 'off' && !!((db.settings.obs.cameras || [])[db.obsLive - 1] || {}).clean },
       promo: Object.assign({}, db.promoShow, { mini: db.promo.clips.filter(function (c) { return c.id === db.promo.timeout_clip; })[0] || null }),
       demo: db.demo
     };
@@ -236,10 +236,10 @@
     return f ? URL.createObjectURL(f) : '';
   }
 
-  // Cameras: ?cams=1|2|3|4|noscene (three, camera 3 without a scene yet)|vdo (three, camera 2 a phone), the one on program ?live=0|1|2|3|4
+  // Cameras: ?cams=1|2|3|4|noscene (three, camera 3 without a scene yet)|vdo (three, camera 2 a phone), camera 3 clean; the one on program ?live=0|1|2|3|4
   // (0: a scene that is no camera's), and ?camerr=1 makes OBS refuse a switch.
   var camsQ = (/[?&]cams=([a-z0-9]+)/.exec(location.search) || [])[1];
-  var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '' }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada' }, { source: 'HD Webcam', scene: 'Câmara 3', label: '' }, { source: 'Câmara USB', scene: 'Câmara 4', label: 'Cesto visitante' }];
+  var CAMS = [{ source: 'DroidCam Video', scene: 'Câmara 1', label: '', clean: false }, { source: 'Câmara HDMI', scene: 'Câmara 2', label: 'Bancada', clean: false }, { source: 'HD Webcam', scene: 'Câmara 3', label: '', clean: true }, { source: 'Câmara USB', scene: 'Câmara 4', label: 'Cesto visitante', clean: false }];
   if (camsQ === 'noscene') db.settings.obs.cameras = [CAMS[0], CAMS[1], Object.assign({}, CAMS[2], { scene: '' })];
   else if (camsQ === 'vdo') db.settings.obs.cameras = [CAMS[0], { source: 'Telemóvel 1', scene: 'Câmara 2', label: 'Bancada', vdo: 'mockmockmockmockmock', has_vdo: true }, CAMS[2]];
   else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(4, Math.max(1, +camsQ || 1)));
@@ -283,7 +283,7 @@
     var old = db.settings.obs.cameras || [], phones = 0;
     if (!(b && b.cameras)) return [Object.assign({}, old[0] || { label: '' }, { source: 'DroidCam Video', scene: 'Câmara 1' })].concat(old.slice(1));
     return b.cameras.map(function (r, i) {
-      var was = old[r.was - 1] || {}, c = { source: '', scene: was.scene || 'Câmara ' + (i + 1), label: r.label };
+      var was = old[r.was - 1] || {}, c = { source: '', scene: was.scene || 'Câmara ' + (i + 1), label: r.label, clean: r.clean == null ? !!was.clean : !!r.clean };
       // A saved phone keeps its id while its row keeps its source, as on the server.
       if (was.vdo && r.choice === 'source:' + was.source) { c.source = was.source; c.vdo = was.vdo; c.has_vdo = true; }
       else if (r.choice === 'vdo') { c.source = 'Telemóvel ' + (++phones + 1); c.vdo = ('mock' + Math.random().toString(36).slice(2) + 'xxxxxxxxxxxxxxxx').slice(0, 20); c.has_vdo = true; }

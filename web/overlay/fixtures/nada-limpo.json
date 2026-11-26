@@ -1,0 +1,144 @@
+{
+  "box": {
+    "connected": true,
+    "last_frame_at": "2026-11-15T18:21:07Z",
+    "box_type": "Pro"
+  },
+  "live": {
+    "home_name": "CASA",
+    "away_name": "VISITANTE",
+    "home": 41,
+    "away": 38,
+    "clock": "07:45",
+    "period": "2",
+    "home_fouls": 2,
+    "away_fouls": 4,
+    "shot": "14",
+    "sport": "basketball"
+  },
+  "periods": [
+    {
+      "period": 1,
+      "home": 22,
+      "away": 19,
+      "home_points": 22,
+      "away_points": 19
+    }
+  ],
+  "game": {
+    "group": {
+      "id": "senior-m",
+      "name": "Sénior Masculino",
+      "coach": "Jorge Matos Lima"
+    },
+    "home": {
+      "name": "CASA",
+      "short": "CAS",
+      "crest_url": "/assets/crest.png",
+      "color": "#BD1522",
+      "initials": "CAS"
+    },
+    "away": {
+      "name": "VISITANTE",
+      "short": "VIS",
+      "crest_url": null,
+      "color": "#5C6170",
+      "initials": "VIS"
+    },
+    "start": "2026-11-15T18:00:00+00:00",
+    "venue": "Pavilhão Municipal do Vale",
+    "competition": "Campeonato Regional",
+    "round": "Jornada 5",
+    "squad": [
+      {
+        "number": "4",
+        "name": "Caio Rebelo"
+      },
+      {
+        "number": "5",
+        "name": "Mauro Pestana"
+      },
+      {
+        "number": "6",
+        "name": "Hélio Vaz Quaresma"
+      },
+      {
+        "number": "7",
+        "name": "Nuno Valadares"
+      },
+      {
+        "number": "8",
+        "name": "Leandro Couto"
+      },
+      {
+        "number": "9",
+        "name": "Filipe Arruda"
+      },
+      {
+        "number": "10",
+        "name": "Abel Quintas Mota"
+      },
+      {
+        "number": "11",
+        "name": "Igor Seabra"
+      },
+      {
+        "number": "12",
+        "name": "Edgar Pimenta"
+      },
+      {
+        "number": "13",
+        "name": "Bruno Teles"
+      },
+      {
+        "number": "14",
+        "name": "Joel Sarmento"
+      },
+      {
+        "number": "15",
+        "name": "Dário Neves"
+      }
+    ],
+    "sponsors": {
+      "principal": {
+        "url": "/overlay/fixtures/logos/sp-8.svg",
+        "name": "Construções Vale"
+      },
+      "others": [
+        {
+          "url": "/overlay/fixtures/logos/sp-9.svg",
+          "name": "Metalúrgica Sul"
+        },
+        {
+          "url": "/overlay/fixtures/logos/sp-10.svg",
+          "name": "Tintas Aurora"
+        }
+      ]
+    },
+    "instagram": "",
+    "overlay": {
+      "bug_position": "top-left",
+      "sponsor_corner": true,
+      "sponsor_every": 4
+    }
+  },
+  "screen": {
+    "current": "nada",
+    "auto": true,
+    "since": "2026-11-15T18:20:00Z"
+  },
+  "lower_third": {
+    "visible": true,
+    "type": "jogador",
+    "number": "7",
+    "first_name": "Hélio",
+    "last_name": "Vaz Quaresma",
+    "label": "",
+    "until": null
+  },
+  "demo": false,
+  "obs": {
+    "live_camera": 2,
+    "clean": true
+  }
+}

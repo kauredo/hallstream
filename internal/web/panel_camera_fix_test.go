@@ -76,3 +76,26 @@ func TestPanelWizardUnsavedCamera(t *testing.T) {
 		t.Errorf("Seguinte left the unsaved camera: %v", err)
 	}
 }
+
+// "Mostrar marcador" is on for a new camera, saves with the list and moves
+// with its camera when another is taken out.
+func TestPanelCameraShowSwitch(t *testing.T) {
+	tab := settingsPanel(t, "&cams=3")
+	if err := until(tab, `document.querySelectorAll("#dCams [data-cam-show]").length === 3 &&
+		[...document.querySelectorAll("#dCams [data-cam-show]")].map(i => i.checked).join() === "true,true,false"`); err != nil {
+		t.Fatalf("the saved switches: %v", err)
+	}
+	click(t, tab, `#dCamShow1`)
+	click(t, tab, `#dCams .cam-row:nth-child(2) [data-act="cam-remove"]`)
+	click(t, tab, `[data-act="cam-add"]`)
+	if err := until(tab, `!!document.querySelector("#dCamShow3") && document.querySelector("#dCamShow3").checked`); err != nil {
+		t.Errorf("a new camera's switch is off: %v", err)
+	}
+	evalJS(t, tab, `(s => (s.value = s.options[1].value, s.dispatchEvent(new Event("change", { bubbles: true })), true))(document.querySelector("#dCam3"))`)
+	click(t, tab, `[data-act="cam-save"]`)
+	if err := until(tab, `document.querySelector("#camSetupMsg").className.includes("ok") && document.querySelectorAll("#dCams [data-cam-show]").length === 3 &&
+		[...document.querySelectorAll("#dCams [data-cam-show]")].map(i => i.checked).join() === "false,false,true"`); err != nil {
+		got, _ := chromedp.Run(tab, chromedp.Evaluate[string](`[...document.querySelectorAll("#dCams [data-cam-show]")].map(i => i.checked).join() + " " + document.querySelector("#camSetupMsg").className`))
+		t.Errorf("after the save: %s (%v)", got, err)
+	}
+}

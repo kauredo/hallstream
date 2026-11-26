@@ -702,7 +702,7 @@ func TestScenesDisabledNeverWatches(t *testing.T) {
 	shortScenes(t)
 	s := camServer(t, newCamOBS("A", "B"), twoCams)
 	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Enabled = false })
-	s.State.SetLiveCamera(2)
+	s.State.SetLiveCamera(2, false)
 	calls := fakeWatch(s, func(<-chan struct{}, func(string, bool)) error { return nil })
 	if pause, _ := s.scenesOnce(scenesWait); pause != scenesPoll || *calls != 0 {
 		t.Errorf("pause %v, %d watches", pause, *calls)

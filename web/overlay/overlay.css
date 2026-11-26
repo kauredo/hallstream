@@ -162,7 +162,9 @@ html[data-strip] .strip { opacity: 1; transition: opacity var(--t-quick) var(--e
 /* ---------- Marcador: compact bug, no sponsors on it ---------- */
 /* The wrapper holds the corner; switching corners slides it across. */
 /* overlay.js places it from the club's setup (layout()); this is the default, top-left at 64px. */
-.sb-pos { left: 0; top: 0; transform: translate(64px, 64px); transform-origin: 0 0; transition: transform var(--t-long) var(--ease-in-out); }
+.sb-pos { left: 0; top: 0; transform: translate(64px, 64px); transform-origin: 0 0; transition: transform var(--t-long) var(--ease-in-out), opacity var(--t-exit) var(--ease-in); }
+/* A clean camera on air (obs.clean) fades the bug and the sponsor corner out; overlay.js takes the lower third out. */
+html[data-clean] .sb-pos, html[data-clean] .spc { opacity: 0; transition: opacity var(--t-exit) var(--ease-in); }
 .sb {
   display: flex; align-items: flex-end;
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.45));
@@ -657,7 +659,7 @@ html[data-bug-y="bottom"] .pop.away { bottom: auto; top: -26px; } /* the frame e
 /* Reduced motion: no slides, only fades (overlay.js turns its moves into fades as well). */
 @media (prefers-reduced-motion: reduce) {
   .sb, #s-marcador.on .sb { transform: none; }
-  .sb-pos { transition: none; }
+  .sb-pos { transition: opacity var(--t-exit) var(--ease-in); }
   .vj-halo { animation-name: vj-breathe-still; }
 }
 

@@ -831,6 +831,8 @@
   "painel.camaras.link": "Camera {n}'s phone link",
   "painel.camaras.link_dica": "If this panel is open on the phone that will film, copy the link and open it in the browser.",
   "painel.camaras.maximo": "You have all four cameras.",
+  "painel.camaras.mostrar_marcador": "Show scoreboard",
+  "painel.camaras.mostrar_marcador_dica": "When off, this camera goes on air without the corner scoreboard, the sponsor corner and the lower third. Full screens and the time-out show on every camera.",
   "painel.camaras.nada_guarde": "This shows the saved list. Save the new list first, then choose the Nothing screen's camera here.",
   "painel.camaras.nao_guardada": "I didn't save the list: OBS didn't answer. Sort out what is missing and press Save and set up OBS again.",
   "painel.camaras.no_ar": "On air",

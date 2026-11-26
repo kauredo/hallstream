@@ -831,6 +831,8 @@
   "painel.camaras.link": "Link do telemóvel da câmara {n}",
   "painel.camaras.link_dica": "Se este painel está aberto no telemóvel que vai filmar, copie o link e abra-o no navegador.",
   "painel.camaras.maximo": "Já tem as quatro câmaras.",
+  "painel.camaras.mostrar_marcador": "Mostrar marcador",
+  "painel.camaras.mostrar_marcador_dica": "Com isto desligado, esta câmara vai para o ar sem o marcador, o patrocinador do canto e o rodapé. Os ecrãs inteiros e o desconto aparecem em todas as câmaras.",
   "painel.camaras.nada_guarde": "Mostra a lista guardada. Guarde a lista nova primeiro: depois escolha aqui a câmara do ecrã Nada.",
   "painel.camaras.nao_guardada": "Não guardei a lista: o OBS não respondeu. Resolva o que falta e carregue outra vez em Guardar e configurar o OBS.",
   "painel.camaras.no_ar": "No ar",

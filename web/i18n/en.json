@@ -819,6 +819,7 @@
   "painel.camaras.fonte": "Where the picture comes from",
   "painel.camaras.guardar": "Save and set up OBS",
   "painel.camaras.guarde_qr": "Save to see the QR code.",
+  "painel.camaras.guia": "Two or three cameras, on Wi-Fi or on cable: read the <code>CAMERAS.txt</code> guide in the program folder, or <a href=\"https://github.com/kauredo/hallstream/blob/main/docs/cameras/GUIDE.en.md\" target=\"_blank\" rel=\"noopener\">open it online</a>.",
   "painel.camaras.internet": "Needs the internet: the phone and OBS find each other through VDO.Ninja. The rest of Hallstream works offline.",
   "painel.camaras.link": "Camera {n}'s phone link",
   "painel.camaras.link_dica": "If this panel is open on the phone that will film, copy the link and open it in the browser.",

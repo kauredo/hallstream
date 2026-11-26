@@ -199,6 +199,13 @@ nome em Definições > Controlo do OBS > Modo antigo, e o programa troca de
 cena como antes.
 
 
+DUAS OU TRÊS CÂMARAS
+
+O guia CAMARAS.txt, nesta pasta, explica como ligar duas ou três câmaras
+por wifi ou por cabo, e quanto cada uma ocupa da rede. A versão grátis
+do DroidCam fica em 480p; para HD é preciso o DroidCam Pro.
+
+
 CÓPIA DE SEGURANÇA E OUTRO COMPUTADOR
 
 Em Definições > Cópia de segurança, "Guardar cópia" descarrega um ficheiro

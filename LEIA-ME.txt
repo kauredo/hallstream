@@ -53,8 +53,8 @@ PRIMEIRA VEZ (EM CASA)
      do YouTube no próprio OBS, em Definições > Transmissão.
    - Para o PC abrir tudo sozinho, ligue "Abrir com o Windows" em
      Definições > Neste computador.
-   - Câmara nova? Escolha-a em Definições > Câmara e carregue em
-     Configurar OBS. A antiga fica escondida no OBS.
+   - Câmara nova? Escolha-a em Definições > Câmaras e carregue em
+     "Guardar e configurar o OBS". A antiga fica escondida no OBS.
    - Em Definições > Clube, escreva o nome da casa, a sigla e o "Nome do
      clube na FPB", tal como aparece no calendário da FPB. Com esse nome,
      o programa cria os escalões do clube e traz da FPB os jogadores e as
@@ -178,16 +178,16 @@ DESCONTO DE TEMPO COM O OBS
 
 Depois de "Configurar OBS", no desconto de tempo a imagem da câmara
 encolhe para a janela do grafismo e volta depois, na mesma cena.
-- Em Definições > Câmara fica a câmara usada. "Automática" escolhe o
-  DroidCam, se houver.
+- Em Definições > Câmaras ficam as câmaras usadas. Na câmara 1,
+  "Automática" escolhe o DroidCam, se houver.
 - "Ajustar câmara" volta a pô-la em ecrã inteiro.
 - Se o OBS estiver noutro computador, ligue-o à mão em Definições >
   Controlo do OBS > Ligação ao OBS feita à mão.
 - Com duas ou três câmaras, Ecrãs tem um botão por câmara, e a que está
   no ar diz "No ar". Pode trocar de câmara no desconto: a imagem fica na
   janela.
-- Em Definições > Câmara no desconto escolha a câmara que entra no
-  desconto (o banco, por exemplo). No fim volta a câmara que estava no
+- Em Definições > Câmaras > "Câmara no desconto" escolha a câmara que
+  entra no desconto (o banco, por exemplo). No fim volta a câmara que estava no
   ar. "Nenhuma" deixa a câmara que está no ar.
 
 Se o tablet rodar ou o DroidCam mudar de resolução, o programa volta a

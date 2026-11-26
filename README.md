@@ -2,7 +2,7 @@
 
 A free tool for amateur clubs that stream their games. Hallstream reads the score from the hall's scoreboard console and puts it on the stream as broadcast graphics. It also sets up OBS and YouTube, so a volunteer can run a game-day stream from one laptop.
 
-> Hallstream is early. It scores **basketball, futsal, handball, volleyball and soccer**. The phone scorer works for all five. A **Stramatel** console and its Stream Box over Bluetooth is tested on basketball only. Futsal, handball, volleyball and soccer on the console are untested until someone records a real game, so if you have a console and a game to spare, please record one. Its interface is in **European Portuguese** and **English**. More consoles and multiple cameras are on the [roadmap](docs/ROADMAP.md).
+> Hallstream is early. It scores **basketball, futsal, handball, volleyball and soccer**. The phone scorer works for all five. A **Stramatel** console and its Stream Box over Bluetooth is tested on basketball only. Futsal, handball, volleyball and soccer on the console are untested until someone records a real game, so if you have a console and a game to spare, please record one. Its interface is in **European Portuguese** and **English**. More consoles are on the [roadmap](docs/ROADMAP.md).
 
 ## What it does
 
@@ -15,7 +15,7 @@ A free tool for amateur clubs that stream their games. Hallstream reads the scor
   - player lower thirds
   - sponsors and promo videos
 - Gives you a control panel in the browser, on the PC or on a phone or tablet on the same network (with a PIN).
-- Sets up OBS over obs-websocket: the scene, the overlay source and the camera.
+- Sets up OBS over obs-websocket: one scene per camera, up to three, with the overlay on top. Cameras come from DroidCam, a webcam or capture device, or a phone's browser through VDO.Ninja, and you switch between them from the panel. `CAMERAS.txt` in the zip covers two and three cameras.
 - Creates the YouTube live broadcast with a title and thumbnail, and makes it unlisted afterwards.
 - Pulls squads, photos and fixtures from the Portuguese basketball federation (FPB), if you choose to. The FPB import is for Portuguese basketball only.
 - Keeps working offline after the first load. A demo mode plays an invented game with no console.

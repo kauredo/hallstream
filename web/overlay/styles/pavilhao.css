@@ -7,7 +7,12 @@ html[data-style="pavilhao"] {
   --mt-maple: #BC874B;           /* varnished maple, a step darker than raw so a light club colour stays apart from it */
   --mt-tape: #E9EAE5;            /* white cloth tape */
   --mt-wall: #D5D9DD;            /* painted block wall */
-  --mt-line-half: rgba(255,255,255,0.5);   /* outlines of empty boxes */
+  --mt-board: #D9AE74;           /* light maple under the names on the bug */
+  --mt-black: #141517;           /* the visitor's crest and score on the bug */
+  --mt-table: #1C1A17;           /* the scorer's table on the bug */
+  --mt-label: rgba(255,255,255,0.7);       /* small labels on dark */
+  --mt-box: #D4D4D2;                       /* a filled foul box */
+  --mt-box-empty: rgba(255,255,255,0.35);  /* the outline of an empty foul box */
   --mt-rule: rgba(255,255,255,0.3);        /* dividers inside a panel */
   --mt-empty: rgba(255,255,255,0.28);      /* an empty foul pip */
   --mt-soft: rgba(255,255,255,0.75);       /* secondary text on dark */
@@ -69,64 +74,117 @@ html[data-style="pavilhao"] .lk2 span { font-weight: 800; font-stretch: 80%; let
 html[data-style="pavilhao"] .lk2 i, html[data-style="pavilhao"] .rules i { background: var(--mt-line); }
 html[data-style="pavilhao"] .rules span { letter-spacing: 0.02em !important; padding-left: 0 !important; font-weight: 800; font-stretch: 80%; }
 
-/* ---------- Marcador ---------- */
-html[data-style="pavilhao"] .sb { filter: drop-shadow(0 4px 0 var(--mt-shadow)); }
-/* The end of the floor: maple with the arc of the three-point line, the club colour inside it. */
-html[data-style="pavilhao"] .sb-fill {
-  clip-path: none;
-  background:
-    radial-gradient(circle at calc(100% + 10px) 50%, var(--red) 0 46px, var(--mt-line) 46.5px 51px, transparent 51.5px),
-    var(--mt-grain), var(--mt-maple);
+/* ---------- Marcador: the court corner ----------
+   White court lines divide the bug into cells inside one frame: the crest on its team colour, the name
+   on light maple, the score on its team colour (the visitor's on black), then the scorer's table with
+   the sport's stat and the clock. Every number is plain white; gold is only the BÓNUS chip. */
+html[data-style="pavilhao"] .sb { align-items: stretch; filter: drop-shadow(0 4px 0 var(--mt-shadow)); border-block: 4px solid var(--mt-line); }
+html[data-style="pavilhao"] .sb-edge { display: none; }
+html[data-style="pavilhao"] .sb-teams { position: relative; width: 296px; background: var(--mt-board); }
+/* No title strip; the head keeps the dead-link dot and, in a sets sport, names the set over the home name. */
+html[data-style="pavilhao"] .sb-head { position: absolute; left: 0; top: 0; right: 0; height: 0; padding: 0; background: transparent; box-shadow: none; }
+html[data-style="pavilhao"] .sb-head > span:first-child > :not(span.only-sets) { display: none; }
+html[data-style="pavilhao"] .sb-head > span:first-child { position: absolute; left: 66px; top: 6px; padding: 0; color: var(--ink); opacity: 0.75; }
+html[data-style="pavilhao"] .sb-head .only-sets[data-b="periodShort"],
+html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per, html[data-style="pavilhao"] .sb-shot span {
+  font-weight: 800; font-stretch: 85%; font-size: 13px; line-height: 1; letter-spacing: 0.06em;
 }
-/* Other sports end the floor with a straight painted line instead of the three-point arc. */
-html[data-style="pavilhao"][data-sport]:not([data-sport="basketball"]) .sb-fill {
-  background:
-    linear-gradient(90deg, transparent calc(100% - 41px), var(--mt-line) calc(100% - 41px) calc(100% - 36px), var(--red) calc(100% - 36px)),
-    var(--mt-grain), var(--mt-maple);
+html[data-style="pavilhao"] .sb-row { position: relative; height: 52px; box-sizing: border-box; }
+html[data-style="pavilhao"] .sb-row.away { height: 56px; border-top: 4px solid var(--mt-line); }
+html[data-style="pavilhao"] .sb-row.home { --tile: var(--red); --on-tile: var(--on-red); }
+html[data-style="pavilhao"] .sb-row.away { --tile: var(--mt-black); --on-tile: #FFFFFF; }
+/* Crests: a team with none gets an outlined shield, never its initials. */
+html[data-style="pavilhao"] .sb-row .tile { width: 52px; height: 52px; box-sizing: border-box; background: var(--tile); color: var(--on-tile); }
+html[data-style="pavilhao"] .sb-row .tile img { width: 26px; height: 31px; }
+html[data-style="pavilhao"] .sb-row .tile .ini { display: none; }
+html[data-style="pavilhao"] .sb-row .tile.no-img::before {
+  content: ""; width: 26px; height: 31px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 34'%3E%3Cpath d='M14 3 L25 7 V16 C25 23 20.5 27.5 14 31 C7.5 27.5 3 23 3 16 V7 Z' fill='none' stroke='%23000' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-html[data-style="pavilhao"] .sb-fill i { background: transparent; }
-html[data-style="pavilhao"] .sb-white, html[data-style="pavilhao"] .sb-red { display: none; }
-/* Head: the club colour with a baseline painted under it, and only the sport in it
-   (the short name would repeat the home name on the row below). */
-html[data-style="pavilhao"] .sb-head { box-shadow: inset 0 -3px 0 var(--mt-line); padding-left: 12px; }
-html[data-style="pavilhao"] .sb-head span:first-child { font-weight: 800; font-stretch: 85%; font-size: 20px; letter-spacing: 0.02em; color: var(--on-red); padding-bottom: 2px; }
-html[data-style="pavilhao"] .sb-row .nm { font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; letter-spacing: 0.01em; }
-html[data-style="pavilhao"] .sb-row.away .nm { background: var(--mt-grain), var(--mt-maple); color: var(--ink); }
-html[data-style="pavilhao"] .sb-row .sc { font-family: var(--mt-num); font-weight: 400; font-size: 34px; box-shadow: inset 4px 0 0 var(--mt-line); }
-html[data-style="pavilhao"] .sb-row.away .sc { background: var(--mt-wall); color: var(--ink); }
-/* The line between home and away is 4 px, with a dark edge under it on the maple,
-   so a light club colour and the maple never read as one stripe. */
-html[data-style="pavilhao"] .sb-row.home .nm { box-shadow: inset 0 -4px 0 var(--mt-line); }
-html[data-style="pavilhao"] .sb-row.home .sc { box-shadow: inset 4px 0 0 var(--mt-line), inset 0 -4px 0 var(--mt-line); }
-html[data-style="pavilhao"] .sb-row.away .nm { box-shadow: inset 0 2px 0 var(--mt-ink-rule); }
-/* Bonus: the accent stripe at the name's end, with an ink edge so it shows on maple and on any club colour. */
-html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink); }
-html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.home.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink), inset 0 -4px 0 var(--mt-line); }
-html[data-style="pavilhao"]:not([data-hide~="fouls"]) .sb-row.away.bonus .nm { box-shadow: inset -6px 0 0 var(--gold), inset -8px 0 0 var(--ink), inset 0 2px 0 var(--mt-ink-rule); }
-/* Scorer's table: the club's second colour, tape labels on it. */
-html[data-style="pavilhao"] .sb-gap { background: var(--mt-line); clip-path: polygon(0 0,4px 0,4px 100%,0 100%); }
-html[data-style="pavilhao"] .sb-lbl, html[data-style="pavilhao"] .sb-per { position: relative; isolation: isolate; background: transparent; color: var(--ink); font-weight: 800; font-stretch: 85%; font-size: 18px; letter-spacing: 0.02em; }
-html[data-style="pavilhao"] .sb-lbl { padding-left: 16px; }
-html[data-style="pavilhao"] .sb-lbl::before, html[data-style="pavilhao"] .sb-per::before {
-  content: ""; position: absolute; top: 4px; bottom: 3px; left: 7px; right: 9px; z-index: -1;
-  background: var(--mt-weave), var(--mt-tape); clip-path: var(--mt-torn);
+/* Timeouts: short bars under the crest, filled while left, outlined once taken. */
+html[data-style="pavilhao"][data-tos] .sb-row .tile { align-items: flex-start; padding-top: 6px; }
+html[data-style="pavilhao"][data-tos] .sb-row .tile img, html[data-style="pavilhao"][data-tos] .sb-row .tile.no-img::before { width: 22px; height: 27px; }
+html[data-style="pavilhao"][data-tos] .tos { position: absolute; left: 0; top: 39px; width: 52px; display: flex; justify-content: center; gap: 4px; color: var(--on-tile); }
+html[data-style="pavilhao"] .tos i { width: 14px; height: 6px; box-sizing: border-box; border: 1.5px solid currentColor; }
+html[data-style="pavilhao"] .tos i.on { background: currentColor; }
+html[data-style="pavilhao"] .sb-row .nm,
+html[data-style="pavilhao"] .sb-row.home .nm, html[data-style="pavilhao"] .sb-row.away .nm {
+  width: 136px; height: 52px; padding: 3px 8px 0 14px; background: transparent; box-shadow: none; color: var(--ink);
+  font-family: var(--mt-word); font-weight: 800; font-stretch: 78%; letter-spacing: 0;
 }
-html[data-style="pavilhao"] .sb-per::before { left: 10px; right: 8px; }
-html[data-style="pavilhao"] .sb-f.sep { border-top-color: var(--mt-rule); }
-html[data-style="pavilhao"] .sb-f b { font-weight: 800; font-stretch: 75%; }
-html[data-style="pavilhao"] .sb-div { background: var(--mt-rule); }
-html[data-style="pavilhao"] .pips i { background: var(--mt-empty); }
-html[data-style="pavilhao"] .pips i.on { background: var(--mt-line); }
-/* A hot count is a chip of the accent with ink on it, so a white accent still differs from plain white. */
-html[data-style="pavilhao"] [data-hot].hot, html[data-style="pavilhao"] .sb-shot b.hot { background: var(--gold); color: var(--ink); padding: 0 4px; box-shadow: 0 0 0 2px var(--ink); }
-html[data-style="pavilhao"] .sb-f.bonus b[data-hot].hot { box-shadow: none; }
-html[data-style="pavilhao"] .sb-clock { font-weight: 800; font-stretch: 70%; font-size: 46px; }
-html[data-style="pavilhao"] .sb-shot { background: transparent; box-shadow: inset 0 0 0 2px var(--mt-line-half); }
-html[data-style="pavilhao"] .sb-shot span { font-weight: 800; font-stretch: 80%; font-size: 18px; letter-spacing: 0; color: var(--mt-soft); }
-html[data-style="pavilhao"] .sb-shot b { font-weight: 800; font-stretch: 75%; }
-html[data-style="pavilhao"] .sb-f .bonus { font-stretch: 80%; letter-spacing: 0.02em; }
+html[data-style="pavilhao"][data-scoring="sets"] .sb-row.home .nm { padding-top: 17px; }
+html[data-style="pavilhao"] .sb-row.serving .nm { padding-right: 34px; }
+html[data-style="pavilhao"] .sb-row.serving .nm::after { box-shadow: 0 0 0 2px var(--ink); }
+html[data-style="pavilhao"] .sb-row .sc {
+  width: 108px; height: 52px; box-sizing: border-box; padding: 3px 0 0 4px; box-shadow: inset 4px 0 0 var(--mt-line);
+  font-family: var(--mt-num); font-weight: 400; font-size: 46px; letter-spacing: -0.04em; -webkit-text-stroke: 1.2px currentColor;
+}
+html[data-style="pavilhao"] .sb-row.home .sc { background: var(--red); color: var(--on-red); box-shadow: inset 4px 0 0 var(--mt-line); }
+html[data-style="pavilhao"] .sb-row.away .sc { background: var(--mt-black); color: #FFFFFF; }
+/* The scorer's table: one dark cell for the stat, one for the clock, white lines between. */
+html[data-style="pavilhao"] .sb-stats { align-items: stretch; background: var(--mt-table); color: #FFFFFF; }
+html[data-style="pavilhao"] .sb-gap { width: 5px; background: var(--mt-line); clip-path: none; }
+html[data-style="pavilhao"] .sb-div { width: 4px; background: var(--mt-line); }
+html[data-style="pavilhao"] .sb-fouls { position: relative; width: 196px; }
+html[data-style="pavilhao"] .sb-lbl { position: absolute; left: 14px; top: 6px; height: auto; padding: 0; background: transparent; color: var(--mt-label); }
+html[data-style="pavilhao"] .sb-f { height: 52px; padding: 17px 0 0 14px; gap: 10px; }
+html[data-style="pavilhao"] .sb-f.sep { height: 56px; padding-top: 0; border-top: 4px solid var(--mt-line); }
+html[data-style="pavilhao"] .sb-f.bonus { background: transparent; border-top-color: var(--mt-line); gap: 10px; }
+html[data-style="pavilhao"] .sb-f b,
+html[data-style="pavilhao"][data-scoring="sets"] .sb-f b.only-sets { min-width: 18px; font-weight: 800; font-stretch: 75%; font-size: 30px; }
+html[data-style="pavilhao"] .sb-f [data-hot].hot,
+html[data-style="pavilhao"] .sb-f.bonus b[data-hot] { background: none; color: #FFFFFF; padding: 0; box-shadow: none; }
+/* Foul boxes, quiet: light grey when filled, an outline when not; they stay grey past the warning.
+   Basketball draws a fifth box, filled with the BÓNUS. */
+html[data-style="pavilhao"] .sb-f .pips, html[data-style="pavilhao"] .sb-f.bonus .pips { display: flex; gap: 4px; }
+html[data-style="pavilhao"] .sb-f .pips i, html[data-style="pavilhao"][data-sport="basketball"] .sb-f .pips::after {
+  width: 12px; height: 11px; box-sizing: border-box; background: transparent; border: 1.5px solid var(--mt-box-empty);
+}
+html[data-style="pavilhao"][data-sport="basketball"] .sb-f .pips::after { content: ""; display: block; }
+html[data-style="pavilhao"] .sb-f .pips i.on, html[data-style="pavilhao"][data-sport="basketball"] .sb-f.bonus .pips::after { background: var(--mt-box); border: 0; }
+html[data-style="pavilhao"] .sb-f .pips i::after { display: none; }
+html[data-style="pavilhao"] .sb-f .bonus {
+  height: 22px; box-sizing: border-box; padding: 1px 6px 0; align-items: center; background: var(--gold); color: var(--ink);
+  font-weight: 800; font-stretch: 80%; font-size: 16px; letter-spacing: 0.02em;
+}
+html[data-style="pavilhao"] .sb-f.bonus .bonus { display: flex; }
+/* Handball: the players out, the soonest return and the shirt number, one size, the score bigger still. */
+html[data-style="pavilhao"][data-penalties="suspensions"] .sb-fouls { width: 168px; }
+html[data-style="pavilhao"] .susp .out { align-items: center; gap: 10px; }
+html[data-style="pavilhao"] .susp .out b { font-weight: 800; font-stretch: 75%; font-size: 30px; }
+html[data-style="pavilhao"] .susp time, html[data-style="pavilhao"] .susp time.soon { color: #FFFFFF; font-weight: 600; font-size: 30px; }
+html[data-style="pavilhao"] .susp .no { color: rgba(255,255,255,0.8); font-weight: 600; font-size: 30px; }
+html[data-style="pavilhao"] .cds .cd b { font-weight: 800; font-stretch: 75%; font-size: 30px; }
+/* The clock cell: the period, one clock size, then the shot clock or the added time as plain text. */
+html[data-style="pavilhao"] .sb-time { width: 136px; box-sizing: border-box; padding-top: 5px; justify-content: center; align-items: center; }
+html[data-style="pavilhao"][data-penalties="suspensions"] .sb-time { width: 132px; }
+html[data-style="pavilhao"] .sb-per { position: static; height: auto; padding: 0; background: transparent; color: var(--mt-label); }
+html[data-style="pavilhao"] .sb-lbl::before, html[data-style="pavilhao"] .sb-per::before { display: none; }
+html[data-style="pavilhao"] .sb-tbox { height: auto; padding: 0; justify-content: flex-start; }
+html[data-style="pavilhao"] .sb-clock { height: 48px; font-weight: 800; font-stretch: 70%; font-size: 46px; line-height: 48px; }
+html[data-style="pavilhao"] .sb-tbox.solo .sb-clock { margin-top: 4px; }
+html[data-style="pavilhao"] .sb-shot { width: auto; height: 40px; gap: 8px; background: transparent; box-shadow: none; }
+html[data-style="pavilhao"] .sb-shot span { color: var(--mt-label); }
+html[data-style="pavilhao"] .sb-shot b,
+html[data-style="pavilhao"][data-penalties="cards"] .sb-shot.sb-add b { font-weight: 800; font-stretch: 75%; font-size: 30px; color: #FFFFFF; }
+html[data-style="pavilhao"] .sb-shot b.hot { background: none; padding: 0; box-shadow: none; color: var(--gold); }
+/* Volleyball: the finished sets on the team rows, headed like the stat cell. */
+html[data-style="pavilhao"][data-scoring="sets"] .sb-time { position: relative; padding: 0; }
+html[data-style="pavilhao"][data-scoring="sets"] .sb-per { position: absolute; left: 0; right: 0; top: 6px; text-align: center; }
+html[data-style="pavilhao"][data-scoring="sets"] .sb-tbox { align-self: stretch; flex: 1; justify-content: center; }
+html[data-style="pavilhao"] .sb-setlist .sr { height: 52px; padding-top: 17px; font-weight: 800; font-stretch: 75%; font-size: 22px; }
+html[data-style="pavilhao"] .sb-setlist .sr > div { padding: 0 4px; }
+html[data-style="pavilhao"] .sb-setlist .sr + .sr { height: 56px; padding-top: 0; border-top: 4px solid var(--mt-line); }
+html[data-style="pavilhao"] .sb-setlist .sr > div + div { border-left-color: var(--mt-rule); }
+html[data-style="pavilhao"] .sb-setlist .to { color: var(--mt-label); font-weight: 800; font-stretch: 85%; font-size: 13px; letter-spacing: 0.06em; }
+html[data-style="pavilhao"] .sb-setlist .goal { font-weight: 800; font-stretch: 70%; font-size: 46px; line-height: 48px; }
+html[data-style="pavilhao"] .pop { left: 200px; }
 html[data-style="pavilhao"] .pop div { transform: none; font-family: var(--mt-num); font-weight: 400; font-size: 36px; padding: 6px 12px 4px; box-shadow: 0 0 0 3px var(--mt-line), 0 0 0 5px var(--ink); }
 html[data-style="pavilhao"] .pop span { transform: none; }
+/* The time-out window keeps its chips. */
+html[data-style="pavilhao"] [data-hot].hot { background: var(--gold); color: var(--ink); padding: 0 4px; box-shadow: 0 0 0 2px var(--ink); }
+html[data-style="pavilhao"] .pips i { background: var(--mt-empty); }
+html[data-style="pavilhao"] .pips i.on { background: var(--mt-line); }
 html[data-style="pavilhao"] .spc-pl { clip-path: none; }
 html[data-style="pavilhao"] .spc-slab { clip-path: polygon(0 0,8px 0,8px 100%,0 100%); }
 
@@ -283,7 +341,7 @@ html[data-style="pavilhao"] .spc { filter: drop-shadow(0 4px 0 var(--mt-shadow))
 /* ---------- Wall-painted numerals ----------
    Graduate comes in one light weight. A stroke in the same colour thickens it to the brush weight
    of a number painted on a wall, scaled to the size it is painted at. */
-html[data-style="pavilhao"] .sb-row .sc, html[data-style="pavilhao"] .pop div, html[data-style="pavilhao"] .ab-vs b { -webkit-text-stroke: 1.6px currentColor; }
+html[data-style="pavilhao"] .pop div, html[data-style="pavilhao"] .ab-vs b { -webkit-text-stroke: 1.6px currentColor; }
 /* Kept under the width that would close the counter of the zero. */
 html[data-style="pavilhao"] .to-sc, html[data-style="pavilhao"] .to-clock, html[data-style="pavilhao"] .vj-score .s { -webkit-text-stroke: 1.6px currentColor; }
 html[data-style="pavilhao"] .ab-tile .ini, html[data-style="pavilhao"] .ab-time, html[data-style="pavilhao"] .blk-sc { -webkit-text-stroke: 2.5px currentColor; }

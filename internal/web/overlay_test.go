@@ -487,10 +487,11 @@ func TestOverlayRefitsNamesWhenAFontLandsLate(t *testing.T) {
 	}
 }
 
-// Placa draws each team's timeouts under its name, filled for each one left and outlined for each
-// taken, only from the phone scorer: a console always sends 0 taken. The away marks turn ink when
-// the away colour is too light for the white plate, and the other looks never show them.
-func TestOverlayPlacaTimeouts(t *testing.T) {
+// Placa draws each team's timeouts under its name and Pavilhão under its crest, filled for each one
+// left and outlined for each taken, only from the phone scorer: a console always sends 0 taken.
+// Placa's away marks turn ink when the away colour is too light for the white plate, and the other
+// looks never show them.
+func TestOverlayTimeoutMarks(t *testing.T) {
 	tab := chrome(t)
 	srv := httptest.NewServer(newServerFiles(t, assets.FS))
 	t.Cleanup(srv.Close)
@@ -502,6 +503,8 @@ func TestOverlayPlacaTimeouts(t *testing.T) {
 		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador-descontos", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
+		{"pavilhao", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
 		{"classico", "marcador-descontos", `[["none",2,2,"rgb(255, 255, 255)"],["none",2,1,"rgb(255, 255, 255)"]]`},
 	} {
 		t.Run(c.style+"/"+c.fixture, func(t *testing.T) {

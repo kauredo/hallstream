@@ -107,11 +107,11 @@ html[data-style="pavilhao"] .sb-row .tile.no-img::before {
   content: ""; width: 26px; height: 31px; background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 34'%3E%3Cpath d='M14 3 L25 7 V16 C25 23 20.5 27.5 14 31 C7.5 27.5 3 23 3 16 V7 Z' fill='none' stroke='%23000' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-/* Timeouts: short bars under the crest, filled while left, outlined once taken. */
+/* Timeouts: round dots under the crest, filled while left, outlined once taken (the foul boxes are square). */
 html[data-style="pavilhao"][data-tos] .sb-row .tile { align-items: flex-start; padding-top: 6px; }
 html[data-style="pavilhao"][data-tos] .sb-row .tile img, html[data-style="pavilhao"][data-tos] .sb-row .tile.no-img::before { width: 22px; height: 27px; }
-html[data-style="pavilhao"][data-tos] .tos { position: absolute; left: 0; top: 39px; width: 52px; display: flex; justify-content: center; gap: 4px; color: var(--on-tile); }
-html[data-style="pavilhao"] .tos i { width: 14px; height: 6px; box-sizing: border-box; border: 1.5px solid currentColor; }
+html[data-style="pavilhao"][data-tos] .tos { position: absolute; left: 0; top: 40px; width: 52px; display: flex; justify-content: center; gap: 3px; color: var(--on-tile); }
+html[data-style="pavilhao"] .tos i { width: 8px; height: 8px; box-sizing: border-box; border: 1.5px solid currentColor; border-radius: 50%; }
 html[data-style="pavilhao"] .tos i.on { background: currentColor; }
 html[data-style="pavilhao"] .sb-row .nm,
 html[data-style="pavilhao"] .sb-row.home .nm, html[data-style="pavilhao"] .sb-row.away .nm {

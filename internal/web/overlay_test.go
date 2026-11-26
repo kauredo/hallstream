@@ -501,6 +501,7 @@ func TestOverlayTimeoutMarks(t *testing.T) {
 	}))`
 	for _, c := range []struct{ style, fixture, want string }{
 		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(26, 31, 35)"]]`},
+		{"placa", "marcador-descontos-cor", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(180, 65, 12)"]]`},
 		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
 		{"pavilhao", "marcador-descontos", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
@@ -587,11 +588,11 @@ func TestOverlayDeadLinkDotShows(t *testing.T) {
 			}
 			// On these two the dot belongs to the link, not to a team: it sits in the clock panel.
 			in, err := chromedp.Run(tab, chromedp.Evaluate[bool](`(() => {
-				const scr = document.getElementById('s-marcador'), d = scr.querySelector('.sb-dot').getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
+				const scr = document.getElementById('s-marcador'), dot = scr.querySelector('.sb-dot'), d = dot.getBoundingClientRect(), p = scr.querySelector('.sb-time').getBoundingClientRect();
 				return d.left >= p.left && d.right <= p.right && d.top >= p.top && d.bottom <= p.bottom;
 			})()`))
 			if err != nil || !in {
-				t.Errorf("the dead-link dot is outside the clock panel: %v %v", in, err)
+				t.Errorf("the dead-link dot is not inside the clock panel: %v %v", in, err)
 			}
 		})
 	}

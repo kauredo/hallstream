@@ -1,6 +1,6 @@
 # Implementation Plans
 
-Started 2026-11-25. Run them in the order below (Phase C first, owner's decision), not by number, unless the dependencies say otherwise. Executors: read the whole plan before you start, honour its STOP conditions, and update your row when you're done.
+Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, owner's decisions), not by number, unless the dependencies say otherwise. Executors: read the whole plan before you start, honour its STOP conditions, and update your row when you're done.
 
 ## Execution order & status
 
@@ -13,14 +13,23 @@ Started 2026-11-25. Run them in the order below (Phase C first, owner's decision
 | 005 | Futsal | P2 | M | 002, 003, 004 (merged) | DONE: merged #31 (6141979) |
 | 006 | Handball | P2 | L | 005 | DONE: merged #32 (1c8e28a) |
 | 007 | Soccer | P3 | L | 005, 006 | DONE: merged #33 (a6ba610) |
+| 008 | "Configurar OBS" builds one scene per camera, nesting a shared Grafismo scene | P1 | L | none | TODO |
+| 009 | Camera buttons on Ecrãs switch the live camera, and the squeeze follows it | P1 | L | 008 | TODO |
+| 010 | A chosen camera fills the time-out window | P2 | M | 009 | TODO |
+| 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | TODO |
+| 012 | A health line per camera | P2 | M | 009 | TODO |
+| 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
 ## Decision records
 
 - `phase-c-decisions.md`: the owner's answers for ROADMAP Phase C (sport profiles), 2026-11-25. Volleyball first, sport per escalão, a separate sets list, per-player soccer cards and substitutions. Plans 002 to 007 are written from it.
+- `phase-b-decisions.md`: ROADMAP Phase B (multiple cameras), 2026-11-26. One scene per camera with a nested Grafismo, switching from Ecrãs, a chosen time-out camera, VDO.Ninja phones, a health line, a guide. Plans 008 to 013 are written from it.
 
 ## Dependency notes
+
+- 008 to 013 are ROADMAP Phase B (multiple cameras), asked for on 2026-11-26 before plan 001. `phase-b-decisions.md` holds the answers and the corrections the plans found.
 
 - 003 needs 002's `sport.Profile` and `game.rules`. 004 needs both, and adds the per-sport fixture folder and the `same()` score comparison that 005 to 007 build on.
 - 007 reuses 006's count-up clock.

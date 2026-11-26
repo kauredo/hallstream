@@ -616,10 +616,22 @@ func (s *Server) words(w http.ResponseWriter, r *http.Request) {
 }
 
 // forCaller hides the OBS password from other devices: OBS's server listens
-// on the whole network, and the password is all that guards it.
+// on the whole network, and the password is all that guards it. The stream
+// key and each phone camera's stream id stay off them too; has_vdo tells
+// the panel which cameras are phones.
 func forCaller(set store.Settings, r *http.Request) store.Settings {
-	if !isLoopback(r.RemoteAddr) {
+	here := isLoopback(r.RemoteAddr)
+	if !here {
 		set.OBS.Password, set.Stream.Key = "", ""
+	}
+	// A copy: the store shares its slice.
+	set.OBS.Cameras = slices.Clone(set.OBS.Cameras)
+	for i := range set.OBS.Cameras {
+		c := &set.OBS.Cameras[i]
+		c.HasVdo = c.Vdo != ""
+		if !here {
+			c.Vdo = ""
+		}
 	}
 	return set
 }

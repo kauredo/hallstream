@@ -87,7 +87,8 @@ func TestCameraListSaves(t *testing.T) {
 		t.Fatal(err)
 	}
 	o := s.Store.Settings().OBS
-	want := []store.Camera{{Source: "Telemóvel 1", Scene: "Câmara 2", Label: "Ao alto", Vdo: "abc"}, {Scene: "Câmara 1", Label: "Bancos"}, {Label: "Nova"}}
+	// Camera 2 keeps its source until the setup adds the new device.
+	want := []store.Camera{{Source: "Telemóvel 1", Scene: "Câmara 2", Label: "Ao alto", Vdo: "abc"}, {Source: "A", Scene: "Câmara 1", Label: "Bancos"}, {Label: "Nova"}}
 	if !slices.Equal(o.Cameras, want) || o.CameraSource != "Telemóvel 1" || o.CameraFull != nil {
 		t.Errorf("cameras %+v source %q", o.Cameras, o.CameraSource)
 	}

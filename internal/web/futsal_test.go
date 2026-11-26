@@ -161,6 +161,10 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 
 	// With the clock stopped a step moves it at once, and Repor puts back the period's 10:00.
 	tap(`#relogio`)
+	// Each column of steps is one unit, minus above plus.
+	if err := until(tab, `[...document.querySelectorAll('#acertar .passos [data-tenths]')].map((b) => b.dataset.tenths).join() === "-600,-100,-10,600,100,10"`); err != nil {
+		t.Errorf("the clock steps are out of column order: %v", err)
+	}
 	tap(`#acertar [data-tenths="-100"]`)
 	if err := until(tab, `document.querySelector('#tempo').textContent === "09:50"`); err != nil {
 		t.Fatalf("−10 s: %v", err)
@@ -177,8 +181,11 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 	}
 	tap(`#acertarFechar`)
 
-	// The undo row names the tap and the visitor in full, and fits a long name at 844 px.
-	fits := `(() => { const e = document.querySelector('#anularTexto'); return e.scrollWidth <= e.clientWidth; })()`
+	// The undo row names the tap and the visitor in full at 16 px; a long name goes to a second line at 844 px.
+	fits := `(() => { const u = document.querySelector('#anular'), e = document.querySelector('#anularTexto'), q = e.querySelector('.eq');
+		const two = u.classList.contains('duas');
+		return getComputedStyle(e).fontSize === "16px" && e.scrollWidth <= e.clientWidth && u.offsetHeight >= 44 &&
+			(!two || (getComputedStyle(q).display === 'block' && q.scrollWidth <= q.clientWidth && getComputedStyle(e.querySelector('.sep')).display === 'none')); })()`
 	tap(`.fora .acao[data-do="foul"]`)
 	if err := until(tab, `!document.querySelector('#anular').disabled && document.querySelector('#anularTexto').textContent === "Anular falta · VISITANTE" && `+fits); err != nil {
 		t.Fatalf("the undo row after a visitor foul: %v", err)
@@ -188,8 +195,8 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 		t.Fatalf("PUT game: %d", code)
 	}
 	tap(`.fora .acao[data-do="timeout"]`)
-	if err := until(tab, `document.querySelector('#anularTexto').textContent === "Anular desconto · ACADÉMICA SUL" && `+fits); err != nil {
-		size, _ := chromedp.Run(tab, chromedp.Evaluate[string](`(() => { const e = document.querySelector('#anularTexto'); return e.scrollWidth + "/" + e.clientWidth + " " + getComputedStyle(e).fontSize; })()`))
+	if err := until(tab, `document.querySelector('#anularTexto').textContent === "Anular desconto · ACADÉMICA SUL" && document.querySelector('#anular').classList.contains('duas') && `+fits); err != nil {
+		size, _ := chromedp.Run(tab, chromedp.Evaluate[string](`(() => { const e = document.querySelector('#anularTexto'); return e.scrollWidth + "/" + e.clientWidth + " " + getComputedStyle(e).fontSize + " " + document.querySelector('#anular').className; })()`))
 		t.Fatalf("a twelve-letter name in the undo row: %v (%s)", err, size)
 	}
 

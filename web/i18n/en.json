@@ -368,6 +368,7 @@
   "marcar.exclusao_acabou": "Ended",
   "marcar.exclusao_dois_min": "2-minute suspension, {sigla}",
   "marcar.exclusao_numero": "Number",
+  "marcar.exclusao_sem_numero": "Suspension, {tempo}, no number: tap to add it",
   "marcar.exclusoes": "Suspensions",
   "marcar.falta": "Foul",
   "marcar.faltas": "Fouls",

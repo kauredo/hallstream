@@ -305,7 +305,9 @@
     }
     const u = $('#anular'), label = undoLabel(undo), undoText = $('#anularTexto');
     u.disabled = !manual || !undo;
-    const undoHTML = label ? t('marcar.anular_isto', { o: `<b>${esc(label)}</b>` }) : t('marcar.anular');
+    const dot = label.indexOf(' · ');
+    const what = dot < 0 ? esc(label) : `${esc(label.slice(0, dot))}<span class="sep"> · </span><span class="eq">${esc(label.slice(dot + 3))}</span>`;
+    const undoHTML = label ? t('marcar.anular_isto', { o: `<b>${what}</b>` }) : t('marcar.anular');
     if (undoText.dataset.key !== undoHTML + manual) {
       undoText.dataset.key = undoHTML + manual;
       undoText.innerHTML = undoHTML;
@@ -314,12 +316,11 @@
     if ($('#acertar').open && score) $('#acertarClock').textContent = l.clock || clockText(score.clock);
   }
 
-  // A long team name narrows, then shrinks, the undo row's text before it is cut.
+  // A label too long for one line puts the team on a second.
   function fitUndo() {
-    const el = $('#anularTexto'), over = () => el.scrollWidth > el.clientWidth;
-    el.style.fontStretch = el.style.fontSize = '';
-    if (over()) el.style.fontStretch = '62%';
-    for (let px = 16; px > 12 && over(); px--) el.style.fontSize = `${px - 1}px`;
+    const u = $('#anular'), el = $('#anularTexto');
+    u.classList.remove('duas');
+    u.classList.toggle('duas', el.scrollWidth > el.clientWidth);
   }
   addEventListener('resize', fitUndo);
   document.fonts.ready.then(fitUndo);
@@ -562,8 +563,11 @@
       const b = box.children[i], [time, no] = b.children;
       b.disabled = input !== 'manual';
       if (time.textContent !== x.left) time.textContent = x.left || '';
-      no.hidden = !x.number;
-      if (no.textContent !== String(x.number || '')) no.textContent = x.number || '';
+      const shown = x.number || '#?';
+      if (no.textContent !== String(shown)) no.textContent = shown;
+      no.classList.toggle('sem', !x.number);
+      const name = x.number ? '' : t('marcar.exclusao_sem_numero', { tempo: x.left || '' });
+      if ((b.getAttribute('aria-label') || '') !== name) name ? b.setAttribute('aria-label', name) : b.removeAttribute('aria-label');
       b.dataset.number = x.number || '';
       b.dataset.left = x.left || '';
     });

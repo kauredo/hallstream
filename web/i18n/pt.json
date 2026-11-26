@@ -368,6 +368,7 @@
   "marcar.exclusao_acabou": "Acabou",
   "marcar.exclusao_dois_min": "Exclusão de 2 minutos, {sigla}",
   "marcar.exclusao_numero": "Número",
+  "marcar.exclusao_sem_numero": "Exclusão, {tempo}, sem número: toque para o indicar",
   "marcar.exclusoes": "Exclusões",
   "marcar.falta": "Falta",
   "marcar.faltas": "Faltas",

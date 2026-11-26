@@ -188,20 +188,21 @@ body.offline .ponto { background: transparent; box-shadow: inset 0 0 0 2px curre
 .periodo:active { background: rgba(242, 228, 201, .28); }
 
 /* The clock tile: cream while it runs, Lâmpada only when stopped; the pencil says a tap sets it.
-   The pencil keeps a band at the top to itself, and the time shrinks only when the tile is too short for it. */
+   With added time under the clock the pencil keeps a band at the top to itself; the time shrinks only when the tile is too short. */
 .relogio {
   flex: 1; min-height: 0; position: relative; container-type: size;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  border: 0; border-radius: var(--canto); padding: 42px 0 0;
+  border: 0; border-radius: var(--canto); padding: 34px 0;
   background: rgba(242, 228, 201, .08); color: var(--lampada);
 }
 body.corre .relogio { color: var(--soalho); }
 .relogio .tempo { font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums;
   font-size: min(clamp(48px, min(20dvh, 9.5vw), 80px), 100cqh); line-height: 1; letter-spacing: -.01em; }
+.relogio:has(.compensa:not(:empty)) { padding: 42px 0 0; }
 .relogio:has(.compensa:not(:empty)) .tempo { font-size: min(clamp(48px, min(20dvh, 9.5vw), 80px), 100cqh - 44px); }
 .relogio .compensa { font-weight: 800; font-stretch: var(--estreito); font-variant-numeric: tabular-nums; font-size: 32px; line-height: 1; color: var(--soalho); }
 .relogio .compensa:empty { display: none; }
-.lapis { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; color: rgba(242, 228, 201, .7); }
+.lapis { position: absolute; top: 6px; right: 8px; width: 18px; height: 18px; color: rgba(242, 228, 201, .7); }
 .relogio:active { background: rgba(242, 228, 201, .16); }
 
 .anular {

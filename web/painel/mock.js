@@ -253,13 +253,24 @@
   var obsMode = (/[?&]obs=([a-z]+)/.exec(location.search) || [])[1] || 'off';
   var obsLive = obsMode === 'live' ? Date.now() - 4723000 : 0;
   function streamNow() { return obsMode === 'off' ? null : { active: !!obsLive, reconnecting: false, duration_ms: obsLive ? Date.now() - obsLive : 0 }; }
+  // Camera health: ?health=ok (default), noimage, frozen, mixed (ok, no_image, frozen for cameras 1 to 3), skipped,
+  // none (a server older than camera health: no cameras or skipped in the status).
+  var healthQ = (/[?&]health=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
+  function camHealth() {
+    var one = { noimage: 'no_image', frozen: 'frozen' }[healthQ] || 'ok';
+    return (db.settings.obs.cameras || [{}]).map(function (c, i) {
+      return { index: i + 1, state: healthQ === 'mixed' ? ['ok', 'no_image', 'frozen'][i] : one };
+    });
+  }
   function obsStatus() {
-    if (obsMode === 'off') return { connected: false, error: 'O OBS não responde em 127.0.0.1:4455', health: { checked: false, ready: false, problems: [] }, stream: null };
+    if (obsMode === 'off') return { connected: false, error: 'O OBS não responde em 127.0.0.1:4455', health: { checked: false, ready: false, problems: [] }, stream: null, cameras: [], skipped: null };
     var h = obsMode === 'problem'
       ? { checked: true, ready: false, problems: ['A fonte Hallstream overlay está mal: o endereço era http://127.0.0.1:8766/overlay.'] }
       : obsMode === 'choose' ? { checked: true, ready: false, problems: ['A cena Câmara 1 não tem câmara.'] }
       : { checked: true, ready: true, problems: [] };
-    return { connected: true, error: '', health: h, stream: streamNow() };
+    if (healthQ === 'none') return { connected: true, error: '', health: h, stream: streamNow() };
+    return { connected: true, error: '', health: h, stream: streamNow(), cameras: camHealth(),
+      skipped: healthQ === 'skipped' ? { frames: 214, total: 3600 } : null };
   }
   var cameras = [
     { value: 'device:DroidCam Video:\\\\?\\root#image#0000', type: 'device', label: 'DroidCam Video', droidcam: true },

@@ -845,7 +845,7 @@
   function renderEcras() {
     var root = $('#ecras');
     var html = '<div class="ecras-grid"><div>' +
-      '<div class="card" id="camCard" hidden><h2>' + t('painel.camaras.titulo') + '</h2><div class="cams" id="cams"></div><p class="msg" id="camMsg" role="status"></p></div>' +
+      '<div class="card" id="camCard" hidden><h2>' + t('painel.camaras.titulo') + '</h2><div class="cams" id="cams"></div><p class="cam-aviso" id="camSaude"></p><p class="cam-aviso" id="camFrames"></p><p class="msg" id="camMsg" role="status"></p></div>' +
       '<div class="card"><h2>' + t('painel.ecras.no_ecra') + '</h2>' +
       '<div class="screens" id="screens">' + SCREENS.map(function (s) {
         return '<button class="scr' + (s.id === 'nada' ? ' nada' : '') + '" data-screen="' + s.id + '" aria-pressed="false">' +
@@ -993,17 +993,40 @@
     if (auto && !auto.disabled) auto.checked = !!(st.screen && st.screen.auto);
   }
 
+  // A camera's health in words, and the fix for a problem; null when not known yet.
+  function camSaude(state) {
+    if (state === 'no_image') return { word: t('painel.camaras.sem_imagem'), tip: t('painel.camaras.sem_imagem_dica') };
+    if (state === 'frozen') return { word: t('painel.camaras.parada'), tip: t('painel.camaras.parada_dica') };
+    if (state === 'ok') return { word: t('painel.camaras.com_imagem'), tip: '' };
+    return null;
+  }
+  // A health line: the words (and more after them), after the fault mark when it is a problem.
+  function camSaudeHtml(h, more) {
+    return h ? (h.tip ? '<span class="dot off" aria-hidden="true"></span>' : '') + '<span>' + esc(h.word) + (more || '') + '</span>' : '';
+  }
+
   // One button per camera, shown with two or more while OBS answers. Drawn again only
   // when the cameras change, so focus stays put; the live state marks the one on air.
+  // Each button carries its camera's health; one camera gets the card only for a problem.
   var camKey = '';
   function updateCameraButtons() {
     var card = $('#camCard'); if (!card) return;
     var o = (S.settings && S.settings.obs) || {};
     var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '', scene: '', label: '' }];
-    var connected = !!(S.status && S.status.obs && S.status.obs.connected);
-    card.hidden = !obsOn() || !connected || cams.length < 2;
+    var so = (S.status && S.status.obs) || {};
+    var health = {};
+    (so.cameras || []).forEach(function (c) { health[c.index] = c.state; });
+    var one = cams.length < 2 ? camSaude(health[1]) : null;
+    var oneBad = !!(one && one.tip);
+    card.hidden = !obsOn() || !so.connected || (cams.length < 2 && !oneBad && !so.skipped);
     if (S.status) card.dataset.cams = cams.length; // drawn with the status in (the tests wait for it)
     if (card.hidden) return;
+    var fr = $('#camFrames');
+    fr.innerHTML = so.skipped ? '<span class="dot off" aria-hidden="true"></span><span>' +
+      esc(t('painel.camaras.saltou', { n: so.skipped.frames, total: so.skipped.total })) + '</span>' : '';
+    var cs = $('#camSaude');
+    cs.innerHTML = oneBad ? camSaudeHtml(one, '<span class="cam-dica">' + esc(one.tip) + '</span>') : '';
+    if (cams.length < 2) { camKey = ''; $('#cams').innerHTML = ''; $('#camMsg').textContent = ''; return; }
     var key = JSON.stringify(cams);
     if (key !== camKey) {
       camKey = key;
@@ -1019,6 +1042,10 @@
       var on = +b.dataset.cam === live, scene = !!cams[i].scene;
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       if (!S.camBusy) b.disabled = !scene;
+      var sa = b.querySelector('.cam-saude'), h = camSaude(health[i + 1]);
+      sa.innerHTML = camSaudeHtml(h);
+      sa.title = h ? h.tip : '';
+      sa.dataset.state = health[i + 1] || '';
       if (S.camBusy === +b.dataset.cam) return;
       b.querySelector('.cam-estado').textContent = on ? t('painel.camaras.no_ar') : scene ? '' : t('painel.camaras.sem_cena');
     });

@@ -599,3 +599,17 @@ func TestPlaceHoldsTheSqueezeUntilTheSwitch(t *testing.T) {
 		t.Errorf("the old camera moved: %v", r.f.setIn)
 	}
 }
+
+func TestMoving(t *testing.T) {
+	r := newRig(t, 1280, 720)
+	if err := r.c.Follow("desconto"); err != nil {
+		t.Fatal(err)
+	}
+	if !r.c.Moving() {
+		t.Error("not moving right after the squeeze started")
+	}
+	r.wait(t)
+	if r.c.Moving() {
+		t.Error("still moving after the tween")
+	}
+}

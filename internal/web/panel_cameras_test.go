@@ -3,11 +3,13 @@ package web
 import (
 	"context"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/chromedp/chromedp"
 
+	"github.com/kauredo/hallstream/internal/i18n"
 	assets "github.com/kauredo/hallstream/web"
 )
 
@@ -114,5 +116,111 @@ func TestPanelTimeoutCamera(t *testing.T) {
 	one := settingsPanel(t, "&cams=1")
 	if shown, err := chromedp.Run(one, chromedp.Evaluate[bool](`!!document.querySelector("#dObsTcamField")`)); err != nil || shown {
 		t.Errorf("one camera shows the time-out camera: %v %v", shown, err)
+	}
+}
+
+func TestPanelCameraHealth(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&health=mixed")
+	if err := until(tab, `[...document.querySelectorAll("#cams .cam-saude")].map(e => e.dataset.state).join() === "ok,no_image,frozen"`+
+		` && document.querySelector('[data-cam="2"] .cam-saude').title !== "" && document.querySelector('[data-cam="1"] .cam-saude').title === ""`+
+		` && document.querySelector("#camFrames").textContent === ""`); err != nil {
+		t.Fatalf("health lines: %v", err)
+	}
+	tab = cameraPanel(t, "&cams=3&live=1&health=skipped")
+	if err := until(tab, `/214/.test(document.querySelector("#camFrames").textContent)`); err != nil {
+		t.Fatalf("no skipped frames line: %v", err)
+	}
+	// One camera: the card shows only for a problem, with the fix written out.
+	tab = cameraPanel(t, "&cams=1&health=noimage")
+	if err := until(tab, `!document.querySelector("#camCard").hidden && document.querySelectorAll("#cams .cam").length === 0`+
+		` && !!document.querySelector("#camSaude .cam-dica")`); err != nil {
+		t.Fatalf("one camera with no picture: %v", err)
+	}
+}
+
+// A server with no camera health in its status draws no health lines.
+func TestPanelCameraHealthAbsent(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&health=none")
+	if err := until(tab, `document.querySelectorAll("#cams .cam").length === 3 && [...document.querySelectorAll("#cams .cam-saude")].every(e => e.textContent === "" && e.dataset.state === "")`+
+		` && document.querySelector("#camFrames").textContent === ""`); err != nil {
+		t.Fatalf("health lines with no health: %v", err)
+	}
+	tab = cameraPanel(t, "&cams=1&health=none")
+	if err := until(tab, `document.querySelector("#camCard").dataset.cams === "1" && document.querySelector("#camCard").hidden`); err != nil {
+		t.Errorf("one camera with no health shows the card: %v", err)
+	}
+}
+
+// Three cameras, then one, then three again: the buttons and their health
+// lines follow the saved list.
+func TestPanelCameraHealthListChanges(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&health=mixed")
+	lines := `[...document.querySelectorAll("#cams .cam-saude")].map(e => e.dataset.state).join() === "ok,no_image,frozen"`
+	if err := until(tab, lines); err != nil {
+		t.Fatalf("three health lines: %v", err)
+	}
+	save := func() {
+		t.Helper()
+		click(t, tab, `[data-act="cam-save"]`)
+		if err := until(tab, `/\bmsg (ok|err)\b/.test(document.querySelector("#camSetupMsg").className)`); err != nil {
+			t.Fatalf("the camera list was not saved: %v", err)
+		}
+		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`location.hash = "#ecras", true`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`location.hash = "#definicoes", true`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := until(tab, `document.querySelectorAll("#dCams .cam-row").length === 3`); err != nil {
+		t.Fatal(err)
+	}
+	click(t, tab, `#dCams .cam-row:nth-child(3) [data-act="cam-remove"]`)
+	click(t, tab, `#dCams .cam-row:nth-child(2) [data-act="cam-remove"]`)
+	save()
+	if err := until(tab, `document.querySelector("#camCard").dataset.cams === "1" && document.querySelector("#camCard").hidden`); err != nil {
+		t.Fatalf("one camera, picture fine: %v", err)
+	}
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`location.hash = "#definicoes", true`)); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"dCam2", "dCam3"} {
+		if err := until(tab, `!!document.querySelector('[data-act="cam-add"]')`); err != nil {
+			t.Fatal(err)
+		}
+		click(t, tab, `[data-act="cam-add"]`)
+		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`(s => (s.value = "vdo", s.dispatchEvent(new Event("change", { bubbles: true })), true))(document.querySelector("#`+id+`"))`)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	save()
+	if err := until(tab, `!document.querySelector("#camCard").hidden && document.querySelectorAll("#cams .cam").length === 3 && `+lines); err != nil {
+		t.Errorf("three cameras again: %v", err)
+	}
+}
+
+// A status read while a switch runs updates the health lines and leaves
+// "A mudar…" and the disabled buttons alone.
+func TestPanelCameraHealthDuringSwitch(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&health=ok")
+	if err := until(tab, `document.querySelectorAll("#cams .cam-saude[data-state=ok]").length === 3`); err != nil {
+		t.Fatal(err)
+	}
+	// The switch answers after 15 s; the next status read (every 10 s) has camera 2 frozen.
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`(f => (window.fetch = (u, o) => {
+		if (String(u).includes("/api/obs/camera/live")) return new Promise(r => setTimeout(() => r(f(u, o)), 15000));
+		if (String(u).endsWith("/api/status")) return f(u, o).then(r => r.json()).then(j => {
+			j.obs.cameras[1].state = "frozen";
+			return new Response(JSON.stringify(j), { status: 200, headers: { "Content-Type": "application/json" } });
+		});
+		return f(u, o);
+	}, true))(window.fetch)`)); err != nil {
+		t.Fatal(err)
+	}
+	click(t, tab, `[data-cam="2"]`)
+	if err := until(tab, `document.querySelector('[data-cam="2"] .cam-saude').dataset.state === "frozen"`+
+		` && document.querySelector('[data-cam="2"] .cam-estado').textContent === `+strconv.Quote(i18n.T("painel.camaras.a_mudar"))+
+		` && [...document.querySelectorAll("#cams .cam")].every(b => b.disabled)`); err != nil {
+		t.Errorf("health during a switch: %v", err)
 	}
 }

@@ -415,6 +415,15 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
 .cam.sem-cena:hover { background: transparent; }
 #camMsg:empty { display: none; }
 #camMsg { margin-top: 12px; }
+/* Health: quiet words when the picture is fine; a fault takes the lit mark and bold Lâmpada funda,
+   as the chips do. On the camera on air the words stay light and the mark keeps the fault. */
+.cam .cam-saude, .cam-aviso { display: flex; align-items: flex-start; gap: 6px; }
+.cam-saude .dot, .cam-aviso .dot { width: 6px; height: 15px; margin-top: 2px; }
+.cam .cam-saude:not([data-state="ok"]), .cam-aviso { color: var(--lampada-funda); font-weight: 700; }
+.cam[aria-pressed="true"] .cam-saude { margin-top: 4px; color: var(--soalho-claro); }
+.cam-aviso { margin-top: 12px; font-size: 15px; }
+.cam-aviso:empty, .cams:empty { display: none; }
+.cam-dica { display: block; margin-top: 2px; color: var(--tinta-2); font-weight: 400; }
 
 /* Definições > Câmaras: one row per camera with hairlines between, a phone's QR code under its fields. */
 .cam-rows { margin-bottom: 8px; }

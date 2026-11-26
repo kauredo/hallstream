@@ -321,7 +321,11 @@ func main() {
 		go reader.Run()
 	}
 
-	icon, _ := assets.FS.ReadFile("assets/icon/hallstream.ico")
+	iconFile := "assets/icon/favicon-32.png"
+	if runtime.GOOS == "windows" {
+		iconFile = "assets/icon/hallstream.ico"
+	}
+	icon, _ := assets.FS.ReadFile(iconFile)
 	changed, _ := m.Subscribe()
 	desktop.Tray{
 		Icon:    icon,

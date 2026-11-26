@@ -1,6 +1,9 @@
+//go:build windows || darwin || linux
+
 package desktop
 
 import (
+	"runtime"
 	"sync"
 
 	"fyne.io/systray"
@@ -13,10 +16,18 @@ import (
 func (t Tray) Run() {
 	var once sync.Once
 	quit := func() { once.Do(t.Quit) }
+	onReopen(t.Panel)
 	systray.Run(func() {
+		watchSignals(func() {
+			quit()
+			systray.Quit()
+		})
 		systray.SetIcon(t.Icon)
 		systray.SetTooltip(t.Tooltip)
-		systray.SetOnTapped(t.Panel)
+		// On a Mac a click on the menu bar icon shows the menu.
+		if runtime.GOOS != "darwin" {
+			systray.SetOnTapped(t.Panel)
+		}
 		open := systray.AddMenuItem(i18n.T("app.bandeja.abrir"), "")
 		cp := systray.AddMenuItem(i18n.T("app.bandeja.copiar"), t.Overlay)
 		systray.AddSeparator()

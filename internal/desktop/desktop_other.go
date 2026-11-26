@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin && !linux
 
 package desktop
 
@@ -14,7 +14,7 @@ import (
 // Console is true where the program has a console window for its messages.
 const Console = true
 
-// Shortcut and Autostart are nil: only Windows gets shortcuts.
+// Shortcut and Autostart are nil: these systems have no desktop to open on.
 var (
 	Shortcut  func() (string, error)
 	Autostart func(on bool) error

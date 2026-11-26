@@ -161,6 +161,10 @@ func TestMarcarPageBasketballKeepsBonus(t *testing.T) {
 
 	// With the clock stopped a step moves it at once, and Repor puts back the period's 10:00.
 	tap(`#relogio`)
+	// Repor sits above the steps, away from Feito, which stays bottom right.
+	if err := until(tab, `(() => { const r = document.querySelector('#acertarRepor').getBoundingClientRect(), s = document.querySelector('#acertar .passos').getBoundingClientRect(), f = document.querySelector('#acertarFechar').getBoundingClientRect(); return r.height >= 44 && r.bottom <= s.top && f.top > s.bottom && f.right === s.right && f.left > (s.left + s.right) / 2; })()`); err != nil {
+		t.Errorf("Repor is not set apart from Feito: %v", err)
+	}
 	// Each column of steps is one unit, minus above plus.
 	if err := until(tab, `[...document.querySelectorAll('#acertar .passos [data-tenths]')].map((b) => b.dataset.tenths).join() === "-600,-100,-10,600,100,10"`); err != nil {
 		t.Errorf("the clock steps are out of column order: %v", err)

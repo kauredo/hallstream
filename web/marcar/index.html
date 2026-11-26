@@ -116,7 +116,10 @@
 <!-- Setting the clock: steps that apply at once, so a running clock never jumps back by the time spent typing. -->
 <dialog id="acertar">
   <h2 data-i18n="marcar.acertar.titulo"></h2>
-  <p class="mostrador" id="acertarClock"></p>
+  <div class="cabeca-relogio">
+    <p class="mostrador" id="acertarClock"></p>
+    <button type="button" class="repor" id="acertarRepor"></button>
+  </div>
   <div class="passos">
     <button type="button" data-do="clock_add" data-tenths="-600">−1 min</button>
     <button type="button" data-do="clock_add" data-tenths="-100">−10 s</button>
@@ -134,7 +137,6 @@
     </div>
   </div>
   <div class="botoes">
-    <button type="button" class="anular" id="acertarRepor"></button>
     <button type="button" class="arrancar" id="acertarFechar" data-i18n="marcar.feito"></button>
   </div>
 </dialog>

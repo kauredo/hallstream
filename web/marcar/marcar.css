@@ -136,9 +136,9 @@ body.nofouls .faltas, body.semdescontos .descontos { display: none; }
 body.susp .rec.exclusoes, body.sets .sets-rec, body.cartoes .cartoes-rec, body.cartoes .trocas-rec { display: flex; }
 body.susp .acao.exclusoes, body.sets .servico, body.cartoes .acao.cartao, body.cartoes .acao.troca { display: flex; }
 body.susp .registos { grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr); }
-/* The visitor's band mirrors the club's: suspensions at the outer edge, timeouts by the strip. */
+/* The visitor's band and buttons mirror the club's: suspensions at the outer edge, timeouts by the strip. */
 body.susp .fora .registos { grid-template-columns: auto minmax(0, 1fr); }
-body.susp .fora .rec.descontos { order: -1; }
+body.susp .fora .rec.descontos, body.susp .fora .acao.descontos { order: -1; }
 
 /* Three chips a side fit one row: the number sits in a band under the time. */
 .chips { display: flex; flex-wrap: nowrap; gap: 6px; min-height: 30px; align-items: center; }
@@ -287,6 +287,13 @@ dialog .anular { min-height: 48px; color: var(--marcador); background: transpare
 dialog .anular:disabled { color: color-mix(in srgb, var(--marcador) 45%, transparent); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--marcador) 30%, transparent); }
 dialog .erro { min-height: 1.3em; margin: -4px 0 8px; color: var(--lampada-funda); font-size: 15px; font-weight: 600; }
 dialog .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#acertarFechar { grid-column: 2; }
+/* Repor throws the time away, so it sits apart from Feito, beside the time, as a lighter control. */
+.cabeca-relogio { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cabeca-relogio .mostrador { grid-column: 2; margin: 0; }
+dialog .repor { justify-self: end; min-height: 44px; padding: 0 10px; border: 1.5px solid color-mix(in srgb, var(--marcador) 45%, transparent); border-radius: var(--raio);
+  background: transparent; color: var(--marcador); font-weight: 600; font-stretch: var(--estreito); font-size: 17px; }
+dialog .repor:active { background: var(--marcador); color: var(--soalho-claro); }
 dialog .fechar { width: 100%; margin-top: 12px; }
 dialog .rotulo-dialogo { margin: 10px 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-2); }
 dialog .mostrador { margin: 0 0 10px; text-align: center; font: 800 44px/1 var(--letra); font-stretch: var(--estreito); font-variant-numeric: tabular-nums; color: var(--marcador); }

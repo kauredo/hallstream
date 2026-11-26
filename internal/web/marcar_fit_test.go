@@ -12,8 +12,8 @@ import (
 
 // fitOverflow lists what does not fit the viewport: a page taller than it, a
 // button in the team columns or the strip not wholly inside it, suspension
-// chips that leave their row or wrap onto a second one, and a pencil less than
-// 8 px from the clock's digits.
+// chips that leave their row or wrap onto a second one, a pencil less than
+// 8 px from the clock's digits, and a record not centred over its own button.
 const fitOverflow = `(() => {
 	const H = innerHeight, W = innerWidth, bad = [];
 	const h = document.scrollingElement.scrollHeight;
@@ -32,6 +32,15 @@ const fitOverflow = `(() => {
 			if (r.left < o.left - 0.5 || r.right > o.right + 0.5) bad.push("chip " + name(c) + " outside its row");
 		}
 		if (tops.size > 1) bad.push(box.dataset.susp + " chips on " + tops.size + " rows");
+	}
+	const own = { faltas: "faltas", exclusoes: "exclusoes", "sets-rec": "servico", "cartoes-rec": "cartao", "trocas-rec": "troca", descontos: "descontos" };
+	for (const side of document.querySelectorAll('.equipa')) {
+		for (const rec of side.querySelectorAll('.registos .rec')) {
+			const r = rec.getBoundingClientRect();
+			if (!r.width) continue;
+			const kind = Object.keys(own).find((k) => rec.classList.contains(k)), b = side.querySelector('.acao.' + own[kind]).getBoundingClientRect(), mid = (r.left + r.right) / 2;
+			if (!b.width || mid < b.left || mid > b.right) bad.push(side.dataset.team + " " + kind + " record (centre " + Math.round(mid) + ") not over its button " + [b.left, b.right].map(Math.round));
+		}
 	}
 	const pen = document.querySelector('.lapis').getBoundingClientRect(), range = document.createRange();
 	range.selectNodeContents(document.querySelector('#tempo'));
@@ -123,6 +132,20 @@ func TestMarcarPageFits(t *testing.T) {
 		}
 		if bad != "" {
 			t.Errorf("%s at 844 x 390: %s", c.name, bad)
+		}
+		// The clock sheet fits too, with Feito in view.
+		if c.name == "volleyball" {
+			continue
+		}
+		sheet := `(() => { const d = document.querySelector('#acertar'), f = document.querySelector('#acertarFechar').getBoundingClientRect(); return d.open && d.scrollHeight <= d.clientHeight && f.bottom <= innerHeight; })()`
+		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('#relogio').click(), true`)); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, sheet); err != nil {
+			t.Errorf("%s: the clock sheet does not fit 844 x 390: %v", c.name, err)
+		}
+		if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector('#acertar').close(), true`)); err != nil {
+			t.Fatal(err)
 		}
 	}
 	if err := chromedp.Do(tab, chromedp.Navigate("about:blank")); err != nil {

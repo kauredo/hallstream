@@ -547,7 +547,7 @@
     // Timeouts left per team, only from the phone scorer: a console always sends 0 taken.
     const tb = Array.isArray(rules.timeouts) ? rules.timeouts : [];
     const toMax = Math.min(5, +(v.sets || pn == null || pn <= (rules.half ?? 2) ? tb[0] : pn <= v.regulationPeriods ? tb[1] : tb[2]) || 0);
-    const toLeft = (n) => Math.max(0, toMax - (+n || 0));
+    const toLeft = (n) => Math.min(toMax, Math.max(0, toMax - (+n || 0)));
     v.timeouts = st.input === 'manual' && toMax > 0 ? { max: toMax, home: toLeft(live.home_timeouts), away: toLeft(live.away_timeouts) } : null;
     v.homeName = home.name || live.home_name || '';
     v.homeShort = home.short || v.homeName;
@@ -1378,7 +1378,7 @@
     if (!m) return false;
     const h = m[1].length === 3 ? [...m[1]].map((x) => x + x).join('') : m[1];
     const lin = (i) => { const x = parseInt(h.slice(i, i + 2), 16) / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
-    return 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4) > 0.26;
+    return 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4) > 0.30;
   }
 
   // The club's colours (game.theme, keyed by custom property name) over the defaults in overlay.css.

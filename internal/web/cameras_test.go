@@ -1189,3 +1189,65 @@ func TestTimeoutCameraLiveUnknownThenReported(t *testing.T) {
 	}
 	backToOne(t, s, f)
 }
+
+// nadaServer has camera 1 live, camera ncam on nada and tcam on desconto.
+func nadaServer(t *testing.T, f *camOBS, ncam, tcam int) *Server {
+	t.Helper()
+	s := timeoutServer(t, f, threeCams, tcam)
+	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.ScreenCameras = map[string]int{"nada": ncam, "desconto": tcam} })
+	return s
+}
+
+func TestNadaCameraInAndOut(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := nadaServer(t, f, 3, 0)
+	if resp := screenTo(t, s, "nada"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	if got := switches(f.log()); !slices.Equal(got, []string{"Câmara 3"}) {
+		t.Errorf("into nada: %v", got)
+	}
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 3 {
+		t.Errorf("live camera %d", n)
+	}
+	f.clear()
+	if resp := screenTo(t, s, "marcador"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	if got := switches(f.log()); !slices.Equal(got, []string{"Câmara 1"}) {
+		t.Errorf("out of nada: %v", got)
+	}
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 1 {
+		t.Errorf("live camera %d", n)
+	}
+}
+
+// nada → desconto → marcador goes back to the camera live before nada.
+func TestNadaThenTimeoutCamera(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := nadaServer(t, f, 3, 2)
+	screenTo(t, s, "nada")
+	f.clear()
+	if resp := screenTo(t, s, "desconto"); resp["obs_error"] != nil {
+		t.Fatal(resp)
+	}
+	placedSwitched(t, f.log(), "Câmara 2", fullX, fullScale, winX, winScale)
+	backToOne(t, s, f)
+}
+
+func TestNadaCameraManualSwitchWins(t *testing.T) {
+	f := newCamOBS("A", "B", "C")
+	s := nadaServer(t, f, 3, 0)
+	screenTo(t, s, "nada")
+	if code, resp := switchCamera(t, s, 2); code != 200 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	f.clear()
+	screenTo(t, s, "marcador")
+	if got := switches(f.log()); got != nil {
+		t.Errorf("switched back: %v", got)
+	}
+	if n := s.State.Snapshot().OBS.LiveCamera; n != 2 {
+		t.Errorf("live camera %d", n)
+	}
+}

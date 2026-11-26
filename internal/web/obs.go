@@ -317,8 +317,9 @@ func checkCameras(list []setupCamera, saved []store.Camera) string {
 // setup aims for. A camera keeps its scene and, unchanged, its source and
 // phone; a phone id the panel sends is used only when the server made it.
 // A camera with a new pick to add keeps its source until the setup adds
-// it, so a failed setup leaves the camera it had. The time-out camera
-// follows its camera, and is 0 when it was removed or was no saved camera.
+// it, so a failed setup leaves the camera it had. Each screen camera (the
+// time-out camera too) follows its camera, and is 0 when it was removed or
+// was no saved camera.
 func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 	var picks []string
 	var olds []string
@@ -328,6 +329,7 @@ func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 		picks, olds = make([]string, len(list)), make([]string, len(list))
 		var cams []store.Camera
 		tcam := 0
+		scams := map[string]int{}
 		for i, r := range list {
 			var p store.Camera
 			if r.Was > 0 && r.Was <= len(old) {
@@ -359,9 +361,15 @@ func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 			if r.Was > 0 && r.Was == o.TimeoutCamera {
 				tcam = i + 1
 			}
+			for k, n := range o.ScreenCameras {
+				if r.Was > 0 && r.Was == n {
+					scams[k] = i + 1
+				}
+			}
 			cams = append(cams, c)
 		}
-		o.TimeoutCamera = tcam
+		o.TimeoutCamera, scams["desconto"] = tcam, tcam
+		o.ScreenCameras = scams
 		o.Cameras = cams
 		if o.CameraSource != cams[0].Source {
 			o.CameraSource, o.CameraFull = cams[0].Source, nil

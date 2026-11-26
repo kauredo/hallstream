@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -42,8 +43,12 @@ type OBS struct {
 	// name. CameraFull keeps camera 1's too, for older versions.
 	CameraFulls map[string]*obsws.Full `json:"camera_fulls"`
 	// TimeoutCamera is the camera that goes on air in the time-out window,
-	// 1 to MaxCameras; 0 keeps the live camera (the default).
+	// 1 to MaxCameras; 0 keeps the live camera (the default). It mirrors
+	// ScreenCameras["desconto"], so an older version keeps it.
 	TimeoutCamera int `json:"timeout_camera"`
+	// ScreenCameras is the camera that goes on air on each of CameraScreens,
+	// 1 to MaxCameras; 0 or missing keeps the live camera.
+	ScreenCameras map[string]int `json:"screen_cameras"`
 	// SetupAt is when "Configurar OBS" last got OBS ready; only the server sets it.
 	SetupAt string `json:"setup_at"`
 	// Launch starts OBS with the program (Windows); it turns on with the
@@ -54,6 +59,29 @@ type OBS struct {
 
 // MaxCameras is how many cameras the program drives.
 const MaxCameras = 4
+
+// CameraScreens are the screens that show the camera and can have their
+// own; the other screens cover it.
+var CameraScreens = []string{"nada", "desconto"}
+
+// mirrorTimeout keeps timeout_camera and screen_cameras.desconto equal:
+// timeout_camera wins when it alone changed from prev, else the map does.
+func (o *OBS) mirrorTimeout(prev OBS) {
+	n := o.ScreenCameras["desconto"]
+	if n == prev.ScreenCameras["desconto"] && o.TimeoutCamera != prev.TimeoutCamera {
+		n = o.TimeoutCamera
+	}
+	o.TimeoutCamera = n
+	if v, ok := o.ScreenCameras["desconto"]; ok && v == n {
+		return
+	}
+	m := maps.Clone(o.ScreenCameras)
+	if m == nil {
+		m = map[string]int{}
+	}
+	m["desconto"] = n
+	o.ScreenCameras = m
+}
 
 // Camera is one camera: its OBS source, the scene the program made for it
 // and the name the volunteer gave it ("" shows "Câmara N").
@@ -437,6 +465,13 @@ func Open(dir string) (*Store, error) {
 			oldHome(b, &s.settings)
 		}
 	}
+	// An older version saves timeout_camera alone.
+	o := &s.settings.OBS
+	if _, ok := o.ScreenCameras["desconto"]; ok {
+		o.mirrorTimeout(*o)
+	} else {
+		o.mirrorTimeout(OBS{})
+	}
 	// Uploads cut short by a closed program leave temp files behind.
 	left, _ := filepath.Glob(filepath.Join(dir, "promo", ".up-*"))
 	for _, f := range left {
@@ -542,6 +577,7 @@ func (s *Store) Settings() Settings {
 func (s *Store) SaveSettings(v Settings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	v.OBS.mirrorTimeout(s.settings.OBS)
 	if err := s.writeJSON("settings.json", v); err != nil {
 		return err
 	}
@@ -580,6 +616,7 @@ func (s *Store) UpdateSettings(fn func(*Settings)) (Settings, error) {
 	defer s.mu.Unlock()
 	v := s.settings
 	fn(&v)
+	v.OBS.mirrorTimeout(s.settings.OBS)
 	if err := s.writeJSON("settings.json", v); err != nil {
 		return Settings{}, err
 	}

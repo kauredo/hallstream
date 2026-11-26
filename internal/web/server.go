@@ -79,10 +79,10 @@ type Server struct {
 	expect     []pending  // the scenes the program switched to whose events have not come, oldest first (under liveMu)
 	watch      watchFunc  // obsws.Watch; tests put a fake in
 	onAir      string     // the scene the program last switched to itself; outlives a lost watch (under liveMu)
-	returnTo   int        // the camera to put back when desconto ends; 0 none (under liveMu)
-	toIn       bool       // the time-out switch last saw desconto (under switchMu)
-	toRetry    bool       // that start was skipped with the live camera unknown (under switchMu)
-	toErr      error      // the time-out switch's last result (under switchMu)
+	returnTo   int        // the camera to put back when the screens with a camera end; 0 none (under liveMu)
+	toScreen   string     // the screen the screen switch last saw (under switchMu)
+	toRetry    bool       // its switch was skipped with the live camera unknown (under switchMu)
+	toErr      error      // the screen switch's last result (under switchMu)
 	promoMu    sync.Mutex // SyncPromo
 	nextMu     sync.Mutex // one RefreshNext at a time
 	nextQueued atomic.Bool
@@ -577,6 +577,11 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.OBS.TimeoutCamera < 0 || req.OBS.TimeoutCamera > store.MaxCameras {
 			req.OBS.TimeoutCamera = 0
+		}
+		if req.OBS.ScreenCameras == nil {
+			req.OBS.ScreenCameras = cur.OBS.ScreenCameras // a page from before screen_cameras
+		} else {
+			req.OBS.ScreenCameras = cleanScreenCameras(req.OBS.ScreenCameras)
 		}
 		*cur = req
 	})

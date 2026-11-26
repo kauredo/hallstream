@@ -159,6 +159,7 @@
   "ble.nao_liguei_caixa": "I found the box but couldn't connect. Close the SL Live Stream app on the tablet. The box only accepts one connection.",
   "ble.nenhum_dispositivo": "I can't see any Bluetooth device. Is the PC's Bluetooth on?",
   "ble.procura_parou": "the search stopped by itself",
+  "ble.sem_autorizacao_mac": "I can't use Bluetooth. Turn it on, and in System Settings > Privacy & Security > Bluetooth let Hallstream use it.",
   "ble.sem_resposta": "The device didn't respond within 15 s. If it's the box, close the SL Live Stream app on the tablet and try again.",
   "ble.vejo_dispositivos": "I can see {n} devices, but none looks like the box. Close the SL Live Stream app on the tablet or try one from the list.",
   "ble.vi_provavel": "I saw a likely box: {nome} ({endereco}), signal {rssi} dBm.",

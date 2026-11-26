@@ -159,6 +159,7 @@
   "ble.nao_liguei_caixa": "Encontrei a caixa mas não consegui ligar. Feche a app SL Live Stream no tablet. A caixa só aceita uma ligação.",
   "ble.nenhum_dispositivo": "Não vejo nenhum dispositivo Bluetooth. O Bluetooth do PC está ligado?",
   "ble.procura_parou": "a procura parou sozinha",
+  "ble.sem_autorizacao_mac": "Não consigo usar o Bluetooth. Ligue-o, e em Definições do Sistema > Privacidade e segurança > Bluetooth deixe o Hallstream usá-lo.",
   "ble.sem_resposta": "O dispositivo não respondeu em 15 s. Se for a caixa, feche a app SL Live Stream no tablet e tente outra vez.",
   "ble.vejo_dispositivos": "Vejo {n} dispositivos, mas nenhum parece a caixa. Feche a app SL Live Stream no tablet ou experimente um da lista.",
   "ble.vi_provavel": "Vi uma caixa provável: {nome} ({endereco}), sinal {rssi} dBm.",

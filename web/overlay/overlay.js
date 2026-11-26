@@ -544,6 +544,11 @@
     v.setList = setList;
     v.setsOver = v.homeSets >= setsToWin || v.awaySets >= setsToWin;
     v.setTarget = pn === 2 * setsToWin - 1 ? (rules.last_set_points ?? 15) : (rules.set_points ?? 25);
+    // Timeouts left per team, only from the phone scorer: a console always sends 0 taken.
+    const tb = Array.isArray(rules.timeouts) ? rules.timeouts : [];
+    const toMax = Math.min(5, +(v.sets || pn == null || pn <= (rules.half ?? 2) ? tb[0] : pn <= v.regulationPeriods ? tb[1] : tb[2]) || 0);
+    const toLeft = (n) => Math.max(0, toMax - (+n || 0));
+    v.timeouts = st.input === 'manual' && toMax > 0 ? { max: toMax, home: toLeft(live.home_timeouts), away: toLeft(live.away_timeouts) } : null;
     v.homeName = home.name || live.home_name || '';
     v.homeShort = home.short || v.homeName;
     v.awayName = away.name || live.away_name || '';
@@ -722,6 +727,33 @@
         box.append(out);
         box.setAttribute('role', 'img');
         box.setAttribute('aria-label', t('overlay.exclusao', { n: x.n, tempo: x.left }));
+      }
+    }
+  }
+
+  // The timeouts each team has left in the period, as marks under its name: filled for each left,
+  // empty for each taken. html[data-tos] says they are there to show.
+  let tosKey = null;
+  function renderTimeouts(v) {
+    const key = JSON.stringify(v.timeouts);
+    if (key === tosKey) return;
+    tosKey = key;
+    if (v.timeouts) root.dataset.tos = '';
+    else delete root.dataset.tos;
+    for (const team of ['home', 'away']) {
+      for (const box of $$(`[data-tos="${team}"]`)) {
+        box.textContent = '';
+        box.removeAttribute('role');
+        box.removeAttribute('aria-label');
+        if (!v.timeouts) continue;
+        const left = v.timeouts[team];
+        for (let k = 0; k < v.timeouts.max; k++) {
+          const mark = document.createElement('i');
+          if (k < left) mark.className = 'on';
+          box.append(mark);
+        }
+        box.setAttribute('role', 'img');
+        box.setAttribute('aria-label', t('overlay.descontos_restam', { n: left }));
       }
     }
   }
@@ -1340,6 +1372,15 @@
     return s !== '' && s != null && !isNaN(n) && n < 5;
   }
 
+  // A colour too light to read on a white ground (under 3:1); only hex colours are judged.
+  function lightOnWhite(c) {
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(c).trim());
+    if (!m) return false;
+    const h = m[1].length === 3 ? [...m[1]].map((x) => x + x).join('') : m[1];
+    const lin = (i) => { const x = parseInt(h.slice(i, i + 2), 16) / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4) > 0.26;
+  }
+
   // The club's colours (game.theme, keyed by custom property name) over the defaults in overlay.css.
   // A key the new theme lacks goes back to its default; a value only changes when the club does.
   let themeKeys = [];
@@ -1375,7 +1416,9 @@
     setTheme((st.game || {}).theme);
     const lk = look((st.game || {}).overlay);
     setLook(lk);
-    root.style.setProperty('--away', (!lk.neutralAway && v.away.color) || '#5C6170');
+    const awayColor = (!lk.neutralAway && v.away.color) || '#5C6170';
+    root.style.setProperty('--away', awayColor);
+    setClass(root, 'away-light', lightOnWhite(awayColor));
     root.style.setProperty('--next', (v.next && v.next.opponent && v.next.opponent.color) || '#5C6170');
     setClass(screens.voltamos, 'no-line', !v.backLine);
     setClass(screens.voltamos, 'no-score', !v.inPlay);
@@ -1417,6 +1460,7 @@
     else delete root.dataset.penalties;
     renderSuspensions(v);
     renderCards(v);
+    renderTimeouts(v);
     root.dataset.sport = (st.game && st.game.sport) || 'basketball';
     for (const tx of ['home', 'away']) {
       setClass(bugRows[tx], 'serving', v.sets && v.serve === tx);

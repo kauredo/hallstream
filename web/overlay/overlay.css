@@ -199,6 +199,8 @@ html.off .sb-dot { opacity: 1; }
 .sb-row.home .sc { background: var(--kit); color: var(--on-kit); }
 .sb-row.away .nm { background: #FFFFFF; color: var(--navy); }
 .sb-row.away .sc { background: var(--grey); color: var(--navy); }
+/* Timeout marks under the names: drawn only by a look that shows them, and only with html[data-tos]. */
+.tos { display: none; }
 .sb-stats { display: flex; background: var(--navy); color: #FFFFFF; flex: none; }
 .sb-gap { width: 10px; flex: none; background: var(--red); clip-path: polygon(0 0,4px 0,4px 100%,0 100%); }
 .sb-fouls { width: 120px; display: flex; flex-direction: column; }

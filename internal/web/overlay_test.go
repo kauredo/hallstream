@@ -486,3 +486,38 @@ func TestOverlayRefitsNamesWhenAFontLandsLate(t *testing.T) {
 		})
 	}
 }
+
+// Placa draws each team's timeouts under its name, filled for each one left and outlined for each
+// taken, only from the phone scorer: a console always sends 0 taken. The away marks turn ink when
+// the away colour is too light for the white plate, and the other looks never show them.
+func TestOverlayPlacaTimeouts(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const marks = `JSON.stringify(['home', 'away'].map((tm) => {
+		const box = document.querySelector('[data-tos="' + tm + '"]');
+		return [getComputedStyle(box).display, box.children.length, box.querySelectorAll('i.on').length, getComputedStyle(box).color];
+	}))`
+	for _, c := range []struct{ style, fixture, want string }{
+		{"placa", "marcador-descontos", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(92, 97, 112)"]]`},
+		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
+		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"classico", "marcador-descontos", `[["none",2,2,"rgb(255, 255, 255)"],["none",2,1,"rgb(255, 255, 255)"]]`},
+	} {
+		t.Run(c.style+"/"+c.fixture, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&style="+c.style+"&state=/overlay/fixtures/"+c.fixture+".json")); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, fmt.Sprintf(screenIs, "marcador")); err != nil {
+				t.Fatal(err)
+			}
+			got, err := chromedp.Run(tab, chromedp.Evaluate[string](marks))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.want {
+				t.Errorf("timeout marks %s, want %s", got, c.want)
+			}
+		})
+	}
+}

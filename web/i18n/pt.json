@@ -546,6 +546,7 @@
   "overlay.data_linha": "{dia_semana}, {dia} {mes}",
   "overlay.desconto.tempo_de_jogo": "TEMPO DE JOGO",
   "overlay.desconto.titulo": "DESCONTO<span>DE TEMPO</span>",
+  "overlay.descontos_restam": "{n} descontos de tempo por pedir",
   "overlay.desporto_omissao": "BASKET",
   "overlay.exclusao": "{n} fora, volta em {tempo}",
   "overlay.exclusoes": "EXCLUSÕES",

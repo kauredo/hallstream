@@ -3,9 +3,6 @@ package obsapp
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/kauredo/hallstream/internal/i18n"
@@ -40,25 +37,9 @@ func launcher() (string, []string, error) {
 	return "", nil, i18n.Err("obs.nao_instalado")
 }
 
-// pids are the processes named obs; the Flatpak's has that name too.
-func pids() ([]int, error) {
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		return nil, err
-	}
-	var ids []int
-	for _, e := range entries {
-		id, err := strconv.Atoi(e.Name())
-		if err != nil {
-			continue
-		}
-		comm, err := os.ReadFile(filepath.Join("/proc", e.Name(), "comm"))
-		if err == nil && strings.TrimSpace(string(comm)) == "obs" {
-			ids = append(ids, id)
-		}
-	}
-	return ids, nil
-}
+// pids are this user's processes named obs; the Flatpak's has that name
+// too.
+func pids() ([]int, error) { return pidsIn("/proc", "obs", os.Getuid()) }
 
 func running() (bool, error) {
 	ids, err := pids()

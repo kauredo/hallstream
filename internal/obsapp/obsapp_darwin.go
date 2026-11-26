@@ -26,9 +26,13 @@ func Path() (string, error) {
 	return "", i18n.Err("obs.nao_instalado")
 }
 
-// pids are the processes named OBS.
-func pids() ([]int, error) {
-	out, err := exec.Command("/usr/bin/pgrep", "-x", "OBS").Output()
+// pids are this user's processes named OBS. On a Mac with fast user
+// switching another user's OBS is not ours to close.
+func pids() ([]int, error) { return pidsOf(os.Getuid()) }
+
+// pidsOf are the processes named OBS that the user uid runs.
+func pidsOf(uid int) ([]int, error) {
+	out, err := exec.Command("/usr/bin/pgrep", "-x", "-U", strconv.Itoa(uid), "OBS").Output()
 	var exit *exec.ExitError
 	if errors.As(err, &exit) && exit.ExitCode() == 1 {
 		return nil, nil
@@ -36,8 +40,13 @@ func pids() ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parsePids(string(out))
+}
+
+// parsePids reads pgrep's output, one pid a line.
+func parsePids(out string) ([]int, error) {
 	var ids []int
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		if line = strings.TrimSpace(line); line == "" {
 			continue
 		}

@@ -17,7 +17,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Platform | One Go program with the panel and overlay embedded. Every release ships it for Windows (two exes in a zip), macOS (a universal app in a DMG, macOS 13 and later) and Linux (a static amd64 binary in a tarball). The panel has its own window on Windows (WebView2, else an Edge app window) and macOS, and opens in the browser on Linux. USB and capture-card cameras are Windows-only for now. |
 | Audience | Clubs anywhere, at any level. Most are run by volunteers, often on an old PC in the hall, so the app has to stay simple for them; it must also scale up for professional and semi-professional clubs. |
 | Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
-| Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |
+| Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, a serial (RS-232) console (Daktronics All Sport 5000 and Bodet Scorepad, from their manuals), and demo. Each console is listed as tested only after a recorded session plays back. No OCR. |
 | Sports | A sport profile holds the clock direction, periods, scoring units, fouls and penalties, overtime and the automatic screen rules. Graphics come in two families, timed periods and sets. Targets: basketball, futsal, handball, volleyball and soccer. |
 | Cameras | One OBS scene per camera, with the overlay in a shared nested scene, switched from the panel. Sources: DroidCam, any OBS video device, and VDO.Ninja (a phone browser, no app). Up to four cameras. |
 | Streaming | YouTube through a verified OAuth client that ships with the app, or the club's own client. A plain RTMP key for any other platform. |
@@ -88,9 +88,9 @@ Later:
 
 ## Phase D: more consoles
 
-1. A serial `Source` for RS-232 consoles: Daktronics AllSport, Fair-Play and Bodet.
-2. A capture mode that records the raw bytes, so a contributor can send a session. Done: the panel's "Gravar a consola" switch writes `dados/captura/`, and `-replay <file>` plays a file back.
-3. A support table on the website lists each console and sport as tested, community or wanted.
+1. A serial `Source` for RS-232 consoles. Done for two (plan 020): `settings.input` `serial` reads a Daktronics All Sport 5000 (basketball, volleyball) or a Bodet Scorepad (basketball, handball) on a port picked in Marcação, built from the layouts in `docs/research/scoreboard-serial-protocols.md`. Neither has been read from a real console yet. Still wanted: Fair-Play, which publishes no format, so it starts from a recording; Daktronics handball and futsal, which have no published layout; Bodet volleyball and futsal, whose tables are now read from revision J of the manual (`docs/research/scoreboard-serial-protocols-followup.md`); a Bodet Scorepad over TCP with no serial box, where the Scorepad connects to the PC, which listens on port 4001.
+2. A capture mode that records the raw bytes, so a contributor can send a session. Done: the panel's "Gravar a consola" switch writes `dados/captura/`, and `-replay <file>` plays a file back, from the box or the cable.
+3. A support table on the website lists each console and sport as tested, ready (codes read, needs a recorded game), new or wanted. Done: hallstream.com/guides/supported-consoles/.
 
 ## Phase E: more data providers
 

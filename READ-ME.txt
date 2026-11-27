@@ -2,9 +2,9 @@ Hallstream for OBS
 
 The program scores basketball, futsal, handball, volleyball and soccer.
 It reads the scoreboard console through the SL Stream Box, over
-Bluetooth, or takes the score from a phone. It keeps the squads and
-sponsors of each age group, and shows the graphics in OBS in a single
-browser source.
+Bluetooth, a Daktronics or Bodet console over a cable, or takes the
+score from a phone. It keeps the squads and sponsors of each age
+group, and shows the graphics in OBS in a single browser source.
 
 The phone scorer works for all five sports. The console has only been
 tested on basketball. Futsal, handball, volleyball and soccer on the
@@ -257,6 +257,33 @@ Open the Scoring tab in the panel.
   for next time. If it isn't, it says so and you can try another.
 - If nothing works, send the file dados\bluetooth.log, which keeps
   everything the program saw.
+
+
+A CONSOLE ON A CABLE (DAKTRONICS OR BODET)
+
+The program also reads two consoles connected to the PC by a serial
+cable (RS-232), with no Stream Box:
+- Daktronics All Sport 5000, for basketball and volleyball. Connect the
+  J6 "MAIN PORT" (25 pins, on the back of the console) to the PC with a
+  straight 9-to-25-pin serial cable and a USB-to-serial adapter. The data
+  comes out as RS-232 on pin 3, with ground on pin 7. Pins 22 and 7 carry
+  the same data as a current loop, which needs a converter.
+- Bodet Scorepad, for basketball and handball. The protocol output comes
+  out of the main keyboard's RJ45 socket. Bodet's manual connects it to
+  an RJ45-to-RS232 interface (a Moxa NPort), and that interface to the PC.
+Neither has been tested with a real console: the codes come from the
+manuals. If you have one, record a game and send us the file.
+
+1. Scoring tab: choose "The console, by cable".
+2. Choose the console and the port. If you don't know which port it is,
+   unplug the cable, press "Search again" and see which port disappears.
+3. The line underneath says what is happening. "Reading the console"
+   shows the score that arrives, so you can compare it with the hall's
+   scoreboard.
+- On a Daktronics, press STOP on the console once after connecting: it
+  only sends what changes, and STOP makes it send the whole score.
+- "Record the console", on the same tab, records what comes over the
+  cable.
 
 
 TIMEOUT WITH OBS

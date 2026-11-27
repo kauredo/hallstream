@@ -2,11 +2,13 @@
 
 A free tool for amateur clubs that stream their games. Hallstream reads the score from the hall's scoreboard console and puts it on the stream as broadcast graphics. It also sets up OBS and YouTube, so a volunteer can run a game-day stream from one laptop.
 
-> Hallstream is early. It scores **basketball, futsal, handball, volleyball and soccer**. The phone scorer works for all five. A **Stramatel** console and its Stream Box over Bluetooth is tested on basketball only. Futsal, handball, volleyball and soccer on the console are untested until someone records a real game, so if you have a console and a game to spare, please record one. Its interface is in **European Portuguese** and **English**. More consoles are on the [roadmap](docs/ROADMAP.md).
+> Hallstream is early. It scores **basketball, futsal, handball, volleyball and soccer**. The phone scorer works for all five. A **Stramatel** console and its Stream Box over Bluetooth is tested on basketball only. Futsal, handball, volleyball and soccer on the console are untested until someone records a real game, so if you have a console and a game to spare, please record one. Its interface is in **European Portuguese** and **English**. A **Daktronics All Sport 5000** or **Bodet Scorepad** on a serial cable is read from the manuals and untested on a real console. Fair-Play and other consoles are on the [roadmap](docs/ROADMAP.md).
 
 ## What it does
 
 - Reads the score, clock, fouls and timeouts from a Stramatel Stream Box over Bluetooth, with no operator typing. Tested on basketball only.
+- Reads a Daktronics All Sport 5000 (basketball, volleyball) or a Bodet Scorepad (basketball, handball) on a serial cable, through a USB adapter. Built from the manuals; no real console has been read yet.
+- Reads a Daktronics All Sport 5000 (basketball, volleyball) or a Bodet Scorepad (basketball, handball) on a serial cable, through a USB adapter. Built from the manuals; no real console has been read yet.
 - Scores any of the five sports from a phone, with the rules of each sport (periods, sets, fouls, suspensions, cards).
 - Serves the overlay as an OBS browser source:
   - scoreboard
@@ -59,4 +61,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Help is most useful in these areas:
 
 Copyright (C) 2026 Vasco Kaufmann. Hallstream is free software under the [GNU Affero General Public License, version 3 or later](LICENSE) (AGPL-3.0-or-later), with no warranty. Each download carries the licence and `THIRD-PARTY-NOTICES.txt`, the licences of the code linked into that platform's program (`scripts/notices.sh` writes it).
 
-Stramatel, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.
+Stramatel, Daktronics, Bodet, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.

@@ -309,3 +309,39 @@ func TestOurs(t *testing.T) {
 		}
 	}
 }
+
+// A second copy asks this one to show its panel; only the PC itself can.
+func TestShowPanel(t *testing.T) {
+	s := newServer(t)
+	srv := httptest.NewServer(s)
+	defer srv.Close()
+	addr := srv.Listener.Addr().String()
+	if ShowOurPanel(addr) {
+		t.Error("yes with no way to show the panel")
+	}
+	if code := post(s, "POST", "/api/system/show-panel", nil, nil); code != 501 {
+		t.Errorf("with no panel to show: %d, want 501", code)
+	}
+	shown := 0
+	s.ShowPanel = func() { shown++ }
+	if !ShowOurPanel(addr) || shown != 1 {
+		t.Errorf("asked once, shown %d times", shown)
+	}
+	set := s.Store.Settings()
+	set.PhoneAccess, set.PIN = true, "1234"
+	s.Store.SaveSettings(set)
+	req := httptest.NewRequest("POST", "/api/system/show-panel", nil)
+	req.RemoteAddr, req.Host = "192.168.1.40:5000", "127.0.0.1:8765"
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-PIN", "1234")
+	w := httptest.NewRecorder()
+	s.ServeHTTP(w, req)
+	if w.Code != 403 || shown != 1 {
+		t.Errorf("another device showed the panel: %d", w.Code)
+	}
+	old := httptest.NewServer(http.NotFoundHandler())
+	defer old.Close()
+	if ShowOurPanel(old.Listener.Addr().String()) {
+		t.Error("yes from a copy without the route")
+	}
+}

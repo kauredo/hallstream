@@ -61,7 +61,7 @@ type Want struct {
 	OverlayPorts [2]int // the ports the program may run on: a browser source at /overlay on one of them is ours
 	// Graphics is the saved overlay scene name; "" before the first setup.
 	Graphics string
-	// Cameras is 1 to 3 cameras, camera 1 first.
+	// Cameras is 1 to store.MaxCameras cameras, camera 1 first.
 	Cameras []WantCamera
 }
 
@@ -610,7 +610,7 @@ func (s *setup) camera(in []input) string {
 			return name
 		}
 	case s.n > 1 && w != "plugin" && !strings.HasPrefix(w, "device:"):
-		// Cameras 2 and 3 come from the settings and are never picked here.
+		// Cameras after the first come from the settings and are never picked here.
 		name = strings.TrimPrefix(w, "source:")
 		if name == "" {
 			st.Result, st.Detail = "failed", i18n.T("obs.setup.camara_n_sem_fonte", "n", s.n)

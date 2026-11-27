@@ -20,6 +20,7 @@
   ];
   var SWATCHES = ['#2E6FD8', '#1F6E3A', '#5B2A86', '#B4410C', '#0F5C6E', '#181841', '#5C6170', '#111111'];
   var MAX_SQUAD = 12;
+  var MAX_CAMS = 4; // store.MaxCameras
 
   var S = {
     settings: null, groups: [], status: null, state: null, game: null, draft: null,
@@ -1012,7 +1013,7 @@
   function updateCameraButtons() {
     var card = $('#camCard'); if (!card) return;
     var o = (S.settings && S.settings.obs) || {};
-    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '', scene: '', label: '' }];
+    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, MAX_CAMS) : [{ source: o.camera_source || '', scene: '', label: '' }];
     var so = (S.status && S.status.obs) || {};
     var health = {};
     (so.cameras || []).forEach(function (c) { health[c.index] = c.state; });
@@ -2636,7 +2637,7 @@
   // A saved phone camera's row names it by its source; the server keeps its stream id while the source stays.
   function savedRows() {
     var o = (S.settings && S.settings.obs) || {};
-    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, 3) : [{ source: o.camera_source || '' }];
+    var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, MAX_CAMS) : [{ source: o.camera_source || '' }];
     return cams.map(function (c, i) {
       return { choice: c.source ? 'source:' + c.source : '', label: c.label || '', was: i + 1 };
     });
@@ -2698,12 +2699,12 @@
       '</div>';
   }
   function camCardHtml() {
-    var rows = S.camRows, o = S.settings.obs || {}, saved = (o.cameras || []).slice(0, 3);
+    var rows = S.camRows, o = S.settings.obs || {}, saved = (o.cameras || []).slice(0, MAX_CAMS);
     // The time-out camera's options are the saved cameras, so it waits while the list has changes.
     var changed = JSON.stringify(rows.map(function (r) { return [r.choice, r.was]; })) !== JSON.stringify(savedRows().map(function (r) { return [r.choice, r.was]; }));
     return '<h2>' + t('painel.camaras.titulo') + '</h2><p class="hint">' + t('painel.camaras.dica') + '</p>' +
       '<div class="cam-rows">' + rows.map(function (r, i) { return camRowHtml(r, i + 1, 'dCam', rows.length > 1); }).join('') + '</div>' +
-      (rows.length < 3 ? '<button class="btn quiet small cam-add" type="button" data-act="cam-add">' + t('painel.camaras.adicionar') + '</button>' : '<p class="hint">' + t('painel.camaras.maximo') + '</p>') +
+      (rows.length < MAX_CAMS ? '<button class="btn quiet small cam-add" type="button" data-act="cam-add">' + t('painel.camaras.adicionar') + '</button>' : '<p class="hint">' + t('painel.camaras.maximo') + '</p>') +
       (saved.length > 1 ? '<label class="field cam-tcam" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam"' + (changed ? ' disabled' : '') + '>' +
         tcamOptions(saved, o.timeout_camera || 0, changed) + '</select></label><p class="hint cam-tcam-dica">' + (changed ? t('painel.camaras.desconto_guarde') : t('painel.definicoes.desconto_dica')) + '</p>' : '') +
       '<div class="row" style="margin-top:20px;align-items:center"><button class="btn primary" type="button" data-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +
@@ -2728,7 +2729,7 @@
     if (said) $('#camSetupMsg').outerHTML = said;
     var f = focus && $(focus); if (f) f.focus();
   }
-  // The list as Configurar OBS takes it; the number of a row 2 or 3 with no camera chosen, else 0.
+  // The list as Configurar OBS takes it; the number of a row after the first with no camera chosen, else 0.
   function camList(rows) {
     var missing = 0;
     rows.forEach(function (r, i) { if (i > 0 && !r.choice && !missing) missing = i + 1; });
@@ -3221,7 +3222,7 @@
           phoneHtml(S.wzPhone, S.wzPhone, 'wCam') + '</div>';
       }
       // A row being added stays drawn after a failed save, with its error.
-      if (pc && nCams < 3 && (S.wzCamRow || S.obsSetup && S.obsSetup.ok)) {
+      if (pc && nCams < MAX_CAMS && (S.wzCamRow || S.obsSetup && S.obsSetup.ok)) {
         html += S.wzCamRow
           ? '<div class="wz-sub">' + camRowHtml(S.wzCamRow, nCams + 1, 'wCam', false) +
             '<div class="row" style="margin-top:12px;align-items:center"><button class="btn primary" type="button" data-wz-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +

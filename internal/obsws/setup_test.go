@@ -664,6 +664,27 @@ func TestSetupThreeCameras(t *testing.T) {
 	r.again("source:A")
 }
 
+func TestSetupFourCameras(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B", "C", "D"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := newRun(t, m)
+	r.extra = []string{"source:B", "source:C", "source:D"}
+	rep := r.setup("source:A", "")
+	if !rep.Ready {
+		t.Errorf("not ready: %v", rep.Problems())
+	}
+	if got := m.order("Câmara 4"); !slices.Equal(got, []string{"D", "Grafismo"}) {
+		t.Errorf("Câmara 4 %v", got)
+	}
+	if want := []string{"1 Câmara 1 A", "2 Câmara 2 B", "3 Câmara 3 C", "4 Câmara 4 D"}; !slices.Equal(r.fits, want) {
+		t.Errorf("fits %v", r.fits)
+	}
+	wantResults(t, rep, map[string]string{"scene-4": "created", "camera-4": "fixed", "order-4": "fixed", "fit-4": "ok"})
+	r.again("source:A")
+}
+
 func TestSetupCameraTwoGone(t *testing.T) {
 	m := newModel()
 	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})

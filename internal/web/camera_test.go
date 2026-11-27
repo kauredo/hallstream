@@ -156,7 +156,7 @@ func TestSettingsTimeoutCamera(t *testing.T) {
 	if n := len(s.Store.Settings().OBS.CameraList()); n >= 3 {
 		t.Fatalf("%d cameras; 3 must be past the list", n) // a camera since removed stays chosen
 	}
-	for _, c := range []struct{ put, want int }{{2, 2}, {7, 0}, {3, 3}, {4, 0}, {-1, 0}} {
+	for _, c := range []struct{ put, want int }{{2, 2}, {7, 0}, {3, 3}, {4, 4}, {5, 0}, {-1, 0}} {
 		set := s.Store.Settings()
 		set.OBS.TimeoutCamera = c.put
 		var got store.Settings

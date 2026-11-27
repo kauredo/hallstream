@@ -46,6 +46,41 @@ func TestPanelCameras(t *testing.T) {
 	}
 }
 
+// Four buttons sit in one row on a wide screen and two by two on a phone,
+// never cut and never three plus one.
+func TestPanelFourCameras(t *testing.T) {
+	for _, c := range []struct {
+		width int
+		rows  string
+	}{{1280, "4"}, {375, "2,2"}} {
+		srv := httptest.NewServer(newServerFiles(t, assets.FS))
+		t.Cleanup(srv.Close)
+		tab := chrome(t)
+		if err := chromedp.Do(tab, chromedp.EmulateViewport(int64(c.width), 800), chromedp.Navigate(srv.URL+"/painel?mock=1&obs=ready&cams=4&live=4#ecras")); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, `document.querySelectorAll("#cams .cam").length === 4 && document.querySelector('[data-cam="4"]').getAttribute("aria-pressed") === "true"`); err != nil {
+			t.Fatalf("%d px: four buttons with camera 4 on air: %v", c.width, err)
+		}
+		rows, err := chromedp.Run(tab, chromedp.Evaluate[string](`(() => {
+			const tops = [...document.querySelectorAll("#cams .cam")].map(b => Math.round(b.getBoundingClientRect().top));
+			const counts = [];
+			tops.forEach((y, i) => { if (i && y === tops[i - 1]) counts[counts.length - 1]++; else counts.push(1); });
+			return counts.join();
+		})()`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rows != c.rows {
+			t.Errorf("%d px: buttons per row %s, want %s", c.width, rows, c.rows)
+		}
+		if fits, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.documentElement.scrollWidth <= innerWidth &&
+			[...document.querySelectorAll("#cams .cam")].every(b => b.scrollWidth <= b.clientWidth && b.getBoundingClientRect().right <= document.querySelector("#cams").getBoundingClientRect().right + 0.5)`)); err != nil || !fits {
+			t.Errorf("%d px: a camera button is cut or the page scrolls sideways: %v %v", c.width, fits, err)
+		}
+	}
+}
+
 func TestPanelOneCameraNoCard(t *testing.T) {
 	tab := cameraPanel(t, "&cams=1")
 	// The card stays hidden once drawn with the status in.

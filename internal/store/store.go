@@ -53,7 +53,7 @@ type OBS struct {
 }
 
 // MaxCameras is how many cameras the program drives.
-const MaxCameras = 3
+const MaxCameras = 4
 
 // Camera is one camera: its OBS source, the scene the program made for it
 // and the name the volunteer gave it ("" shows "Câmara N").

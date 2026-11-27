@@ -123,9 +123,10 @@ func bodetClock(c []byte) string {
 	return clock(string(c[:2]) + ":" + string(c[2:]))
 }
 
-// period is the period digit, or extra for 'E' (extra time).
+// period is the period digit, or extra in extra time: 'E' in the 2018 manual,
+// 'O' for basketball in revision J.
 func period(c byte, extra string) string {
-	if c == 'E' {
+	if c == 'E' || c == 'O' {
 		return extra
 	}
 	return strings.TrimSpace(string(rune(c)))

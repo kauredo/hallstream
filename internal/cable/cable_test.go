@@ -259,3 +259,14 @@ func TestDaktronicsStraySYN(t *testing.T) {
 		t.Fatalf("frames %q", frames)
 	}
 }
+
+// Revision J of the Bodet manual sends 'O' for basketball extra time; revision A sent 'E'.
+func TestBodetExtraTimeLetters(t *testing.T) {
+	for _, m := range []string{"18\x80556D41300E ", "18\x80556D41300O "} {
+		vals := map[string]string{}
+		(&Bodet{}).Decode(bodetFrame(m), "basketball", vals)
+		if vals["period"] != "5" {
+			t.Errorf("%q: period %q, want 5", m, vals["period"])
+		}
+	}
+}

@@ -19,7 +19,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
 | Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |
 | Sports | A sport profile holds the clock direction, periods, scoring units, fouls and penalties, overtime and the automatic screen rules. Graphics come in two families, timed periods and sets. Targets: basketball, futsal, handball, volleyball and soccer. |
-| Cameras | One OBS scene per camera, with the overlay in a shared nested scene, switched from the panel. Sources: DroidCam, any OBS video device, and VDO.Ninja (a phone browser, no app). Up to three cameras to start. |
+| Cameras | One OBS scene per camera, with the overlay in a shared nested scene, switched from the panel. Sources: DroidCam, any OBS video device, and VDO.Ninja (a phone browser, no app). Up to four cameras. |
 | Streaming | YouTube through a verified OAuth client that ships with the app, or the club's own client. A plain RTMP key for any other platform. |
 | Squads and fixtures | A `Provider` interface: squads and fixtures typed or imported from CSV for everyone, then sources that cover more clubs (Phase E). Each source is opt-in, paced, cached for offline use and credited as its terms ask. Crests come from the club's own files, never from a source that does not license them; colours can come from anywhere. Minors' data is kept to shirt number, name and an optional photo. `docs/research/team-data-sources.md` has the sources and their terms. |
 | Club identity | Name, short name, colours, crest, sponsors and sport, all entered in the first-run wizard. Nothing club-specific in the code. |
@@ -58,12 +58,21 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 
 ## Phase B: multiple cameras
 
-1. "Configurar OBS" builds one scene per camera (`Câmara 1` to `Câmara 3`), each nesting one shared `Grafismo` scene that holds the overlay. Done: the old `Hallstream` scene stays and still counts as ready while one camera is set; cameras 2 and 3 come from Definições > Câmaras.
+1. "Configurar OBS" builds one scene per camera (`Câmara 1` to `Câmara 4`), each nesting one shared `Grafismo` scene that holds the overlay. Done: the old `Hallstream` scene stays and still counts as ready while one camera is set; the other cameras come from Definições > Câmaras.
 2. The panel gets camera buttons and shows which camera is live. Done: a button per camera on Ecrãs with two or more, the live one marked from OBS's own scene changes; a switch during a time-out keeps the picture in the window.
 3. At a timeout, a chosen camera shows picture-in-picture. Done: "Câmara no desconto" in Definições puts that camera on air for the time-out, shrinking into the window with the hole, and the camera that was live comes back after; a switch by hand during the time-out stays.
-4. Onboarding adds cameras: DroidCam, a video device, or VDO.Ninja through a QR code on the panel. Done: Definições > Câmaras and the wizard add up to three cameras; a phone joins through VDO.Ninja from a QR code.
+4. Onboarding adds cameras: DroidCam, a video device, or VDO.Ninja through a QR code on the panel. Done: Definições > Câmaras and the wizard add up to four cameras; a phone joins through VDO.Ninja from a QR code.
 5. Each camera gets a health line in the panel (no frames, low fps). Done: "Sem imagem" and "Imagem parada" per camera on the Ecrãs buttons, and OBS's skipped frames once for the whole program. obs-websocket has no frame rate per source, so "low fps" per camera is not measured.
 6. A guide covers two and three cameras on wifi and on cable, with the bandwidth each needs. Done: `CAMARAS.txt` / `CAMERAS.txt` in the zip, from `docs/cameras/`.
+7. Camera extras (plan 015). Done:
+   - Up to four cameras (`Câmara 4`), with the guide's bandwidth table for four.
+   - A camera for the Nada screen beside the time-out camera (`obs.screen_cameras`). Leaving the screen switches back to the camera that was live; a switch by hand wins.
+   - "Mostrar marcador" per camera: a camera with it off hides the corner scoreboard, the sponsor corner and the lower third while it is live on `marcador` or `nada`. Full screens and the time-out show on every camera.
+   - An inset of a second camera, 480x270, picked from the Ecrãs "Inset" row. It reuses the camera's source in OBS, so it adds no bandwidth. It shows on `marcador` and `nada` only, because the time-out window and the full screens already place the picture.
+
+Later:
+
+- Automatic switching that follows the play. Not built: following the ball needs computer vision running on the club's PC, a model, and tuning for each hall. It needs its own spike before any plan. OBS has no auto-director and obs-websocket gives no motion data.
 
 ## Phase C: sport profiles
 

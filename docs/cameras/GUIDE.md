@@ -1,4 +1,4 @@
-# Duas ou três câmaras
+# De duas a quatro câmaras
 
 Este guia é para um clube que quer filmar o jogo com mais de uma câmara. Com uma só câmara, chega o LEIA-ME.txt.
 
@@ -6,7 +6,7 @@ Este guia é para um clube que quer filmar o jogo com mais de uma câmara. Com u
 
 O Hallstream põe cada câmara numa cena sua do OBS, com o grafismo por cima. Em **Ecrãs** aparece um botão por câmara, e a que está no ar diz "No ar". Carregue noutro botão para mudar de câmara.
 
-Pode ter até três câmaras. Cada uma pode ser:
+Pode ter até quatro câmaras. Cada uma pode ser:
 
 - **Um telemóvel com o DroidCam**: uma aplicação no telemóvel que manda a imagem para o OBS, por wifi ou por cabo USB.
 - **Uma câmara ligada ao PC**: uma webcam USB, ou uma câmara com saída HDMI ligada a uma placa de captura.
@@ -39,10 +39,10 @@ O Hallstream pede ao VDO.Ninja 4000 kbps (4 Mbps) por telemóvel, sem som. O VDO
 
 Somando as câmaras:
 
-    Câmaras por wifi                      Duas    Três
-    DroidCam 720p, Normal                 8       12
-    DroidCam 1080p, Normal                14      21
-    Telemóvel (VDO.Ninja)                 8+      12+
+    Câmaras por wifi                      Duas    Três    Quatro
+    DroidCam 720p, Normal                 8       12      16
+    DroidCam 1080p, Normal                14      21      28
+    Telemóvel (VDO.Ninja)                 8+      12+     16+
 
 Por cima disto, o PC manda o direto para o YouTube. Para 1080p a 30 imagens por segundo, o YouTube recomenda 14 Mbps (H.264), com um mínimo de 5 Mbps. Esse envio usa a internet do pavilhão, e também o wifi se o PC estiver no wifi. Ligue o PC ao router por cabo de rede sempre que puder.
 
@@ -62,11 +62,11 @@ Se não sabe quanto dá o wifi, faça um ensaio antes do primeiro jogo, com toda
 8. No OBS, abra as propriedades de cada fonte DroidCam que ainda não tem imagem: marque **Use WiFi**, escreva o "WiFi IP" desse telemóvel e carregue em **Activate**.
 9. Em **Ecrãs**, confirme que os dois botões dizem "Com imagem".
 
-## Três câmaras por wifi
+## Três ou quatro câmaras por wifi
 
-Faça os passos de cima para as três câmaras. Depois:
+Faça os passos de cima para todas as câmaras. Depois:
 
-1. Veja a soma da secção "Quanto a rede aguenta". Três telemóveis em 1080p são 21 Mbps só de imagem.
+1. Veja a soma da secção "Quanto a rede aguenta". Três telemóveis em 1080p são 21 Mbps só de imagem, e quatro são 28.
 2. Se a imagem falhar, baixe primeiro para 720p a câmara que menos vai para o ar (a do banco, por exemplo). No DroidCam muda-se nas definições da aplicação ou nas propriedades da fonte no OBS.
 3. Se ainda falhar, ligue a câmara principal por cabo (secção seguinte).
 
@@ -115,6 +115,33 @@ Precisa de internet no PC e no telemóvel. O VDO.Ninja diz que a imagem fica nor
 Um código QR serve um telemóvel. Um segundo telemóvel no mesmo código é recusado pelo VDO.Ninja. Para outro telemóvel, junte outra câmara.
 
 O código não muda: o mesmo telemóvel pode ler o mesmo código no jogo seguinte. Guarde-o como um segredo, porque quem tem o código pode mandar imagem para essa câmara.
+
+## Uma câmara para o desconto e outra para o ecrã Nada
+
+Em **Definições > Câmaras** há duas escolhas, depois de guardar a lista de câmaras:
+
+- **Câmara no desconto**: no desconto de tempo, o OBS muda para esta câmara e a imagem encolhe para a janela do grafismo. Por exemplo, a câmara do banco.
+- **Câmara no ecrã Nada**: no ecrã Nada, o OBS muda para esta câmara. Por exemplo, um plano largo da bancada.
+
+Quando o painel passa para um ecrã sem câmara própria, como o marcador, o Hallstream volta à câmara que estava no ar antes. Se mudar de câmara à mão durante o desconto ou o ecrã Nada, fica a câmara que escolheu. Os outros ecrãs tapam a câmara toda, por isso não têm câmara própria.
+
+## Uma câmara sem marcador
+
+Cada câmara em **Definições > Câmaras** tem o interruptor **Mostrar marcador**. Desligue-o numa câmara que deve ir para o ar limpa, como um plano de perto. Carregue depois em **Guardar e configurar o OBS**.
+
+Enquanto essa câmara está no ar, no marcador ou no ecrã Nada, o grafismo esconde o marcador do canto, o patrocinador do canto e o rodapé. Voltam quando passar para outra câmara. Os ecrãs inteiros (intervalo, final e os outros) e o desconto aparecem em todas as câmaras.
+
+## Um inset com uma segunda câmara
+
+O inset é uma segunda câmara em pequeno (480x270) num canto do ecrã, por cima da câmara que está no ar. Com duas câmaras ou mais, o cartão das câmaras em **Ecrãs** tem uma linha **Inset**: **Desligado** e um botão por câmara. Carregue numa câmara para a pôr no inset e em **Desligado** para o tirar.
+
+- Não custa nada a mais. O inset usa a imagem de uma câmara que já está no OBS, por isso não ocupa mais wifi.
+- A imagem dessa câmara já tem de estar a funcionar. Antes de a escolher, veja se o botão dela em **Ecrãs** diz "Com imagem".
+- Só aparece no marcador e no ecrã Nada. Nos outros ecrãs, o Hallstream esconde-o e mostra-o outra vez quando voltar a um destes dois.
+- A câmara que está no ar não pode ser o inset: o botão dela fica desligado. Se mudar para a câmara do inset, o inset esconde-se até mudar para outra.
+- Fica no canto de baixo que o rodapé não usa. Com o marcador do canto em baixo, fica em cima, no canto do lado contrário ao marcador.
+- O Configurar OBS põe as outras câmaras, escondidas, na cena de cada câmara. Depois de juntar uma câmara, carregue em **Guardar e configurar o OBS** antes de a usar no inset.
+- O Hallstream não guarda a escolha. Quando o abrir outra vez, o inset começa desligado.
 
 ## No dia do jogo
 

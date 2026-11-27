@@ -23,9 +23,11 @@ func waitForOldCopy(ours func(addr string) bool, limit time.Duration) {
 	}
 }
 
-// restartArgs are the new copy's arguments: this copy's, without the
-// browser (the panel is already open) and marked as a restart.
-func restartArgs(args []string) []string {
+// restartArgs are the new copy's arguments: this copy's, marked as a restart.
+// A browser tab reloads onto the new copy by itself, so with no window of
+// its own the new copy opens nothing; a window closes with the old copy, so
+// where there is one the new copy opens it again.
+func restartArgs(args []string, window bool) []string {
 	var out []string
 	for _, a := range args {
 		switch strings.TrimLeft(strings.SplitN(a, "=", 2)[0], "-") {
@@ -34,5 +36,8 @@ func restartArgs(args []string) []string {
 		}
 		out = append(out, a)
 	}
-	return append(out, "-nobrowser", "-restarted")
+	if !window {
+		out = append(out, "-nobrowser")
+	}
+	return append(out, "-restarted")
 }

@@ -21,10 +21,12 @@ static NSMenu *submenu(NSMenu *bar, const char *title) {
 	return m;
 }
 
+#define TITLES 23
+
 // The order of t is the order of menuTitles in Go.
 static void buildMenus(char **t) {
-	char **c = malloc(15 * sizeof(char *));
-	for (int i = 0; i < 15; i++) c[i] = strdup(t[i]);
+	char **c = malloc(TITLES * sizeof(char *));
+	for (int i = 0; i < TITLES; i++) c[i] = strdup(t[i]);
 	dispatch_async(dispatch_get_main_queue(), ^{
 		NSEventModifierFlags cmd = NSEventModifierFlagCommand;
 		NSMenu *bar = [[NSMenu alloc] init];
@@ -48,13 +50,28 @@ static void buildMenus(char **t) {
 		[edit addItem:item(c[10], @selector(paste:), @"v", cmd)];
 		[edit addItem:item(c[11], @selector(selectAll:), @"a", cmd)];
 
+		// The hs… actions belong to the panel window's delegate, so they work
+		// while the window is key and grey out while it is hidden.
+		NSMenu *view = submenu(bar, c[15]);
+		[view addItem:item(c[16], NSSelectorFromString(@"hsReload:"), @"r", cmd)];
+		[view addItem:[NSMenuItem separatorItem]];
+		[view addItem:item(c[17], NSSelectorFromString(@"hsZoomIn:"), @"+", cmd)];
+		[view addItem:item(c[18], NSSelectorFromString(@"hsZoomOut:"), @"-", cmd)];
+		[view addItem:item(c[19], NSSelectorFromString(@"hsActualSize:"), @"0", cmd)];
+		[view addItem:[NSMenuItem separatorItem]];
+		[view addItem:item(c[20], NSSelectorFromString(@"hsOpenInBrowser:"), @"", 0)];
+
 		NSMenu *win = submenu(bar, c[12]);
 		[win addItem:item(c[13], @selector(performMiniaturize:), @"m", cmd)];
 		[win addItem:item(c[14], @selector(performClose:), @"w", cmd)];
 		NSApp.windowsMenu = win;
 
+		NSMenu *help = submenu(bar, c[21]);
+		[help addItem:item(c[22], NSSelectorFromString(@"hsHelp:"), @"?", cmd)];
+		NSApp.helpMenu = help;
+
 		NSApp.mainMenu = bar;
-		for (int i = 0; i < 15; i++) free(c[i]);
+		for (int i = 0; i < TITLES; i++) free(c[i]);
 		free(c);
 	});
 }
@@ -73,6 +90,8 @@ func menuTitles() []string {
 		i18n.T("app.menu.acerca"), i18n.T("app.menu.ocultar"), i18n.T("app.menu.ocultar_outras"), i18n.T("app.menu.mostrar_todas"), i18n.T("app.menu.sair"),
 		i18n.T("app.menu.editar"), i18n.T("app.menu.desfazer"), i18n.T("app.menu.refazer"), i18n.T("app.menu.cortar"), i18n.T("app.menu.copiar"), i18n.T("app.menu.colar"), i18n.T("app.menu.selecionar_tudo"),
 		i18n.T("app.menu.janela"), i18n.T("app.menu.minimizar"), i18n.T("app.menu.fechar"),
+		i18n.T("app.menu.ver"), i18n.T("app.menu.recarregar"), i18n.T("app.menu.aumentar"), i18n.T("app.menu.diminuir"), i18n.T("app.menu.tamanho_real"), i18n.T("app.menu.abrir_browser"),
+		i18n.T("app.menu.ajuda"), i18n.T("app.menu.ajuda_hallstream"),
 	}
 }
 
@@ -80,6 +99,9 @@ func menuTitles() []string {
 // macOS shows only the app's name and ⌘Q has no item to trigger.
 func installMenus() {
 	titles := menuTitles()
+	if len(titles) != C.TITLES {
+		panic("menuTitles and buildMenus disagree")
+	}
 	c := make([]*C.char, len(titles))
 	for i, s := range titles {
 		c[i] = C.CString(s)

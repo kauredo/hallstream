@@ -16,9 +16,13 @@ func TestRestartArgs(t *testing.T) {
 		{[]string{"-demo"}, []string{"-demo", "-nobrowser", "-restarted"}},
 		{[]string{"-demo", "--nobrowser", "-restarted=true", "-replay", "x.capture"}, []string{"-demo", "-replay", "x.capture", "-nobrowser", "-restarted"}},
 	} {
-		if got := restartArgs(c.in); !slices.Equal(got, c.want) {
+		if got := restartArgs(c.in, false); !slices.Equal(got, c.want) {
 			t.Errorf("%q: %q", c.in, got)
 		}
+	}
+	// With a window of its own, the new copy opens it: the old one closed with the old copy.
+	if got := restartArgs([]string{"-demo", "-nobrowser"}, true); !slices.Equal(got, []string{"-demo", "-restarted"}) {
+		t.Errorf("window: %q", got)
 	}
 }
 

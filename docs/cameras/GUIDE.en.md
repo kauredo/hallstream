@@ -1,4 +1,4 @@
-# Two or three cameras
+# Two to four cameras
 
 This guide is for a club that wants to film the game with more than one camera. With a single camera, READ-ME.txt is enough.
 
@@ -6,7 +6,7 @@ This guide is for a club that wants to film the game with more than one camera. 
 
 Hallstream puts each camera in its own OBS scene, with the graphics on top. **Screens** shows one button per camera, and the one on air says "On air". Click another button to change camera.
 
-You can have up to three cameras. Each one can be:
+You can have up to four cameras. Each one can be:
 
 - **A phone with DroidCam**: an app on the phone that sends the picture to OBS, over Wi-Fi or a USB cable.
 - **A camera plugged into the PC**: a USB webcam, or a camera with an HDMI output plugged into a capture card.
@@ -39,10 +39,10 @@ Hallstream asks VDO.Ninja for 4000 kbps (4 Mbps) per phone, with no sound. VDO.N
 
 Adding the cameras up:
 
-    Cameras on Wi-Fi                      Two     Three
-    DroidCam 720p, Normal                 8       12
-    DroidCam 1080p, Normal                14      21
-    Phone (VDO.Ninja)                     8+      12+
+    Cameras on Wi-Fi                      Two     Three   Four
+    DroidCam 720p, Normal                 8       12      16
+    DroidCam 1080p, Normal                14      21      28
+    Phone (VDO.Ninja)                     8+      12+     16+
 
 On top of this, the PC sends the stream to YouTube. For 1080p at 30 frames per second, YouTube recommends 14 Mbps (H.264), with a minimum of 5 Mbps. That upload uses the hall's internet, and the Wi-Fi too if the PC is on Wi-Fi. Plug the PC into the router with a network cable whenever you can.
 
@@ -62,11 +62,11 @@ If you don't know what the Wi-Fi gives, rehearse before the first game, with eve
 8. In OBS, open the properties of each DroidCam source that has no picture yet: tick **Use WiFi**, type that phone's "WiFi IP" and click **Activate**.
 9. On **Screens**, check that both buttons say "Picture OK".
 
-## Three cameras on Wi-Fi
+## Three or four cameras on Wi-Fi
 
-Follow the steps above for all three cameras. Then:
+Follow the steps above for every camera. Then:
 
-1. Look at the totals in "How much the network carries". Three phones at 1080p are 21 Mbps of picture alone.
+1. Look at the totals in "How much the network carries". Three phones at 1080p are 21 Mbps of picture alone, and four are 28.
 2. If the picture breaks up, drop to 720p first the camera that is on air least (the bench one, for example). In DroidCam you change it in the app's settings or in the source's properties in OBS.
 3. If it still breaks up, put the main camera on a cable (next section).
 
@@ -115,6 +115,33 @@ It needs the internet on the PC and on the phone. VDO.Ninja says the picture usu
 One QR code serves one phone. VDO.Ninja refuses a second phone on the same code. For another phone, add another camera.
 
 The code doesn't change: the same phone can scan the same code at the next game. Keep it like a secret, because anyone with the code can send a picture to that camera.
+
+## A camera for timeouts and one for the Nothing screen
+
+**Settings > Cameras** has two choices, once the camera list is saved:
+
+- **Camera during timeouts**: during a timeout, OBS switches to this camera and the picture shrinks into the graphics window. The bench camera, for example.
+- **Camera on the Nothing screen**: on the Nothing screen, OBS switches to this camera. A wide shot of the stand, for example.
+
+When the panel moves to a screen with no camera of its own, such as the scoreboard, Hallstream goes back to the camera that was on air before. If you change camera by hand during a timeout or on the Nothing screen, the camera you picked stays. The other screens cover the whole camera, so they have no camera of their own.
+
+## A camera without the scoreboard
+
+Each camera in **Settings > Cameras** has a **Show scoreboard** switch. Turn it off for a camera that should go on air clean, such as a close-up. Then click **Save and set up OBS**.
+
+While that camera is on air, on the scoreboard or the Nothing screen, the graphics hide the corner scoreboard, the sponsor corner and the lower third. They come back when you switch to another camera. The full screens (Break, Final and the others) and the timeout show on every camera.
+
+## An inset of a second camera
+
+The inset is a second camera, small (480x270), in a corner of the screen, over the camera on air. With two cameras or more, the cameras card on **Screens** has an **Inset** row: **Off** and one button per camera. Click a camera to put it in the inset, and **Off** to take it away.
+
+- It costs nothing extra. The inset uses the picture of a camera already in OBS, so it takes no more Wi-Fi.
+- That camera's picture has to be working already. Before you pick it, check that its button on **Screens** says "Picture OK".
+- It shows only on the scoreboard and the Nothing screen. On the other screens Hallstream hides it, and shows it again when you go back to one of those two.
+- The camera on air can't be the inset: its button is greyed out. If you switch to the inset camera, the inset hides until you switch to another one.
+- It sits in the bottom corner the lower third doesn't use. With the corner scoreboard at the bottom, it goes to the top, in the corner away from the scoreboard.
+- Set up OBS puts the other cameras, hidden, in each camera's scene. After you add a camera, click **Save and set up OBS** before you use it in the inset.
+- Hallstream doesn't save the choice. The next time you open it, the inset starts off.
 
 ## On game day
 

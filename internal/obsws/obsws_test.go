@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -23,6 +24,7 @@ type fake struct {
 	sets    []map[string]any // sceneItemTransform of each SetSceneItemTransform
 	asked   []string         // request types in order
 	setIn   []string         // the sceneName of each SetSceneItemTransform
+	setAt   []time.Time      // when each SetSceneItemTransform arrived
 	conns   []*websocket.Conn
 	subs    []int // each connection's eventSubscriptions
 }
@@ -82,6 +84,7 @@ func (f *fake) answer(typ string, d map[string]any) (bool, int, any) {
 					cur[k] = v
 				}
 				f.sets = append(f.sets, tr)
+				f.setAt = append(f.setAt, time.Now())
 				return true, 100, nil
 			}
 		}

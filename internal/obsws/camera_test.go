@@ -209,9 +209,12 @@ func TestRetarget(t *testing.T) {
 	time.Sleep(120 * time.Millisecond)
 	r.c.Follow("desconto")
 	r.wait(t)
-	sets := r.f.transforms()
+	r.f.mu.Lock()
+	sets, at := slices.Clone(r.f.sets), slices.Clone(r.f.setAt)
+	r.f.mu.Unlock()
 	for i := 1; i < len(sets); i++ {
-		if d := math.Abs(sets[i]["positionX"].(float64) - sets[i-1]["positionX"].(float64)); d > 60 {
+		// A step after a stall of 100 ms or more is the runner, not a snap.
+		if d := math.Abs(sets[i]["positionX"].(float64) - sets[i-1]["positionX"].(float64)); d > 60 && at[i].Sub(at[i-1]) < 100*time.Millisecond {
 			t.Fatalf("jump of %.0f px at step %d", d, i)
 		}
 	}

@@ -183,7 +183,7 @@ graphics window and comes back afterwards, in the same scene.
 - "Adjust camera" puts it back to full screen.
 - If OBS is on another computer, connect it by hand in Settings > OBS
   control > OBS connection set up by hand.
-- With two or three cameras, Screens has a button per camera, and the one
+- With two to four cameras, Screens has a button per camera, and the one
   on air says "On air". You can change camera during a timeout: the
   picture stays in the window.
 - In Settings > Cameras > "Camera during timeouts", choose the camera
@@ -200,11 +200,13 @@ name in Settings > OBS control > Old mode, and the program switches
 scene as before.
 
 
-TWO OR THREE CAMERAS
+TWO TO FOUR CAMERAS
 
-The CAMERAS.txt guide, in this folder, explains how to connect two or
-three cameras over Wi-Fi or on cable, and how much of the network each
+The CAMERAS.txt guide, in this folder, explains how to connect two to
+four cameras over Wi-Fi or on cable, and how much of the network each
 one takes. DroidCam's free version stays at 480p; HD needs DroidCam Pro.
+It also covers the camera for the Nothing screen, the "Show scoreboard"
+switch and the inset of a second camera.
 
 
 BACKUP AND ANOTHER COMPUTER

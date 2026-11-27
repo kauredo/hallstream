@@ -183,7 +183,7 @@ encolhe para a janela do grafismo e volta depois, na mesma cena.
 - "Ajustar câmara" volta a pô-la em ecrã inteiro.
 - Se o OBS estiver noutro computador, ligue-o à mão em Definições >
   Controlo do OBS > Ligação ao OBS feita à mão.
-- Com duas ou três câmaras, Ecrãs tem um botão por câmara, e a que está
+- Com duas a quatro câmaras, Ecrãs tem um botão por câmara, e a que está
   no ar diz "No ar". Pode trocar de câmara no desconto: a imagem fica na
   janela.
 - Em Definições > Câmaras > "Câmara no desconto" escolha a câmara que
@@ -199,11 +199,13 @@ nome em Definições > Controlo do OBS > Modo antigo, e o programa troca de
 cena como antes.
 
 
-DUAS OU TRÊS CÂMARAS
+DE DUAS A QUATRO CÂMARAS
 
-O guia CAMARAS.txt, nesta pasta, explica como ligar duas ou três câmaras
+O guia CAMARAS.txt, nesta pasta, explica como ligar duas a quatro câmaras
 por wifi ou por cabo, e quanto cada uma ocupa da rede. A versão grátis
-do DroidCam fica em 480p; para HD é preciso o DroidCam Pro.
+do DroidCam fica em 480p; para HD é preciso o DroidCam Pro. O guia
+explica também a câmara do ecrã Nada, o interruptor "Mostrar marcador"
+e o inset de uma segunda câmara.
 
 
 CÓPIA DE SEGURANÇA E OUTRO COMPUTADOR

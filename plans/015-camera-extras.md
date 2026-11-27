@@ -1,5 +1,7 @@
 # 015: Camera extras (four cameras, screen cameras, clean cameras, an inset)
 
+Status: all six layers written (01 plan to 06 docs), in review as one stack. Auto-follow (decision 9) is not built and sits in the ROADMAP under Phase B "Later".
+
 Repo `app/` at `dc2552e` (main, v0.1.4). Independent of the Mac/Linux stack (#56–#60); docs layers may conflict with #60 and get rebased after it lands.
 The owner asked on 2026-11-26 for "a camera for each screen, more than three cameras, an inset with two cameras, overlays per camera, automatic switching that follows the play", and to settle the questions unattended. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

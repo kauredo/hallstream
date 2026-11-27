@@ -144,6 +144,8 @@
   const spcBar = $('.spc-prog b', spc);
   const winners = { home: $('[data-win="home"]'), away: $('[data-win="away"]') };
   const credit = $('#credit');
+  const inset = $('#inset');
+  const insetLb = $('.inset-lb', inset);
 
   // ---------- motion ----------
   // Every entrance runs from a hidden first frame to the element's plain CSS (fill: backwards), so a
@@ -1290,7 +1292,23 @@
   const overlaps = (a, b) => a && b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const xAt = (side, w, m) => (side === 'left' ? m : side === 'right' ? W - m - w : Math.round((W - w) / 2));
   let rects = {};
-  function layout(lk, ltUp) {
+  // The inset (obs.inset): Go puts a second camera small in OBS; the overlay frames and names it on
+  // marcador and nada. It returns the box the frame and its tab take, for the others to step around.
+  function renderInset(st, screen) {
+    const i = st.obs && st.obs.inset;
+    const ok = !!i && LT_SCREENS.has(screen) && !(PANEL && forcedScreen) &&
+      [i.x, i.y, i.w, i.h].every((n) => typeof n === 'number' && isFinite(n)) && i.w > 0 && i.h > 0;
+    setClass(inset, 'on', ok);
+    if (!ok) return null;
+    const top = i.y + i.h / 2 < H / 2;
+    Object.assign(inset.style, box(i));
+    inset.dataset.y = top ? 'top' : 'bottom';
+    setText(insetLb, i.label || t('painel.camaras.camara', { n: i.camera }));
+    const tab = 40;
+    return { x: i.x - 8, y: i.y - 8 - (top ? 0 : tab), w: i.w + 16, h: i.h + 16 + tab };
+  }
+
+  function layout(lk, ltUp, ins) {
     const m = lk.margin, s = lk.scale;
     const [vy, vx] = lk.bug.split('-');
     const bw = bugBox.offsetWidth * s, bh = bugBox.offsetHeight * s;
@@ -1298,16 +1316,20 @@
 
     const lw = ltBody.offsetWidth * s, lh = lt.offsetHeight * s;
     let ltR = null;
+    // The inset keeps its corner; the others take the first place it leaves free too.
     for (const side of [lk.lt, 'right', 'left', 'center']) {
       const r = { x: xAt(side, lw, m), y: H - m - lh, w: lw, h: lh };
-      if (!overlaps(r, bug)) { ltR = r; break; }
+      if (!overlaps(r, bug) && !overlaps(r, ins)) { ltR = r; break; }
     }
-    if (!ltR) ltR = { x: xAt(lk.lt, lw, m), y: bug.y - 24 - lh, w: lw, h: lh }; // above a bottom bug
+    if (!ltR) { // above what fills the bottom
+      const low = [bug, ins].filter((b) => b && b.y > H / 2).map((b) => b.y);
+      ltR = { x: xAt(lk.lt, lw, m), y: (low.length ? Math.min(...low) : bug.y) - 24 - lh, w: lw, h: lh };
+    }
 
     const cw = spc.offsetWidth || 252, ch = spc.offsetHeight || 86;
-    const corner = [W - m - cw, m].map((x) => ({ x, y: m, w: cw, h: ch })).find((r) => !overlaps(r, bug)) || null;
+    const corner = [W - m - cw, m].map((x) => ({ x, y: m, w: cw, h: ch })).find((r) => !overlaps(r, bug) && !overlaps(r, ins)) || null;
     const kw = credit.offsetWidth || 160, kh = credit.offsetHeight || 36;
-    const busy = [bug, ltUp ? ltR : null];
+    const busy = [bug, ltUp ? ltR : null, ins];
     const cred = [W - m - kw, m].map((x) => ({ x, y: H - m - kh, w: kw, h: kh })).find((r) => !busy.some((b) => overlaps(r, b))) || null;
 
     const key = JSON.stringify([bug, ltR, corner, cred, s]);
@@ -1496,7 +1518,7 @@
     if (st.obs && st.obs.clean === true && !(PANEL && forcedScreen)) root.dataset.clean = '';
     else delete root.dataset.clean;
     renderLowerThird(st, screen);
-    layout(lk, ltPhase !== 'hidden');
+    layout(lk, ltPhase !== 'hidden', renderInset(st, screen));
     // The credit shows only where it has a free bottom corner.
     setClass(credit, 'on', (st.game || {}).credit !== false && CREDIT_SCREENS.has(screen) && credit.dataset.room === '1');
     liveEffects(v);

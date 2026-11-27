@@ -120,7 +120,7 @@ func cameraOne(o store.OBS, source string) bool {
 }
 
 // followCamera moves the camera with the screen. The screen switch goes
-// first, so the squeeze moves the camera that is live after it. The screen
+// first, so the inset and the squeeze follow the camera that is live after it. The screen
 // is read under switchMu, so a follow that waited there for another acts on
 // the screen as it is now, never on one a newer follow has already left.
 func (s *Server) followCamera() error {
@@ -131,6 +131,7 @@ func (s *Server) followCamera() error {
 	defer s.switchMu.Unlock()
 	screen := s.State.Snapshot().Screen.Current
 	terr := s.screenSwitch(screen)
+	s.applyInset(s.State.Snapshot().OBS.LiveCamera, false)
 	return errors.Join(terr, s.Camera.Follow(screen))
 }
 
@@ -402,6 +403,7 @@ func (s *Server) liveAgain() {
 // squeeze in between. A failure to place comes back as warning and does not
 // stop the switch. The caller holds switchMu.
 func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
+	s.applyInset(n, false) // shown in the new scene, never over itself
 	cfg := obsConfig(s.Store.Settings().OBS)
 	s.liveMu.Lock()
 	onAir := s.program == cam.Scene
@@ -508,6 +510,7 @@ func (s *Server) scenesOnce(wait time.Duration) (pause, next time.Duration) {
 }
 
 func (s *Server) cameraRoutes() {
+	s.mux.HandleFunc("POST /api/obs/inset", s.insetRoute)
 	s.mux.HandleFunc("GET /api/obs/sources", func(w http.ResponseWriter, r *http.Request) {
 		scene, list, auto, err := s.Camera.Sources()
 		if err != nil {

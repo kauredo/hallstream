@@ -93,6 +93,17 @@ func (f *camOBS) answer(typ string, raw json.RawMessage) (bool, int, any) {
 		sc, _ := d.Transform["scaleX"].(float64)
 		f.sent = append(f.sent, camSent{scene: d.Scene, x: x, scale: sc})
 		return true, 100, nil
+	case "SetSceneItemEnabled":
+		var e struct {
+			On bool `json:"sceneItemEnabled"`
+		}
+		json.Unmarshal(raw, &e)
+		for _, it := range f.scenes[d.Scene] {
+			if it["sceneItemId"] == d.ID {
+				it["sceneItemEnabled"] = e.On
+			}
+		}
+		return true, 100, nil
 	case "SetCurrentProgramScene":
 		if f.refuse {
 			return false, 600, nil

@@ -846,7 +846,10 @@
   function renderEcras() {
     var root = $('#ecras');
     var html = '<div class="ecras-grid"><div>' +
-      '<div class="card" id="camCard" hidden><h2>' + t('painel.camaras.titulo') + '</h2><div class="cams" id="cams"></div><p class="cam-aviso" id="camSaude"></p><p class="cam-aviso" id="camFrames"></p><p class="msg" id="camMsg" role="status"></p></div>' +
+      '<div class="card" id="camCard" hidden><h2>' + t('painel.camaras.titulo') + '</h2><div class="cams" id="cams"></div>' +
+        '<div class="cam-inset" id="camInset" hidden><span class="label" id="camInsetLb">' + t('painel.camaras.inset') + '</span>' +
+        '<div class="seg" role="group" aria-labelledby="camInsetLb" id="insets"></div><p class="hint" id="camInsetDica"></p></div>' +
+        '<p class="cam-aviso" id="camSaude"></p><p class="cam-aviso" id="camFrames"></p><p class="msg" id="camMsg" role="status"></p></div>' +
       '<div class="card"><h2>' + t('painel.ecras.no_ecra') + '</h2>' +
       '<div class="screens" id="screens">' + SCREENS.map(function (s) {
         return '<button class="scr' + (s.id === 'nada' ? ' nada' : '') + '" data-screen="' + s.id + '" aria-pressed="false">' +
@@ -1027,7 +1030,8 @@
       esc(t('painel.camaras.saltou', { n: so.skipped.frames, total: so.skipped.total })) + '</span>' : '';
     var cs = $('#camSaude');
     cs.innerHTML = oneBad ? camSaudeHtml(one, '<span class="cam-dica">' + esc(one.tip) + '</span>') : '';
-    if (cams.length < 2) { camKey = ''; $('#cams').innerHTML = ''; $('#camMsg').textContent = ''; return; }
+    $('#camInset').hidden = cams.length < 2;
+    if (cams.length < 2) { camKey = ''; $('#cams').innerHTML = ''; $('#insets').innerHTML = ''; $('#camMsg').textContent = ''; return; }
     var key = JSON.stringify(cams);
     if (key !== camKey) {
       camKey = key;
@@ -1037,6 +1041,11 @@
           '<span class="cam-n">' + n + '</span><span class="cam-nome">' + esc(c.label || t('painel.camaras.camara', { n: n })) + '</span>' +
           '<small class="cam-estado"></small><small class="cam-saude"></small></button>';
       }).join('');
+      $('#insets').innerHTML = '<button type="button" data-inset="0" aria-pressed="false">' + t('painel.camaras.inset_desligado') + '</button>' +
+        cams.map(function (c, i) {
+          var n = i + 1, name = c.label || t('painel.camaras.camara', { n: n });
+          return '<button type="button" data-inset="' + n + '" aria-pressed="false" title="' + esc(name) + '" aria-label="' + n + ' · ' + esc(name) + '">' + n + '</button>';
+        }).join('');
     }
     var live = (S.state && S.state.obs && S.state.obs.live_camera) || 0;
     $all('#cams .cam').forEach(function (b, i) {
@@ -1050,6 +1059,15 @@
       if (S.camBusy === +b.dataset.cam) return;
       b.querySelector('.cam-estado').textContent = on ? t('painel.camaras.no_ar') : scene ? '' : t('painel.camaras.sem_cena');
     });
+    // The inset: off or one camera small in the corner; the camera on air can't be its own inset.
+    var pick = (S.state && S.state.obs && S.state.obs.inset_camera) || 0;
+    $all('#insets button').forEach(function (b) {
+      var n = +b.dataset.inset;
+      b.setAttribute('aria-pressed', n === pick ? 'true' : 'false');
+      b.disabled = !!S.insetBusy || (n > 0 && n === live);
+      if (n > 0 && n === live) b.setAttribute('aria-describedby', 'camInsetDica'); else b.removeAttribute('aria-describedby');
+    });
+    $('#camInsetDica').textContent = live ? t('painel.camaras.inset_no_ar', { n: live }) : t('painel.camaras.inset_dica');
     var msg = $('#camMsg');
     if (!S.camBusy && msg.className !== 'msg err') msg.textContent = live ? '' : t('painel.camaras.outra_cena');
   }
@@ -1096,10 +1114,22 @@
         clearTimeout(camErrTimer);
         cm.className = 'msg'; cm.textContent = '';
         api('POST', '/api/obs/camera/live', { index: +cam.dataset.cam }).then(function (r) {
-          if (S.state) S.state.obs = { live_camera: r.live_camera };
+          if (S.state) S.state.obs = Object.assign({}, S.state.obs, { live_camera: r.live_camera });
           if (r.warning) cameraError(r.warning);
         }, function (err) { cameraError(err.message); })
           .then(function () { S.camBusy = false; updateCameraButtons(); });
+        return;
+      }
+      var ins = e.target.closest('[data-inset]');
+      if (ins) {
+        S.insetBusy = true;
+        updateCameraButtons();
+        clearTimeout(camErrTimer);
+        $('#camMsg').className = 'msg'; $('#camMsg').textContent = '';
+        api('POST', '/api/obs/inset', { camera: +ins.dataset.inset }).then(function (r) {
+          if (S.state) S.state.obs = Object.assign({}, S.state.obs, { inset_camera: r.camera });
+        }, function (err) { cameraError(err.message); })
+          .then(function () { S.insetBusy = false; updateCameraButtons(); });
         return;
       }
       var b = e.target.closest('[data-screen]');

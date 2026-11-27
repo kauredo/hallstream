@@ -530,6 +530,14 @@ html[data-bug-y="bottom"] .pop.away { bottom: auto; top: -26px; } /* the frame e
 
 /* ---------- Credit: the Hallstream lockup in Soalho, bottom-right in the safe area ----------
    The SVG's own margin (about 7px at this size) is the padding of the backing, so the letters are 22px. */
+/* ---------- Inset ---------- */
+/* Go puts a second camera small in OBS on marcador and nada and sends its box (obs.inset); the overlay
+   frames it like the small promo on desconto, with the camera's name on a tab, and fades it in and out. */
+.inset { position: absolute; left: 0; top: 0; width: 480px; height: 270px; outline: 2px solid #FFFFFF; box-shadow: 0 0 0 6px var(--red), 0 12px 28px rgba(0,0,0,0.6); opacity: 0; transition: opacity var(--t-exit) var(--ease-in); pointer-events: none; }
+.inset.on { opacity: 1; transition: opacity var(--t-quick) var(--ease-out); }
+.inset-lb { position: absolute; left: -6px; bottom: calc(100% + 6px); max-width: 492px; box-sizing: border-box; padding: 7px 12px 6px; background: var(--red); color: var(--on-red); font-weight: 800; font-size: 20px; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inset[data-y="top"] .inset-lb { bottom: auto; top: calc(100% + 6px); }
+
 .credit { position: absolute; right: 64px; bottom: 64px; height: 36px; background: rgba(28,26,23,0.5); opacity: 0; transition: opacity var(--t-exit) var(--ease-in); pointer-events: none; }
 .credit img { display: block; height: 36px; width: auto; }
 /* Back after the lower third or the screen before has gone, so the two never cross. */

@@ -704,3 +704,73 @@ func TestOverlayPlateAndCourtBugs(t *testing.T) {
 		})
 	}
 }
+
+// The inset (obs.inset) gets a frame and its camera's name on marcador and
+// nada only. Wherever the club puts the bug and the lower third, the
+// inset keeps its corner and the bug, the lower third, the sponsor corner
+// and the credit never cover it.
+func TestOverlayInset(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const frame = `(() => {
+		const e = document.querySelector('#inset');
+		if (+getComputedStyle(e).opacity === 0) return '';
+		const b = e.getBoundingClientRect();
+		return [b.left, b.top, b.width, b.height].join(',') + ' ' + e.textContent;
+	})()`
+	open := func(query string) {
+		t.Helper()
+		if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&"+query)); err != nil {
+			t.Fatal(err)
+		}
+		if err := until(tab, `document.documentElement.dataset.screen !== undefined && document.documentElement.dataset.bugX !== undefined && [...document.images].every((i) => i.complete)`); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, c := range []struct{ query, want string }{
+		{"state=/overlay/fixtures/marcador-inset.json", "1376,746,480,270 Banco"},
+		{"state=/overlay/fixtures/nada-inset.json", "1376,746,480,270 Banco"},
+		{"state=/overlay/fixtures/marcador-inset.json&screen=intervalo", ""},
+		{"state=/overlay/fixtures/marcador-inset.json&screen=desconto", ""},
+		{"state=/overlay/fixtures/marcador.json", ""},
+	} {
+		t.Run(c.query, func(t *testing.T) {
+			open(c.query)
+			got, err := chromedp.Run(tab, chromedp.Evaluate[string](frame))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.want {
+				t.Errorf("frame %q, want %q", got, c.want)
+			}
+		})
+	}
+	const check = `(() => {
+		const r = (s) => { const e = document.querySelector(s); if (!e || getComputedStyle(e).visibility === 'hidden') return null; const b = e.getBoundingClientRect(); return b.width ? b : null; };
+		const over = (a, b) => a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+		const ins = r('#inset'), tab = r('.inset-lb');
+		const bad = [];
+		if (!ins || !document.querySelector('#inset.on')) bad.push('no inset');
+		for (const [name, s] of [['bug', '.sb'], ['lower third', '.lt-body'], ['sponsor corner', '#spc.on'], ['credit', '#credit.on']]) {
+			const b = r(s);
+			if (over(b, ins) || over(b, tab)) bad.push(name + ' covers the inset');
+		}
+		if (!document.querySelector('#lt.on')) bad.push('no lower third');
+		return bad.join(', ');
+	})()`
+	for _, bug := range []string{"top-left", "top-center", "top-right"} {
+		for _, side := range store.LowerThirds {
+			t.Run(bug+"/"+side, func(t *testing.T) {
+				open("bug=" + bug + "&lt=" + side + "&scale=125&margin=64&corner=1&state=/overlay/fixtures/marcador-inset.json")
+				bad, err := chromedp.Run(tab, chromedp.Evaluate[string](check))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if bad != "" {
+					t.Error(bad)
+				}
+			})
+		}
+	}
+}

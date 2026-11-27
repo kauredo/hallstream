@@ -293,3 +293,38 @@ func TestPanelCameraHealthDuringSwitch(t *testing.T) {
 		t.Errorf("health during a switch: %v", err)
 	}
 }
+
+// The inset row: off and one button per camera, the pick pressed, the
+// camera on air disabled with the reason under the row.
+func TestPanelInset(t *testing.T) {
+	tab := cameraPanel(t, "&cams=3&live=1&inset=2")
+	pressed := `[...document.querySelectorAll("#insets button")].filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.inset).join()`
+	if err := until(tab, `document.querySelectorAll("#insets button").length === 4 && !document.querySelector("#camInset").hidden && `+pressed+` === "2"`); err != nil {
+		t.Fatalf("four buttons with camera 2 picked: %v", err)
+	}
+	why := i18n.T("painel.camaras.inset_no_ar", "n", 1)
+	if err := until(tab, `document.querySelector('[data-inset="1"]').disabled && !document.querySelector('[data-inset="3"]').disabled && document.querySelector("#camInsetDica").textContent === `+strconv.Quote(why)); err != nil {
+		t.Errorf("camera 1 on air is not disabled with its reason: %v", err)
+	}
+	click(t, tab, `[data-inset="3"]`)
+	if err := until(tab, pressed+` === "3" && !document.querySelector('[data-inset="0"]').disabled`); err != nil {
+		t.Errorf("camera 3 never picked: %v", err)
+	}
+	click(t, tab, `[data-inset="0"]`)
+	if err := until(tab, pressed+` === "0" && !document.querySelector('[data-inset="0"]').disabled`); err != nil {
+		t.Errorf("never turned off: %v", err)
+	}
+	click(t, tab, `[data-cam="3"]`)
+	if err := until(tab, `document.querySelector('[data-inset="3"]').disabled && !document.querySelector('[data-inset="1"]').disabled`); err != nil {
+		t.Errorf("the new camera on air is not disabled: %v", err)
+	}
+
+	tab = cameraPanel(t, "&cams=2&live=1&inset=2&inseterr=1")
+	if err := until(tab, pressed+` === "2"`); err != nil {
+		t.Fatal(err)
+	}
+	click(t, tab, `[data-inset="0"]`)
+	if err := until(tab, `document.querySelector("#camMsg").classList.contains("err") && !document.querySelector('[data-inset="0"]').disabled && `+pressed+` === "2"`); err != nil {
+		t.Errorf("a refused inset shows no error or loses the pick: %v", err)
+	}
+}

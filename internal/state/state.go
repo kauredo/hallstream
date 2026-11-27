@@ -305,6 +305,18 @@ type OBS struct {
 	// Clean is the live camera's settings.obs.cameras[i].clean; false with
 	// LiveCamera 0.
 	Clean bool `json:"clean"`
+	// InsetCamera is the camera picked for the inset, from 1; 0 for none.
+	InsetCamera int `json:"inset_camera"`
+	// Inset is where the inset shows; nil while it does not.
+	Inset *Inset `json:"inset"`
+}
+
+// Inset is the inset's camera, its name on the panel and its picture on
+// the 1920x1080 overlay, in pixels.
+type Inset struct {
+	Camera int    `json:"camera"`
+	Label  string `json:"label"`
+	Rect
 }
 
 var Screens = []string{"marcador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo", "voltamos", "nada"}
@@ -656,6 +668,17 @@ func (m *Machine) SetLiveCamera(n int, clean bool) {
 	clean = clean && n > 0
 	if m.s.OBS.LiveCamera != n || m.s.OBS.Clean != clean {
 		m.s.OBS.LiveCamera, m.s.OBS.Clean = n, clean
+		m.changed()
+	}
+	m.mu.Unlock()
+}
+
+// SetInset sets the camera picked for the inset and where it shows (nil
+// while it does not).
+func (m *Machine) SetInset(pick int, in *Inset) {
+	m.mu.Lock()
+	if m.s.OBS.InsetCamera != pick || (in == nil) != (m.s.OBS.Inset == nil) || in != nil && *in != *m.s.OBS.Inset {
+		m.s.OBS.InsetCamera, m.s.OBS.Inset = pick, in
 		m.changed()
 	}
 	m.mu.Unlock()

@@ -444,7 +444,9 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.liveAgain()
+		s.insetMoved(req.Cameras)
 	}
+	aim.Inset = s.insetShown()
 	rep, err := s.OBS.Setup(cfg, aim, true, s.fitCamera)
 	if err != nil {
 		// The scenes made so far keep their names for the next run, and a
@@ -484,6 +486,7 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.checkOBS()
+	s.insetAfterSetup()
 	if !here {
 		rep.Phones = nil // the stream ids are secrets; the panel asks for one camera's link behind the PIN
 	}

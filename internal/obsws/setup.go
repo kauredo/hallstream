@@ -63,6 +63,8 @@ type Want struct {
 	Graphics string
 	// Cameras is 1 to store.MaxCameras cameras, camera 1 first.
 	Cameras []WantCamera
+	// Inset is the item the inset shows now, which stays shown.
+	Inset ItemRef
 }
 
 // ReportCamera is the scene and source a camera ended with.
@@ -80,7 +82,7 @@ type Report struct {
 	Choices  []Choice       `json:"choices,omitempty"`
 	// Phones is each phone camera's stream id, by source.
 	Phones map[string]string `json:"phones,omitempty"`
-	// Ready: nothing is missing or wrong (the camera fit aside).
+	// Ready: nothing is missing or wrong (the camera fit and the inset aside).
 	Ready bool `json:"ready"`
 }
 
@@ -127,7 +129,7 @@ func (c *Client) Setup(cfg Config, w Want, apply bool, fit func(n int, scene, ca
 func (s *setup) ready() {
 	s.rep.Ready = true
 	for _, st := range s.rep.Steps {
-		if (st.Result == "failed" || st.Result == "choose") && !strings.HasPrefix(st.ID, "fit") {
+		if (st.Result == "failed" || st.Result == "choose") && !strings.HasPrefix(st.ID, "fit") && !strings.HasPrefix(st.ID, "inset") {
 			s.rep.Ready = false
 		}
 	}
@@ -250,6 +252,9 @@ func (s *setup) run(fit func(int, string, string) error) {
 		if s.err != nil {
 			return
 		}
+	}
+	if s.apply {
+		s.insets(graphics)
 	}
 	s.video(busy)
 	var live []string
@@ -952,7 +957,8 @@ func (s *setup) hideOld(cam, graphics string) {
 		return
 	}
 	for _, it := range s.items() {
-		if it.Name == cam || it.Name == graphics || !it.Enabled || !(it.Name == s.cam.Old || isCapture(it.Kind)) {
+		if it.Name == cam || it.Name == graphics || !it.Enabled || !(it.Name == s.cam.Old || isCapture(it.Kind)) ||
+			s.want.Inset == (ItemRef{s.at, it.Name}) {
 			continue
 		}
 		if s.call("SetSceneItemEnabled", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil) == nil {
@@ -992,6 +998,98 @@ func (s *setup) order(above, cam string) {
 		}
 	}
 	st.Result, st.Detail = "fixed", i18n.T("obs.setup.pus_grafismo", "grafismo", above, "cena", s.at)
+}
+
+// insets puts, in each camera scene, every other camera's source as a hidden
+// item between the camera and the graphics scene, for the inset. The item
+// the inset shows stays shown; the old cameras' items are hidden.
+func (s *setup) insets(graphics string) {
+	var srcs, olds []string
+	for _, c := range s.rep.Cameras {
+		if c.Source != "" {
+			srcs = append(srcs, c.Source)
+		}
+	}
+	for _, c := range s.want.Cameras {
+		if c.Old != "" && !slices.Contains(srcs, c.Old) {
+			olds = append(olds, c.Old)
+		}
+	}
+	if len(srcs) < 2 {
+		return
+	}
+	for i, c := range s.rep.Cameras {
+		if c.Source == "" || c.Scene == "" || s.err != nil {
+			continue
+		}
+		s.n, s.at = i+1, c.Scene
+		st := Step{ID: s.id("inset"), Label: i18n.T("obs.setup.inset"), Result: "ok"}
+		var re *RequestError
+		for _, src := range srcs {
+			if src != c.Source && re == nil {
+				re = s.insetItem(&st, src, c.Source, graphics)
+			}
+		}
+		for _, it := range s.items() {
+			if re == nil && it.Enabled && slices.Contains(olds, it.Name) && s.want.Inset != (ItemRef{s.at, it.Name}) {
+				if re = s.call("SetSceneItemEnabled", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil); re == nil && st.Result == "ok" {
+					st.Result = "fixed"
+				}
+			}
+		}
+		switch {
+		case re != nil:
+			st.Result, st.Detail = "failed", i18n.T("obs.setup.nao_pos_inset", "erro", re.Comment)
+		case st.Result == "ok":
+			st.Detail = i18n.T("obs.setup.inset_ok")
+		default:
+			st.Detail = i18n.T("obs.setup.pus_inset", "cena", s.at)
+		}
+		s.add(st)
+	}
+}
+
+// insetItem puts src in the scene between cam and graphics, hidden unless
+// the inset shows it.
+func (s *setup) insetItem(st *Step, src, cam, graphics string) *RequestError {
+	mark := func(r string) {
+		if st.Result == "ok" || r == "created" {
+			st.Result = r
+		}
+	}
+	it := find(s.items(), src)
+	switch {
+	case it == nil:
+		if re := s.call("CreateSceneItem", map[string]any{"sceneName": s.at, "sourceName": src, "sceneItemEnabled": false}, nil); re != nil {
+			return re
+		}
+		mark("created")
+	case it.Enabled && s.want.Inset != (ItemRef{s.at, src}):
+		if re := s.call("SetSceneItemEnabled", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemEnabled": false}, nil); re != nil {
+			return re
+		}
+		mark("fixed")
+	}
+	items := s.items()
+	it, c, g := find(items, src), find(items, cam), find(items, graphics)
+	if it == nil || c == nil || g == nil || g.Index < c.Index {
+		return nil
+	}
+	to := -1
+	switch {
+	case it.Index > g.Index:
+		to = g.Index
+	case it.Index < c.Index:
+		to = c.Index
+	}
+	if to < 0 {
+		return nil
+	}
+	if re := s.call("SetSceneItemIndex", map[string]any{"sceneName": s.at, "sceneItemId": it.ID, "sceneItemIndex": to}, nil); re != nil {
+		return re
+	}
+	mark("fixed")
+	return nil
 }
 
 func (s *setup) video(busy bool) {

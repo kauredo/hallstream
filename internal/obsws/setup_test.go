@@ -210,7 +210,8 @@ func (m *model) answer(typ string, d map[string]any) (bool, int, any) {
 			return false, NotFound, nil
 		}
 		m.next++
-		m.items[sname] = append(m.items[sname], &mItem{m.next, src, true})
+		on, ok := d["sceneItemEnabled"].(bool)
+		m.items[sname] = append(m.items[sname], &mItem{m.next, src, on || !ok})
 		return true, 100, map[string]any{"sceneItemId": m.next}
 	case "SetSceneItemEnabled":
 		_, it := m.item(sname, id)
@@ -651,16 +652,16 @@ func TestSetupThreeCameras(t *testing.T) {
 	if !rep.Ready {
 		t.Errorf("not ready: %v", rep.Problems())
 	}
-	for i, n := range []string{"A", "B", "C"} {
+	for i, want := range [][]string{{"A", "(B)", "(C)"}, {"B", "(A)", "(C)"}, {"C", "(A)", "(B)"}} {
 		scene := fmt.Sprintf("Câmara %d", i+1)
-		if got := m.order(scene); !slices.Equal(got, []string{n, "Grafismo"}) {
+		if got := m.order(scene); !slices.Equal(got, append(want, "Grafismo")) {
 			t.Errorf("%s %v", scene, got)
 		}
 	}
 	if want := []string{"1 Câmara 1 A", "2 Câmara 2 B", "3 Câmara 3 C"}; !slices.Equal(r.fits, want) {
 		t.Errorf("fits %v", r.fits)
 	}
-	wantResults(t, rep, map[string]string{"camera-2": "fixed", "order-3": "fixed", "fit-3": "ok"})
+	wantResults(t, rep, map[string]string{"camera-2": "fixed", "order-3": "fixed", "fit-3": "ok", "inset": "created", "inset-3": "created"})
 	r.again("source:A")
 }
 
@@ -675,13 +676,13 @@ func TestSetupFourCameras(t *testing.T) {
 	if !rep.Ready {
 		t.Errorf("not ready: %v", rep.Problems())
 	}
-	if got := m.order("Câmara 4"); !slices.Equal(got, []string{"D", "Grafismo"}) {
+	if got := m.order("Câmara 4"); !slices.Equal(got, []string{"D", "(A)", "(B)", "(C)", "Grafismo"}) {
 		t.Errorf("Câmara 4 %v", got)
 	}
 	if want := []string{"1 Câmara 1 A", "2 Câmara 2 B", "3 Câmara 3 C", "4 Câmara 4 D"}; !slices.Equal(r.fits, want) {
 		t.Errorf("fits %v", r.fits)
 	}
-	wantResults(t, rep, map[string]string{"scene-4": "created", "camera-4": "fixed", "order-4": "fixed", "fit-4": "ok"})
+	wantResults(t, rep, map[string]string{"scene-4": "created", "camera-4": "fixed", "order-4": "fixed", "fit-4": "ok", "inset-4": "created"})
 	r.again("source:A")
 }
 
@@ -945,7 +946,7 @@ func TestSetupPhone(t *testing.T) {
 		in.settings["shutdown"] != false || in.settings["restart_when_active"] != false || in.settings["is_local_file"] != false {
 		t.Errorf("phone settings %v, id %q", in.settings, id)
 	}
-	if got := m.order(scene); !slices.Equal(got, []string{"Telemóvel 1", rep.Graphics}) {
+	if got := m.order(scene); !slices.Equal(got, []string{"Telemóvel 1", "(Logitech C920)", rep.Graphics}) {
 		t.Errorf("camera 2's scene %v", got)
 	}
 
@@ -1031,4 +1032,111 @@ func TestSetupTwoNewPlugins(t *testing.T) {
 	if rep.Cameras[1].Source != "DroidCam 2" || one == nil || two == nil || one.settings["device_list"] != "A" || two.settings["device_list"] != "B" {
 		t.Errorf("cameras %+v, %+v %+v", rep.Cameras, one, two)
 	}
+}
+
+// Each camera scene gets the other cameras hidden between its camera and
+// the graphics; an item already there is kept, hidden and moved, the one
+// the inset shows stays shown, and the user's items are left alone.
+func TestSetupInsetItems(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	r.setup("source:A", "")
+	m.put("Câmara 1", "Logo", "image_source", map[string]any{})
+	m.mu.Lock()
+	a := m.items["Câmara 2"][1]
+	a.enabled = true // shown, and above the graphics
+	m.items["Câmara 2"] = append(slices.Delete(m.items["Câmara 2"], 1, 2), a)
+	m.mu.Unlock()
+	m.wrote()
+	rep := r.setup("source:A", "")
+	if !rep.Ready {
+		t.Errorf("not ready: %v", rep.Problems())
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"A", "(B)", "Grafismo", "Logo"}) {
+		t.Errorf("Câmara 1 %v", got)
+	}
+	if got := m.order("Câmara 2"); !slices.Equal(got, []string{"B", "(A)", "Grafismo"}) {
+		t.Errorf("Câmara 2 %v", got)
+	}
+	wantResults(t, rep, map[string]string{"inset": "ok", "inset-2": "fixed"})
+	if d := detail(rep, "inset-2"); d != i18n.T("obs.setup.pus_inset", "cena", "Câmara 2") {
+		t.Errorf("detail %q", d)
+	}
+	r.again("source:A")
+
+	w := r.want("source:A", "")
+	w.Inset = ItemRef{"Câmara 1", "B"}
+	m.mu.Lock()
+	m.items["Câmara 1"][1].enabled = true
+	m.mu.Unlock()
+	if _, err := r.c.Setup(r.cfg, w, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"A", "B", "Grafismo", "Logo"}) {
+		t.Errorf("the shown inset was hidden: %v", got)
+	}
+}
+
+// One camera: no inset steps.
+func TestSetupInsetOneCamera(t *testing.T) {
+	m := newModel()
+	m.put("Cena", "A", "dshow_input", map[string]any{"video_device_id": "A:x"})
+	rep := newRun(t, m).setup("source:A", "")
+	if _, ok := results(rep)["inset"]; ok {
+		t.Errorf("inset step with one camera: %v", results(rep))
+	}
+}
+
+// insetRefused refuses to add a hidden item.
+type insetRefused struct{ *model }
+
+func (m insetRefused) answer(typ string, d map[string]any) (bool, int, any) {
+	if on, ok := d["sceneItemEnabled"].(bool); typ == "CreateSceneItem" && ok && !on {
+		return false, 600, nil
+	}
+	return m.model.answer(typ, d)
+}
+
+// The inset is an extra: its step failing keeps the setup ready.
+func TestSetupInsetFailsStaysReady(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := &run{t: t, m: m, cfg: fakeOBS(t, "", insetRefused{m})}
+	r.extra = []string{"source:B"}
+	rep := r.setup("source:A", "")
+	wantResults(t, rep, map[string]string{"inset": "failed", "inset-2": "failed", "fit-2": "ok"})
+	if !rep.Ready {
+		t.Errorf("not ready: %v", rep.Problems())
+	}
+}
+
+// A camera replaced in camera 2's place leaves its item in camera 1's
+// scene, hidden.
+func TestSetupInsetOldCameraHidden(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B", "C"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	r.setup("source:A", "")
+	m.mu.Lock()
+	m.items["Câmara 1"][1].enabled = true // the inset showed B
+	m.mu.Unlock()
+	w := r.want("source:A", "")
+	w.Cameras[1].Choice, w.Cameras[1].Old = "source:C", "B"
+	rep, err := r.c.Setup(r.cfg, w, true, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"A", "(B)", "(C)", "Grafismo"}) {
+		t.Errorf("Câmara 1 %v", got)
+	}
+	wantResults(t, rep, map[string]string{"inset": "created"})
 }

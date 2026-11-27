@@ -194,7 +194,8 @@
       },
       screen: db.screen,
       lower_third: db.lower_third,
-      obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive, clean: obsMode !== 'off' && !!((db.settings.obs.cameras || [])[db.obsLive - 1] || {}).clean },
+      obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive, clean: obsMode !== 'off' && !!((db.settings.obs.cameras || [])[db.obsLive - 1] || {}).clean,
+        inset_camera: db.inset, inset: mockInset() },
       promo: Object.assign({}, db.promoShow, { mini: db.promo.clips.filter(function (c) { return c.id === db.promo.timeout_clip; })[0] || null }),
       demo: db.demo
     };
@@ -245,6 +246,14 @@
   else if (camsQ) db.settings.obs.cameras = CAMS.slice(0, Math.min(4, Math.max(1, +camsQ || 1)));
   var liveQ = /[?&]live=([0-4])/.exec(location.search);
   db.obsLive = liveQ ? +liveQ[1] : 1;
+  // The inset's camera: ?inset=0|1|2|3|4; ?inseterr=1 makes OBS refuse it.
+  var insetQ = /[?&]inset=([0-4])/.exec(location.search);
+  db.inset = insetQ ? +insetQ[1] : 0;
+  function mockInset() {
+    var c = (db.settings.obs.cameras || [])[db.inset - 1], cur = db.screen.current;
+    if (obsMode === 'off' || !c || db.inset === db.obsLive || (cur !== 'marcador' && cur !== 'nada')) return null;
+    return { camera: db.inset, label: c.label || 'Câmara ' + db.inset, x: 1376, y: 746, w: 480, h: 270 };
+  }
   // The camera for time-outs: ?tcam=0|1|2|3|4; for the Nada screen: ?ncam=0|1|2|3|4.
   var tcamQ = /[?&]tcam=([0-4])/.exec(location.search), ncamQ = /[?&]ncam=([0-4])/.exec(location.search);
   db.settings.obs.timeout_camera = tcamQ ? +tcamQ[1] : 0;
@@ -595,6 +604,12 @@
       if (/[?&]camerr=1\b/.test(location.search)) return err(502, 'o OBS não mudou para a cena "Câmara ' + b.index + '": fake');
       db.obsLive = b.index; emit();
       return reply(200, { ok: true, live_camera: b.index, warning: '' });
+    }
+    if (p === '/api/obs/inset') {
+      if (!(b.camera >= 0 && b.camera <= (db.settings.obs.cameras || []).length)) return err(400, 'Não há câmara ' + b.camera + '.');
+      if (/[?&]inseterr=1\b/.test(location.search)) return err(502, 'a câmara ' + b.camera + ' não está na cena: fake');
+      db.inset = b.camera; emit();
+      return reply(200, { ok: true, camera: b.camera });
     }
     if (p === '/api/obs/setup') return reply(200, setupReport(b));
     if (p === '/api/system/autostart') { db.settings.start_with_windows = !!b.on; return reply(200, { ok: true, on: !!b.on }); }

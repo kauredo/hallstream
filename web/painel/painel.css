@@ -416,6 +416,14 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
 .cam:disabled { cursor: progress; }
 .cam.sem-cena { border-style: dashed; color: var(--tinta-2); cursor: not-allowed; }
 .cam.sem-cena:hover { background: transparent; }
+/* The inset: off or one camera small in the corner, a row under the camera buttons. */
+.cam-inset { margin-top: 16px; }
+.cam-inset .seg { margin-top: 6px; }
+.cam-inset .seg button { padding: 0 8px; font-variant-numeric: tabular-nums; }
+.cam-inset .seg button:first-child { flex: 2; }
+.cam-inset .seg button:disabled { cursor: progress; }
+.cam-inset .seg button[aria-describedby] { color: var(--tinta-2); cursor: not-allowed; background: transparent; text-decoration: line-through; }
+.cam-inset .hint { margin-top: 6px; }
 #camMsg:empty { display: none; }
 #camMsg { margin-top: 12px; }
 /* Health: quiet words when the picture is fine; a fault takes the lit mark and bold Lâmpada funda,

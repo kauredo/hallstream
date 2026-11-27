@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	fyne.io/systray v1.12.2
 	github.com/chromedp/chromedp v0.23.1
+	github.com/wailsapp/go-webview2 v1.0.23
 	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sys v0.49.0
@@ -18,6 +19,7 @@ require (
 	github.com/go-json-experiment/json v0.0.0-20260213210345-44df1a37e875 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/saltosystems/winrt-go v0.0.0-20261015065339-8ef619c103a3 // indirect

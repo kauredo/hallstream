@@ -37,4 +37,18 @@ cd "${0:A:h}/.."
 		notice=( $dir/NOTICE(N) )
 		if (( ${#notice} )); then print; cat $notice[1]; fi
 	done
+	# A linked package can carry a licence of its own, apart from its module's
+	# (go-webview2's webviewloader is under ISC).
+	for arch in $archs; do
+		GOOS=$target GOARCH=$arch go list -deps -f '{{with .Module}}{{if not .Main}}{{$.Dir}} {{.Path}} {{.Version}} {{.Dir}}{{end}}{{end}}' ./cmd/hallstream
+	done | sort -u | while read -r pkgdir mod version dir; do
+		[[ $pkgdir == $dir ]] && continue
+		lic=( $pkgdir/(LICENSE|LICENSE.*|LICENCE|COPYING)(N) )
+		(( ${#lic} )) || continue
+		print
+		print "================================================================"
+		print "$mod $version, ${pkgdir#$dir/}"
+		print "================================================================"
+		cat $lic[1]
+	done
 } >"$out"

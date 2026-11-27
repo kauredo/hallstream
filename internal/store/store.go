@@ -163,8 +163,12 @@ type Settings struct {
 	// Input is where the score comes from: one of Inputs.
 	Input string `json:"input"`
 	// UpdateCheck lets the program ask GitHub once a day for a newer release
-	// (off until the volunteer turns it on). It never downloads.
+	// (off until the volunteer turns it on). It downloads one only when the
+	// operator asks for it.
 	UpdateCheck bool `json:"update_check"`
+	// UpdateAsked is true once the PC has answered whether to check for
+	// versions; only POST /api/update/ask sets it.
+	UpdateAsked bool `json:"update_asked"`
 	// Stream is where OBS sends the picture; only PUT /api/stream changes it.
 	Stream Stream `json:"stream"`
 }

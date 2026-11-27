@@ -150,6 +150,14 @@
   // ?chan=ok (default), off (live not on), unverified, blocked, fail (the check fails).
   var setupMode = (/[?&]setup=([a-z]+)/.exec(location.search) || [])[1] || 'new';
   var onPC = !/[?&]pc=0\b/.test(location.search);
+  // &update=1 offers 9.9.9 to install, link only links to it, down is downloading, fail has failed, ask asks once.
+  var updMode = (/[?&]update=([a-z0-9]+)/.exec(location.search) || [])[1] || '';
+  var updState = { down: 'downloading', fail: 'failed' }[updMode] || '';
+  function updateStatus() {
+    if (!updMode || updMode === 'ask') return null;
+    return { version: '9.9.9', url: 'https://github.com/kauredo/hallstream/releases/tag/v9.9.9', install: onPC && updMode !== 'link',
+      state: updState, error: updState === 'failed' ? 'O ficheiro Hallstream-9.9.9.zip chegou diferente do publicado, por isso não o usei.' : '' };
+  }
   var chanMode = (/[?&]chan=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
   db.setup = { done: setupMode === 'done' ? '2026-11-09T19:30:00Z' : '', later: false,
     steps: setupMode === 'new' ? {} : { 'ensaio-demo': 'done', 'ensaio-previa': 'done' } };
@@ -394,7 +402,17 @@
     if (p === '/api/status') {
       return reply(200, { version: '0.9.0-mock', port: 8765, overlay_url: 'http://127.0.0.1:8765/overlay', lan_url: 'http://192.168.1.40:8765/painel',
         box: state().box, obs: obsStatus(), youtube: yt, fpb: { reachable: true, cached_at: new Date().toISOString() },
-        data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, obs_close: true, os: 'windows', club_setup: { running: false, done: 0, total: 0 } });
+        data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, obs_close: true, os: 'windows', club_setup: { running: false, done: 0, total: 0 },
+        update: updateStatus(), update_ask: onPC && updMode === 'ask' });
+    }
+    if (p === '/api/update') {
+      if (!onPC) return err(403, 'Isto só se muda no próprio computador.');
+      updState = 'downloading';
+      return reply(200, { ok: true, version: '9.9.9' });
+    }
+    if (p === '/api/update/ask') {
+      db.settings.update_asked = true; db.settings.update_check = !!(b && b.check); updMode = '';
+      return reply(200, db.settings);
     }
     if (p === '/api/setup') return setupReply();
     if ((r = /^\/api\/setup\/steps\/([a-z-]+)$/.exec(p))) {

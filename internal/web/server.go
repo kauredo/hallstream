@@ -66,6 +66,8 @@ type Server struct {
 	// Restart starts the program that an update put in place and closes
 	// this one; nil can't restart.
 	Restart func() error
+	// Updater finds, fetches and swaps the program; nil is internal/update.
+	Updater Updater
 	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
 	// GitHub link in Ajuda.
 	FeedbackURL string
@@ -130,6 +132,13 @@ type Server struct {
 
 	updateNow chan struct{}                  // wakes RunUpdates when the check is switched on
 	newer     atomic.Pointer[update.Release] // a newer release, found by RunUpdates
+	// The update the operator asked for (updates.go).
+	updMu      sync.Mutex
+	updBusy    bool
+	updState   string // "", downloading, installing, restarting, failed
+	updErr     string
+	updOnce    sync.Once
+	updRefusal error // why this copy can't install itself; nil when it can
 }
 
 func New(s *Server) *Server {
@@ -236,6 +245,8 @@ func (s *Server) routes() {
 	})
 	m.HandleFunc("GET /api/events", s.events)
 	m.HandleFunc("GET /api/status", s.status)
+	m.HandleFunc("POST /api/update", s.startUpdate)
+	m.HandleFunc("POST /api/update/ask", s.answerUpdateAsk)
 	m.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) { reply(w, forCaller(s.Store.Settings(), r)) })
 	m.HandleFunc("PUT /api/settings", s.putSettings)
 	m.HandleFunc("PUT /api/stream", s.putStream)
@@ -518,7 +529,8 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		"club_setup":  s.progress(),
 		"langs":       i18n.Languages(),
 		"timezone":    s.zone().String(),
-		"update":      s.newerRelease(),
+		"update":      s.updateStatus(isLoopback(r.RemoteAddr)),
+		"update_ask":  s.updateAsk(isLoopback(r.RemoteAddr)),
 		"feedback":    s.FeedbackURL != "",
 		"data_dir":    s.Store.Dir,
 		// The panel offers the desktop shortcut on the PC itself only.
@@ -565,6 +577,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.Overlay.Photo = cur.Overlay.Photo // /api/overlay/photo owns it
 		req.Overlay.BackLine = cutRunes(strings.Join(strings.Fields(req.Overlay.BackLine), " "), maxBackLine)
 		req.DesktopShortcut, req.StartWithWindows, req.FirstSetup = cur.DesktopShortcut, cur.StartWithWindows, cur.FirstSetup
+		req.UpdateAsked = cur.UpdateAsked // /api/update/ask owns it
 		req.OBS.SetupAt = cur.OBS.SetupAt
 		req.Club.Crest = cur.Club.Crest // /api/club/crest owns it
 		req.Stream = cur.Stream         // /api/stream owns it

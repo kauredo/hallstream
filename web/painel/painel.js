@@ -341,6 +341,7 @@
       }
       var u = $('#dUrl'); if (u && s && s.overlay_url) u.value = s.overlay_url;
       if (S.tab === 'ajuda') renderAjudaDir();
+      renderCheckAsk();
       renderShortcutAsk();
       renderUpdateAsk();
       renderFeedback();
@@ -1244,7 +1245,7 @@
   function setStream(r) {
     S.stream = (r && r.stream) || null; S.streamAt = Date.now();
     S.ytStream = (r && r.youtube) || null;
-    renderStream(); renderYtCard();
+    renderStream(); renderYtCard(); renderUpdateAsk();
   }
   function obsHealth() { var o = (S.status && S.status.obs) || {}; return o.connected ? (o.health || {}) : {}; }
 
@@ -3520,29 +3521,84 @@
   }
 
   /* ---------------- a newer release ---------------- */
-  // Shown while /api/status names a newer release, until "Agora não" for that version (this browser only).
+  // Shown while /api/status names a newer release, off air, until "Mais tarde" for that version (this browser
+  // only). With "install" the PC can update itself; otherwise the box links to the release page.
   function laterVersion() { try { return localStorage.getItem('hs-update-later') || ''; } catch (e) { return ''; } }
   function renderUpdateAsk() {
     var u = S.status && S.status.update, box = $('#updateAsk');
-    box.hidden = !u || laterVersion() === u.version;
+    var state = (u && u.state) || '', working = S.updating || state === 'downloading' || state === 'installing' || state === 'restarting';
+    box.hidden = !u || (!working && (laterVersion() === u.version || (S.stream && S.stream.active)));
     if (box.hidden) return;
-    $('#updateTxt').textContent = t('painel.atualizacao.pergunta', { versao: u.version });
-    $('#updateLink').href = u.url;
+    $('#updateTxt').textContent = t('painel.atualizacao.disponivel', { versao: u.version });
+    var link = $('#updateLink'), now = $('[data-act="up-now"]', box), later = $('[data-act="up-later"]', box);
+    link.href = u.url;
+    link.textContent = u.install ? t('painel.atualizacao.notas') : t('painel.atualizacao.ver');
+    link.classList.toggle('primary', !u.install);
+    now.hidden = !u.install;
+    now.disabled = later.disabled = working;
+    var hint = u.install ? t('painel.atualizacao.dica_instalar') : t('painel.atualizacao.dica');
+    if (state === 'downloading') hint = t('painel.atualizacao.a_transferir');
+    if (state === 'installing') hint = t('painel.atualizacao.a_instalar');
+    if (state === 'restarting' || S.updating) hint = S.updateLost ? t('painel.atualizacao.abrir_outra_vez') : t('painel.atualizacao.a_reiniciar');
+    var msg = $('.msg', box);
+    msg.className = state === 'failed' ? 'msg err' : 'msg';
+    msg.textContent = state === 'failed' ? t('painel.atualizacao.falhou', { erro: u.error }) : '';
+    $('#updateHint').textContent = hint;
+    if (state === 'restarting' && !S.updating) waitForNewVersion(S.status.version);
+    if ((state === 'downloading' || state === 'installing') && !S.updateTimer) {
+      S.updateTimer = setTimeout(function () { S.updateTimer = null; loadStatus(); }, 2000);
+    }
+  }
+  // After the restart the old server is gone for a moment: keep asking until another version answers.
+  function waitForNewVersion(old) {
+    S.updating = true;
+    var started = Date.now();
+    (function poll() {
+      api('GET', '/api/status').then(function (s) {
+        if (s && s.version && s.version !== old) { location.reload(); return; }
+        again();
+      }, again);
+      function again() {
+        if (Date.now() - started > 60000 && !S.updateLost) { S.updateLost = true; renderUpdateAsk(); }
+        setTimeout(poll, 2000);
+      }
+    })();
   }
   function updateEvents() {
-    $('#updateAsk').addEventListener('click', function (e) {
-      if (!e.target.closest('[data-act="up-later"]')) return;
-      try { localStorage.setItem('hs-update-later', S.status.update.version); } catch (err) { /* hide for now only */ }
-      $('#updateAsk').hidden = true;
+    var box = $('#updateAsk');
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      if (b.dataset.act === 'up-later') {
+        try { localStorage.setItem('hs-update-later', S.status.update.version); } catch (err) { /* hide for now only */ }
+        box.hidden = true;
+        return;
+      }
+      if (b.dataset.act !== 'up-now') return;
+      b.disabled = true;
+      api('POST', '/api/update', {}).then(function () { return loadStatus(); }, function (err) {
+        b.disabled = false;
+        var msg = $('.msg', box); msg.className = 'msg err'; msg.textContent = err.message;
+      });
+    });
+    var ask = $('#checkAsk');
+    ask.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      busy(b, function () {
+        return api('POST', '/api/update/ask', { check: b.dataset.act === 'ck-yes' }).then(function (s) {
+          S.settings = s; S.status.update_ask = false; renderCheckAsk(); renderShortcutAsk();
+        });
+      });
     });
   }
+  // Asked once, on the PC itself, before the shortcut question: one question at a time.
+  function renderCheckAsk() { $('#checkAsk').hidden = !(S.status && S.status.update_ask); }
 
   /* ---------------- desktop shortcut ---------------- */
   // Asked once, on the PC itself (the status says so), until answered.
   function renderShortcutAsk() {
     var box = $('#shortcutAsk');
     if (box.dataset.closing) return;
-    box.hidden = !(S.status && S.status.shortcut && S.settings && !S.settings.desktop_shortcut);
+    box.hidden = !(S.status && S.status.shortcut && !S.status.update_ask && S.settings && !S.settings.desktop_shortcut);
   }
   function createShortcut(create) {
     return api('POST', '/api/system/desktop-shortcut', { create: create }).then(function (r) {

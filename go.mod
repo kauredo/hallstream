@@ -39,3 +39,6 @@ require (
 )
 
 tool github.com/tc-hib/go-winres
+
+// Fixes the 32-bit Windows Bluetooth crash; see third_party/winrt-go/PATCHES.md.
+replace github.com/saltosystems/winrt-go => ./third_party/winrt-go

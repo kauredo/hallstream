@@ -160,13 +160,20 @@ On a Mac
 3. When the Mac asks about Bluetooth, press "Allow". If you refused, go
    to System Settings > Privacy & Security > Bluetooth and turn
    Hallstream on.
-- Hallstream has an icon in the menu bar, at the top right, and another
-  in the Dock.
-- Press the menu bar icon to see the menu: "Open panel", "Copy overlay
-  address", the box status and "Quit".
-- Press the Dock icon, or open Hallstream again, to open the panel.
-- Quit in the Dock icon's menu does the same as "Quit" in the menu bar:
-  if the stream is on air, the program asks before closing.
+- On a Mac the panel opens in a Hallstream window, not the browser. The
+  panel still opens in the browser on phones and other computers, as
+  before.
+- Closing the window doesn't close Hallstream: the overlay and the
+  stream carry on. Press the Dock icon, or open Hallstream again, to see
+  the window.
+- To close Hallstream, use Hallstream > Quit Hallstream (⌘Q), "Quit" in
+  the menu bar icon's menu, or Quit in the Dock icon's menu. If the stream is
+  on air, the program asks before closing.
+- Hallstream also has an icon in the menu bar, at the top right: "Open
+  panel", "Copy overlay address", the box status and "Quit".
+- Links out of the panel, such as the help and the YouTube sign-in,
+  open in the browser. View > Open the Panel in the Browser opens the
+  panel there, if you prefer.
 - Instead of "Open with Windows", Settings > On this computer has "Open
   when I sign in to the Mac".
 - The data is in ~/Library/Application Support/Hallstream/dados.

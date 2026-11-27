@@ -14,7 +14,7 @@ A free tool for amateur clubs that stream their games. Hallstream reads the scor
   - timeouts, half-time and the final
   - player lower thirds
   - sponsors and promo videos
-- Gives you a control panel in the browser, on the PC or on a phone or tablet on the same network (with a PIN).
+- Gives you a control panel: in its own window on a Mac, in the browser on Windows and Linux, and in the browser on a phone or tablet on the same network (with a PIN).
 - Sets up OBS over obs-websocket: one scene per camera, up to four, with the overlay on top. Cameras come from DroidCam, a webcam or capture device (Windows only for now), or a phone's browser through VDO.Ninja, and you switch between them from the panel. Each camera can hide the corner graphics, the Nothing screen and timeouts can each switch to a camera of their own, and a second camera can sit in a small inset on the scoreboard. `CAMERAS.txt` in each download covers two to four cameras.
 - Creates the YouTube live broadcast with a title and thumbnail, and makes it unlisted afterwards.
 - Pulls squads, photos and fixtures from the Portuguese basketball federation (FPB), if you choose to. The FPB import is for Portuguese basketball only.

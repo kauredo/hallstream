@@ -165,7 +165,7 @@ No Mac
   computadores, como antes.
 - Fechar a janela não fecha o Hallstream: o overlay e a transmissão
   continuam. Carregue no ícone da Dock, ou abra o Hallstream outra vez,
-  para a ver de novo.
+  para a ver.
 - Para fechar o Hallstream, use Hallstream > Sair do Hallstream (⌘Q),
   "Sair" no ícone da barra de menus, ou Sair no menu do ícone da Dock.
   Com a transmissão no ar, o programa pergunta antes de fechar.

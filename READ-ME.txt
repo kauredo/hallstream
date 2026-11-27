@@ -165,9 +165,9 @@ On a Mac
   before.
 - Closing the window doesn't close Hallstream: the overlay and the
   stream carry on. Press the Dock icon, or open Hallstream again, to see
-  it again.
+  the window.
 - To close Hallstream, use Hallstream > Quit Hallstream (⌘Q), "Quit" in
-  the menu bar icon, or Quit in the Dock icon's menu. If the stream is
+  the menu bar icon's menu, or Quit in the Dock icon's menu. If the stream is
   on air, the program asks before closing.
 - Hallstream also has an icon in the menu bar, at the top right: "Open
   panel", "Copy overlay address", the box status and "Quit".

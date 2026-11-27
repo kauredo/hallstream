@@ -73,12 +73,13 @@ func (s *Server) newerRelease() *update.Release {
 
 // updateRun is the install the operator asked for.
 type updateRun struct {
-	mu      sync.Mutex
-	rel     *update.Release // being installed; nil when none runs
-	state   string          // "", downloading, installing, restarting, failed
-	err     string
-	once    sync.Once
-	refusal error // why this copy can't install itself, worked out once
+	mu       sync.Mutex
+	rel      *update.Release // being installed; nil when none runs
+	state    string          // "", downloading, installing, restarting, failed
+	progress int             // the download's percent; -1 while unknown
+	err      string
+	once     sync.Once
+	refusal  error // why this copy can't install itself, worked out once
 }
 
 func (s *Server) install() func(context.Context, *http.Client, update.Release, update.Hooks) error {
@@ -112,12 +113,12 @@ func (s *Server) updateStatus(onPC bool) map[string]any {
 	if rel == nil {
 		return nil
 	}
-	out := map[string]any{"version": rel.Version, "url": rel.URL, "install": false, "state": "", "error": ""}
+	out := map[string]any{"version": rel.Version, "url": rel.URL, "on_pc": onPC, "install": false, "state": "", "progress": -1, "error": ""}
 	if !onPC {
 		return out
 	}
 	s.update.mu.Lock()
-	out["state"], out["error"] = s.update.state, s.update.err
+	out["state"], out["progress"], out["error"] = s.update.state, s.update.progress, s.update.err
 	s.update.mu.Unlock()
 	out["install"] = s.Restart != nil && s.cachedRefusal() == nil
 	return out
@@ -199,7 +200,7 @@ func (s *Server) startUpdate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, i18n.T("api.atualizacao.a_decorrer"))
 		return
 	}
-	s.update.rel, s.update.state, s.update.err = rel, "downloading", ""
+	s.update.rel, s.update.state, s.update.progress, s.update.err = rel, "downloading", -1, ""
 	s.update.mu.Unlock()
 	s.Log(i18n.T("log.atualizacao.a_transferir", "versao", rel.Version))
 	s.once(i18n.T("log.tarefa.atualizar"), func() { s.runInstall(*rel) })
@@ -232,8 +233,13 @@ func (s *Server) runInstall(rel update.Release) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	err = s.install()(ctx, http.DefaultClient, rel, update.Hooks{
-		OffAir:  func() bool { return !s.Streaming() },
-		Status:  s.setUpdateState,
+		OffAir: func() bool { return !s.Streaming() },
+		Status: s.setUpdateState,
+		Progress: func(p int) {
+			s.update.mu.Lock()
+			s.update.progress = p
+			s.update.mu.Unlock()
+		},
 		Restart: s.Restart,
 	})
 	finished = true

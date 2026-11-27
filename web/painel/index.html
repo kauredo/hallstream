@@ -46,8 +46,9 @@
     </div>
     <div class="ask" id="updateOffer" hidden>
       <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">
-      <p class="txt"><b id="updateTxt"></b><span class="hint" id="updateHint"></span></p>
-      <div class="row"><button class="btn primary" type="button" data-act="up-now" data-i18n="painel.atualizacao.agora"></button><a class="btn" id="updateLink" target="_blank" rel="noopener"></a><button class="btn quiet" type="button" data-act="up-later" data-i18n="painel.atualizacao.depois"></button><span class="msg" role="status"></span></div>
+      <p class="txt"><b id="updateTxt" tabindex="-1"></b><span class="hint"><span id="updateHint" role="status"></span> <span id="updatePct" aria-hidden="true"></span></span></p>
+      <div class="row" id="updateActs"><button class="btn primary" type="button" data-act="up-now"></button><a class="btn quiet" id="updateLink" target="_blank" rel="noopener"></a><button class="btn quiet" type="button" data-act="up-later" data-i18n="painel.atualizacao.depois"></button></div>
+      <span class="ask-progress" id="updateBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-i18n-attr="aria-label:painel.atualizacao.a_transferir" hidden><i></i></span>
     </div>
     <div class="ask" id="shortcutAsk" hidden>
       <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">

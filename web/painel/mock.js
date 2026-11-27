@@ -150,13 +150,14 @@
   // ?chan=ok (default), off (live not on), unverified, blocked, fail (the check fails).
   var setupMode = (/[?&]setup=([a-z]+)/.exec(location.search) || [])[1] || 'new';
   var onPC = !/[?&]pc=0\b/.test(location.search);
-  // &update=1 offers 9.9.9 to install, link only links to it, down is downloading, fail has failed, ask asks once,
-  // busy answers Atualizar agora with 409. After Atualizar agora each status poll moves the install on: installing,
+  // &update=1 offers 9.9.9 to install, link only links to it, down is downloading, fail has failed, ask asks once, restart
+  // stays on restarting, busy answers Atualizar agora with 409. After Atualizar agora each status poll moves the install on: installing,
   // restarting, two polls with no answer (the old copy has quit), then the new version.
   var updMode = (/[?&]update=([a-z0-9]+)/.exec(location.search) || [])[1] || '';
-  var updState = { down: 'downloading', fail: 'failed' }[updMode] || '', updPolls = 0;
+  var updState = { down: 'downloading', fail: 'failed', restart: 'restarting' }[updMode] || '', updPolls = 0;
   function updateStep() {
-    if (updState === 'downloading' && updMode !== 'down') updState = 'installing';
+    if (updMode === 'down' || updMode === 'restart') return '';
+    if (updState === 'downloading') updState = 'installing';
     else if (updState === 'installing') updState = 'restarting';
     else if (updState === 'restarting' && ++updPolls > 2) return 'new';
     else if (updState === 'restarting') return 'gone';
@@ -164,8 +165,9 @@
   }
   function updateStatus() {
     if (!updMode || updMode === 'ask') return null;
-    return { version: '9.9.9', url: 'https://github.com/kauredo/hallstream/releases/tag/v9.9.9', install: onPC && updMode !== 'link',
-      state: onPC ? updState : '', error: onPC && updState === 'failed' ? 'O ficheiro Hallstream-9.9.9.zip chegou diferente do publicado, por isso não o usei.' : '' };
+    return { version: '9.9.9', url: 'https://github.com/kauredo/hallstream/releases/tag/v9.9.9', on_pc: onPC, install: onPC && updMode !== 'link',
+      state: onPC ? updState : '', progress: onPC && updState === 'downloading' ? 38 : -1,
+      error: onPC && updState === 'failed' ? 'A cópia que descarreguei não bate certo com a publicada, por isso não a usei.' : '' };
   }
   var chanMode = (/[?&]chan=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
   db.setup = { done: setupMode === 'done' ? '2026-11-09T19:30:00Z' : '', later: false,

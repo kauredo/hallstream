@@ -81,12 +81,16 @@ func release(t *testing.T, files map[string]string, sums map[string]string) (*ht
 func TestDownload(t *testing.T) {
 	_, rel := release(t, map[string]string{"Hallstream-1.4.0.zip": "the program"}, nil)
 	dir := t.TempDir()
-	path, err := Download(context.Background(), http.DefaultClient, rel, "Hallstream-1.4.0.zip", dir)
+	var seen []int
+	path, err := Download(context.Background(), http.DefaultClient, rel, "Hallstream-1.4.0.zip", dir, func(p int) { seen = append(seen, p) })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if b, _ := os.ReadFile(path); string(b) != "the program" || path != filepath.Join(dir, "Hallstream-1.4.0.zip") {
 		t.Errorf("%s: %q", path, b)
+	}
+	if len(seen) == 0 || seen[len(seen)-1] != 100 {
+		t.Errorf("progress %v", seen)
 	}
 }
 
@@ -104,7 +108,7 @@ func TestDownloadRefuses(t *testing.T) {
 	} {
 		_, rel := release(t, c.files, c.sums)
 		dir := t.TempDir()
-		if _, err := Download(context.Background(), http.DefaultClient, rel, c.ask, dir); err == nil {
+		if _, err := Download(context.Background(), http.DefaultClient, rel, c.ask, dir, nil); err == nil {
 			t.Errorf("%s: no error", c.name)
 		}
 		if left, _ := os.ReadDir(dir); len(left) != 0 {
@@ -119,7 +123,7 @@ func TestDownloadTooBig(t *testing.T) {
 	t.Cleanup(func() { maxDownload = old })
 	_, rel := release(t, map[string]string{"a.zip": "too long"}, nil)
 	dir := t.TempDir()
-	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", dir); err == nil {
+	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", dir, nil); err == nil {
 		t.Error("no error")
 	}
 	if left, _ := os.ReadDir(dir); len(left) != 0 {
@@ -130,13 +134,13 @@ func TestDownloadTooBig(t *testing.T) {
 func TestDownloadRedirects(t *testing.T) {
 	srv, rel := release(t, map[string]string{"a.zip": "x"}, nil)
 	rel.Assets["a.zip"] = srv.URL + "/moved/a.zip"
-	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir()); err == nil {
+	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir(), nil); err == nil {
 		t.Error("a redirect to a host that isn't GitHub's was followed")
 	}
 	old := redirectHost
 	redirectHost = func(string) bool { return true }
 	t.Cleanup(func() { redirectHost = old })
-	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir()); err != nil {
+	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir(), nil); err != nil {
 		t.Errorf("redirect: %v", err)
 	}
 }
@@ -184,7 +188,7 @@ func TestDownloadTooManyRedirects(t *testing.T) {
 	redirectHost = func(string) bool { return true }
 	t.Cleanup(func() { redirectHost = old })
 	rel := Release{Assets: map[string]string{"SHA256SUMS": srv.URL + "/SHA256SUMS", "a.zip": srv.URL + "/loop"}}
-	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir()); err == nil {
+	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir(), nil); err == nil {
 		t.Error("an endless redirect was followed")
 	}
 }

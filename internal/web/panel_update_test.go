@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/chromedp/chromedp"
 
@@ -33,10 +34,11 @@ func TestPanelUpdateOffer(t *testing.T) {
 	// The mock moves the install on with each poll: installing, restarting, two polls with no answer, a new version.
 	evalJS(t, tab, `(window.beforeReload = true, true)`)
 	click(t, tab, `[data-act="up-now"]`)
-	if err := until(tab, `document.querySelector('[data-act="up-now"]').disabled && document.querySelector('[data-act="up-later"]').disabled`); err != nil {
+	if err := until(tab, `document.querySelector("#updateActs").hidden && document.activeElement === document.querySelector("#updateTxt")`); err != nil {
 		t.Errorf("after Atualizar agora: %v", err)
 	}
-	if err := until(tab, `document.querySelector("#updateHint").textContent === I18N["painel.atualizacao.a_reiniciar"]`); err != nil {
+	if err := until(tab, `document.querySelector("#updateTxt").textContent === I18N["painel.atualizacao.a_reiniciar_titulo"] &&
+		document.querySelector("#updateHint").textContent === I18N["painel.atualizacao.a_reiniciar"]`); err != nil {
 		t.Errorf("never said restarting: %v", err)
 	}
 	// The reload cuts an evaluation short; ask again on the new page.
@@ -76,8 +78,11 @@ func TestPanelUpdateLinkOnly(t *testing.T) {
 
 func TestPanelUpdateFailed(t *testing.T) {
 	tab := panelAt(t, "&obs=ready&update=fail#jogo")
-	if err := until(tab, `!`+offer+`.hidden && document.querySelector("#updateOffer .msg").className === "msg err" &&
-		document.querySelector("#updateOffer .msg").textContent.includes("Hallstream-9.9.9.zip") && !document.querySelector('[data-act="up-now"]').disabled`); err != nil {
+	if err := until(tab, `!`+offer+`.hidden && document.querySelector("#updateTxt").textContent.includes("9.9.9") &&
+		document.querySelector("#updateTxt").textContent !== I18N["painel.atualizacao.disponivel"].replace("{versao}", "9.9.9") &&
+		document.querySelector("#updateHint").textContent.includes("bate certo") &&
+		document.querySelector('[data-act="up-now"]').textContent === I18N["painel.atualizacao.tentar"] &&
+		document.querySelector("#updateLink").textContent === I18N["painel.atualizacao.a_mao"]`); err != nil {
 		t.Errorf("a failed install: %v", err)
 	}
 }
@@ -89,8 +94,13 @@ func TestPanelUpdateRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	click(t, tab, `[data-act="up-now"]`)
-	if err := until(tab, `document.querySelector("#updateOffer .msg").className === "msg err" && !document.querySelector('[data-act="up-now"]').disabled`); err != nil {
+	// The stream poll redraws every 3 s; the reason has to survive it.
+	if err := until(tab, `document.querySelector("#updateHint").textContent.includes("atualizar") && !document.querySelector('[data-act="up-now"]').hidden`); err != nil {
 		t.Errorf("a refused install: %v", err)
+	}
+	time.Sleep(3500 * time.Millisecond)
+	if err := until(tab, `document.querySelector("#updateHint").textContent !== I18N["painel.atualizacao.dica_instalar"]`); err != nil {
+		t.Errorf("the reason was wiped: %v", err)
 	}
 }
 
@@ -114,5 +124,35 @@ func TestPanelUpdateAskOnce(t *testing.T) {
 		if err := until(tab, `document.querySelector("#checkAsk").hidden && !document.querySelector("#shortcutAsk").hidden`); err != nil {
 			t.Errorf("after %s: %v", answer, err)
 		}
+	}
+}
+
+func TestPanelUpdateDownloading(t *testing.T) {
+	tab := panelAt(t, "&obs=ready&update=down#jogo")
+	if err := until(tab, `document.querySelector("#updatePct").textContent === "38%" && document.querySelector("#updateHint").textContent === I18N["painel.atualizacao.a_transferir"] &&
+		document.querySelector("#updateBar").getAttribute("aria-valuenow") === "38" && !document.querySelector("#updateBar").hidden &&
+		document.querySelector("#updateBar i").style.width === "38%" && document.querySelector("#updateActs").hidden`); err != nil {
+		t.Errorf("downloading: %v", err)
+	}
+}
+
+// One question banner at a time: the shortcut question waits behind the offer.
+func TestPanelUpdateOneBannerAtATime(t *testing.T) {
+	tab := panelAt(t, "&obs=ready&update=1#jogo")
+	if err := until(tab, `!`+offer+`.hidden && document.querySelector("#shortcutAsk").hidden`); err != nil {
+		t.Fatalf("both shown: %v", err)
+	}
+	click(t, tab, `[data-act="up-later"]`)
+	if err := until(tab, offer+`.hidden && !document.querySelector("#shortcutAsk").hidden`); err != nil {
+		t.Errorf("the shortcut question didn't follow: %v", err)
+	}
+	evalJS(t, tab, `(localStorage.removeItem("hs-update-later"), true)`)
+}
+
+// A phone sees the offer with a line saying where to update.
+func TestPanelUpdateFromPhone(t *testing.T) {
+	tab := panelAt(t, "&obs=ready&update=1&pc=0#jogo")
+	if err := until(tab, `document.querySelector("#updateHint").textContent === I18N["painel.atualizacao.no_pc"]`); err != nil {
+		t.Errorf("phone hint: %v", err)
 	}
 }

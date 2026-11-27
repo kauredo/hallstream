@@ -136,7 +136,12 @@ func main() {
 	noBrowser := flag.Bool("nobrowser", false, i18n.T("app.flag.nobrowser"))
 	replayFile := flag.String("replay", "", i18n.T("app.flag.replay"))
 	restarted := flag.Bool("restarted", false, i18n.T("app.flag.restarted"))
+	window := flag.String("window", "", i18n.T("app.flag.window"))
 	flag.Parse()
+
+	if *window != "" {
+		os.Exit(desktop.RunWindow(*window))
+	}
 
 	if *restarted {
 		waitForOldCopy(web.Ours, 30*time.Second)
@@ -145,6 +150,7 @@ func main() {
 	for p := web.FirstPort; p <= web.LastPort; p++ {
 		if web.Ours(fmt.Sprintf("127.0.0.1:%d", p)) {
 			say(i18n.T("log.ja_aberto", "porta", p))
+			desktop.AllowForeground()
 			if !web.ShowOurPanel(fmt.Sprintf("127.0.0.1:%d", p)) {
 				openBrowser(fmt.Sprintf("http://127.0.0.1:%d/painel", p))
 			}

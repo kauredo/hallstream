@@ -35,3 +35,60 @@ func TestInWindow(t *testing.T) {
 		t.Error("an empty or broken panel address matched")
 	}
 }
+
+func TestOutside(t *testing.T) {
+	for target, want := range map[string]bool{
+		"https://accounts.google.com/o/oauth2/auth?x=1": true,
+		"HTTPS://github.com/kauredo/hallstream":         true,
+		"http://example.org":                            true,
+		"mailto:club@example.org":                       true,
+		"https:///nohost":                               false,
+		"http://":                                       false,
+		"http:foo":                                      false,
+		"HTTP://":                                       false,
+		"//example.org":                                 false,
+		"ftp://example.org":                             false,
+		"tel:1":                                         false,
+		"https://u@example.org/":                        true,
+		"MAILTO:a@b":                                    true,
+		"https://a\nb":                                  false,
+		"file:///C:/Windows/System32/calc.exe":          false,
+		"javascript:alert(1)":                           false,
+		"ms-settings:":                                  false,
+		"about:blank":                                   false,
+		"":                                              false,
+		"%zz":                                           false,
+	} {
+		if got := outside(target); got != want {
+			t.Errorf("outside(%q) = %v, want %v", target, got, want)
+		}
+	}
+}
+
+func TestStays(t *testing.T) {
+	const panel = "http://127.0.0.1:8766/painel"
+	for target, want := range map[string]bool{
+		"http://127.0.0.1:8766/painel#jogo":       true,
+		"http://127.0.0.1:8766/api/system/backup": true,
+		"about:blank":                         true,
+		"data:text/csv;charset=utf-8,a":       true,
+		"blob:http://127.0.0.1:8766/1234":     true,
+		"blob:https://evil.example/1":         false,
+		"BLOB:http://127.0.0.1:8766/1234":     true,
+		"DATA:text/csv,a":                     true,
+		"ABOUT:BLANK":                         false,
+		"about:blank#x":                       false,
+		"":                                    false,
+		"%zz":                                 false,
+		"javascript:1":                        false,
+		"http://127.0.0.1:8766@evil.example/": false,
+		"https://accounts.google.com/":        false,
+		"http://127.0.0.1:8765/painel":        false,
+		"about:srcdoc":                        false,
+		"file:///etc/passwd":                  false,
+	} {
+		if got := stays(target, panel); got != want {
+			t.Errorf("stays(%q) = %v, want %v", target, got, want)
+		}
+	}
+}

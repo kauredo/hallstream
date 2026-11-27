@@ -22,9 +22,9 @@ Repo `app/` at `ed2b8cf` (main, v0.1.6). On 2026-11-27 the owner opened v0.1.6 f
 | 2 | ✅ | How | A WKWebView in an NSWindow, in a small Objective-C file in `internal/desktop` (cgo, darwin only). No new Go dependency. | The panel needs the web view's delegate hooks (file panels, downloads, links); AppKit is already linked through systray. |
 | 3 | ✅ | Menus | Hallstream (Acerca do Hallstream, Ocultar ⌘H, Sair ⌘Q), Editar (Desfazer ⌘Z, Refazer ⇧⌘Z, Cortar ⌘X, Copiar ⌘C, Colar ⌘V, Selecionar tudo ⌘A), Ver (Recarregar ⌘R, Aumentar ⌘+, Diminuir ⌘−, Tamanho real ⌘0), Janela (Minimizar ⌘M, Fechar ⌘W), Ajuda (Ajuda do Hallstream: the panel's Ajuda tab). Titles from `web/i18n`. Sair goes through `[NSApp terminate:]`, so it reaches the existing terminate hook and asks while live. | The Edit menu is what makes ⌘C/⌘V work in a web view's text fields. |
 | 4 | 🔥 | Closing the window | Hides it; Hallstream keeps running in the menu bar and the Dock. A Dock click, the tray's "Abrir painel" or opening the app again shows it. Quitting is ⌘Q, Hallstream > Sair, or the tray's Sair. | A volunteer closing the window mid-game must not take the overlay off air. Slack and Discord behave the same. |
-| 5 | ✅ | Links | Anything not on `http://127.0.0.1:<port>`, and every new-window request (`target=_blank`, `window.open`), opens in the default browser. The panel's YouTube sign-in opens `auth_url` with `window.open` when its blank window wasn't created. The routing rule lives in Go (`desktop.inWindow`) so it is tested. | Google refuses sign-in inside embedded web views. |
+| 5 | ✅ | Links | Anything not on `http://127.0.0.1:<port>`, and every new-window request (`target=_blank`, `window.open`), opens in the default browser. The panel already shows the sign-in link when its blank window isn't created (`painel.js:2520`), and that link opens outside. A blank new-window request opens nothing. Downloads are decided before the routing rule, so `data:` and `blob:` downloads stay downloads; frames inside the page load in place. The routing rule lives in Go (`desktop.inWindow`) so it is tested. | Google refuses sign-in inside embedded web views. |
 | 6 | ✅ | Files | `<input type="file">` gets an NSOpenPanel (multiple when the input allows it). A download asks where to save with an NSSavePanel named after the file. | Same as a browser, minus the Downloads bar. |
-| 7 | ✅ | After an in-app update | On a system with a window, the restarted copy opens its window: `restartArgs` stops adding `-nobrowser` there. | The old window closes with the old process. |
+| 7 | ✅ | After an in-app update | On a system with a window, the restarted copy opens its window: `restartArgs` stops adding `-nobrowser` there, and `main` treats `-restarted` as "open the window" even with `-nobrowser`, because v0.1.6's updater (the one that installs v0.1.7) always passes it. | The old window closes with the old process. |
 | 8 | ✅ | Where the panel opens | `-nobrowser` still means "open nothing at start". Elsewhere the window shows at start; the tray's "Abrir painel" shows it; the browser stays one click away for anyone who wants it ("Abrir no browser" in the Ver menu). | Keeps `-nobrowser` meaning what scripts expect. |
 | 9 | ✅ | Words and contract | pt.json first, en.json, CONTRACT "Desktop" lines; LEIA-ME/READ-ME Mac section. | Repo rules. |
 | 10 | ✅ | Stack | 1 plan · 2 Mac app menu · 3 Mac panel window · 4 docs. | The menu alone fixes ⌘Q and is safe to land without the window. |
@@ -43,9 +43,8 @@ Repo `app/` at `ed2b8cf` (main, v0.1.6). On 2026-11-27 the owner opened v0.1.6 f
 - `internal/desktop/window_darwin.go` (+ `.m` or inline): `ShowPanel(url string) bool` makes or shows one NSWindow with a WKWebView loading `url`; returns false off darwin (`window_other.go`), where the caller opens the browser. Delegates: navigation policy (stay or open outside, by `inWindow`), new-window requests (open outside), open panel (NSOpenPanel), downloads (WKDownload + NSSavePanel). Window: 1280×800 first time, remembers its frame, min 420×560, closes to hidden (`releasedWhenClosed` NO).
 - `internal/desktop/route.go`: `inWindow(target, panel string) bool`, tested on every system.
 - `cmd/hallstream/main.go`: at start and from the tray, `desktop.ShowPanel(panel) || openBrowser(panel)`; reopen shows the window; `restartArgs` keeps `-nobrowser` only where `desktop.HasWindow` is false.
-- `web/painel/painel.js`: the YouTube sign-in falls back to `window.open(r.auth_url, '_blank')`.
-- `macres/Info.plist`: App Transport Security key if loopback HTTP needs one.
-- Tests: `inWindow` table; `restartArgs` with and without a window; the panel's sign-in fallback (Chrome test with `window.open` returning null).
+- `macres/Info.plist`: `NSAppTransportSecurity` > `NSAllowsLocalNetworking`. Apple's docs: from macOS 14, ATS blocks plain HTTP to IP addresses, 127.0.0.1 included.
+- Tests: `inWindow` table; `restartArgs` with and without a window.
 
 ### 4. `04-docs/mac-window`
 - LEIA-ME/READ-ME Mac section (the window, closing keeps it running, ⌘Q), README, CONTRACT, ROADMAP, plans row.
@@ -59,3 +58,7 @@ On macOS, opening Hallstream.app shows the panel in its own window with Hallstre
 ## Not tested before merge
 
 Windows and Linux are unchanged by design. The update from v0.1.6 to v0.1.7 is tried with the owner after the release.
+
+## Plan review
+
+One goldfish round (revise). Fixed: the v0.1.6 updater's `-nobrowser` (decision 7), the dropped JS fallback (decision 5), the download-before-routing order, blank new windows, and the ATS key, which Apple's docs say macOS 14+ needs (the goldfish thought loopback was exempt; it isn't from macOS 14). Raycast: the installed app is a normal bundle with no `LSUIElement` and Spotlight has it (`mdls`), so the search miss reads as Raycast's index lagging a fresh install, not something the app controls. `ShowPanel` dispatches to the main queue and always returns true on macOS, so it never blocks, before or after `[NSApp run]`. The menus take the language at start and don't rebuild on a language change.

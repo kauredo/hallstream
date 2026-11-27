@@ -5,8 +5,8 @@ import "testing"
 func TestInWindow(t *testing.T) {
 	const panel = "http://127.0.0.1:8766/painel"
 	for target, want := range map[string]bool{
-		"http://127.0.0.1:8766/painel#jogo":             true,
-		"http://127.0.0.1:8766/api/system/backup":       true,
+		"http://127.0.0.1:8766/painel#jogo":       true,
+		"http://127.0.0.1:8766/api/system/backup": true,
 		"about:blank":                                   true,
 		"http://127.0.0.1:8765/painel":                  false, // another copy, or Marcador CNN
 		"https://127.0.0.1:8766/painel":                 false,

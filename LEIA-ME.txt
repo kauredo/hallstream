@@ -281,6 +281,29 @@ explica também a câmara do ecrã Nada, o interruptor "Mostrar marcador"
 e o inset de uma segunda câmara.
 
 
+VERSÕES NOVAS
+
+Na primeira vez, o painel pergunta se quer ser avisado quando houver uma
+versão nova. Também se muda em Definições > Versões novas. Com o aviso
+ligado, o Hallstream pergunta ao GitHub uma vez por dia e não envia nada
+sobre o clube.
+
+Quando sai uma versão nova, o painel mostra "Hallstream X está
+disponível" (nunca com a transmissão no ar). "Atualizar agora"
+descarrega a versão nova, confirma que chegou inteira, põe-a no lugar
+desta e reinicia o Hallstream. O OBS fica aberto e os dados ficam como
+estão. Se alguma coisa falhar, fica a versão que tinha.
+
+No Windows, o Hallstream só se atualiza sozinho numa pasta onde pode
+escrever, como C:\Hallstream; dentro de "Programas" ("Program Files")
+não pode. No Mac, só a partir da pasta Aplicações.
+
+Se a versão nova não abrir, a anterior fica ao lado durante 10 minutos
+com ".old" no fim do nome (Hallstream.exe.old, ou Hallstream.app.old no
+Mac). Feche o Hallstream, apague a versão nova e tire o ".old" ao nome
+da anterior.
+
+
 CÓPIA DE SEGURANÇA E OUTRO COMPUTADOR
 
 Em Definições > Cópia de segurança, "Guardar cópia" descarrega um ficheiro

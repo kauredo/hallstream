@@ -1,6 +1,6 @@
 # 016: In-app updates (a dialog that downloads, swaps and restarts)
 
-Status: TODO. Stack in worktree `app-update`, layers below.
+Status: all five layers written, in review as one stack. The real swap gets its first proof when an installed release is offered the next one.
 
 Repo `app/` at `849a394` (main, v0.1.5). The owner asked on 2026-11-27: "I'd love this to automatically update, doesn't bva do that already? Maybe like a pop up suggesting to update?", then to ship it unattended. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

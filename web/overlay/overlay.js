@@ -1303,7 +1303,7 @@
     const top = i.y + i.h / 2 < H / 2;
     Object.assign(inset.style, box(i));
     inset.dataset.y = top ? 'top' : 'bottom';
-    setText(insetLb, i.label || t('painel.camaras.camara', { n: i.camera }));
+    setText(insetLb, i.label || t('painel.camaras.camara', { n: st.obs.inset_camera }));
     const tab = 40;
     return { x: i.x - 8, y: i.y - 8 - (top ? 0 : tab), w: i.w + 16, h: i.h + 16 + tab };
   }

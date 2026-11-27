@@ -439,12 +439,17 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	aim := s.want(s.Store.Settings().OBS, req.Camera, req.Old)
 	if req.Cameras != nil {
+		// Under switchMu, so no follow applies the old pick to the new list.
+		s.switchMu.Lock()
 		var err error
-		if aim, err = s.listCameras(req.Cameras); !s.save(w, err) {
+		if aim, err = s.listCameras(req.Cameras); err == nil {
+			s.liveAgain()
+			s.insetMoved(req.Cameras)
+		}
+		s.switchMu.Unlock()
+		if !s.save(w, err) {
 			return
 		}
-		s.liveAgain()
-		s.insetMoved(req.Cameras)
 	}
 	aim.Inset = s.insetShown()
 	rep, err := s.OBS.Setup(cfg, aim, true, s.fitCamera)

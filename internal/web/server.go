@@ -85,8 +85,9 @@ type Server struct {
 	toErr      error          // the screen switch's last result (under switchMu)
 	inset      int            // the camera picked for the inset, 0 none (under switchMu)
 	insetOn    *obsws.ItemRef // the item the inset last showed (under switchMu)
-	insetKey   string         // what the inset was last applied for (under switchMu)
+	insetKey   insetKey       // what the inset was last applied for (under switchMu)
 	insetErr   error          // and its result (under switchMu)
+	insetSwept bool           // every inset item was hidden since the start or the last failure (under switchMu)
 	promoMu    sync.Mutex     // SyncPromo
 	nextMu     sync.Mutex     // one RefreshNext at a time
 	nextQueued atomic.Bool

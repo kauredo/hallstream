@@ -6,9 +6,6 @@ import (
 	"github.com/kauredo/hallstream/internal/i18n"
 )
 
-// The inset's box on the 1920x1080 overlay.
-const InsetW, InsetH = 480, 270
-
 // ItemRef is a source's item in a scene.
 type ItemRef struct {
 	Scene  string
@@ -18,8 +15,10 @@ type ItemRef struct {
 // Inset hides the shown items of hide, all but show, then puts show's item
 // contained in box (1920x1080 overlay px, scaled to the canvas) and shows
 // it. It returns where the picture is in overlay px, nil with show nil. A
-// scene OBS refuses to list is skipped while hiding.
-func (c *Client) Inset(cfg Config, hide []ItemRef, show *ItemRef, box Rect) (*Rect, error) {
+// scene OBS refuses to list is skipped while hiding. home is the scene
+// where show's source is the camera, asked for the picture's size when
+// show's item has none.
+func (c *Client) Inset(cfg Config, hide []ItemRef, show *ItemRef, home string, box Rect) (*Rect, error) {
 	lists := map[string][]sceneItem{}
 	list := func(scene string) ([]sceneItem, error) {
 		if l, ok := lists[scene]; ok {
@@ -29,7 +28,9 @@ func (c *Client) Inset(cfg Config, hide []ItemRef, show *ItemRef, box Rect) (*Re
 			Items []sceneItem `json:"sceneItems"`
 		}
 		err := c.Request(cfg, "GetSceneItemList", map[string]string{"sceneName": scene}, &r)
-		lists[scene] = r.Items
+		if err == nil {
+			lists[scene] = r.Items
+		}
 		return r.Items, err
 	}
 	enable := func(scene string, id int, on bool) error {
@@ -72,14 +73,22 @@ func (c *Client) Inset(cfg Config, hide []ItemRef, show *ItemRef, box Rect) (*Re
 	if it == nil {
 		return nil, i18n.Err("obs.inset.sem_item", "camara", strconv.Quote(show.Source), "cena", strconv.Quote(show.Scene))
 	}
-	tr := it.Transform
-	if tr.SourceWidth <= 0 || tr.SourceHeight <= 0 || v.W <= 0 || v.H <= 0 {
+	w, h := it.Transform.SourceWidth, it.Transform.SourceHeight
+	if (w <= 0 || h <= 0) && home != "" && home != show.Scene {
+		// An item that has never shown may have no size yet.
+		if l, err := list(home); err == nil {
+			if o := find(l, show.Source); o != nil {
+				w, h = o.Transform.SourceWidth, o.Transform.SourceHeight
+			}
+		}
+	}
+	if w <= 0 || h <= 0 || v.W <= 0 || v.H <= 0 {
 		return nil, i18n.Err("obs.camera.sem_imagem", "camara", show.Source)
 	}
 	sx, sy := v.W/1920, v.H/1080
-	p := Contain(tr.SourceWidth, tr.SourceHeight, Rect{box.X * sx, box.Y * sy, box.W * sx, box.H * sy})
+	p := Contain(w, h, Rect{box.X * sx, box.Y * sy, box.W * sx, box.H * sy})
 	if err := c.Request(cfg, "SetSceneItemTransform", map[string]any{"sceneName": show.Scene, "sceneItemId": it.ID,
-		"sceneItemTransform": p.transform(tr.SourceWidth, tr.SourceHeight)}, nil); err != nil {
+		"sceneItemTransform": p.transform(w, h)}, nil); err != nil {
 		return nil, err
 	}
 	if !it.Enabled {

@@ -1,7 +1,6 @@
 package web
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -11,13 +10,16 @@ import (
 	"github.com/kauredo/hallstream/internal/store"
 )
 
+// The inset's box on the 1920x1080 overlay.
+const insetW, insetH = 480, 270
+
 // insetBox is the inset's box on the overlay, at the overlay's margin: the
 // bottom corner the lower third does not take, or with the bug at the
 // bottom (the lower third steps around it there), the top corner away from
 // the bug.
 func insetBox(o store.Overlay) obsws.Rect {
 	o.Clean()
-	m, w, h := float64(o.Margin), float64(obsws.InsetW), float64(obsws.InsetH)
+	m, w, h := float64(o.Margin), float64(insetW), float64(insetH)
 	left, right := m, 1920-m-w
 	if bug, ok := strings.CutPrefix(o.BugPosition, "bottom-"); ok {
 		x := left
@@ -33,14 +35,32 @@ func insetBox(o store.Overlay) obsws.Rect {
 	return obsws.Rect{X: x, Y: 1080 - m - h, W: w, H: h}
 }
 
+// insetKey is what the inset was last applied for.
+type insetKey struct {
+	set        bool
+	cfg        obsws.Config
+	on         bool
+	live, pick int
+	at         obsws.ItemRef
+	box        obsws.Rect
+	cams       string // each camera's scene and source
+}
+
 // applyInset shows the picked camera small in the scene of camera live, on
-// marcador and nada only and never when it is live itself, and hides it
-// everywhere else, then puts where it shows in the live state. The same
-// screen, cameras and place return the last result unless force. The
-// caller holds switchMu.
+// marcador and nada only and never when it is live itself, and hides the
+// item it showed before, then puts where it shows in the live state. The
+// first apply, and the first after a failure, hides every inset item. With
+// none picked and none shown it asks OBS nothing. The same screen, cameras
+// and place return the last result unless force. The caller holds switchMu.
 func (s *Server) applyInset(live int, force bool) error {
+	if s.inset == 0 && s.insetOn == nil {
+		s.insetErr = nil
+		s.State.SetInset(0, nil)
+		return nil
+	}
 	set := s.Store.Settings()
 	o := set.OBS
+	cfg := obsConfig(o)
 	cams := o.CameraList()
 	n := s.inset
 	screen := s.State.Snapshot().Screen.Current
@@ -49,12 +69,15 @@ func (s *Server) applyInset(live int, force bool) error {
 		(screen == "marcador" || screen == "nada") && cams[live-1].Scene != "" && cams[n-1].Source != "" {
 		show = &obsws.ItemRef{Scene: cams[live-1].Scene, Source: cams[n-1].Source}
 	}
-	box := insetBox(set.Overlay)
-	var at obsws.ItemRef
+	key := insetKey{set: true, cfg: cfg, on: o.Enabled, live: live, pick: n, box: insetBox(set.Overlay)}
 	if show != nil {
-		at = *show
+		key.at = *show
 	}
-	key := fmt.Sprint(o.Enabled, obsConfig(o), n, at, box, cams)
+	var b strings.Builder
+	for _, c := range cams {
+		b.WriteString(c.Scene + "\x00" + c.Source + "\x00")
+	}
+	key.cams = b.String()
 	if !force && key == s.insetKey {
 		return s.insetErr
 	}
@@ -65,37 +88,54 @@ func (s *Server) applyInset(live int, force bool) error {
 		return nil
 	}
 	var hide []obsws.ItemRef
-	for _, c := range cams {
-		for _, x := range cams {
-			if c.Scene != "" && x.Source != "" && x.Source != c.Source {
-				hide = append(hide, obsws.ItemRef{Scene: c.Scene, Source: x.Source})
+	if !s.insetSwept {
+		for _, c := range cams {
+			for _, x := range cams {
+				if c.Scene != "" && x.Source != "" && x.Source != c.Source {
+					hide = append(hide, obsws.ItemRef{Scene: c.Scene, Source: x.Source})
+				}
 			}
 		}
 	}
 	if s.insetOn != nil {
 		hide = append(hide, *s.insetOn)
 	}
-	r, err := s.OBS.Inset(obsConfig(o), hide, show, box)
-	s.insetErr = err
+	home := ""
+	if show != nil {
+		home = cams[n-1].Scene
+	}
+	r, err := s.OBS.Inset(cfg, hide, show, home, key.box)
 	if err != nil {
+		if s.insetErr == nil || s.insetErr.Error() != err.Error() {
+			s.Log(i18n.T("log.camara.inset_falhou", "err", err))
+		}
+		s.insetErr, s.insetSwept = err, false
 		if show != nil {
 			s.insetOn = show
 		}
 		s.State.SetInset(n, nil)
-		s.Log(i18n.T("log.camara.inset_falhou", "err", err))
 		return err
 	}
-	s.insetOn = show
+	s.insetErr, s.insetSwept, s.insetOn = nil, true, show
 	var in *state.Inset
 	if r != nil {
 		label := cams[n-1].Label
 		if label == "" {
 			label = i18n.T("obs.cena_camara", "n", n)
 		}
-		in = &state.Inset{Camera: n, Label: label, Rect: state.Rect(*r)}
+		in = &state.Inset{Label: label, Rect: state.Rect(*r)}
 	}
 	s.State.SetInset(n, in)
 	return nil
+}
+
+// insetRetry applies the inset again when the last apply failed.
+func (s *Server) insetRetry() {
+	s.switchMu.Lock()
+	defer s.switchMu.Unlock()
+	if s.insetErr != nil {
+		s.applyInset(s.State.Snapshot().OBS.LiveCamera, true)
+	}
 }
 
 // insetRoute is POST /api/obs/inset: { "camera": n }, 0 for none.
@@ -120,7 +160,7 @@ func (s *Server) insetRoute(w http.ResponseWriter, r *http.Request) {
 	was := s.inset
 	s.inset = req.Camera
 	if err := s.applyInset(s.State.Snapshot().OBS.LiveCamera, true); err != nil {
-		s.inset, s.insetKey = was, ""
+		s.inset, s.insetKey = was, insetKey{}
 		s.State.SetInset(was, nil)
 		fail(w, http.StatusBadGateway, err.Error())
 		return
@@ -129,10 +169,8 @@ func (s *Server) insetRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 // insetMoved moves the inset's pick with its camera in a new camera list; a
-// removed camera turns it off.
+// removed camera turns it off. The caller holds switchMu.
 func (s *Server) insetMoved(list []setupCamera) {
-	s.switchMu.Lock()
-	defer s.switchMu.Unlock()
 	n := 0
 	for i, c := range list {
 		if c.Was > 0 && c.Was == s.inset {
@@ -140,6 +178,11 @@ func (s *Server) insetMoved(list []setupCamera) {
 		}
 	}
 	s.inset = n
+	in := s.State.Snapshot().OBS.Inset
+	if n == 0 {
+		in = nil
+	}
+	s.State.SetInset(n, in)
 }
 
 // insetAfterSetup applies the inset again once a setup has run.

@@ -1140,3 +1140,27 @@ func TestSetupInsetOldCameraHidden(t *testing.T) {
 	}
 	wantResults(t, rep, map[string]string{"inset": "created"})
 }
+
+// An inset item below the camera moves up above it.
+func TestSetupInsetBelowCamera(t *testing.T) {
+	m := newModel()
+	for _, n := range []string{"A", "B"} {
+		m.put("Cena", n, "dshow_input", map[string]any{"video_device_id": n + ":x"})
+	}
+	r := newRun(t, m)
+	r.extra = []string{"source:B"}
+	r.setup("source:A", "")
+	m.mu.Lock()
+	b := m.items["Câmara 1"][1]
+	m.items["Câmara 1"] = slices.Insert(slices.Delete(m.items["Câmara 1"], 1, 2), 0, b)
+	m.mu.Unlock()
+	m.wrote()
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"(B)", "A", "Grafismo"}) {
+		t.Fatalf("not below: %v", got)
+	}
+	rep := r.setup("source:A", "")
+	if got := m.order("Câmara 1"); !slices.Equal(got, []string{"A", "(B)", "Grafismo"}) {
+		t.Errorf("Câmara 1 %v", got)
+	}
+	wantResults(t, rep, map[string]string{"inset": "fixed", "inset-2": "ok"})
+}

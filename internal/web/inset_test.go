@@ -1,6 +1,8 @@
 package web
 
 import (
+	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/kauredo/hallstream/internal/state"
@@ -72,9 +74,10 @@ func TestInsetRouteRefuses(t *testing.T) {
 }
 
 func TestInsetUnreachable(t *testing.T) {
-	s := camServer(t, insetOBS(), insetCams)
+	f := insetOBS()
+	f.codes = map[string]int{"GetSceneItemList": hangUp}
+	s := camServer(t, f, insetCams)
 	s.programScene("Câmara 1")
-	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Host, set.OBS.Port = "127.0.0.1", 1 })
 	if code, resp := setInset(t, s, 2); code != 502 || resp["error"] == nil {
 		t.Errorf("%d %v", code, resp)
 	}
@@ -98,7 +101,7 @@ func TestInsetShowsInLiveScene(t *testing.T) {
 		t.Errorf("shown %v", got)
 	}
 	n, in := insetState(s)
-	if want := (state.Inset{Camera: 2, Label: "Banco", Rect: state.Rect{X: 1376, Y: 746, W: 480, H: 270}}); n != 2 || in == nil || *in != want {
+	if want := (state.Inset{Label: "Banco", Rect: state.Rect{X: 1376, Y: 746, W: 480, H: 270}}); n != 2 || in == nil || *in != want {
 		t.Errorf("state %d %+v", n, in)
 	}
 	if code, _ := setInset(t, s, 0); code != 200 || len(f.shown()) != 0 {
@@ -191,5 +194,147 @@ func TestInsetBox(t *testing.T) {
 		if r.X != c.x || r.Y != c.y || r.W != 480 || r.H != 270 {
 			t.Errorf("%s %s %d: %+v", c.bug, c.lt, c.margin, r)
 		}
+	}
+}
+
+// requested lists the requests of typ in f's log.
+func requested(f *camOBS, typ string) int {
+	n := 0
+	for _, r := range f.requests() {
+		if r == typ {
+			n++
+		}
+	}
+	return n
+}
+
+// With no inset picked nothing asks OBS about it.
+func TestInsetUnusedAsksNothing(t *testing.T) {
+	f := insetOBS()
+	s := camServer(t, f, insetCams)
+	s.programScene("Câmara 1")
+	f.clear()
+	s.switchMu.Lock()
+	s.applyInset(1, true)
+	s.switchMu.Unlock()
+	if got := f.requests(); len(got) != 0 {
+		t.Errorf("asked %v", got)
+	}
+	switchCamera(t, s, 2)
+	if n := requested(f, "SetSceneItemEnabled"); n != 0 {
+		t.Errorf("a switch with no inset showed or hid items: %v", f.requests())
+	}
+}
+
+// The same place asks OBS nothing again; a new margin moves the inset.
+func TestInsetCached(t *testing.T) {
+	f := insetOBS()
+	s := camServer(t, f, insetCams)
+	s.programScene("Câmara 1")
+	setInset(t, s, 2)
+	f.clear()
+	apply := func() {
+		s.switchMu.Lock()
+		s.applyInset(s.State.Snapshot().OBS.LiveCamera, false)
+		s.switchMu.Unlock()
+	}
+	apply()
+	apply()
+	if got := f.requests(); len(got) != 0 {
+		t.Errorf("a repeated apply asked %v", got)
+	}
+	s.Store.UpdateSettings(func(set *store.Settings) { set.Overlay.Margin = 96 })
+	apply()
+	if _, in := insetState(s); requested(f, "SetSceneItemTransform") != 1 || in == nil || in.X != 1920-96-480 || in.Y != 1080-96-270 {
+		t.Errorf("new margin: %v %+v", f.requests(), in)
+	}
+}
+
+// The inset moves only once the switch is made; a refused switch leaves
+// it where it was, also when it was hidden for a switch to its own camera.
+func TestInsetSwitchOrder(t *testing.T) {
+	f := insetOBS()
+	s := camServer(t, f, insetCams)
+	s.programScene("Câmara 1")
+	setInset(t, s, 2)
+	f.clear()
+	if code, resp := switchCamera(t, s, 3); code != 200 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	got := f.requests()
+	if sw, en := slices.Index(got, "SetCurrentProgramScene"), slices.Index(got, "SetSceneItemEnabled"); sw < 0 || en < sw {
+		t.Errorf("the inset moved before the switch: %v", got)
+	}
+
+	f.mu.Lock()
+	f.refuse = true
+	f.mu.Unlock()
+	f.clear()
+	if code, _ := switchCamera(t, s, 1); code != http.StatusBadGateway {
+		t.Fatalf("refused switch: %d", code)
+	}
+	if n := requested(f, "SetSceneItemEnabled"); n != 0 || !slices.Equal(f.shown(), []string{"Câmara 3/B"}) {
+		t.Errorf("a refused switch moved the inset: %v %v", f.requests(), f.shown())
+	}
+	if code, _ := switchCamera(t, s, 2); code != http.StatusBadGateway {
+		t.Fatalf("refused switch: %d", code)
+	}
+	if _, in := insetState(s); !slices.Equal(f.shown(), []string{"Câmara 3/B"}) || in == nil {
+		t.Errorf("a refused switch to the inset's camera left it hidden: %v %+v", f.shown(), in)
+	}
+}
+
+// OBS refusing the inset never fails the switch; the next 4 s tick tries it
+// again.
+func TestInsetRefusedDuringSwitch(t *testing.T) {
+	f := insetOBS()
+	s := camServer(t, f, insetCams)
+	s.programScene("Câmara 1")
+	setInset(t, s, 2)
+	f.mu.Lock()
+	f.codes = map[string]int{"SetSceneItemEnabled": 600}
+	f.mu.Unlock()
+	if code, resp := switchCamera(t, s, 3); code != 200 || resp["live_camera"] != 3.0 {
+		t.Fatalf("%d %v", code, resp)
+	}
+	if _, in := insetState(s); in != nil {
+		t.Errorf("state %+v", in)
+	}
+	f.mu.Lock()
+	f.codes = nil
+	f.mu.Unlock()
+	s.insetRetry()
+	if _, in := insetState(s); !slices.Equal(f.shown(), []string{"Câmara 3/B"}) || in == nil {
+		t.Errorf("not tried again: %v %+v", f.shown(), in)
+	}
+	f.clear()
+	s.insetRetry()
+	if got := f.requests(); len(got) != 0 {
+		t.Errorf("tried again after a success: %v", got)
+	}
+}
+
+// Saving a new camera list from Definições moves the pick with its camera
+// and leaves the shown inset alone; removing the camera turns it off.
+func TestInsetSetupList(t *testing.T) {
+	f := insetOBS()
+	f.codes = map[string]int{"GetInputList": hangUp}
+	s := camServer(t, f, insetCams)
+	s.programScene("Câmara 1")
+	setInset(t, s, 2)
+	list := []map[string]any{{"choice": "source:B", "was": 2}, {"choice": "source:A", "was": 1}, {"choice": "source:C", "was": 3}}
+	var resp map[string]any
+	if code := call(t, s, "POST", "/api/obs/setup", map[string]any{"cameras": list}, &resp); code != http.StatusBadGateway {
+		t.Fatalf("%d %v", code, resp)
+	}
+	if n, in := insetState(s); n != 1 || in == nil || !slices.Equal(f.shown(), []string{"Câmara 1/B"}) {
+		t.Errorf("reordered: pick %d %+v shown %v", n, in, f.shown())
+	}
+	list = []map[string]any{{"choice": "source:A", "was": 2}, {"choice": "source:C", "was": 3}}
+	if code := call(t, s, "POST", "/api/obs/setup", map[string]any{"cameras": list}, &resp); code != http.StatusBadGateway {
+		t.Fatalf("%d %v", code, resp)
+	}
+	if n, in := insetState(s); n != 0 || in != nil {
+		t.Errorf("removed: pick %d %+v", n, in)
 	}
 }

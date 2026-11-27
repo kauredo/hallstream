@@ -141,6 +141,6 @@
     "live_camera": 1,
     "clean": false,
     "inset_camera": 2,
-    "inset": { "camera": 2, "label": "Banco", "x": 1376, "y": 746, "w": 480, "h": 270 }
+    "inset": { "label": "Banco", "x": 1376, "y": 746, "w": 480, "h": 270 }
   }
 }

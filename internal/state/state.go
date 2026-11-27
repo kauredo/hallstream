@@ -311,11 +311,10 @@ type OBS struct {
 	Inset *Inset `json:"inset"`
 }
 
-// Inset is the inset's camera, its name on the panel and its picture on
-// the 1920x1080 overlay, in pixels.
+// Inset is the inset camera's name on the panel and its picture on the
+// 1920x1080 overlay, in pixels.
 type Inset struct {
-	Camera int    `json:"camera"`
-	Label  string `json:"label"`
+	Label string `json:"label"`
 	Rect
 }
 

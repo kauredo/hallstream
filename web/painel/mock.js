@@ -252,7 +252,7 @@
   function mockInset() {
     var c = (db.settings.obs.cameras || [])[db.inset - 1], cur = db.screen.current;
     if (obsMode === 'off' || !c || db.inset === db.obsLive || (cur !== 'marcador' && cur !== 'nada')) return null;
-    return { camera: db.inset, label: c.label || 'Câmara ' + db.inset, x: 1376, y: 746, w: 480, h: 270 };
+    return { label: c.label || 'Câmara ' + db.inset, x: 1376, y: 746, w: 480, h: 270 };
   }
   // The camera for time-outs: ?tcam=0|1|2|3|4; for the Nada screen: ?ncam=0|1|2|3|4.
   var tcamQ = /[?&]tcam=([0-4])/.exec(location.search), ncamQ = /[?&]ncam=([0-4])/.exec(location.search);

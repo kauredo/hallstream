@@ -254,7 +254,8 @@ func (s *Server) timeoutSkip(why error) error {
 }
 
 // RunCamera keeps the OBS camera with the screen (automatic changes too) and
-// refits it when the tablet's picture changes size. It never returns.
+// refits it when the tablet's picture changes size, and tries a failed
+// inset again every 4 s. It never returns.
 func (s *Server) RunCamera() {
 	if s.camErr != nil {
 		s.Log(i18n.T("log.camara.erro", "err", s.camErr))
@@ -274,6 +275,7 @@ func (s *Server) RunCamera() {
 			s.followCamera()
 		case <-check.C:
 			refit()
+			s.insetRetry()
 		}
 	}
 }
@@ -401,9 +403,21 @@ func (s *Server) liveAgain() {
 // switchTo puts camera cam, number n, where the screen needs it (in the
 // window or at full screen, at once) and switches OBS to its scene, with no
 // squeeze in between. A failure to place comes back as warning and does not
-// stop the switch. The caller holds switchMu.
+// stop the switch. The inset follows once the switch is made. The caller
+// holds switchMu.
 func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
-	s.applyInset(n, false) // shown in the new scene, never over itself
+	hid := n == s.inset && s.insetOn != nil
+	if hid {
+		s.applyInset(0, false) // a camera never shows itself
+	}
+	defer func() {
+		switch {
+		case err == nil:
+			s.applyInset(n, false)
+		case hid:
+			s.applyInset(s.State.Snapshot().OBS.LiveCamera, true)
+		}
+	}()
 	cfg := obsConfig(s.Store.Settings().OBS)
 	s.liveMu.Lock()
 	onAir := s.program == cam.Scene

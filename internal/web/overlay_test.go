@@ -731,6 +731,7 @@ func TestOverlayInset(t *testing.T) {
 	for _, c := range []struct{ query, want string }{
 		{"state=/overlay/fixtures/marcador-inset.json", "1376,746,480,270 Banco"},
 		{"state=/overlay/fixtures/nada-inset.json", "1376,746,480,270 Banco"},
+		{"state=/overlay/fixtures/marcador-inset-top.json", "64,64,480,270 Banco"},
 		{"state=/overlay/fixtures/marcador-inset.json&screen=intervalo", ""},
 		{"state=/overlay/fixtures/marcador-inset.json&screen=desconto", ""},
 		{"state=/overlay/fixtures/marcador.json", ""},
@@ -759,10 +760,15 @@ func TestOverlayInset(t *testing.T) {
 		if (!document.querySelector('#lt.on')) bad.push('no lower third');
 		return bad.join(', ');
 	})()`
-	for _, bug := range []string{"top-left", "top-center", "top-right"} {
+	// With the bug at the bottom the inset sits in a top corner.
+	for _, bug := range []string{"top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"} {
+		fixture := "marcador-inset.json"
+		if strings.HasPrefix(bug, "bottom-") {
+			fixture = "marcador-inset-top.json"
+		}
 		for _, side := range store.LowerThirds {
 			t.Run(bug+"/"+side, func(t *testing.T) {
-				open("bug=" + bug + "&lt=" + side + "&scale=125&margin=64&corner=1&state=/overlay/fixtures/marcador-inset.json")
+				open("bug=" + bug + "&lt=" + side + "&scale=125&margin=64&corner=1&state=/overlay/fixtures/" + fixture)
 				bad, err := chromedp.Run(tab, chromedp.Evaluate[string](check))
 				if err != nil {
 					t.Fatal(err)

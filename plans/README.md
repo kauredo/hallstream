@@ -19,9 +19,9 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 011 | Adding cameras in Definições and the wizard, with a phone through VDO.Ninja | P2 | L | 008, 009, 010 | DONE: merged #49 (72bce29), released in v0.1.3 |
 | 012 | A health line per camera | P2 | M | 009 | DONE: merged #50 (fbc47c0), released in v0.1.3 |
 | 013 | A guide for two and three cameras, shipped in the zip | P3 | S | 011 | DONE: merged #51 (6f80eb7), released in v0.1.3 |
-| 014 | macOS and Linux releases next to the Windows zip | P1 | L | none | IN REVIEW: stack 01-05 |
-| 015 | Camera extras: four cameras, a camera for Nada and Desconto, cameras without the corner graphics, an inset of a second camera | P2 | L | 008 to 013 | DONE: merged #62 to #67 (47f0922) |
-| 016 | In-app updates: a dialog that downloads the new version, checks it, swaps the program and restarts | P1 | L | 014 | IN REVIEW: stack #69 to #74 (stack #75) |
+| 014 | macOS and Linux releases next to the Windows zip | P1 | L | none | DONE: merged #56 to #60 (849a394), released in v0.1.5 |
+| 015 | Camera extras: four cameras, a camera for Nada and Desconto, cameras without the corner graphics, an inset of a second camera | P2 | L | 008 to 013 | DONE: merged #62 to #67 (47f0922), released in v0.1.5 |
+| 016 | In-app updates: a dialog that downloads the new version, checks it, swaps the program and restarts | P1 | L | 014 | DONE: merged #69 to #76 (838c8aa), released in v0.1.6 |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

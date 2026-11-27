@@ -22,7 +22,8 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 014 | macOS and Linux releases next to the Windows zip | P1 | L | none | DONE: merged #56 to #60 (849a394), released in v0.1.5 |
 | 015 | Camera extras: four cameras, a camera for Nada and Desconto, cameras without the corner graphics, an inset of a second camera | P2 | L | 008 to 013 | DONE: merged #62 to #67 (47f0922), released in v0.1.5 |
 | 016 | In-app updates: a dialog that downloads the new version, checks it, swaps the program and restarts | P1 | L | 014 | DONE: merged #69 to #76 (838c8aa), released in v0.1.6 |
-| 017 | The Mac app gets its own window and menus: the panel in a native window, ⌘Q, Edit menu, links and files handled | P1 | M | 016 | IN REVIEW: stack #78 to #81 (stack #82) |
+| 017 | The Mac app gets its own window and menus: the panel in a native window, ⌘Q, Edit menu, links and files handled | P1 | M | 016 | DONE: merged #78 to #81 (d641629), released in v0.1.7 |
+| 018 | The Windows app gets its own window: the panel in a WebView2 window, the Edge app window as the fallback, links and the second double-click handled | P1 | M | 017 | IN PROGRESS |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

@@ -306,7 +306,7 @@ func TestOverlayCleanCamera(t *testing.T) {
 		{"state=/overlay/fixtures/rodape-jogador.json&corner=1", "bug corner lt marcador"},
 		{"state=/overlay/fixtures/marcador-limpo.json&corner=1", "marcador"},
 		{"state=/overlay/fixtures/rodape-jogador.json&screen=nada", "lt"},
-		{"state=/overlay/fixtures/nada-limpo.json", ""},
+		{"state=/overlay/fixtures/nada-limpo.json&corner=1", ""},
 		{"state=/overlay/fixtures/marcador-limpo.json&screen=intervalo", "intervalo"},
 		{"state=/overlay/fixtures/marcador-limpo.json&screen=desconto", "desconto"},
 	} {
@@ -315,6 +315,12 @@ func TestOverlayCleanCamera(t *testing.T) {
 				t.Fatal(err)
 			}
 			if err := until(tab, `document.documentElement.dataset.screen !== undefined && [...document.images].every((i) => i.complete)`); err != nil {
+				t.Fatal(err)
+			}
+			// What shows must hold for a second (20 polls), past every fade, before it counts.
+			if err := until(tab, `(() => { const v = `+shown+`, p = window.shownWas;
+				if (!p || p.v !== v) { window.shownWas = { v, n: 0 }; return false; }
+				return ++p.n >= 20; })()`); err != nil {
 				t.Fatal(err)
 			}
 			got, err := chromedp.Run(tab, chromedp.Evaluate[string](shown))

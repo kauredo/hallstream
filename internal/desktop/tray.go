@@ -45,6 +45,7 @@ func (t Tray) Run() {
 				systray.Quit()
 			}()
 		}
+		installMenus()
 		systray.SetIcon(t.Icon)
 		systray.SetTooltip(t.Tooltip)
 		// On a Mac a click on the menu bar icon shows the menu.

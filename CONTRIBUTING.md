@@ -20,12 +20,12 @@ Volunteers run Hallstream in a sports hall, often with no internet and nobody te
 
 This needs someone with access to the console. The steps:
 
-1. Record a real session. Today that is `dados/raw.log`. A capture mode for serial consoles is planned.
+1. Record a real session with "Gravar a consola" in the Marcação tab, from the Bluetooth box or the cable. The file lands in `dados/captura/` and plays back with `-replay <file>`.
 2. Film the board during the same session, so each byte can be matched to what the board showed.
-3. Write the decoder behind the input interface (see the roadmap), with tests that replay the recording and check the score, clock, period and fouls at known moments.
+3. Write the decoder: a cable console goes in `internal/cable` (see `docs/research/scoreboard-serial-protocols.md`), a new link behind `source.Source`. Add tests that replay the recording and check the score, clock, period and fouls at known moments.
 4. In the pull request, name the console model, its firmware if you know it, and the sports you tested.
 
-A decoder without a recorded session can't be merged, because nobody else could check it.
+A decoder without a recorded session merges only when it is built from a published protocol document, like the Daktronics and Bodet ones, and the website lists it as "codes read, needs a recorded game" until a recording plays back. Without either, nobody else could check it.
 
 ## Adding a sport
 

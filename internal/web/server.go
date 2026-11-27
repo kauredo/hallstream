@@ -63,6 +63,9 @@ type Server struct {
 	OpenFolder func(dir string) error
 	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
 	UpdateURL string
+	// Restart starts the program that an update put in place and closes
+	// this one; nil can't restart.
+	Restart func() error
 	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
 	// GitHub link in Ajuda.
 	FeedbackURL string

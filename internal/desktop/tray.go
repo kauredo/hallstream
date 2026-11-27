@@ -38,6 +38,13 @@ func (t Tray) Run() {
 			quit()
 			systray.Quit()
 		})
+		if t.Stop != nil {
+			go func() {
+				<-t.Stop
+				quit()
+				systray.Quit()
+			}()
+		}
 		systray.SetIcon(t.Icon)
 		systray.SetTooltip(t.Tooltip)
 		// On a Mac a click on the menu bar icon shows the menu.

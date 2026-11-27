@@ -15,7 +15,9 @@ type Tray struct {
 	// ConfirmQuit may stop "Sair" by returning false; nil always quits.
 	ConfirmQuit func() bool
 	Quit        func() // cleans up; runs once, before Run returns
-	Log         func(string)
+	// Stop, once closed, quits like "Sair" without asking.
+	Stop <-chan struct{}
+	Log  func(string)
 }
 
 // logLine is Tray.Log once Run starts, for problems Ask can only log.

@@ -85,6 +85,7 @@ func (f *fakeInstall) run(ctx context.Context, c *http.Client, rel update.Releas
 	if err := step("download"); err != nil {
 		return err
 	}
+	h.Progress(50)
 	h.Status("installing")
 	if err := step("prepare"); err != nil {
 		return err
@@ -161,7 +162,7 @@ func TestUpdateInstalls(t *testing.T) {
 	if len(f.restarts) != 1 || f.restarts[0] != "/x/Hallstream" {
 		t.Errorf("restarts %v", f.restarts)
 	}
-	if u := updateState(t, s); u["state"] != "restarting" {
+	if u := updateState(t, s); u["state"] != "restarting" || u["progress"] != 50.0 || u["on_pc"] != true {
 		t.Errorf("state %v", u)
 	}
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusConflict {

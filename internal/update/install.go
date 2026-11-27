@@ -30,9 +30,10 @@ var (
 
 // Hooks are what Install asks of the program around it.
 type Hooks struct {
-	OffAir  func() bool               // false stops the install: the stream went live
-	Status  func(state string)        // "installing", then "restarting"
-	Restart func(target string) error // starts the new program at target and closes this one
+	OffAir   func() bool               // false stops the install: the stream went live
+	Status   func(state string)        // "installing", then "restarting"
+	Progress func(percent int)         // the download's progress, when the size is known
+	Restart  func(target string) error // starts the new program at target and closes this one
 }
 
 // Install downloads rel, checks it, puts it in place of the running program
@@ -67,7 +68,7 @@ func Install(ctx context.Context, c *http.Client, rel Release, h Hooks) (err err
 		}
 		os.RemoveAll(stage)
 	}()
-	archive, err := Download(ctx, c, rel, name, stage)
+	archive, err := Download(ctx, c, rel, name, stage, h.Progress)
 	if err != nil {
 		return err
 	}

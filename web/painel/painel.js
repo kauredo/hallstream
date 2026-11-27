@@ -342,8 +342,8 @@
       var u = $('#dUrl'); if (u && s && s.overlay_url) u.value = s.overlay_url;
       if (S.tab === 'ajuda') renderAjudaDir();
       renderCheckAsk();
-      renderShortcutAsk();
       renderUpdateOffer();
+      renderShortcutAsk();
       if (updateRunning(s && s.update)) followUpdate();
       renderFeedback();
       refreshInicio();
@@ -1246,7 +1246,7 @@
   function setStream(r) {
     S.stream = (r && r.stream) || null; S.streamAt = Date.now();
     S.ytStream = (r && r.youtube) || null;
-    renderStream(); renderYtCard(); renderUpdateOffer();
+    renderStream(); renderYtCard(); renderUpdateOffer(); renderShortcutAsk();
   }
   function obsHealth() { var o = (S.status && S.status.obs) || {}; return o.connected ? (o.health || {}) : {}; }
 
@@ -3526,47 +3526,77 @@
   // only). With "install" the PC can update itself; otherwise the box links to the release page.
   function laterVersion() { try { return localStorage.getItem('hs-update-later') || ''; } catch (e) { return ''; } }
   function updateRunning(u) { var st = u && u.state; return st === 'downloading' || st === 'installing' || st === 'restarting'; }
+  function setText(el, text) { if (el.textContent !== text) el.textContent = text; } // a live region reads every write
   function renderUpdateOffer() {
     var u = S.status && S.status.update, box = $('#updateOffer');
-    var state = (u && u.state) || '', working = S.restarting || updateRunning(u);
+    var state = (u && u.state) || '', working = S.restarting || updateRunning(u), failed = state === 'failed';
     box.hidden = !u || (!working && (laterVersion() === u.version || (S.stream && S.stream.active)));
     if (box.hidden) return;
-    $('#updateTxt').textContent = t('painel.atualizacao.disponivel', { versao: u.version });
-    var link = $('#updateLink'), now = $('[data-act="up-now"]', box), later = $('[data-act="up-later"]', box);
-    link.href = u.url;
-    link.textContent = u.install ? t('painel.atualizacao.notas') : t('painel.atualizacao.ver');
-    link.classList.toggle('primary', !u.install);
+    var title, hint, v = { versao: u.version };
+    if (S.restarting || state === 'restarting') {
+      title = t('painel.atualizacao.a_reiniciar_titulo');
+      hint = S.updateLost ? t('painel.atualizacao.abrir_outra_vez') : t('painel.atualizacao.a_reiniciar');
+    } else if (working) {
+      title = t('painel.atualizacao.a_instalar_titulo', v);
+      if (state === 'installing') hint = t('painel.atualizacao.a_instalar');
+      else hint = t('painel.atualizacao.a_transferir');
+    } else if (failed) {
+      title = t('painel.atualizacao.falhou_titulo', v);
+      hint = t('painel.atualizacao.falhou', { erro: u.error });
+    } else {
+      title = t('painel.atualizacao.disponivel', v);
+      hint = u.install ? t('painel.atualizacao.dica_instalar') : u.on_pc ? t('painel.atualizacao.dica') : t('painel.atualizacao.no_pc');
+    }
+    if (S.updateErr && S.updateErr.version === u.version && !working && !failed) hint = S.updateErr.msg;
+    setText($('#updateTxt'), title);
+    setText($('#updateHint'), hint);
+    box.classList.toggle('failed', failed);
+    $('#updateActs').hidden = working;
+    var now = $('[data-act="up-now"]', box), link = $('#updateLink');
     now.hidden = !u.install;
-    now.disabled = later.disabled = working;
-    var hint = u.install ? t('painel.atualizacao.dica_instalar') : t('painel.atualizacao.dica');
-    if (state === 'downloading') hint = t('painel.atualizacao.a_transferir');
-    if (state === 'installing') hint = t('painel.atualizacao.a_instalar');
-    if (state === 'restarting' || S.restarting) hint = S.updateLost ? t('painel.atualizacao.abrir_outra_vez') : t('painel.atualizacao.a_reiniciar');
-    $('#updateHint').textContent = hint;
-    var msg = $('.msg', box);
-    msg.className = state === 'failed' ? 'msg err' : 'msg';
-    msg.textContent = state === 'failed' ? t('painel.atualizacao.falhou', { erro: u.error }) : '';
+    setText(now, failed ? t('painel.atualizacao.tentar') : t('painel.atualizacao.agora'));
+    link.href = u.url;
+    link.className = 'btn ' + (u.install ? 'quiet' : 'primary');
+    setText(link, failed ? t('painel.atualizacao.a_mao') : u.install ? t('painel.atualizacao.notas') : t('painel.atualizacao.ver'));
+    // The percent stays out of the live region, so a screen reader hears the state changes, not every tick.
+    var counting = state === 'downloading' && u.progress >= 0;
+    setText($('#updatePct'), counting ? u.progress + '%' : '');
+    var bar = $('#updateBar'), sweep = S.restarting || state === 'restarting', pct = state === 'installing' ? 100 : Math.max(u.progress, 0);
+    bar.hidden = !(sweep || counting || state === 'installing');
+    bar.classList.toggle('sweep', sweep);
+    bar.firstChild.style.width = sweep ? '' : pct + '%';
+    if (sweep) bar.removeAttribute('aria-valuenow'); else bar.setAttribute('aria-valuenow', pct);
   }
   // While an install runs, ask every 2 s. Once the old copy quits, a failed request means the new one isn't
   // listening yet; when another version answers, the page reloads on it.
   function followUpdate() {
-    if (S.following) return;
+    if (S.following || !S.status) return;
     S.following = true;
     var old = S.status.version, gone = 0;
-    (function poll() {
+    function again() { setTimeout(poll, 2000); }
+    function poll() {
       api('GET', '/api/status').then(function (s) {
-        if (s && s.version && s.version !== old) { location.reload(); return; }
+        if (!s) { again(); return; }
+        if (s.version && s.version !== old) { location.reload(); return; }
         S.status = s; S.restarting = false; S.updateLost = false; gone = 0;
-        renderUpdateOffer();
-        if (updateRunning(s && s.update)) setTimeout(poll, 2000);
+        try { renderUpdateOffer(); renderShortcutAsk(); } catch (e) { /* the next poll draws again */ }
+        if (updateRunning(s.update)) again();
         else S.following = false;
       }, function () {
         if (!gone) gone = Date.now();
         S.restarting = true; S.updateLost = Date.now() - gone > 60000;
         renderUpdateOffer();
-        setTimeout(poll, 2000);
+        again();
       });
-    })();
+    }
+    poll();
+  }
+  // When a banner closes, the keyboard goes to the next question, else to the tab it sits above.
+  function focusAfterBanner() {
+    var next = $('#shortcutAsk [data-act="sc-yes"]');
+    var tab = $('.nav [data-tab="' + S.tab + '"]');
+    if (next && !$('#shortcutAsk').hidden) next.focus();
+    else if (tab) tab.focus();
   }
   function updateEvents() {
     var box = $('#updateOffer');
@@ -3575,13 +3605,25 @@
       if (b.dataset.act === 'up-later') {
         try { localStorage.setItem('hs-update-later', S.status.update.version); } catch (err) { /* hide for now only */ }
         box.hidden = true;
+        renderShortcutAsk();
+        focusAfterBanner();
         return;
       }
-      if (b.dataset.act !== 'up-now') return;
-      b.disabled = true;
-      api('POST', '/api/update', {}).then(followUpdate, function (err) {
-        b.disabled = false;
-        var msg = $('.msg', box); msg.className = 'msg err'; msg.textContent = err.message;
+      if (b.dataset.act !== 'up-now' || b.dataset.sending) return;
+      var asked = S.status.update; // a poll may replace S.status before the answer comes
+      b.dataset.sending = '1'; S.updateErr = null;
+      api('POST', '/api/update', {}).then(function () {
+        delete b.dataset.sending;
+        var u = S.status && S.status.update;
+        if (u) { u.state = 'downloading'; u.progress = -1; }
+        renderUpdateOffer();
+        $('#updateTxt').focus(); // the buttons are gone: keep the keyboard on the banner
+        followUpdate();
+      }, function (err) {
+        delete b.dataset.sending;
+        // Kept for this version until the next click, so the 3 s stream poll doesn't wipe it.
+        S.updateErr = { version: asked.version, msg: err.message };
+        renderUpdateOffer();
       });
     });
     var ask = $('#checkAsk');
@@ -3590,6 +3632,7 @@
       busy(b, function () {
         return api('POST', '/api/update/ask', { check: b.dataset.act === 'check-yes' }).then(function (s) {
           S.settings = s; S.status.update_check_ask = false; renderCheckAsk(); renderShortcutAsk();
+          focusAfterBanner();
         });
       });
     });
@@ -3602,7 +3645,7 @@
   function renderShortcutAsk() {
     var box = $('#shortcutAsk');
     if (box.dataset.closing) return;
-    box.hidden = !(S.status && S.status.shortcut && !S.status.update_check_ask && S.settings && !S.settings.desktop_shortcut);
+    box.hidden = !(S.status && S.status.shortcut && !S.status.update_check_ask && $('#updateOffer').hidden && S.settings && !S.settings.desktop_shortcut);
   }
   function createShortcut(create) {
     return api('POST', '/api/system/desktop-shortcut', { create: create }).then(function (r) {

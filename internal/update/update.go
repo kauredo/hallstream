@@ -115,8 +115,9 @@ var redirectHost = func(host string) bool {
 
 // Download fetches the release file name into dir and checks it against the
 // release's SHA256SUMS. It returns the file's path, and leaves nothing
-// behind when it fails.
-func Download(ctx context.Context, c *http.Client, rel Release, name, dir string) (string, error) {
+// behind when it fails. progress, when not nil, gets the share done in
+// percent as the file arrives, when the server says how big it is.
+func Download(ctx context.Context, c *http.Client, rel Release, name, dir string, progress func(percent int)) (string, error) {
 	sumsURL, fileURL := rel.Assets[sumsName], rel.Assets[name]
 	if sumsURL == "" || fileURL == "" {
 		return "", i18n.Err("log.atualizacao.sem_ficheiro", "ficheiro", name)
@@ -137,7 +138,7 @@ func Download(ctx context.Context, c *http.Client, rel Release, name, dir string
 		return "", i18n.Err("log.atualizacao.sem_soma", "ficheiro", name)
 	}
 	path := filepath.Join(dir, name)
-	if err := save(ctx, &client, fileURL, path, want); err != nil {
+	if err := save(ctx, &client, fileURL, path, want, progress); err != nil {
 		os.Remove(path)
 		return "", err
 	}
@@ -181,7 +182,7 @@ func fetch(ctx context.Context, c *http.Client, url string, limit int64) ([]byte
 	return io.ReadAll(io.LimitReader(res.Body, limit))
 }
 
-func save(ctx context.Context, c *http.Client, url, path, want string) error {
+func save(ctx context.Context, c *http.Client, url, path, want string, progress func(int)) error {
 	res, err := get(ctx, c, url)
 	if err != nil {
 		return err
@@ -192,7 +193,11 @@ func save(ctx context.Context, c *http.Client, url, path, want string) error {
 		return err
 	}
 	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(res.Body, maxDownload+1))
+	var w io.Writer = io.MultiWriter(f, h)
+	if progress != nil && res.ContentLength > 0 {
+		w = &counter{w: w, total: res.ContentLength, report: progress}
+	}
+	n, err := io.Copy(w, io.LimitReader(res.Body, maxDownload+1))
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -202,9 +207,27 @@ func save(ctx context.Context, c *http.Client, url, path, want string) error {
 	case n > maxDownload:
 		return i18n.Err("log.atualizacao.grande_demais", "ficheiro", filepath.Base(path))
 	case hex.EncodeToString(h.Sum(nil)) != want:
-		return i18n.Err("log.atualizacao.soma_errada", "ficheiro", filepath.Base(path))
+		return i18n.Err("log.atualizacao.soma_errada")
 	}
 	return nil
+}
+
+// counter reports each new whole percent of total written through it.
+type counter struct {
+	w           io.Writer
+	done, total int64
+	last        int
+	report      func(int)
+}
+
+func (c *counter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.done += int64(n)
+	if pct := int(min(c.done*100/c.total, 100)); pct != c.last {
+		c.last = pct
+		c.report(pct)
+	}
+	return n, err
 }
 
 // Newer reports whether latest is a later version than current. A build

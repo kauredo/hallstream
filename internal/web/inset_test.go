@@ -93,7 +93,9 @@ func TestInsetShowsInLiveScene(t *testing.T) {
 	s := camServer(t, f, insetCams)
 	s.programScene("Câmara 1")
 	s.bg.Wait()
+	f.mu.Lock()
 	f.scenes["Câmara 3"][2]["sceneItemEnabled"] = true // left shown by an earlier run
+	f.mu.Unlock()
 	if code, resp := setInset(t, s, 2); code != 200 || resp["camera"] != 2.0 {
 		t.Fatalf("%d %v", code, resp)
 	}
@@ -318,10 +320,16 @@ func TestInsetRefusedDuringSwitch(t *testing.T) {
 // and leaves the shown inset alone; removing the camera turns it off.
 func TestInsetSetupList(t *testing.T) {
 	f := insetOBS()
-	f.codes = map[string]int{"GetInputList": hangUp}
 	s := camServer(t, f, insetCams)
 	s.programScene("Câmara 1")
-	setInset(t, s, 2)
+	if code, resp := setInset(t, s, 2); code != 200 {
+		t.Fatalf("inset: %d %v", code, resp)
+	}
+	// Armed only now: a background check's GetInputList would drop the
+	// connection under the inset request above.
+	f.mu.Lock()
+	f.codes = map[string]int{"GetInputList": hangUp}
+	f.mu.Unlock()
 	list := []map[string]any{{"choice": "source:B", "was": 2}, {"choice": "source:A", "was": 1}, {"choice": "source:C", "was": 3}}
 	var resp map[string]any
 	if code := call(t, s, "POST", "/api/obs/setup", map[string]any{"cameras": list}, &resp); code != http.StatusBadGateway {

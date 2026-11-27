@@ -23,13 +23,19 @@ Há três versões. Descarregue a do seu computador:
 Os passos abaixo são para Windows. No Mac e no Linux, leia também "NO
 MAC E NO LINUX", mais abaixo.
 
-O programa não abre nenhuma janela. Fica um ícone vermelho com o escudo
-ao pé do relógio do Windows. Se não o vir, carregue na seta ^ ao lado dos
-ícones.
-- Carregue no ícone para abrir o painel.
+O painel abre numa janela do Hallstream. Fica também um ícone vermelho
+com o escudo ao pé do relógio do Windows. Se não o vir, carregue na seta ^
+ao lado dos ícones.
+- Fechar a janela não fecha o Hallstream: o overlay e a transmissão
+  continuam. Carregue no ícone para voltar a ver o painel.
 - Com o botão direito há "Copiar endereço do overlay", o estado da caixa
   e "Sair", que fecha o programa.
-- Abrir o programa quando ele já está aberto só abre o painel.
+- Abrir o programa quando ele já está aberto só mostra o painel.
+- Os links do painel, como a entrada no YouTube e o pedido no GitHub,
+  abrem no browser.
+- Num PC sem o WebView2 da Microsoft (vem com o Windows 11 e com o
+  Windows 10 atualizado), e no "Hallstream (32-bit).exe", o painel abre
+  numa janela do Edge.
 - O separador Ajuda do painel tem os passos do dia do jogo e o que fazer
   quando algo falha.
 - O programa também escreve cada valor em ficheiros de texto
@@ -42,7 +48,7 @@ PRIMEIRA VEZ (EM CASA)
    programa guarda tudo na pasta "dados", lá dentro. Para fazer uma cópia
    de segurança, carregue em "Guardar cópia" em Definições (ver "CÓPIA DE
    SEGURANÇA E OUTRO COMPUTADOR").
-2. Abra o "Hallstream.exe". O painel abre sozinho no browser.
+2. Abra o "Hallstream.exe". O painel abre sozinho.
    - Se aparecer "O Windows protegeu o seu PC", carregue em "Mais
      informações" e depois em "Executar mesmo assim".
    - O painel pergunta se quer um atalho no ambiente de trabalho.

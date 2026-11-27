@@ -25,7 +25,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 017 | The Mac app gets its own window and menus: the panel in a native window, ⌘Q, Edit menu, links and files handled | P1 | M | 016 | DONE: merged #78 to #81 (d641629), released in v0.1.7 |
 | 018 | The Windows app gets its own window: the panel in a WebView2 window, the Edge app window as the fallback, links and the second double-click handled | P1 | M | 017 | DONE: merged #83 to #86 (a2c8754), released in v0.1.8 |
 | 019 | The 32-bit Windows exe stops crashing on Bluetooth: winrt-go's delegate callbacks and 64-bit arguments fixed for stdcall | P1 | S | 018 | DONE: merged #88 (0600f30), released in v0.1.8 |
-| 020 | Consoles on a serial cable: Daktronics All Sport 5000 (basketball, volleyball) and Bodet Scorepad (basketball, handball), recorded and replayed like the box, and the website's console table | P2 | L | none | IN PROGRESS |
+| 020 | Consoles on a serial cable: Daktronics All Sport 5000 (basketball, volleyball) and Bodet Scorepad (basketball, handball), recorded and replayed like the box, and the website's console table | P2 | L | none | IN REVIEW: stack #90 to #93 (decoders, source, panel, docs); website kauredo/hallstream-website#25 held for the release |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

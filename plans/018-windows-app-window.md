@@ -1,6 +1,6 @@
 # 018: The Windows app gets its own window
 
-Status: built and tried on the club laptop; in review.
+Status: done, released in v0.1.8 (2026-11-27).
 
 Repo `app/` at `d641629` (main, v0.1.7 tagged). Plan 017 gave the Mac app a window and left Windows on the browser, because no Windows PC could try it then. The club laptop (Windows 11, reachable over Tailscale) can now. On 2026-11-27 the owner saw another project open its page as an Edge `--app` window, asked for the same or better on Windows, and then said the better option should win. That is a native WebView2 window, with the Edge app window as the fallback. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

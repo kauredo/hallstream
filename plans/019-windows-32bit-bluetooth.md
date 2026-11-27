@@ -1,6 +1,6 @@
 # 019: The 32-bit Windows exe stops crashing on Bluetooth
 
-Status: built and tried on the club laptop; in review.
+Status: done, released in v0.1.8 (2026-11-27).
 
 Repo `app/`, on top of plan 018. While trying plan 018 on the club laptop on 2026-11-27, `Hallstream (32-bit).exe` died with 0xC0000005 about a second after "À procura da Stream Box...", with nothing on stderr and no crash record. The released v0.1.7 32-bit exe did the same, and both ran with `-demo`. The owner asked to fix it in the same release.
 

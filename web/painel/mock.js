@@ -145,6 +145,17 @@
   }
   db.ble = boxMode === 'ligado' ? { connected: true, saved: BOX } : { connected: false, saved: '' };
   db.settings.box_address = db.ble.saved;
+  // The cable console: ?cabo=lendo (frames coming), aberta (port open, no data), erro (port busy), semporta (none saved).
+  var caboMode = (/[?&]cabo=([a-z]+)/.exec(location.search) || [])[1] || '';
+  db.settings.input = caboMode ? 'serial' : 'console';
+  db.settings.serial = { port: caboMode && caboMode !== 'semporta' ? 'COM3' : '', protocol: 'daktronics' };
+  function serialStatus() {
+    var s = db.settings.serial || {}, on = db.settings.input === 'serial';
+    var mode = !s.port ? 'semporta' : caboMode === 'semporta' ? 'lendo' : caboMode || 'lendo';
+    return { ports: ['COM1', 'COM3', 'COM4'], port: s.port || '', protocol: s.protocol || 'daktronics',
+      linked: on && mode === 'lendo', open: on && (mode === 'lendo' || mode === 'aberta'),
+      error: !on ? '' : mode === 'semporta' ? 'Escolha a porta onde está o cabo da consola.' : mode === 'erro' ? 'Outro programa está a usar a porta, talvez o da própria consola. Feche-o e espere uns segundos.' : '' };
+  }
 
   // Configuração inicial: ?setup=new (default), part (some ticks), done; ?pc=0 is a phone;
   // ?chan=ok (default), off (live not on), unverified, blocked, fail (the check fails).
@@ -188,7 +199,7 @@
     var sp = (db.sponsors[g.group_id] || []).concat(db.sponsors.geral || []);
     var principal = sp.filter(function (s) { return s.principal; })[0];
     return {
-      box: { connected: db.ble.connected, last_frame_at: db.ble.connected ? new Date(Date.now() - 1000).toISOString() : null, box_type: 'Pro', scan: scan() },
+      box: { connected: (db.settings.input === 'serial' ? serialStatus().linked : db.ble.connected), last_frame_at: db.ble.connected ? new Date(Date.now() - 1000).toISOString() : null, box_type: 'Pro', scan: scan() },
       live: db.live,
       periods: [{ period: 1, home: 22, away: 19, home_points: 22, away_points: 19 }],
       game: {
@@ -216,6 +227,7 @@
       obs: { live_camera: obsMode === 'off' ? 0 : db.obsLive, clean: obsMode !== 'off' && !!((db.settings.obs.cameras || [])[db.obsLive - 1] || {}).clean,
         inset_camera: db.inset, inset: mockInset() },
       promo: Object.assign({}, db.promoShow, { mini: db.promo.clips.filter(function (c) { return c.id === db.promo.timeout_clip; })[0] || null }),
+      input: db.settings.input || 'console',
       demo: db.demo
     };
   }
@@ -584,6 +596,7 @@
         return reply(200, { ok: true });
       });
     }
+    if (p === '/api/serial') return reply(200, serialStatus());
     if (p === '/api/ble/capture') {
       if (m === 'POST') {
         db.capture.on = !!b.on; capMode = 'live';

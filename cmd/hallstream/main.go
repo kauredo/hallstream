@@ -36,7 +36,6 @@ import (
 	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
-	"github.com/kauredo/hallstream/internal/update"
 	"github.com/kauredo/hallstream/internal/web"
 )
 
@@ -239,6 +238,23 @@ func main() {
 		}
 	}
 
+	// An update calls restart with the program it put in place, then this
+	// copy quits through the tray without closing OBS.
+	stop := make(chan struct{})
+	var restarting atomic.Bool
+	restart := func(target string) error {
+		if !restarting.CompareAndSwap(false, true) {
+			return nil
+		}
+		if err := startCopy(target, restartArgs(os.Args[1:])); err != nil {
+			restarting.Store(false)
+			return err
+		}
+		say(i18n.T("log.atualizacao.a_reiniciar"))
+		close(stop)
+		return nil
+	}
+
 	srv := web.New(&web.Server{
 		Store:      st,
 		State:      m,
@@ -258,6 +274,7 @@ func main() {
 		Timeline:    tl,
 		UseInput:    inputs.Use,
 		Manual:      manual,
+		Restart:     restart,
 	})
 	srv.SyncGame()
 	srv.SyncPromo()
@@ -308,13 +325,9 @@ func main() {
 	if !*noBrowser {
 		openBrowser(panel)
 	}
-	// The copy an update replaced stays until this one has run a while.
-	go func() {
-		time.Sleep(10 * time.Minute)
-		if t, err := update.Target(); err == nil {
-			update.Cleanup(t)
-		}
-	}()
+	if *restarted {
+		srv.CleanUpAfterUpdate()
+	}
 
 	if replay != nil {
 		inputs.Use("console") // whatever the settings say: the recording is the console
@@ -340,24 +353,6 @@ func main() {
 	}
 	icon, _ := assets.FS.ReadFile(iconFile)
 	changed, _ := m.Subscribe()
-	stop := make(chan struct{})
-	var restarting atomic.Bool
-	srv.Restart = func() error {
-		t, err := update.Target()
-		if err != nil {
-			return err
-		}
-		if !restarting.CompareAndSwap(false, true) {
-			return nil
-		}
-		if err := startCopy(t, restartArgs(os.Args[1:])); err != nil {
-			restarting.Store(false)
-			return err
-		}
-		say(i18n.T("log.atualizacao.a_reiniciar"))
-		close(stop)
-		return nil
-	}
 	desktop.Tray{
 		Icon:    icon,
 		Tooltip: "Hallstream",

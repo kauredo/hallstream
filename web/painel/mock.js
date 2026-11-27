@@ -150,13 +150,22 @@
   // ?chan=ok (default), off (live not on), unverified, blocked, fail (the check fails).
   var setupMode = (/[?&]setup=([a-z]+)/.exec(location.search) || [])[1] || 'new';
   var onPC = !/[?&]pc=0\b/.test(location.search);
-  // &update=1 offers 9.9.9 to install, link only links to it, down is downloading, fail has failed, ask asks once.
+  // &update=1 offers 9.9.9 to install, link only links to it, down is downloading, fail has failed, ask asks once,
+  // busy answers Atualizar agora with 409. After Atualizar agora each status poll moves the install on: installing,
+  // restarting, two polls with no answer (the old copy has quit), then the new version.
   var updMode = (/[?&]update=([a-z0-9]+)/.exec(location.search) || [])[1] || '';
-  var updState = { down: 'downloading', fail: 'failed' }[updMode] || '';
+  var updState = { down: 'downloading', fail: 'failed' }[updMode] || '', updPolls = 0;
+  function updateStep() {
+    if (updState === 'downloading' && updMode !== 'down') updState = 'installing';
+    else if (updState === 'installing') updState = 'restarting';
+    else if (updState === 'restarting' && ++updPolls > 2) return 'new';
+    else if (updState === 'restarting') return 'gone';
+    return '';
+  }
   function updateStatus() {
     if (!updMode || updMode === 'ask') return null;
     return { version: '9.9.9', url: 'https://github.com/kauredo/hallstream/releases/tag/v9.9.9', install: onPC && updMode !== 'link',
-      state: updState, error: updState === 'failed' ? 'O ficheiro Hallstream-9.9.9.zip chegou diferente do publicado, por isso não o usei.' : '' };
+      state: onPC ? updState : '', error: onPC && updState === 'failed' ? 'O ficheiro Hallstream-9.9.9.zip chegou diferente do publicado, por isso não o usei.' : '' };
   }
   var chanMode = (/[?&]chan=([a-z]+)/.exec(location.search) || [])[1] || 'ok';
   db.setup = { done: setupMode === 'done' ? '2026-11-09T19:30:00Z' : '', later: false,
@@ -400,18 +409,23 @@
       return reply(200, db.settings);
     }
     if (p === '/api/status') {
-      return reply(200, { version: '0.9.0-mock', port: 8765, overlay_url: 'http://127.0.0.1:8765/overlay', lan_url: 'http://192.168.1.40:8765/painel',
+      var step = updateStep();
+      if (step === 'gone') return err(502, 'Failed to fetch');
+      return reply(200, { version: step === 'new' ? '9.9.9' : '0.9.0-mock', port: 8765, overlay_url: 'http://127.0.0.1:8765/overlay', lan_url: 'http://192.168.1.40:8765/painel',
         box: state().box, obs: obsStatus(), youtube: yt, fpb: { reachable: true, cached_at: new Date().toISOString() },
         data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, obs_close: true, os: 'windows', club_setup: { running: false, done: 0, total: 0 },
-        update: updateStatus(), update_ask: onPC && updMode === 'ask' });
+        update: updateStatus(), update_check_ask: onPC && updMode === 'ask' });
     }
     if (p === '/api/update') {
       if (!onPC) return err(403, 'Isto só se muda no próprio computador.');
+      if (updMode === 'busy' || updState === 'downloading' || updState === 'installing') return err(409, 'Já estou a atualizar.');
+      if (obsMode === 'live') return err(409, 'A transmissão está no ar. Atualize depois de a terminar.');
       updState = 'downloading';
       return reply(200, { ok: true, version: '9.9.9' });
     }
     if (p === '/api/update/ask') {
-      db.settings.update_asked = true; db.settings.update_check = !!(b && b.check); updMode = '';
+      if (!onPC) return err(403, 'Isto só se muda no próprio computador.');
+      db.settings.update_asked = true; db.settings.update_check = db.settings.update_check || !!(b && b.check); updMode = '';
       return reply(200, db.settings);
     }
     if (p === '/api/setup') return setupReply();

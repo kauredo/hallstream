@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kauredo/hallstream/internal/web"
 )
 
 func TestRestartArgs(t *testing.T) {
@@ -20,11 +23,13 @@ func TestRestartArgs(t *testing.T) {
 }
 
 func TestWaitForOldCopy(t *testing.T) {
+	// Only the last port answers, three times: the wait must look that far.
 	var asks atomic.Int32
+	last := fmt.Sprintf("127.0.0.1:%d", web.LastPort)
 	start := time.Now()
-	waitForOldCopy(func(string) bool { return asks.Add(1) <= 3 }, 5*time.Second)
-	if time.Since(start) > 2*time.Second || asks.Load() < 4 {
-		t.Errorf("waited %v, %d asks", time.Since(start), asks.Load())
+	waitForOldCopy(func(addr string) bool { return addr == last && asks.Add(1) <= 3 }, 5*time.Second)
+	if time.Since(start) > 2*time.Second || asks.Load() != 4 {
+		t.Errorf("waited %v, %d asks of the last port", time.Since(start), asks.Load())
 	}
 	start = time.Now()
 	waitForOldCopy(func(string) bool { return true }, 600*time.Millisecond)

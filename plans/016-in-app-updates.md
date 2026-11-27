@@ -77,3 +77,13 @@ The real swap needs two published releases; it gets its proof when v0.1.7 is off
 ## Plan review
 
 Two goldfish rounds. Round 1 (revise) led to the background job, the live re-check before the swap and the restart, no `CloseOBS` on an update restart, and the ask-once box on every system. Round 2's one blocker was a wrong fact about BVA's updater, checked against `basketball-video-analyzer/app/src/main/autoUpdater.ts:2-17` and fixed; its majors pinned `POST /api/update/ask`, the `Updater` seam, the deferred undo, and computing `install` once at start.
+
+## Built differently from the decisions above
+
+The code review changed these; the contract describes what shipped.
+- Decision 8: `POST /api/update` answers 200, not 202, and the job's outcome lives in `web.updateRun`.
+- Decision 9: no `Updater` interface. `update.Install(ctx, client, rel, Hooks{OffAir, Status, Restart})` runs the whole sequence; `web.Server` has `Install` and `CanInstall` func fields for tests, and `Restart` takes the target Install resolved before the swap (on Linux `os.Executable` follows the renamed file).
+- Decision 5: the clean-up runs only in a copy started with `-restarted`, and skips while an install runs. The stage folder is made fresh with mode 0700.
+- Decision 4: redirects go only to `github.com`, `release-assets.githubusercontent.com` and `objects.githubusercontent.com`; asset URLs must have a clean path. On a Mac the app inside the DMG must also have the release's version. On Linux a folder other accounts can write to is refused.
+- The stream can't start while an install runs.
+- Not done: a signature over `SHA256SUMS` with a key kept outside the release workflow. Until then, on Windows and Linux the check catches a damaged download, not a replaced release.

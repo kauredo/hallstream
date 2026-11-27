@@ -95,6 +95,9 @@ func menuTitles() []string {
 	}
 }
 
+// menuCount is how many titles buildMenus reads, for the test.
+func menuCount() int { return C.TITLES }
+
 // installMenus gives the app its menu bar once AppKit runs. Without one,
 // macOS shows only the app's name and ⌘Q has no item to trigger.
 func installMenus() {

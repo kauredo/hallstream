@@ -8,6 +8,12 @@ import (
 	"github.com/kauredo/hallstream/internal/web"
 )
 
+// openAtStart says whether to show the panel at start. v0.1.6's updater
+// always passes -nobrowser, so a restart opens the window anyway.
+func openAtStart(noBrowser, restarted, window bool) bool {
+	return !noBrowser || (restarted && window)
+}
+
 // waitForOldCopy waits until no Hallstream answers on its ports, so a copy
 // started by an update doesn't find the old one still closing and hand over
 // to it. After limit it carries on, and the usual "already open" check decides.
@@ -24,9 +30,7 @@ func waitForOldCopy(ours func(addr string) bool, limit time.Duration) {
 }
 
 // restartArgs are the new copy's arguments: this copy's, marked as a restart.
-// A browser tab reloads onto the new copy by itself, so with no window of
-// its own the new copy opens nothing; a window closes with the old copy, so
-// where there is one the new copy opens it again.
+// A browser tab reloads onto the new copy; a window closes with the old one.
 func restartArgs(args []string, window bool) []string {
 	var out []string
 	for _, a := range args {

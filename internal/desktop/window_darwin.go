@@ -15,8 +15,10 @@ import (
 	"unsafe"
 )
 
-// HasWindow says the panel opens in the app's own window here, not a browser.
-const HasWindow = true
+// HasWindow says the panel opens in the app's own window, not a browser. Only
+// inside Hallstream.app: outside it there is no Info.plist to allow loopback
+// HTTP, so the web view would stay blank.
+var HasWindow = !Console
 
 var (
 	panelMu  sync.Mutex
@@ -26,6 +28,9 @@ var (
 // ShowPanel opens the panel at url in the app's window, or brings the window
 // back, once AppKit runs.
 func ShowPanel(url string) bool {
+	if !HasWindow {
+		return false
+	}
 	panelMu.Lock()
 	panelURL = url
 	panelMu.Unlock()

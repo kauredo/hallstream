@@ -26,6 +26,23 @@ func TestRestartArgs(t *testing.T) {
 	}
 }
 
+func TestOpenAtStart(t *testing.T) {
+	for _, c := range []struct{ noBrowser, restarted, window, want bool }{
+		{false, false, false, true},
+		{false, false, true, true},
+		{true, false, true, false},
+		{true, false, false, false},
+		{true, true, true, true}, // v0.1.6's updater starting the new Mac app
+		{true, true, false, false},
+		{false, true, false, true},
+		{false, true, true, true},
+	} {
+		if got := openAtStart(c.noBrowser, c.restarted, c.window); got != c.want {
+			t.Errorf("%+v: %v", c, got)
+		}
+	}
+}
+
 func TestWaitForOldCopy(t *testing.T) {
 	// Only the last port answers, three times: the wait must look that far.
 	var asks atomic.Int32

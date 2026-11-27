@@ -322,9 +322,7 @@ func main() {
 	if port != web.FirstPort {
 		go desktop.Warn(i18n.T("log.porta_ocupada_aviso", "pedida", web.FirstPort, "porta", port, "overlay", overlay))
 	}
-	// An update restart from v0.1.6 or earlier always passes -nobrowser, made
-	// for a browser tab that reloads itself; a window closed with the old copy.
-	if !*noBrowser || (*restarted && desktop.HasWindow) {
+	if openAtStart(*noBrowser, *restarted, desktop.HasWindow) {
 		openPanel(panel)
 	}
 	if *restarted {

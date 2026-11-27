@@ -1,5 +1,3 @@
-//go:build darwin
-
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
 
@@ -16,13 +14,20 @@ extern int hallstreamInWindow(char *url);
 
 static HSPanel *panel;
 
-static BOOL inWindow(NSURL *u) {
+static BOOL shouldStay(NSURL *u) {
 	return u != nil && hallstreamInWindow((char *)u.absoluteString.UTF8String);
 }
 
+// openOutside hands web and mail links to the default apps. Any other scheme
+// (file:, smb:, x-apple…) is dropped, so a page can't launch things.
 static void openOutside(NSURL *u) {
-	NSString *s = u.absoluteString;
-	if (u != nil && s.length > 0 && ![s isEqualToString:@"about:blank"]) [[NSWorkspace sharedWorkspace] openURL:u];
+	NSString *scheme = u.scheme.lowercaseString;
+	BOOL web = [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"];
+	if ((web && u.host.length > 0) || [scheme isEqualToString:@"mailto"]) [[NSWorkspace sharedWorkspace] openURL:u];
+}
+
+static BOOL blank(NSURL *u) {
+	return [u.absoluteString isEqualToString:@"about:blank"] || [u.absoluteString isEqualToString:@"about:srcdoc"];
 }
 
 @implementation HSPanel
@@ -52,6 +57,7 @@ static void openOutside(NSURL *u) {
 		[self.web loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]]];
 	}
 	[NSApp activateIgnoringOtherApps:YES];
+	if (self.window.isMiniaturized) [self.window deminiaturize:nil];
 	[self.window makeKeyAndOrderFront:nil];
 }
 
@@ -65,18 +71,20 @@ static void openOutside(NSURL *u) {
 - (void)webView:(WKWebView *)web decidePolicyForNavigationAction:(WKNavigationAction *)action decisionHandler:(void (^)(WKNavigationActionPolicy))decide {
 	if (action.shouldPerformDownload) {
 		decide(WKNavigationActionPolicyDownload);
-	} else if (action.targetFrame != nil && !action.targetFrame.isMainFrame) {
-		decide(WKNavigationActionPolicyAllow); // the overlay previews
-	} else if (inWindow(action.request.URL)) {
+	} else if (shouldStay(action.request.URL) || blank(action.request.URL)) {
 		decide(WKNavigationActionPolicyAllow);
 	} else {
-		openOutside(action.request.URL);
+		// Only the main page, and only on a click, sends a link to the browser;
+		// frames and scripted redirects off the panel just stop.
+		BOOL main = action.targetFrame == nil || action.targetFrame.isMainFrame;
+		if (main && action.navigationType == WKNavigationTypeLinkActivated) openOutside(action.request.URL);
 		decide(WKNavigationActionPolicyCancel);
 	}
 }
 
 - (void)webView:(WKWebView *)web decidePolicyForNavigationResponse:(WKNavigationResponse *)response decisionHandler:(void (^)(WKNavigationResponsePolicy))decide {
-	decide(response.canShowMIMEType ? WKNavigationResponsePolicyAllow : WKNavigationResponsePolicyDownload);
+	if (response.canShowMIMEType) decide(WKNavigationResponsePolicyAllow);
+	else decide(response.forMainFrame ? WKNavigationResponsePolicyDownload : WKNavigationResponsePolicyCancel);
 }
 
 - (void)webView:(WKWebView *)web navigationAction:(WKNavigationAction *)action didBecomeDownload:(WKDownload *)download {
@@ -108,6 +116,10 @@ static void openOutside(NSURL *u) {
 }
 
 - (void)webView:(WKWebView *)web runOpenPanelWithParameters:(WKOpenPanelParameters *)params initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray<NSURL *> *))done {
+	if (!shouldStay(frame.request.URL)) {
+		done(nil);
+		return;
+	}
 	NSOpenPanel *open = [NSOpenPanel openPanel];
 	open.canChooseFiles = YES;
 	open.canChooseDirectories = NO;

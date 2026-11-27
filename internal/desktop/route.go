@@ -6,9 +6,6 @@ import "net/url"
 // where panel is the panel's own address. Anything on another scheme, host or
 // port leaves for the default browser.
 func inWindow(target, panel string) bool {
-	if target == "about:blank" {
-		return true
-	}
 	t, err := url.Parse(target)
 	if err != nil {
 		return false
@@ -17,5 +14,5 @@ func inWindow(target, panel string) bool {
 	if err != nil {
 		return false
 	}
-	return t.Scheme == p.Scheme && t.Host == p.Host
+	return t.Host != "" && t.Scheme == p.Scheme && t.Host == p.Host
 }

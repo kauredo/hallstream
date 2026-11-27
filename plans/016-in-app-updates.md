@@ -1,6 +1,6 @@
 # 016: In-app updates (a dialog that downloads, swaps and restarts)
 
-Status: all five layers written, in review as one stack. The real swap gets its first proof when an installed release is offered the next one.
+Status: DONE, merged #69 to #76 (838c8aa), released in v0.1.6. The real swap gets its first proof when an installed v0.1.6 is offered v0.1.7.
 
 Repo `app/` at `849a394` (main, v0.1.5). The owner asked on 2026-11-27: "I'd love this to automatically update, doesn't bva do that already? Maybe like a pop up suggesting to update?", then to ship it unattended. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

@@ -24,6 +24,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 016 | In-app updates: a dialog that downloads the new version, checks it, swaps the program and restarts | P1 | L | 014 | DONE: merged #69 to #76 (838c8aa), released in v0.1.6 |
 | 017 | The Mac app gets its own window and menus: the panel in a native window, ⌘Q, Edit menu, links and files handled | P1 | M | 016 | DONE: merged #78 to #81 (d641629), released in v0.1.7 |
 | 018 | The Windows app gets its own window: the panel in a WebView2 window, the Edge app window as the fallback, links and the second double-click handled | P1 | M | 017 | IN REVIEW: stack #83 to #86 (stack #87) |
+| 019 | The 32-bit Windows exe stops crashing on Bluetooth: winrt-go's delegate callbacks and 64-bit arguments fixed for stdcall | P1 | S | 018 | IN REVIEW: on top of stack #87 |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

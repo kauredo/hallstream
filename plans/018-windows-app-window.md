@@ -75,5 +75,5 @@ One goldfish round (revise). Fixed: the library's `os.Exit` on any error (the wi
 
 - The WebView2 browser stays white when it is made while its window is hidden, until `Show()` and `Resize()` after the window shows.
 - The 32-bit child never finished `Embed` (no error, no log line). The 32-bit exe now skips WebView2 for the Edge window.
-- The released v0.1.7 32-bit exe already dies with 0xC0000005 a second after "À procura da Stream Box..." on this laptop, and runs with `-demo`. That is the Bluetooth reader on 386 and is outside this plan; it needs its own.
+- The released v0.1.7 32-bit exe already dies with 0xC0000005 a second after "À procura da Stream Box..." on this laptop, and runs with `-demo`. That is winrt-go's delegate callbacks on 386, fixed by plan 019.
 - The second double-click restores the hidden window in front; the first start from a scheduled task only flashes the taskbar button, because the task is not the foreground process. A double-click from Explorer is.

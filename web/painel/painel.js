@@ -405,7 +405,7 @@
     updateLowerThird();
     renderPromoAir();
     renderChips();
-    if (S.tab === 'caixa') renderCaixaStatus();
+    if (S.tab === 'caixa') { renderCaixaStatus(); renderSerialState(); }
     refreshInicio();
     var demo = $('#setDemo');
     if (demo && !demo.disabled) demo.checked = !!st.demo;
@@ -435,7 +435,7 @@
     if (name === 'transmissoes') renderTransmissoes();
     if (name === 'definicoes') { renderDefinicoes(); loadYt(); }
     clearInterval(devTimer);
-    if (name === 'caixa') { renderCaixa(); loadDevices(); devTimer = setInterval(function () { loadDevices(); loadCapture(); }, 2000); }
+    if (name === 'caixa') { renderCaixa(); loadDevices(); devTimer = setInterval(function () { loadDevices(); loadCapture(); if (S.settings && S.settings.input === 'serial') loadSerial().catch(function () {}); }, 2000); }
     if (name === 'ajuda') renderAjudaDir();
     window.scrollTo(0, 0);
   }
@@ -1206,7 +1206,10 @@
     var html = '';
     if (st.demo) html += '<span class="chip"><span class="dot wait"></span>' + t('painel.chip.demo') + '</span>';
     var bt = (box.scan && box.scan.bluetooth) || 'ok';
-    if (st.input === 'manual') html += '<span class="chip">' + (box.connected
+    if (st.input === 'serial') html += '<a class="chip link" href="#caixa" data-goto="caixa">' + (box.connected
+      ? '<span class="dot on"></span>' + t('painel.chip.cabo_ligado') + (box.last_frame_at ? ' · ' + esc(ago(box.last_frame_at)) : '')
+      : '<span class="dot wait"></span>' + t('painel.chip.cabo_espera')) + '</a>';
+    else if (st.input === 'manual') html += '<span class="chip">' + (box.connected
       ? '<span class="dot on"></span>' + t('painel.chip.manual_ligada')
       : '<span class="dot wait"></span>' + t('painel.chip.manual_espera')) + '</span>';
     else html += '<a class="chip link" href="#caixa" data-goto="caixa">' + (box.connected
@@ -1301,7 +1304,7 @@
   // buttons stay on: the start is the volunteer's call.
   function readiness(h, problem, expired) {
     var s = S.state || {}, box = s.box || (S.status && S.status.box) || {}, g = S.game || {}, out = [];
-    if (!box.connected && !s.demo) out.push(s.input === 'manual' ? ['off', t('painel.stream.falta_marcador'), ''] : ['off', t('painel.stream.falta_caixa'), 'caixa']);
+    if (!box.connected && !s.demo) out.push(s.input === 'manual' ? ['off', t('painel.stream.falta_marcador'), ''] : s.input === 'serial' ? ['off', t('painel.stream.falta_cabo'), 'caixa'] : ['off', t('painel.stream.falta_caixa'), 'caixa']);
     if (!g.group_id || !(g.away && g.away.name)) out.push(['wait', t('painel.stream.falta_jogo'), 'jogo']);
     if (problem) out.push(['off', t('painel.stream.falta_obs', { problema: problem }), '']);
     else if (!h.checked) out.push(['wait', t('painel.stream.a_verificar_obs'), '']);
@@ -1498,37 +1501,104 @@
         else if (b.dataset.act === 'cx-cap-help') showHelp('ajuda-feedback');
       });
       $('#cxInput').addEventListener('change', function (e) {
-        if (e.target.name !== 'cxIn' || !S.settings) return;
-        var s = Object.assign({}, S.settings, { input: e.target.value }), msg = $('#cxInMsg');
+        if (!S.settings) return;
+        var change;
+        if (e.target.name === 'cxIn') change = { input: e.target.value };
+        else if (e.target.id === 'cxProto' || e.target.id === 'cxPort') change = { serial: { protocol: $('#cxProto').value, port: $('#cxPort').value } };
+        else return;
+        var s = Object.assign({}, S.settings, change), msg = $('#cxInMsg');
         msg.className = 'msg'; msg.textContent = '';
         api('PUT', '/api/settings', s).then(function (got) {
+          var wasSerial = S.settings.input === 'serial';
           S.settings = got; msg.className = 'msg ok'; msg.textContent = t('painel.marcar.guardado');
+          if (got.input === 'serial') loadSerial(!wasSerial);
+          else if (wasSerial) renderCaixaInput();
         }, function (err) { msg.className = 'msg err'; msg.textContent = err.message; renderCaixaInput(); });
+      });
+      $('#cxInput').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-act="cx-serial-find"]'); if (!b) return;
+        busy(b, function () { return loadSerial(true); }, t('painel.cabo.procurado'));
       });
     }
     renderCaixaInput();
     renderCaixaStatus();
     renderDevices();
     loadCapture();
+    if (S.settings && S.settings.input === 'serial') loadSerial(true).catch(function () {});
   }
 
   // Where the score comes from: the console's Stream Box, or a phone on /marcar (with its QR code).
   function renderCaixaInput() {
     var el = $('#cxInput'); if (!el || !S.settings) return;
-    var s = S.settings, manual = s.input === 'manual';
+    var s = S.settings, input = s.input === 'manual' || s.input === 'serial' ? s.input : 'console';
     var lan = S.status && S.status.lan_url ? S.status.lan_url.replace(/\/painel$/, '/marcar') : '';
-    var opt = function (v, on, label, hint) {
-      return '<label><input type="radio" name="cxIn" value="' + v + '"' + (on ? ' checked' : '') + '><span><b>' + label + '</b><small>' + hint + '</small></span></label>';
+    var opt = function (v, label, hint) {
+      return '<label' + (v === 'serial' && input === 'serial' ? ' class="open"' : '') + '><input type="radio" name="cxIn" value="' + v + '"' + (input === v ? ' checked' : '') + '><span><b>' + label + '</b><small>' + hint + '</small></span></label>';
     };
-    el.innerHTML = '<h2>' + t('painel.marcar.titulo') + '</h2>' +
+    var html = '<h2>' + t('painel.marcar.titulo') + '</h2>' +
       '<div class="cx-in">' +
-        opt('console', !manual, t('painel.marcar.consola'), t('painel.marcar.consola_dica')) +
-        opt('manual', manual, t('painel.marcar.telemovel'), t('painel.marcar.telemovel_dica')) +
-      '</div><span class="msg" id="cxInMsg" role="status"></span>' +
-      (lan
-        ? '<div class="cx-qr"><img src="/marcar/qr.svg" width="148" height="148" alt="' + t('painel.marcar.qr_alt') + '">' +
-          '<p>' + t('painel.marcar.abra', { url: '<code>' + esc(lan) + '</code>' }) + '</p></div>'
-        : '<p class="hint">' + t('painel.marcar.sem_telemovel') + '</p>');
+        opt('console', t('painel.marcar.consola'), t('painel.marcar.consola_dica')) +
+        opt('serial', t('painel.marcar.cabo'), t('painel.marcar.cabo_dica')) +
+        (input === 'serial' ? serialHtml() : '') +
+        opt('manual', t('painel.marcar.telemovel'), t('painel.marcar.telemovel_dica')) +
+      '</div><span class="msg" id="cxInMsg" role="status"></span>';
+    if (input === 'manual') html += lan
+      ? '<div class="cx-qr"><img src="/marcar/qr.svg" width="148" height="148" alt="' + t('painel.marcar.qr_alt') + '">' +
+        '<p>' + t('painel.marcar.abra', { url: '<code>' + esc(lan) + '</code>' }) + '</p></div>'
+      : '<p class="hint">' + t('painel.marcar.sem_telemovel') + '</p>';
+    el.innerHTML = html;
+    renderSerialState();
+  }
+
+  // The cable console: its type, its port and what the program reads from it.
+  var PROTOCOLS = [['daktronics', 'Daktronics All Sport 5000'], ['bodet', 'Bodet Scorepad']];
+  function serialHtml() {
+    var set = S.settings.serial || {}, c = S.serial || {}, ports = (c.ports || []).slice();
+    if (set.port && ports.indexOf(set.port) < 0) ports.unshift(set.port);
+    var pc = !S.setup || S.setup.pc !== false; // a phone cannot pick the PC's port
+    var po = (set.port ? '' : '<option value="">' + t('painel.cabo.escolha_porta') + '</option>') + ports.map(function (p) {
+      return '<option' + (p === set.port ? ' selected' : '') + '>' + esc(p) + '</option>';
+    }).join('');
+    return '<div class="cx-serial">' +
+      '<label class="field"><span>' + t('painel.cabo.consola') + '</span><select id="cxProto"' + (pc ? '' : ' disabled') + '>' + PROTOCOLS.map(function (p) {
+          return '<option value="' + p[0] + '"' + (p[0] === (set.protocol || 'daktronics') ? ' selected' : '') + '>' + p[1] + '</option>';
+        }).join('') + '</select></label>' +
+      '<p class="hint">' + (set.protocol === 'bodet' ? t('painel.cabo.dica_bodet') : t('painel.cabo.dica_daktronics')) + '</p>' +
+      '<div class="row">' +
+        '<label class="field cx-port' + (set.port ? '' : ' empty') + '"><span>' + t('painel.cabo.porta') + '</span><select id="cxPort"' + (pc ? '' : ' disabled') + '>' + po + '</select></label>' +
+        (pc ? '<button class="btn" type="button" data-act="cx-serial-find">' + t('painel.cabo.procurar') + '</button>' : '') +
+        '<span class="msg"></span></div>' +
+      (ports.length || !S.serial ? '' : '<p class="hint">' + t('painel.cabo.sem_portas') + '</p>') +
+      '<div class="cx-status" id="cxSerialState"></div>' +
+      (pc ? '' : '<p class="hint">' + t('painel.cabo.so_no_pc') + '</p>') +
+    '</div>';
+  }
+  function renderSerialState() {
+    var el = $('#cxSerialState'); if (!el) return;
+    var c = S.serial;
+    // A port to choose is an instruction, so it has no status mark.
+    var set = S.settings.serial || {}, lv = (S.state && S.state.live) || {};
+    var dot = !c || (c.open && !c.linked) ? 'wait' : c.linked ? 'on' : set.port ? 'off' : '';
+    var line = !c ? [t('painel.a_carregar'), '']
+      : c.linked ? [t('painel.cabo.a_ler'), lv.home == null ? '' : '· ' + lv.home + '–' + lv.away + (lv.period ? ' · ' + t('painel.topo.periodo', { periodo: lv.period, relogio: lv.clock || '' }) : '')]
+      : c.open ? [set.protocol === 'bodet' ? t('painel.cabo.sem_dados_bodet') : t('painel.cabo.sem_dados_daktronics'), '']
+      : !set.port ? [t('painel.cabo.estado_sem_porta'), t('painel.cabo.qual_porta')]
+      : [t('painel.cabo.estado_erro'), c.error || t('painel.cabo.fechada')];
+    var html = (dot ? '<span class="dot big ' + dot + '"></span>' : '<span class="dot big gutter" aria-hidden="true"></span>') +
+      // The live score is aria-hidden: a ticking clock would be read out every few seconds.
+      '<p class="grow ' + (dot === 'off' ? 'err' : dot) + '" role="status"><b>' + keepHyphens(esc(line[0])) + '</b>' +
+      (line[1] ? ' <span' + (c && c.linked ? ' aria-hidden="true"' : '') + '>' + keepHyphens(esc(line[1])) + '</span>' : '') + '</p>';
+    if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+  }
+  // "Feche-o" must not break at its hyphen and leave "o" alone at the start of a line.
+  function keepHyphens(html) { return html.replace(/(\S+-\S+)/g, '<span class="nw">$1</span>'); }
+  // GET /api/serial; full redraws the card (a new port list), else only the state line.
+  function loadSerial(full) {
+    return api('GET', '/api/serial').then(function (c) {
+      var ports = JSON.stringify(S.serial && S.serial.ports);
+      S.serial = c;
+      if (full || ports !== JSON.stringify(c.ports)) renderCaixaInput(); else renderSerialState();
+    });
   }
 
   // Gravar a consola: the raw frames the box sends, saved to dados/captura for a developer to replay.
@@ -1538,7 +1608,7 @@
   function renderCapture() {
     var el = $('#cxCapture'); if (!el) return;
     var c = S.capture; if (!c) return;
-    var linked = scanState().box.connected, demo = !!(S.state && S.state.demo);
+    var st = S.state || {}, linked = st.input === 'serial' ? !!(st.box && st.box.connected) : scanState().box.connected, demo = !!st.demo;
     var off = !c.on && (demo || !linked);
     var mb = function (n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; };
     var stopped = { cap: t('painel.captura.parou_limite'), box: t('painel.captura.parou_caixa'), error: t('painel.captura.parou_erro') }[c.stopped];
@@ -1546,7 +1616,7 @@
       '<p class="hint">' + t('painel.captura.dica') + '</p>' +
       '<div class="row" style="align-items:center"><label class="switch"><input type="checkbox" id="cxCap"' + (c.on ? ' checked' : '') + (off ? ' disabled' : '') + '><i></i>' + t('painel.captura.interruptor') + '</label>' +
       '<span class="msg" id="cxCapMsg" role="status"></span></div>' +
-      (off ? '<p class="hint">' + (demo ? t('painel.captura.demo') : t('painel.captura.sem_caixa')) + '</p>' : '');
+      (off ? '<p class="hint">' + (demo ? t('painel.captura.demo') : S.settings && S.settings.input === 'serial' ? t('painel.captura.sem_cabo') : t('painel.captura.sem_caixa')) + '</p>' : '');
     if (c.file) {
       html += '<p class="cx-cap"><code>' + esc(c.file) + '</code><br>' +
         t('painel.captura.tamanho', { tamanho: mb(c.bytes), max: mb(c.max) }) + ' · ' + t('painel.captura.frames', { n: c.frames }) +
@@ -1561,8 +1631,8 @@
 
   function scanState() {
     var st = S.state || {}, box = st.box || {};
-    // With manual scoring box.connected is the phone; the box is linked when the reader has an address.
-    if (st.input === 'manual') box = Object.assign({}, box, { connected: !!(box.scan && box.scan.address) });
+    // With manual or cable input, box.connected is the phone or the cable; the box is linked when the reader has an address.
+    if (st.input === 'manual' || st.input === 'serial') box = Object.assign({}, box, { connected: !!(box.scan && box.scan.address) });
     return { box: box, scan: box.scan || {}, demo: !!st.demo };
   }
 
@@ -1579,6 +1649,7 @@
     var html = '<div class="cx-status"><span class="dot big ' + dot + '"></span><div class="grow">' +
       '<h2>' + esc(title) + (c.box.connected && sc.address ? ' <code>' + esc(sc.address) + '</code>' : '') + '</h2>' +
       (sc.message && !want ? '<p class="cx-msg">' + esc(sc.message) + '</p>' : '') +
+      ((S.state || {}).input === 'serial' ? '<p class="hint">' + t('painel.caixa.nao_usada') + '</p>' : '') +
       (sc.saved && !c.box.connected ? '<p class="hint">' + t('painel.caixa.guardada', { endereco: '<code>' + esc(sc.saved) + '</code>' }) + '</p>' : '') +
       '</div></div>' +
       (sc.saved ? '<div class="row" style="margin-top:12px;align-items:center"><button class="btn" data-act="cx-forget">' + t('painel.caixa.esquecer') + '</button>' +
@@ -3104,6 +3175,7 @@
     if (id === 'entrada') {
       if (!wzTicked('entrada')) return { s: 'todo', why: t('painel.wz.entrada_falta') };
       if (set.input === 'manual') return { s: 'ok', why: t('painel.wz.entrada_mao_ok') };
+      if (set.input === 'serial') return (set.serial || {}).port ? { s: 'ok', why: t('painel.wz.cabo_ok', { porta: set.serial.port }) } : { s: 'todo', why: t('painel.wz.cabo_falta') };
       var box = realBox();
       if (!set.box_address && !box.connected) return { s: 'todo', why: t('painel.wz.clube_sem_caixa') };
       return { s: 'ok', why: box.connected ? t('painel.wz.caixa_agora') : t('painel.wz.caixa_ja') };
@@ -3252,15 +3324,19 @@
       }
       html += save('club', t('painel.wz.clube_guardar'));
     } else if (id === 'entrada') {
-      var manual = set.input === 'manual', box = realBox();
+      var manual = set.input === 'manual', cable = set.input === 'serial', box = realBox();
       var opt = function (v, title, hint, on) {
         return '<label><input type="radio" name="wInput" value="' + v + '"' + (on ? ' checked' : '') + off + '><span><b>' + title + '</b><small>' + hint + '</small></span></label>';
       };
       html = '<p>' + t('painel.wz.entrada_texto') + '</p><div class="cx-in">' +
-        opt('console', t('painel.marcar.consola'), t('painel.marcar.consola_dica'), !manual) +
+        opt('console', t('painel.marcar.consola'), t('painel.marcar.consola_dica'), !manual && !cable) +
+        opt('serial', t('painel.marcar.cabo'), t('painel.marcar.cabo_dica'), cable) +
         opt('manual', t('painel.marcar.telemovel'), t('painel.marcar.telemovel_dica'), manual) + '</div>' +
         save('input', t('painel.wz.entrada_usar'));
-      if (wzTicked('entrada')) {
+      if (wzTicked('entrada') && cable) {
+        html += '<ul class="wz-list">' + wzItem(box.connected ? 'on' : 'wait', t('painel.marcar.cabo'), '<p class="hint">' +
+          ((set.serial || {}).port ? t('painel.wz.cabo_ok', { porta: esc(set.serial.port) }) : t('painel.wz.cabo_falta')) + ' <a href="#caixa" data-goto="caixa">' + t('painel.ajuda.problemas.abrir_caixa') + '</a></p>') + '</ul>';
+      } else if (wzTicked('entrada')) {
         html += manual
           ? '<p class="hint">' + t('painel.wz.entrada_qr') + ' <a href="#caixa" data-goto="caixa">' + t('painel.ajuda.problemas.abrir_caixa') + '</a></p>'
           : '<ul class="wz-list">' + wzItem(set.box_address || box.connected ? 'on' : 'wait', t('painel.wz.caixa'), '<p class="hint">' + (box.connected ? t('painel.wz.caixa_agora') : set.box_address ? t('painel.wz.caixa_ja') :

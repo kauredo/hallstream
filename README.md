@@ -15,18 +15,21 @@ A free tool for amateur clubs that stream their games. Hallstream reads the scor
   - player lower thirds
   - sponsors and promo videos
 - Gives you a control panel in the browser, on the PC or on a phone or tablet on the same network (with a PIN).
-- Sets up OBS over obs-websocket: one scene per camera, up to four, with the overlay on top. Cameras come from DroidCam, a webcam or capture device, or a phone's browser through VDO.Ninja, and you switch between them from the panel. Each camera can hide the corner graphics, the Nothing screen and timeouts can each switch to a camera of their own, and a second camera can sit in a small inset on the scoreboard. `CAMERAS.txt` in the zip covers two to four cameras.
+- Sets up OBS over obs-websocket: one scene per camera, up to four, with the overlay on top. Cameras come from DroidCam, a webcam or capture device (Windows only for now), or a phone's browser through VDO.Ninja, and you switch between them from the panel. Each camera can hide the corner graphics, the Nothing screen and timeouts can each switch to a camera of their own, and a second camera can sit in a small inset on the scoreboard. `CAMERAS.txt` in each download covers two to four cameras.
 - Creates the YouTube live broadcast with a title and thumbnail, and makes it unlisted afterwards.
 - Pulls squads, photos and fixtures from the Portuguese basketball federation (FPB), if you choose to. The FPB import is for Portuguese basketball only.
 - Keeps working offline after the first load. A demo mode plays an invented game with no console.
 
 ## Get started
 
-1. Download the latest zip from Releases and unzip it to a folder such as `C:\Hallstream`.
-2. Install [OBS Studio](https://obsproject.com) 31 or later, then open `Hallstream.exe`. The panel opens in your browser.
-3. Follow the first-run steps in the panel. `READ-ME.txt` in the zip has the full guide (`LEIA-ME.txt` in Portuguese).
+1. Download the file for your computer from Releases:
+   - Windows 10 or later: `Hallstream-X.Y.Z.zip`. Unzip it to a folder such as `C:\Hallstream` and open `Hallstream.exe`.
+   - macOS 13 Ventura or later, Intel or Apple chip: `Hallstream-X.Y.Z-macos.dmg`. Drag Hallstream into Applications and open it from there. Its data goes in `~/Library/Application Support/Hallstream/dados`.
+   - 64-bit Linux with BlueZ: `Hallstream-X.Y.Z-linux-x64.tar.gz`. Extract it and run `Hallstream/Hallstream`. The tray icon needs an AppIndicator (StatusNotifier) host, and message boxes need `zenity`.
+2. Install [OBS Studio](https://obsproject.com) 31 or later. Open Hallstream and the panel opens in your browser.
+3. Follow the first-run steps in the panel. `READ-ME.txt` in each download has the full guide (`LEIA-ME.txt` in Portuguese).
 
-Windows may warn about an unsigned app. Signed releases are planned.
+The Windows exes are unsigned, since SignPath declined the project, so Windows may warn about them. The Mac app is signed with a Developer ID and notarised by Apple.
 
 ## Build from source
 
@@ -36,6 +39,8 @@ Hallstream needs Go 1.27 or later.
 go test ./...                              # needs no network; Chrome tests skip without Chrome
 go run ./cmd/hallstream -demo -nobrowser      # invented game, panel at http://127.0.0.1:8765/painel
 ./build.sh 0.1.0                           # Windows exes and the zip in dist/
+./build.sh 0.1.0 macos                     # universal Hallstream.app and the DMG (on a Mac)
+./build.sh 0.1.0 linux                     # static amd64 binary and the tarball
 ```
 
 `docs/CONTRACT.md` describes every endpoint, the state shape and the rules. Change it in the same commit as the behaviour.
@@ -51,6 +56,6 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). Help is most useful in these areas:
 
 ## Licence
 
-Copyright (C) 2026 Vasco Kaufmann. Hallstream is free software under the [GNU Affero General Public License, version 3 or later](LICENSE) (AGPL-3.0-or-later), with no warranty. The release zip carries the licence and `THIRD-PARTY-NOTICES.txt`, the licences of the code linked into the exes (`scripts/notices.sh` writes it).
+Copyright (C) 2026 Vasco Kaufmann. Hallstream is free software under the [GNU Affero General Public License, version 3 or later](LICENSE) (AGPL-3.0-or-later), with no warranty. Each download carries the licence and `THIRD-PARTY-NOTICES.txt`, the licences of the code linked into that platform's program (`scripts/notices.sh` writes it).
 
 Stramatel, OBS and YouTube are trademarks of their owners. Hallstream is not affiliated with any of them.

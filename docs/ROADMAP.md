@@ -14,7 +14,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Area | Decision |
 |---|---|
 | Licence | AGPL-3.0. |
-| Platform | One Go exe with the panel and overlay embedded. Windows first, macOS and Linux builds after. |
+| Platform | One Go program with the panel and overlay embedded. Every release ships it for Windows (two exes in a zip), macOS (a universal app in a DMG, macOS 13 and later) and Linux (a static amd64 binary in a tarball). USB and capture-card cameras are Windows-only for now. |
 | Audience | Clubs anywhere, at any level. Most are run by volunteers, often on an old PC in the hall, so the app has to stay simple for them; it must also scale up for professional and semi-professional clubs. |
 | Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
 | Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |
@@ -25,7 +25,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Club identity | Name, short name, colours, crest, sponsors and sport, all entered in the first-run wizard. Nothing club-specific in the code. |
 | Language | One catalog per language, `web/i18n/<lang>.json`: a flat JSON object of dotted keys (`painel.nav.ecras`, `overlay.final.titulo`, `ble.desligado`) to strings, sorted by key, with `{name}` placeholders. `pt.json` (European Portuguese) is the source. A plural is two keys, `….um` and `….outros`, picked in code; there is no plural engine. `settings.lang` (default `pt`) picks the file, and a missing file or key reads `pt`. A test fails on a key missing from `pt.json`, a key nothing uses, an unsorted file, another language with different keys, or Portuguese left in the code. `en.json` (British English) ships, picked in Definições. |
 | Privacy | Player photos are off by default. Examples and fixtures use invented people. Nothing is sent anywhere unless the club opts in. Public releases are built without `HALLSTREAM_UPLOAD_TOKEN`, so they never upload game logs; only builds the maintainer makes for their own club carry it. hallstream.com says so. |
-| Releases | Signed GitHub releases (SignPath for Windows), plus a website and an in-app feedback form that opens GitHub issues. |
+| Releases | GitHub releases, plus a website and an in-app feedback form that opens GitHub issues. The Mac app is signed and notarised. The Windows exes are unsigned, since SignPath declined the project. |
 
 ## Phase A: any club, manual scoring, onboarding
 
@@ -52,7 +52,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - Ship the project OAuth client, with "use your own" as a fallback.
    - The RTMP path writes the server and key into OBS.
 8. **Releases.**
-   - Signed Windows builds and notarised macOS builds.
+   - Notarised macOS builds. Done: a signed, notarised and stapled `Hallstream.app` in a DMG, and a Linux tarball, next to the Windows zip in every release. Signed Windows builds: declined, since SignPath turned the project down, so the exes stay unsigned.
    - An opt-in update check. Done: once a day against GitHub Releases, a banner links to the release page.
    - A feedback form that opens a GitHub issue. Done: Ajuda opens a new issue with the version, system, scoring and sport filled in. A build with the feedback worker (`worker/`, adapted from BVA's) also sends a form with no account needed.
 

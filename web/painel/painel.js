@@ -2639,7 +2639,7 @@
     var o = (S.settings && S.settings.obs) || {};
     var cams = o.cameras && o.cameras.length ? o.cameras.slice(0, MAX_CAMS) : [{ source: o.camera_source || '' }];
     return cams.map(function (c, i) {
-      return { choice: c.source ? 'source:' + c.source : '', label: c.label || '', was: i + 1 };
+      return { choice: c.source ? 'source:' + c.source : '', label: c.label || '', was: i + 1, show: !c.clean };
     });
   }
   // The choice value of the saved phone camera the row came from, while the row still picks it; else "".
@@ -2694,6 +2694,8 @@
       '<label class="field"><span>' + t('painel.camaras.fonte') + '</span><select id="' + idp + n + '" data-cam-choice>' + camRowOptions(row.choice, n, tel) + '</select></label>' +
       '<label class="field"><span>' + t('painel.camaras.nome') + '</span><input id="' + idp + 'Nome' + n + '" data-cam-label maxlength="24" value="' + esc(row.label) + '" placeholder="' + esc(t('painel.camaras.camara', { n: n })) + '"></label>' +
       '</div>' +
+      (idp === 'dCam' ? '<label class="switch"><input type="checkbox" id="' + idp + 'Show' + n + '" data-cam-show' + (row.show !== false ? ' checked' : '') + '><i></i>' + t('painel.camaras.mostrar_marcador') + '</label>' +
+        '<p class="hint">' + t('painel.camaras.mostrar_marcador_dica') + '</p>' : '') +
       (row.choice === tel ? '<p class="hint cam-net">' + t('painel.camaras.internet') + '</p>' +
         (phone ? phoneHtml(row.was, n, idp) : '<p class="hint">' + t('painel.camaras.guarde_qr') + '</p>') : '') +
       '</div>';
@@ -2721,6 +2723,8 @@
       if (!rows[i]) return;
       rows[i].choice = el.querySelector('[data-cam-choice]').value;
       rows[i].label = el.querySelector('[data-cam-label]').value;
+      var sw = el.querySelector('[data-cam-show]');
+      if (sw) rows[i].show = sw.checked;
     });
   }
   // Draws the card again from S.camRows, keeping the screen cameras picked and the focus; a redraw with no focus to give keeps the message.
@@ -2739,7 +2743,7 @@
   function camList(rows) {
     var missing = 0;
     rows.forEach(function (r, i) { if (i > 0 && !r.choice && !missing) missing = i + 1; });
-    return { missing: missing, list: rows.map(function (r) { return { choice: r.choice, label: r.label.trim(), was: r.was }; }) };
+    return { missing: missing, list: rows.map(function (r) { return { choice: r.choice, label: r.label.trim(), was: r.was, clean: r.show === false }; }) };
   }
   function loadObsCameras() {
     if (S.obsCamsLoading) return;
@@ -2840,7 +2844,7 @@
       } else if (b.dataset.act === 'cam-add' || b.dataset.act === 'cam-remove') {
         readCamRows($('#dCams'), S.camRows);
         var ci = S.camRows.length;
-        if (b.dataset.act === 'cam-add') S.camRows.push({ choice: '', label: '', was: 0 });
+        if (b.dataset.act === 'cam-add') S.camRows.push({ choice: '', label: '', was: 0, show: true });
         else { ci = $all('#dCams .cam-row').indexOf(b.closest('.cam-row')); S.camRows.splice(ci, 1); ci = Math.min(ci, S.camRows.length - 1); }
         drawCams('#dCam' + (ci + 1));
       } else if (b.dataset.act === 'cam-save') {

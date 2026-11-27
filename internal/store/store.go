@@ -89,6 +89,9 @@ type Camera struct {
 	Source string `json:"source"`
 	Scene  string `json:"scene"`
 	Label  string `json:"label"`
+	// Clean hides the corner graphics while this camera is live ("Mostrar
+	// marcador" off).
+	Clean bool `json:"clean"`
 	// Vdo is the VDO.Ninja stream id of a phone camera; only the server writes it.
 	Vdo string `json:"vdo,omitempty"`
 	// HasVdo marks a phone camera in the settings the server sends, which

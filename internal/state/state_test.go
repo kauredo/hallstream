@@ -972,7 +972,7 @@ func TestDecodeListAndNews(t *testing.T) {
 func TestSetLiveCamera(t *testing.T) {
 	m, _ := newTest()
 	ch, _ := m.Subscribe()
-	m.SetLiveCamera(2)
+	m.SetLiveCamera(2, false)
 	if n := m.Snapshot().OBS.LiveCamera; n != 2 {
 		t.Errorf("live camera %d", n)
 	}
@@ -981,10 +981,23 @@ func TestSetLiveCamera(t *testing.T) {
 	default:
 		t.Error("no change sent")
 	}
-	m.SetLiveCamera(2)
+	m.SetLiveCamera(2, false)
 	select {
 	case <-ch:
 		t.Error("the same camera sent a change")
 	default:
+	}
+	m.SetLiveCamera(2, true)
+	if o := m.Snapshot().OBS; !o.Clean {
+		t.Errorf("clean camera: %+v", o)
+	}
+	select {
+	case <-ch:
+	default:
+		t.Error("clean sent no change")
+	}
+	m.SetLiveCamera(0, true)
+	if o := m.Snapshot().OBS; o.Clean || o.LiveCamera != 0 {
+		t.Errorf("no live camera: %+v", o)
 	}
 }

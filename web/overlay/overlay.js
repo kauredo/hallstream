@@ -1017,7 +1017,7 @@
   }
   function renderLowerThird(st, screen) {
     const l = st.lower_third || {};
-    if (!l.visible || !LT_SCREENS.has(screen)) {
+    if (!l.visible || !LT_SCREENS.has(screen) || 'clean' in root.dataset) {
       if (ltPhase !== 'hidden') ltHide();
       return;
     }
@@ -1030,7 +1030,7 @@
 
   // Sponsor corner. Every sponsor_every minutes one sponsor, in the strip's order, shows for 10 s on the
   // scoreboard, with a red line that fills meanwhile. A turn that finds the scoreboard off screen, a
-  // time-out or a lower third in the corner is skipped; one of them coming up hides the corner.
+  // time-out, a clean camera or a lower third in the corner is skipped; one of them coming up hides the corner.
   const CORNER_MS = 10000;
   const cornerT0 = performance.now();
   const cornerFx = [];
@@ -1055,7 +1055,7 @@
   }
   function cornerAllowed() {
     const o = (state && state.game && state.game.overlay) || {};
-    return o.sponsor_corner !== false && shownScreen === 'marcador' && cornerList.length > 0 && !ltInCorner();
+    return o.sponsor_corner !== false && shownScreen === 'marcador' && !('clean' in root.dataset) && cornerList.length > 0 && !ltInCorner();
   }
   function cornerShow(x) {
     stop(cornerFx);
@@ -1492,6 +1492,9 @@
     if (screen === 'proximo' && !v.next) screen = 'nada'; // never an empty card
     setScreen(screen);
     syncMini(false);
+    // A clean camera on air hides the corner graphics; the panel's setup preview always shows them.
+    if (st.obs && st.obs.clean === true && !(PANEL && forcedScreen)) root.dataset.clean = '';
+    else delete root.dataset.clean;
     renderLowerThird(st, screen);
     layout(lk, ltPhase !== 'hidden');
     // The credit shows only where it has a free bottom corner.

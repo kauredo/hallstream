@@ -307,6 +307,12 @@ func liveIndex(o store.OBS, scene string) int {
 	return 0
 }
 
+// cleanCamera is whether camera n, from 1, hides the corner graphics.
+func cleanCamera(o store.OBS, n int) bool {
+	cams := o.CameraList()
+	return n > 0 && n <= len(cams) && cams[n-1].Clean
+}
+
 // programScene takes a program scene change from the watch.
 func (s *Server) programScene(name string) { s.sceneSeen(name, true) }
 
@@ -340,7 +346,7 @@ func (s *Server) sceneSeen(name string, event bool) {
 	}
 	changed := s.program != name
 	s.program = name
-	s.State.SetLiveCamera(n)
+	s.State.SetLiveCamera(n, cleanCamera(o, n))
 	s.liveMu.Unlock()
 	if !changed || expected || n == 0 || !o.Enabled || s.camErr != nil {
 		return
@@ -386,7 +392,8 @@ func (s *Server) liveAgain() {
 	defer s.liveMu.Unlock()
 	s.dropExpired()
 	if s.program != "" && len(s.expect) == 0 {
-		s.State.SetLiveCamera(liveIndex(o, s.program))
+		n := liveIndex(o, s.program)
+		s.State.SetLiveCamera(n, cleanCamera(o, n))
 	}
 }
 
@@ -420,7 +427,7 @@ func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
 			s.expect[k].until = time.Now().Add(expectFor) // the transition starts now
 		}
 		s.program, s.onAir = cam.Scene, cam.Scene
-		s.State.SetLiveCamera(n)
+		s.State.SetLiveCamera(n, cam.Clean)
 		return nil
 	}
 	// The camera on air is already in place, maybe half way through a squeeze.
@@ -460,7 +467,7 @@ func (s *Server) RunScenes() {
 func (s *Server) scenesOnce(wait time.Duration) (pause, next time.Duration) {
 	o := s.Store.Settings().OBS
 	if !o.Enabled {
-		s.State.SetLiveCamera(0)
+		s.State.SetLiveCamera(0, false)
 		return scenesPoll, wait
 	}
 	cfg := obsConfig(o)
@@ -486,7 +493,7 @@ func (s *Server) scenesOnce(wait time.Duration) (pause, next time.Duration) {
 	close(done)
 	s.liveMu.Lock()
 	s.program, s.expect = "", nil
-	s.State.SetLiveCamera(0)
+	s.State.SetLiveCamera(0, false)
 	s.liveMu.Unlock()
 	if err == nil {
 		return 0, wait // the settings changed

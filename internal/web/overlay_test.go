@@ -289,6 +289,51 @@ func TestOverlayCredit(t *testing.T) {
 	}
 }
 
+// A clean camera on air (obs.clean) takes the bug, the sponsor corner and the
+// lower third off marcador and nada; full screens and desconto still show.
+// The same state without obs draws them all.
+func TestOverlayCleanCamera(t *testing.T) {
+	tab := chrome(t)
+	srv := httptest.NewServer(newServerFiles(t, assets.FS))
+	t.Cleanup(srv.Close)
+	const shown = `(() => {
+		const o = (s) => +getComputedStyle(document.querySelector(s)).opacity;
+		const scr = document.querySelector('.screen.on');
+		return [o('.sb-pos') > 0 && o('#s-marcador') > 0 ? 'bug' : '', o('#spc') > 0 && o('#s-marcador') > 0 ? 'corner' : '',
+			document.querySelector('#lt').classList.contains('on') ? 'lt' : '', scr && o('.screen.on') > 0 ? scr.dataset.screen : ''].filter(Boolean).join(' ');
+	})()`
+	for _, c := range []struct{ query, want string }{
+		{"state=/overlay/fixtures/rodape-jogador.json&corner=1", "bug corner lt marcador"},
+		{"state=/overlay/fixtures/marcador-limpo.json&corner=1", "marcador"},
+		{"state=/overlay/fixtures/rodape-jogador.json&screen=nada", "lt"},
+		{"state=/overlay/fixtures/nada-limpo.json&corner=1", ""},
+		{"state=/overlay/fixtures/marcador-limpo.json&screen=intervalo", "intervalo"},
+		{"state=/overlay/fixtures/marcador-limpo.json&screen=desconto", "desconto"},
+	} {
+		t.Run(c.query, func(t *testing.T) {
+			if err := chromedp.Do(tab, chromedp.Navigate(srv.URL+"/overlay?anim=0&"+c.query)); err != nil {
+				t.Fatal(err)
+			}
+			if err := until(tab, `document.documentElement.dataset.screen !== undefined && [...document.images].every((i) => i.complete)`); err != nil {
+				t.Fatal(err)
+			}
+			// What shows must hold for a second (20 polls), past every fade, before it counts.
+			if err := until(tab, `(() => { const v = `+shown+`, p = window.shownWas;
+				if (!p || p.v !== v) { window.shownWas = { v, n: 0 }; return false; }
+				return ++p.n >= 20; })()`); err != nil {
+				t.Fatal(err)
+			}
+			got, err := chromedp.Run(tab, chromedp.Evaluate[string](shown))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != c.want {
+				t.Errorf("shown %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 func TestOverlayDotWhenTheProgramStops(t *testing.T) {
 	tab := chrome(t)
 	s := newServerFiles(t, assets.FS)

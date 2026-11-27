@@ -302,6 +302,9 @@ type OBS struct {
 	// LiveCamera is the camera on program, from 1; 0 when OBS shows another
 	// scene or is not known.
 	LiveCamera int `json:"live_camera"`
+	// Clean is the live camera's settings.obs.cameras[i].clean; false with
+	// LiveCamera 0.
+	Clean bool `json:"clean"`
 }
 
 var Screens = []string{"marcador", "abertura", "plantel", "desconto", "intervalo", "final", "apoiantes", "proximo", "voltamos", "nada"}
@@ -646,11 +649,13 @@ func (m *Machine) SetCamera(c *Camera) {
 	m.mu.Unlock()
 }
 
-// SetLiveCamera sets the camera on program; 0 is none or not known.
-func (m *Machine) SetLiveCamera(n int) {
+// SetLiveCamera sets the camera on program, 0 for none or not known, and
+// whether it hides the corner graphics.
+func (m *Machine) SetLiveCamera(n int, clean bool) {
 	m.mu.Lock()
-	if m.s.OBS.LiveCamera != n {
-		m.s.OBS.LiveCamera = n
+	clean = clean && n > 0
+	if m.s.OBS.LiveCamera != n || m.s.OBS.Clean != clean {
+		m.s.OBS.LiveCamera, m.s.OBS.Clean = n, clean
 		m.changed()
 	}
 	m.mu.Unlock()

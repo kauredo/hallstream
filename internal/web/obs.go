@@ -266,12 +266,14 @@ type setupReply struct {
 }
 
 // setupCamera is one camera of the list Definições > Câmaras sends: its
-// choice ("vdo:<id>" for a saved phone), its name on the panel, and the
-// saved camera it was, from 1; 0 for a new one.
+// choice ("vdo:<id>" for a saved phone), its name on the panel, the saved
+// camera it was, from 1 (0 for a new one), and whether it hides the corner
+// graphics; a page without clean keeps the saved camera's.
 type setupCamera struct {
 	Choice string `json:"choice"`
 	Label  string `json:"label"`
 	Was    int    `json:"was"`
+	Clean  *bool  `json:"clean"`
 }
 
 // maxCameraLabel is the longest name a camera's button takes.
@@ -338,7 +340,10 @@ func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 			if r.Was > 0 && r.Was <= len(old) {
 				p = old[r.Was-1]
 			}
-			c := store.Camera{Scene: p.Scene, Label: cutRunes(strings.Join(strings.Fields(r.Label), " "), maxCameraLabel)}
+			c := store.Camera{Scene: p.Scene, Label: cutRunes(strings.Join(strings.Fields(r.Label), " "), maxCameraLabel), Clean: p.Clean}
+			if r.Clean != nil {
+				c.Clean = *r.Clean
+			}
 			choice := r.Choice
 			if id, ok := strings.CutPrefix(choice, "vdo:"); ok {
 				choice = "vdo"
@@ -438,6 +443,7 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		if aim, err = s.listCameras(req.Cameras); !s.save(w, err) {
 			return
 		}
+		s.liveAgain()
 	}
 	rep, err := s.OBS.Setup(cfg, aim, true, s.fitCamera)
 	if err != nil {

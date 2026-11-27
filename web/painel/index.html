@@ -39,10 +39,15 @@
   </nav>
 
   <main>
+    <div class="ask" id="checkAsk" hidden>
+      <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">
+      <p class="txt"><b data-i18n="painel.atualizacao.perguntar"></b><span class="hint" data-i18n="painel.atualizacao.perguntar_dica"></span></p>
+      <div class="row"><button class="btn primary" type="button" data-act="ck-yes" data-i18n="painel.atualizacao.sim"></button><button class="btn quiet" type="button" data-act="ck-no" data-i18n="painel.atualizacao.nao"></button><span class="msg" role="status"></span></div>
+    </div>
     <div class="ask" id="updateAsk" hidden>
       <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">
-      <p class="txt"><b id="updateTxt"></b><span class="hint" data-i18n="painel.atualizacao.dica"></span></p>
-      <div class="row"><a class="btn primary" id="updateLink" target="_blank" rel="noopener" data-i18n="painel.atualizacao.ver"></a><button class="btn quiet" type="button" data-act="up-later" data-i18n="painel.agora_nao"></button></div>
+      <p class="txt"><b id="updateTxt"></b><span class="hint" id="updateHint"></span></p>
+      <div class="row"><button class="btn primary" type="button" data-act="up-now" data-i18n="painel.atualizacao.agora"></button><a class="btn" id="updateLink" target="_blank" rel="noopener"></a><button class="btn quiet" type="button" data-act="up-later" data-i18n="painel.atualizacao.depois"></button><span class="msg" role="status"></span></div>
     </div>
     <div class="ask" id="shortcutAsk" hidden>
       <img src="/assets/icon/apple-touch-icon.png" alt="" width="44" height="44">

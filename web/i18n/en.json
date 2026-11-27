@@ -810,7 +810,7 @@
   "painel.atualizacao.avisar": "Tell me when a new version is out",
   "painel.atualizacao.avisar_dica": "Once a day, Hallstream asks GitHub for the latest version. It sends nothing about the club, and it only downloads when you click Update now.",
   "painel.atualizacao.depois": "Later",
-  "painel.atualizacao.dica": "Download it from the release page and put it in place of the one you have. Your data stays.",
+  "painel.atualizacao.dica": "Download the new version from the page and put it in place of this one. Your data stays.",
   "painel.atualizacao.dica_instalar": "I install the new version and restart. OBS stays open and your data doesn't change.",
   "painel.atualizacao.disponivel": "Hallstream {versao} is available",
   "painel.atualizacao.falhou": "{erro} You still have the version you had.",

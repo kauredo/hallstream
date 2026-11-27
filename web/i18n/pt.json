@@ -810,7 +810,7 @@
   "painel.atualizacao.avisar": "Avisar quando houver uma versão nova",
   "painel.atualizacao.avisar_dica": "Uma vez por dia, o Hallstream pergunta ao GitHub qual é a versão mais recente. Não envia nada sobre o clube, e só descarrega quando carregar em Atualizar agora.",
   "painel.atualizacao.depois": "Mais tarde",
-  "painel.atualizacao.dica": "Descarregue-a da página da versão e ponha-a no lugar da que tem. Os seus dados ficam.",
+  "painel.atualizacao.dica": "Descarregue a versão nova na página e ponha-a no lugar desta. Os seus dados ficam.",
   "painel.atualizacao.dica_instalar": "Instalo a versão nova e reinicio. O OBS fica aberto e os seus dados não mudam.",
   "painel.atualizacao.disponivel": "Hallstream {versao} está disponível",
   "painel.atualizacao.falhou": "{erro} Continua com a versão que tinha.",

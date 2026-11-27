@@ -1,9 +1,10 @@
 Hallstream para OBS
 
 O programa marca basquetebol, futsal, andebol, voleibol e futebol.
-Lê a consola do marcador pela SL Stream Box, por Bluetooth, ou recebe
-o resultado de um telemóvel. Guarda os plantéis e os patrocinadores de
-cada escalão, e mostra os grafismos no OBS numa só fonte de navegador.
+Lê a consola do marcador pela SL Stream Box, por Bluetooth, uma
+consola Daktronics ou Bodet por cabo, ou recebe o resultado de um
+telemóvel. Guarda os plantéis e os patrocinadores de cada escalão, e
+mostra os grafismos no OBS numa só fonte de navegador.
 
 A marcação pelo telemóvel funciona nas cinco modalidades. A consola só
 foi testada em basquetebol. Em futsal, andebol, voleibol e futebol a
@@ -258,6 +259,31 @@ Abra o separador Caixa no painel.
   experimentar outro.
 - Se nada resultar, envie o ficheiro dados\bluetooth.log, que guarda tudo
   o que o programa viu.
+
+
+UMA CONSOLA POR CABO (DAKTRONICS OU BODET)
+
+O programa também lê duas consolas ligadas ao PC por um cabo série
+(RS-232), sem a Stream Box:
+- Daktronics All Sport 5000, em basquetebol e voleibol. Ligue a saída
+  RTD da consola ao PC por um adaptador USB-série. O cabo ainda não está
+  confirmado: a saída RTD pode ser de corrente (current loop) e precisar
+  de um conversor, e a Daktronics usa um cabo null-modem nas ligações
+  diretas.
+- Bodet Scorepad, em basquetebol e andebol. A saída de protocolo sai pela
+  ficha RJ45 do teclado principal. O manual da Bodet liga-a a uma
+  interface RJ45-RS232 (uma Moxa NPort), e essa interface ao PC.
+Nenhuma das duas foi testada com uma consola a sério: os códigos vêm dos
+manuais. Se tiver uma, grave um jogo e envie-nos o ficheiro.
+
+1. Separador Marcação: escolha "A consola, por cabo".
+2. Escolha a consola e a porta. Se não souber qual é a porta, desligue o
+   cabo, carregue em "Procurar outra vez" e veja que porta desaparece.
+3. A linha por baixo diz o que se passa. "A ler a consola" mostra o
+   resultado que chega, para o comparar com o marcador do pavilhão.
+- Numa Daktronics, carregue uma vez em STOP na consola depois de ligar:
+  ela só envia o que muda, e o STOP faz enviar o resultado todo.
+- "Gravar a consola", no mesmo separador, grava o que chega pelo cabo.
 
 
 DESCONTO DE TEMPO COM O OBS

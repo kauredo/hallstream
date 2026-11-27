@@ -1,6 +1,6 @@
 # 020: Consoles on a serial cable: Daktronics All Sport 5000 and Bodet Scorepad
 
-Status: in review, stack of four app PRs and one held website PR (2026-11-27).
+Status: done, merged as #90 to #93 (2f68895) and released in v0.1.9 (2026-11-27). Not yet read from a real Daktronics or Bodet console.
 
 Repo `app/` at `6367f9c` (main, v0.1.8 tagged), and `website/` at `641915b`. ROADMAP Phase D, items 1 and 3, asked for on 2026-11-27 ("investigate and ship phase D"). Item 2 (capture and replay) is done. The protocol facts come from `docs/research/scoreboard-serial-protocols.md` (written the same day, with a source for each claim). Read it before layer 1. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

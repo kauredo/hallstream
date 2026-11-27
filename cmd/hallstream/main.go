@@ -26,6 +26,7 @@ import (
 
 	"github.com/kauredo/hallstream/internal/applog"
 	"github.com/kauredo/hallstream/internal/ble"
+	"github.com/kauredo/hallstream/internal/cable"
 	"github.com/kauredo/hallstream/internal/desktop"
 	"github.com/kauredo/hallstream/internal/fpb"
 	"github.com/kauredo/hallstream/internal/gamelog"
@@ -187,10 +188,11 @@ func main() {
 	set := st.Settings()
 	i18n.SetLang(set.Lang)
 
-	// -replay plays a capture through the console, with no Bluetooth.
+	// -replay plays a capture through the console or the cable, with no Bluetooth.
 	var replay []ble.Frame
+	var replayHead map[string]string
 	if *replayFile != "" {
-		if replay, err = readCapture(*replayFile); err != nil {
+		if replayHead, replay, err = readCapture(*replayFile); err != nil {
 			fatal(i18n.T("log.replay.nao_li", "ficheiro", *replayFile, "err", err))
 		}
 	}
@@ -219,7 +221,18 @@ func main() {
 		// What the restored scorer holds is not news for the timeline.
 		m.Prime(state.LiveOf(manual.Frame()))
 	}
-	inputs := &source.Switch{Sources: []source.Source{console, manual}, State: m, Values: w.state, Go: safely}
+	cabled := source.NewSerial(&source.Serial{
+		Open:     openSerial,
+		Settings: func() (string, string) { c := st.Settings().Serial; return c.Port, c.Protocol },
+		Sport:    st.GameSport,
+		Raw:      w.frame,
+		Log:      say,
+		Capture: &ble.Recorder{
+			Dir: filepath.Join(dir, "captura"), App: version, Log: say, Sport: st.GameSport,
+			Link: "serial", Protocol: func() string { return cable.Get(st.Settings().Serial.Protocol).Name() },
+		},
+	})
+	inputs := &source.Switch{Sources: []source.Source{console, manual, cabled}, State: m, Values: w.state, Go: safely}
 	var reader *ble.Reader
 	if !*demo && replay == nil {
 		reader = ble.New(&ble.Reader{
@@ -277,12 +290,15 @@ func main() {
 		Autostart:  desktop.Autostart,
 		OBSApp:     obsapp.System(),
 
-		UploadToken: uploadToken,
-		FeedbackURL: feedbackURL,
-		Timeline:    tl,
-		UseInput:    inputs.Use,
-		Manual:      manual,
-		Restart:     restart,
+		UploadToken:  uploadToken,
+		FeedbackURL:  feedbackURL,
+		Timeline:     tl,
+		UseInput:     inputs.Use,
+		Manual:       manual,
+		Serial:       cabled,
+		SerialPorts:  serialPorts,
+		RestartInput: inputs.Restart,
+		Restart:      restart,
 	})
 	srv.SyncGame()
 	srv.SyncPromo()
@@ -338,17 +354,27 @@ func main() {
 		srv.CleanUpAfterUpdate()
 	}
 
-	if replay != nil {
+	cableReplay := replay != nil && replayHead["link"] == "serial"
+	if cableReplay {
+		// Before Use: the run that starts reads the recording, not a port.
+		replayCable(cabled, replayHead, replay)
+	}
+	switch {
+	case cableReplay:
+		inputs.Use("serial") // whatever the settings say: the recording is the cable
+	case replay != nil:
 		inputs.Use("console") // whatever the settings say: the recording is the console
-	} else {
+	default:
 		inputs.Use(set.Input)
 	}
-	if replay != nil {
+	if replay != nil && !cableReplay {
 		say(i18n.T("log.replay.a_tocar", "ficheiro", filepath.Base(*replayFile), "frames", len(replay)))
 		safely(i18n.T("log.tarefa.replay"), func() {
 			console.Replay(make(chan struct{}), replay)
 			say(i18n.T("log.replay.fim"))
 		})
+	} else if cableReplay {
+		say(i18n.T("log.replay.a_tocar", "ficheiro", filepath.Base(*replayFile), "frames", len(replay)))
 	} else if *demo {
 		say(i18n.T("log.modo_demo"))
 		m.SetDemo(true)
@@ -420,6 +446,10 @@ func trayStatus(s state.State) string {
 		return i18n.T("app.bandeja.manual_ligada")
 	case s.Input == "manual":
 		return i18n.T("app.bandeja.manual_espera")
+	case s.Input == "serial" && s.Box.Connected:
+		return i18n.T("app.bandeja.cabo_ligado")
+	case s.Input == "serial":
+		return i18n.T("app.bandeja.cabo_espera")
 	case s.Box.Connected:
 		return i18n.T("app.bandeja.ligada")
 	case s.Box.Scan.Bluetooth == "off" || s.Box.Scan.Bluetooth == "unavailable":
@@ -504,13 +534,13 @@ func saveHistory(st *store.Store, s state.State) {
 }
 
 // readCapture reads a recording made with the panel's "Gravar a consola".
-func readCapture(path string) ([]ble.Frame, error) {
+func readCapture(path string) (map[string]string, []ble.Frame, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
-	return ble.ReadCapture(f)
+	return ble.ReadCaptureFile(f)
 }
 
 // openFolder shows a folder in the system's file manager, making it first.

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -479,5 +480,17 @@ func TestReadCaptureLimits(t *testing.T) {
 	}
 	if _, err := ReadCapture(strings.NewReader(head + "0 33\n1 33\n2 33\n3 33\n")); err == nil {
 		t.Error("one frame over the cap accepted")
+	}
+}
+
+func TestReadCaptureFileHeader(t *testing.T) {
+	in := `# hallstream capture 1 app="0.1.9" box="Box \"A\"" sport="volleyball" start="2026-11-27T20:00:00Z" link="serial" protocol="bodet"` + "\n0 0102\n"
+	head, frames, err := ReadCaptureFile(strings.NewReader(in))
+	if err != nil || len(frames) != 1 {
+		t.Fatalf("frames %d, err %v", len(frames), err)
+	}
+	want := map[string]string{"app": "0.1.9", "box": `Box "A"`, "sport": "volleyball", "start": "2026-11-27T20:00:00Z", "link": "serial", "protocol": "bodet"}
+	if !maps.Equal(head, want) {
+		t.Errorf("head %v", head)
 	}
 }

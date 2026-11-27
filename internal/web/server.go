@@ -60,6 +60,14 @@ type Server struct {
 	UseInput func(name string)
 	// Manual is the score kept by hand from /marcar; nil answers 503.
 	Manual *source.Manual
+	// Serial is the console on a serial cable; nil leaves GET /api/serial
+	// with no status.
+	Serial *source.Serial
+	// SerialPorts lists the serial ports; nil lists none.
+	SerialPorts func() ([]string, error)
+	// RestartInput starts the running input again, so the cable reopens
+	// with a new port or protocol; nil in tests.
+	RestartInput func()
 	// OpenFolder shows a folder in the system's file manager; nil answers 501.
 	OpenFolder func(dir string) error
 	// ShowPanel brings up the panel on this PC, for a second copy started
@@ -164,6 +172,7 @@ func New(s *Server) *Server {
 	s.routes()
 	s.bleRoutes()
 	s.captureRoutes()
+	s.serialRoutes()
 	s.cameraRoutes()
 	s.appRoutes()
 	s.promoRoutes()
@@ -581,6 +590,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		req.OBS.SetupAt = cur.OBS.SetupAt
 		req.Club.Crest = cur.Club.Crest // /api/club/crest owns it
 		req.Stream = cur.Stream         // /api/stream owns it
+		cleanSerial(&req.Serial, cur.Serial, isLoopback(r.RemoteAddr))
 		if !isLoopback(r.RemoteAddr) {
 			// What starts programs on the PC, or reaches OBS, is set on the PC only.
 			req.OBS.Host, req.OBS.Port, req.OBS.Password = cur.OBS.Host, cur.OBS.Port, cur.OBS.Password
@@ -620,6 +630,8 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if old.Input != set.Input && s.UseInput != nil {
 		s.UseInput(set.Input)
+	} else if set.Input == "serial" && old.Serial != set.Serial && s.RestartInput != nil {
+		s.RestartInput()
 	}
 	if set.UpdateCheck && !old.UpdateCheck {
 		select {

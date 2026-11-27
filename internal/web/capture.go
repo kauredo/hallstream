@@ -12,21 +12,27 @@ import (
 // captureDir is where recordings of the console go, inside dados/.
 func (s *Server) captureDir() string { return filepath.Join(s.Store.Dir, "captura") }
 
+// captureLink is the link Gravar a consola records: the cable while it is
+// the input, else the Bluetooth box. rec is nil when there is nothing to
+// record (demo mode); noLink is the refusal while it is not linked.
+func (s *Server) captureLink() (rec *ble.Recorder, linked func() (bool, string), noLink string) {
+	if s.Serial != nil && s.State.Snapshot().Input == "serial" {
+		return s.Serial.Capture, s.Serial.Linked, i18n.T("api.captura.sem_cabo")
+	}
+	if s.BLE == nil || s.BLE.Capture == nil {
+		return nil, nil, ""
+	}
+	return s.BLE.Capture, s.BLE.Linked, i18n.T("api.captura.sem_caixa")
+}
+
 func (s *Server) captureRoutes() {
 	m := s.mux
-	recorder := func(w http.ResponseWriter) *ble.Recorder {
-		if s.BLE == nil || s.BLE.Capture == nil {
-			fail(w, http.StatusServiceUnavailable, noReader.Error())
-			return nil
-		}
-		return s.BLE.Capture
-	}
 	m.HandleFunc("GET /api/ble/capture", func(w http.ResponseWriter, r *http.Request) {
-		if s.BLE == nil || s.BLE.Capture == nil { // demo mode: nothing to record
-			reply(w, ble.CaptureStatus{Max: ble.DefaultCaptureMax})
+		if rec, _, _ := s.captureLink(); rec != nil {
+			reply(w, rec.Status())
 			return
 		}
-		reply(w, s.BLE.Capture.Status())
+		reply(w, ble.CaptureStatus{Max: ble.DefaultCaptureMax}) // demo mode: nothing to record
 	})
 	m.HandleFunc("POST /api/ble/capture", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -35,17 +41,18 @@ func (s *Server) captureRoutes() {
 		if !decode(w, r, &req) {
 			return
 		}
-		rec := recorder(w)
+		rec, linkedNow, noLink := s.captureLink()
 		if rec == nil {
+			fail(w, http.StatusServiceUnavailable, noReader.Error())
 			return
 		}
 		if !req.On {
 			reply(w, rec.Stop("off"))
 			return
 		}
-		linked, name := s.BLE.Linked()
+		linked, name := linkedNow()
 		if !linked {
-			fail(w, http.StatusConflict, i18n.T("api.captura.sem_caixa"))
+			fail(w, http.StatusConflict, noLink)
 			return
 		}
 		st, err := rec.Start(name, s.once)
@@ -60,9 +67,9 @@ func (s *Server) captureRoutes() {
 			return
 		}
 		// The link may have dropped while the file was being made.
-		if linked, _ := s.BLE.Linked(); !linked {
+		if linked, _ := linkedNow(); !linked {
 			rec.Stop("box")
-			fail(w, http.StatusConflict, i18n.T("api.captura.sem_caixa"))
+			fail(w, http.StatusConflict, noLink)
 			return
 		}
 		reply(w, st)

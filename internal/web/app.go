@@ -34,6 +34,30 @@ func (s *Server) appRoutes() {
 	m.HandleFunc("GET /painel/manifest.webmanifest", typed("painel/manifest.webmanifest", "application/manifest+json"))
 	m.HandleFunc("POST /api/system/desktop-shortcut", s.desktopShortcut)
 	m.HandleFunc("GET /api/system/backup", s.backup)
+	m.HandleFunc("POST /api/system/show-panel", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopback(r.RemoteAddr) {
+			fail(w, http.StatusForbidden, i18n.T("api.painel_so_no_pc"))
+			return
+		}
+		if s.ShowPanel == nil {
+			fail(w, http.StatusNotImplemented, i18n.T("api.sem_painel"))
+			return
+		}
+		s.ShowPanel()
+		ok(w)
+	})
+}
+
+// ShowOurPanel asks the Hallstream at addr (host:port) to show its panel,
+// false when it doesn't answer yes (a version before the route, say).
+func ShowOurPanel(addr string) bool {
+	c := &http.Client{Timeout: 2 * time.Second}
+	res, err := c.Post("http://"+addr+"/api/system/show-panel", "application/json", nil)
+	if err != nil {
+		return false
+	}
+	res.Body.Close()
+	return res.StatusCode == http.StatusOK
 }
 
 // backup is "Guardar cópia": the dados folder as a zip, to unzip beside the

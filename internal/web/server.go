@@ -62,6 +62,9 @@ type Server struct {
 	Manual *source.Manual
 	// OpenFolder shows a folder in the system's file manager; nil answers 501.
 	OpenFolder func(dir string) error
+	// ShowPanel brings up the panel on this PC, for a second copy started
+	// while this one runs; nil answers 501.
+	ShowPanel func()
 	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
 	UpdateURL string
 	// Restart starts the program an update put at target and closes this

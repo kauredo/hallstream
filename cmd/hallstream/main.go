@@ -145,7 +145,9 @@ func main() {
 	for p := web.FirstPort; p <= web.LastPort; p++ {
 		if web.Ours(fmt.Sprintf("127.0.0.1:%d", p)) {
 			say(i18n.T("log.ja_aberto", "porta", p))
-			openBrowser(fmt.Sprintf("http://127.0.0.1:%d/painel", p))
+			if !web.ShowOurPanel(fmt.Sprintf("127.0.0.1:%d", p)) {
+				openBrowser(fmt.Sprintf("http://127.0.0.1:%d/painel", p))
+			}
 			return
 		}
 	}
@@ -302,6 +304,8 @@ func main() {
 		fatal(i18n.T("log.nao_abri_servidor", "err", err))
 	}
 	srv.Port = port
+	panel := fmt.Sprintf("http://127.0.0.1:%d/painel", port)
+	srv.ShowPanel = func() { openPanel(panel) }
 	go func() {
 		hs := &http.Server{Handler: srv, ReadHeaderTimeout: 10 * time.Second}
 		if err := hs.Serve(l); err != nil {
@@ -309,7 +313,6 @@ func main() {
 		}
 	}()
 
-	panel := fmt.Sprintf("http://127.0.0.1:%d/painel", port)
 	overlay := fmt.Sprintf("http://127.0.0.1:%d/overlay", port)
 	say(i18n.T("log.painel", "url", panel))
 	say(i18n.T("log.overlay", "url", overlay))

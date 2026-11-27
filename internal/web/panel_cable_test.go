@@ -32,7 +32,7 @@ func TestPanelCablePicked(t *testing.T) {
 	}
 	click(t, tab, `#cxInput input[value="serial"]`)
 	if err := until(tab, `!!document.querySelector('#cxInput .cx-in > label.open + .cx-serial #cxPort') &&
-		[...document.querySelectorAll("#cxPort option")].map(o => o.textContent).join() === "Escolha a porta,COM1,COM3,COM4"`); err != nil {
+		[...document.querySelectorAll("#cxPort option")].map(o => o.textContent).join() === "Nenhuma porta,COM1,COM3,COM4"`); err != nil {
 		t.Fatalf("the cable fields: %v", err)
 	}
 	evalJS(t, tab, `(s => (s.value = "COM4", s.dispatchEvent(new Event("change", { bubbles: true })), true))(document.querySelector("#cxPort"))`)
@@ -46,7 +46,7 @@ func TestPanelCableStates(t *testing.T) {
 	for state, want := range map[string]string{
 		"lendo":    `p.textContent.startsWith("A ler a consola · ") && !!row.querySelector(".dot.on")`,
 		"aberta":   `p.textContent === "A porta está aberta, mas a consola não envia nada. Carregue uma vez em STOP na consola." && !!row.querySelector(".dot.wait") && p.classList.contains("wait")`,
-		"erro":     `p.classList.contains("err") && !!row.querySelector(".dot.off")`,
+		"erro":     `p.classList.contains("err") && p.querySelector("b").textContent === "A porta não abre." && !!row.querySelector(".dot.off")`,
 		"semporta": `p.querySelector("b").textContent === "Escolha a porta." && !!row.querySelector(".dot.gutter") && !!document.querySelector(".cx-port.empty")`,
 	} {
 		t.Run(state, func(t *testing.T) {

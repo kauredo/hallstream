@@ -1583,7 +1583,7 @@
       : c.linked ? [t('painel.cabo.a_ler'), lv.home == null ? '' : '· ' + lv.home + '–' + lv.away + (lv.period ? ' · ' + t('painel.topo.periodo', { periodo: lv.period, relogio: lv.clock || '' }) : '')]
       : c.open ? [set.protocol === 'bodet' ? t('painel.cabo.sem_dados_bodet') : t('painel.cabo.sem_dados_daktronics'), '']
       : !set.port ? [t('painel.cabo.estado_sem_porta'), t('painel.cabo.qual_porta')]
-      : [c.error || t('painel.cabo.fechada'), ''];
+      : [t('painel.cabo.estado_erro'), c.error || t('painel.cabo.fechada')];
     var html = (dot ? '<span class="dot big ' + dot + '"></span>' : '<span class="dot big gutter" aria-hidden="true"></span>') +
       // The live score is aria-hidden: a ticking clock would be read out every few seconds.
       '<p class="grow ' + (dot === 'off' ? 'err' : dot) + '" role="status"><b>' + keepHyphens(esc(line[0])) + '</b>' +

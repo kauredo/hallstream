@@ -24,13 +24,19 @@ There are three versions. Download the one for your computer:
 The steps below are for Windows. On a Mac or on Linux, also read "ON A
 MAC AND ON LINUX", further down.
 
-The program does not open a window. A red icon with a shield stays next
-to the Windows clock. If you can't see it, press the arrow ^ beside the
-icons.
-- Press the icon to open the panel.
+The panel opens in a Hallstream window. A red icon with a shield also
+stays next to the Windows clock. If you can't see it, press the arrow ^
+beside the icons.
+- Closing the window doesn't close Hallstream: the overlay and the
+  stream carry on. Press the icon to see the panel again.
 - Right-click it for "Copy overlay address", the box status and "Quit",
   which closes the program.
-- Opening the program when it is already open just opens the panel.
+- Opening the program when it is already open just shows the panel.
+- Links in the panel, such as the YouTube sign-in and the GitHub form,
+  open in the browser.
+- On a PC without Microsoft's WebView2 (it comes with Windows 11 and an
+  up-to-date Windows 10), and in "Hallstream (32-bit).exe", the panel
+  opens in an Edge window.
 - The Help tab in the panel has the steps for game day and what to do
   when something goes wrong.
 - The program also writes every value to text files
@@ -43,7 +49,7 @@ FIRST TIME (AT HOME)
    program keeps everything in the "dados" folder inside it. To make a
    backup, press "Save backup" in Settings (see "BACKUP AND ANOTHER
    COMPUTER").
-2. Open "Hallstream.exe". The panel opens by itself in the browser.
+2. Open "Hallstream.exe". The panel opens by itself.
    - If "Windows protected your PC" appears, press "More info" and then
      "Run anyway".
    - The panel asks if you want a desktop shortcut. Press "Create".

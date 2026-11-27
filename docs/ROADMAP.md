@@ -14,7 +14,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
 | Area | Decision |
 |---|---|
 | Licence | AGPL-3.0. |
-| Platform | One Go program with the panel and overlay embedded. Every release ships it for Windows (two exes in a zip), macOS (a universal app in a DMG, macOS 13 and later) and Linux (a static amd64 binary in a tarball). USB and capture-card cameras are Windows-only for now. |
+| Platform | One Go program with the panel and overlay embedded. Every release ships it for Windows (two exes in a zip), macOS (a universal app in a DMG, macOS 13 and later) and Linux (a static amd64 binary in a tarball). The panel has its own window on Windows (WebView2, else an Edge app window) and macOS, and opens in the browser on Linux. USB and capture-card cameras are Windows-only for now. |
 | Audience | Clubs anywhere, at any level. Most are run by volunteers, often on an old PC in the hall, so the app has to stay simple for them; it must also scale up for professional and semi-professional clubs. |
 | Mixer | OBS stays the mixer and encoder. Hallstream sets it up over obs-websocket. |
 | Score input | A `Source` interface: the Stramatel Stream Box over Bluetooth (works today), manual scoring from a phone, and demo. Serial (RS-232) decoders come from people who own those consoles, each tested against a recorded session. No OCR. |

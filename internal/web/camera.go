@@ -120,7 +120,7 @@ func cameraOne(o store.OBS, source string) bool {
 }
 
 // followCamera moves the camera with the screen. The screen switch goes
-// first, so the squeeze moves the camera that is live after it. The screen
+// first, so the inset and the squeeze follow the camera that is live after it. The screen
 // is read under switchMu, so a follow that waited there for another acts on
 // the screen as it is now, never on one a newer follow has already left.
 func (s *Server) followCamera() error {
@@ -131,6 +131,7 @@ func (s *Server) followCamera() error {
 	defer s.switchMu.Unlock()
 	screen := s.State.Snapshot().Screen.Current
 	terr := s.screenSwitch(screen)
+	s.applyInset(s.State.Snapshot().OBS.LiveCamera, false)
 	return errors.Join(terr, s.Camera.Follow(screen))
 }
 
@@ -253,7 +254,8 @@ func (s *Server) timeoutSkip(why error) error {
 }
 
 // RunCamera keeps the OBS camera with the screen (automatic changes too) and
-// refits it when the tablet's picture changes size. It never returns.
+// refits it when the tablet's picture changes size, and tries a failed
+// inset again every 4 s. It never returns.
 func (s *Server) RunCamera() {
 	if s.camErr != nil {
 		s.Log(i18n.T("log.camara.erro", "err", s.camErr))
@@ -273,6 +275,7 @@ func (s *Server) RunCamera() {
 			s.followCamera()
 		case <-check.C:
 			refit()
+			s.insetRetry()
 		}
 	}
 }
@@ -400,8 +403,21 @@ func (s *Server) liveAgain() {
 // switchTo puts camera cam, number n, where the screen needs it (in the
 // window or at full screen, at once) and switches OBS to its scene, with no
 // squeeze in between. A failure to place comes back as warning and does not
-// stop the switch. The caller holds switchMu.
+// stop the switch. The inset follows once the switch is made. The caller
+// holds switchMu.
 func (s *Server) switchTo(n int, cam store.Camera) (warning string, err error) {
+	hid := n == s.inset && s.insetOn != nil
+	if hid {
+		s.applyInset(0, false) // a camera never shows itself
+	}
+	defer func() {
+		switch {
+		case err == nil:
+			s.applyInset(n, false)
+		case hid:
+			s.applyInset(s.State.Snapshot().OBS.LiveCamera, true)
+		}
+	}()
 	cfg := obsConfig(s.Store.Settings().OBS)
 	s.liveMu.Lock()
 	onAir := s.program == cam.Scene
@@ -508,6 +524,7 @@ func (s *Server) scenesOnce(wait time.Duration) (pause, next time.Duration) {
 }
 
 func (s *Server) cameraRoutes() {
+	s.mux.HandleFunc("POST /api/obs/inset", s.insetRoute)
 	s.mux.HandleFunc("GET /api/obs/sources", func(w http.ResponseWriter, r *http.Request) {
 		scene, list, auto, err := s.Camera.Sources()
 		if err != nil {

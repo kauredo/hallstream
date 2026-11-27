@@ -29,6 +29,8 @@ type camOBS struct {
 	noList  bool                        // GetSceneList fails
 	scenes  map[string][]map[string]any // GetSceneItemList by scene
 	sent    []camSent                   // transforms and switches, in order
+	asked   []string                    // every request type, in order
+	codes   map[string]int              // a request type answered with this failure code
 }
 
 type camSent struct {
@@ -60,6 +62,10 @@ func (f *camOBS) answer(typ string, raw json.RawMessage) (bool, int, any) {
 		Transform map[string]any `json:"sceneItemTransform"`
 	}
 	json.Unmarshal(raw, &d)
+	f.asked = append(f.asked, typ)
+	if code, ok := f.codes[typ]; ok {
+		return false, code, nil
+	}
 	switch typ {
 	case "GetVideoSettings":
 		return true, 100, map[string]any{"baseWidth": 1920, "baseHeight": 1080}
@@ -93,6 +99,17 @@ func (f *camOBS) answer(typ string, raw json.RawMessage) (bool, int, any) {
 		sc, _ := d.Transform["scaleX"].(float64)
 		f.sent = append(f.sent, camSent{scene: d.Scene, x: x, scale: sc})
 		return true, 100, nil
+	case "SetSceneItemEnabled":
+		var e struct {
+			On bool `json:"sceneItemEnabled"`
+		}
+		json.Unmarshal(raw, &e)
+		for _, it := range f.scenes[d.Scene] {
+			if it["sceneItemId"] == d.ID {
+				it["sceneItemEnabled"] = e.On
+			}
+		}
+		return true, 100, nil
 	case "SetCurrentProgramScene":
 		if f.refuse {
 			return false, 600, nil
@@ -112,8 +129,14 @@ func (f *camOBS) log() []camSent {
 
 func (f *camOBS) clear() {
 	f.mu.Lock()
-	f.sent = nil
+	f.sent, f.asked = nil, nil
 	f.mu.Unlock()
+}
+
+func (f *camOBS) requests() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.asked)
 }
 
 func (f *camOBS) scene() string {

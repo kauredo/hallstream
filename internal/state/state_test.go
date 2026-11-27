@@ -969,6 +969,35 @@ func TestDecodeListAndNews(t *testing.T) {
 	}
 }
 
+func TestSetInset(t *testing.T) {
+	m, _ := newTest()
+	ch, _ := m.Subscribe()
+	sent := func() bool {
+		select {
+		case <-ch:
+			return true
+		default:
+			return false
+		}
+	}
+	m.SetInset(2, &Inset{Label: "Banco", Rect: Rect{X: 1376, Y: 746, W: 480, H: 270}})
+	if o := m.Snapshot().OBS; o.InsetCamera != 2 || o.Inset == nil || o.Inset.X != 1376 || !sent() {
+		t.Errorf("first: %+v", o)
+	}
+	m.SetInset(2, &Inset{Label: "Banco", Rect: Rect{X: 1376, Y: 746, W: 480, H: 270}})
+	if sent() {
+		t.Error("the same inset sent a change")
+	}
+	m.SetInset(2, &Inset{Label: "Banco", Rect: Rect{X: 64, Y: 746, W: 480, H: 270}})
+	if o := m.Snapshot().OBS; o.Inset == nil || o.Inset.X != 64 || !sent() || sent() {
+		t.Errorf("moved: %+v", o.Inset)
+	}
+	m.SetInset(2, nil)
+	if o := m.Snapshot().OBS; o.Inset != nil || o.InsetCamera != 2 || !sent() {
+		t.Errorf("hidden: %+v", o)
+	}
+}
+
 func TestSetLiveCamera(t *testing.T) {
 	m, _ := newTest()
 	ch, _ := m.Subscribe()

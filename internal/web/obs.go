@@ -439,12 +439,19 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	aim := s.want(s.Store.Settings().OBS, req.Camera, req.Old)
 	if req.Cameras != nil {
+		// Under switchMu, so no follow applies the old pick to the new list.
+		s.switchMu.Lock()
 		var err error
-		if aim, err = s.listCameras(req.Cameras); !s.save(w, err) {
+		if aim, err = s.listCameras(req.Cameras); err == nil {
+			s.liveAgain()
+			s.insetMoved(req.Cameras)
+		}
+		s.switchMu.Unlock()
+		if !s.save(w, err) {
 			return
 		}
-		s.liveAgain()
 	}
+	aim.Inset = s.insetShown()
 	rep, err := s.OBS.Setup(cfg, aim, true, s.fitCamera)
 	if err != nil {
 		// The scenes made so far keep their names for the next run, and a
@@ -484,6 +491,7 @@ func (s *Server) obsSetup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.checkOBS()
+	s.insetAfterSetup()
 	if !here {
 		rep.Phones = nil // the stream ids are secrets; the panel asks for one camera's link behind the PIN
 	}

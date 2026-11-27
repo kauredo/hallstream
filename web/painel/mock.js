@@ -394,7 +394,7 @@
     if (p === '/api/status') {
       return reply(200, { version: '0.9.0-mock', port: 8765, overlay_url: 'http://127.0.0.1:8765/overlay', lan_url: 'http://192.168.1.40:8765/painel',
         box: state().box, obs: obsStatus(), youtube: yt, fpb: { reachable: true, cached_at: new Date().toISOString() },
-        data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, club_setup: { running: false, done: 0, total: 0 } });
+        data_dir: 'C:\\Hallstream\\dados', shortcut: onPC, autostart: onPC, obs_app: true, obs_close: true, os: 'windows', club_setup: { running: false, done: 0, total: 0 } });
     }
     if (p === '/api/setup') return setupReply();
     if ((r = /^\/api\/setup\/steps\/([a-z-]+)$/.exec(p))) {

@@ -1,11 +1,12 @@
-// Package desktop is what the program does on the Windows desktop: the icon
-// by the clock, message boxes, the clipboard and the desktop shortcut. On
-// other systems (development) it keeps to the console.
+// Package desktop is what the program does on the Windows, macOS and Linux
+// desktops: the icon by the clock or in the menu bar, message boxes, the
+// clipboard, opening at sign-in and the desktop shortcut. On other systems
+// it keeps to the console.
 package desktop
 
-// Tray is the icon by the clock and its menu.
+// Tray is the icon by the clock (in the menu bar on a Mac) and its menu.
 type Tray struct {
-	Icon    []byte // .ico
+	Icon    []byte // .ico on Windows, PNG elsewhere
 	Tooltip string
 	Panel   func()          // left click and "Abrir painel"
 	Overlay string          // what "Copiar endereço do overlay" copies
@@ -16,3 +17,6 @@ type Tray struct {
 	Quit        func() // cleans up; runs once, before Run returns
 	Log         func(string)
 }
+
+// logLine is Tray.Log once Run starts, for problems Ask can only log.
+var logLine = func(string) {}

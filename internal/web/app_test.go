@@ -9,9 +9,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/kauredo/hallstream/internal/obsapp"
 	assets "github.com/kauredo/hallstream/web"
 )
 
@@ -268,6 +270,25 @@ func TestStatusOffersShortcutOnThePCOnly(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &st)
 	if st.Shortcut {
 		t.Error("the phone is offered a shortcut on the PC's desktop")
+	}
+}
+
+func TestStatusNamesTheSystem(t *testing.T) {
+	s := newServer(t)
+	s.OBSApp = obsapp.App{Start: func() error { return nil }}
+	var st struct {
+		OS       string `json:"os"`
+		OBSApp   bool   `json:"obs_app"`
+		OBSClose bool   `json:"obs_close"`
+	}
+	call(t, s, "GET", "/api/status", nil, &st)
+	if st.OS != runtime.GOOS || !st.OBSApp || st.OBSClose {
+		t.Errorf("start without close: %+v", st)
+	}
+	s.OBSApp.Close = func(bool) error { return nil }
+	call(t, s, "GET", "/api/status", nil, &st)
+	if !st.OBSClose {
+		t.Error("obs_close false with a Close")
 	}
 }
 

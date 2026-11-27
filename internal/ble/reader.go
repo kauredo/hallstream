@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -223,7 +224,12 @@ func (r *Reader) Run() {
 	for {
 		if !enabled {
 			if err := r.Radio.Enable(); err != nil {
-				r.setScan(func(s *state.Scan) { *s = state.Scan{Bluetooth: "unavailable", Message: i18n.T("ble.desligado")} })
+				msg := i18n.T("ble.desligado")
+				if runtime.GOOS == "darwin" {
+					// macOS gives the same error for a radio that is off and a refused permission.
+					msg = i18n.T("ble.sem_autorizacao_mac")
+				}
+				r.setScan(func(s *state.Scan) { *s = state.Scan{Bluetooth: "unavailable", Message: msg} })
 				r.Log(i18n.T("ble.desligado_repete", "err", err))
 				r.idle(btRetry)
 				continue
@@ -323,7 +329,7 @@ func (r *Reader) scanRound() (string, *request, error) {
 	r.mu.Unlock()
 	r.setScan(func(s *state.Scan) {
 		s.Scanning, s.Bluetooth, s.Address, s.Name, s.Saved = true, "ok", "", "", saved
-		if s.Message == "" || s.Message == i18n.T("ble.desligado") {
+		if s.Message == "" || s.Message == i18n.T("ble.desligado") || s.Message == i18n.T("ble.sem_autorizacao_mac") {
 			s.Message = i18n.T("ble.a_procura")
 		}
 	})

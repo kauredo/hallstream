@@ -350,7 +350,7 @@
       var dz = $('#dTz');
       if (dz && s && s.timezone && !(S.settings.club || {}).timezone) dz.options[0].textContent = t('painel.clube.fuso_pais_n', { fuso: s.timezone.replace(/_/g, ' ') });
       // The PC card needs the status: draw it once it comes in.
-      if (S.tab === 'definicoes' && s && s.shortcut && !$('#dShortcut')) renderDefinicoes();
+      if (S.tab === 'definicoes' && s && ((s.shortcut && !$('#dShortcut')) || (s.autostart && !$('#dAutostart')))) renderDefinicoes();
     }, function () {});
   }
 
@@ -2235,6 +2235,13 @@
     return langs.map(function (l) { return '<option value="' + esc(l.code) + '"' + (l.code === cur ? ' selected' : '') + '>' + esc(l.name) + '</option>'; }).join('');
   }
 
+  // autoWords are the words of the "open at sign-in" switch on this system.
+  function autoWords(os) {
+    return os === 'darwin' ? { label: t('painel.definicoes.abrir_mac'), hint: t('painel.definicoes.abrir_mac_dica'), on: t('painel.definicoes.abre_mac'), off: t('painel.definicoes.nao_abre_mac') } :
+      os === 'linux' ? { label: t('painel.definicoes.abrir_linux'), hint: t('painel.definicoes.abrir_linux_dica'), on: t('painel.definicoes.abre_linux'), off: t('painel.definicoes.nao_abre_linux') } :
+      { label: t('painel.definicoes.abrir_windows'), hint: t('painel.definicoes.abrir_windows_dica'), on: t('painel.definicoes.abre_windows'), off: t('painel.definicoes.nao_abre_windows') };
+  }
+
   function renderDefinicoes() {
     var root = $('#definicoes'), s = S.settings;
     if (!s) { root.innerHTML = '<p class="hint">' + t('painel.a_carregar') + '</p>'; return; }
@@ -2271,8 +2278,9 @@
       (S.status && S.status.obs_app ?
         '<label class="switch" style="margin-top:12px"><input type="checkbox" id="dObsLaunch"' + (o.launch ? ' checked' : '') + '><i></i>' + t('painel.definicoes.abrir_obs') + '</label>' +
         '<p class="hint">' + t('painel.definicoes.abrir_obs_dica') + '</p>' +
-        '<label class="switch" style="margin-top:8px"><input type="checkbox" id="dObsClose"' + (o.close_on_exit ? ' checked' : '') + '><i></i>' + t('painel.definicoes.fechar_obs') + '</label>' +
-        '<p class="hint">' + t('painel.definicoes.fechar_obs_dica') + '</p>' : '') +
+        (S.status.obs_close ?
+          '<label class="switch" style="margin-top:8px"><input type="checkbox" id="dObsClose"' + (o.close_on_exit ? ' checked' : '') + '><i></i>' + t('painel.definicoes.fechar_obs') + '</label>' +
+          '<p class="hint">' + t('painel.definicoes.fechar_obs_dica') + '</p>' : '') : '') +
       '<details style="margin-top:12px"><summary class="hint">' + t('painel.definicoes.obs_mao') + '</summary>' +
       '<p class="hint">' + t('painel.definicoes.obs_mao_dica') + '</p>' +
       '<label class="switch"><input type="checkbox" id="dObsOn"' + (o.enabled ? ' checked' : '') + '><i></i>' + t('painel.definicoes.ligar_obs') + '</label>' +
@@ -2329,13 +2337,14 @@
         '<button class="btn quiet" type="button" data-help="ajuda-pc-novo">' + t('painel.ajuda.pc.titulo') + '</button></div></div>';
     }
 
-    if (S.status && S.status.shortcut) {
+    if (S.status && (S.status.shortcut || S.status.autostart)) {
+      var aw = autoWords(S.status.os);
       html += '<div class="card"><h2>' + t('painel.definicoes.neste_pc') + '</h2>' +
         '<p class="hint">' + t('painel.definicoes.fechar_dica') + '</p>' +
-        '<div class="row" style="align-items:center;margin-top:12px"><button class="btn" id="dShortcut" data-act="shortcut">' + t('painel.definicoes.criar_atalho') + '</button><span class="msg"></span></div>' +
-        (s.desktop_shortcut === 'created' ? '<p class="hint" style="margin-top:8px">' + t('painel.definicoes.atalho_criado') + '</p>' : '') +
-        (S.status.autostart ? '<div class="row" style="align-items:center;margin-top:12px"><label class="switch"><input type="checkbox" id="dAutostart"' + (s.start_with_windows ? ' checked' : '') + '><i></i>' + t('painel.definicoes.abrir_windows') + '</label><span class="msg"></span></div>' +
-          '<p class="hint">' + t('painel.definicoes.abrir_windows_dica') + '</p>' : '') + '</div>';
+        (S.status.shortcut ? '<div class="row" style="align-items:center;margin-top:12px"><button class="btn" id="dShortcut" data-act="shortcut">' + t('painel.definicoes.criar_atalho') + '</button><span class="msg"></span></div>' +
+          (s.desktop_shortcut === 'created' ? '<p class="hint" style="margin-top:8px">' + t('painel.definicoes.atalho_criado') + '</p>' : '') : '') +
+        (S.status.autostart ? '<div class="row" style="align-items:center;margin-top:12px"><label class="switch"><input type="checkbox" id="dAutostart"' + (s.start_with_windows ? ' checked' : '') + '><i></i>' + aw.label + '</label><span class="msg"></span></div>' +
+          '<p class="hint">' + aw.hint + '</p>' : '') + '</div>';
     }
     root.innerHTML = html;
     fillCamLinks();
@@ -2946,7 +2955,8 @@
         tx.disabled = true; am.className = 'msg'; am.textContent = '';
         api('POST', '/api/system/autostart', { on: tx.checked }).then(function () {
           S.settings.start_with_windows = tx.checked;
-          am.className = 'msg ok'; am.textContent = tx.checked ? t('painel.definicoes.abre_windows') : t('painel.definicoes.nao_abre_windows');
+          var aw = autoWords(S.status && S.status.os);
+          am.className = 'msg ok'; am.textContent = tx.checked ? aw.on : aw.off;
         }, function (err) { tx.checked = !tx.checked; am.className = 'msg err'; am.textContent = err.message; })
           .then(function () { tx.disabled = false; });
         return;

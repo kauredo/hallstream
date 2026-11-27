@@ -405,6 +405,8 @@ In `.github/workflows/ci.yml`:
 
 ### PR 2: the Mac app in every release
 
+**Build cache (found while executing PR 1, applies to Steps 2.3 and 2.4).** Go's build cache does not key on `MACOSX_DEPLOYMENT_TARGET`. On a Mac that had built the program before without it, `MACOSX_DEPLOYMENT_TARGET=13.0 CGO_ENABLED=1 GOARCH=arm64 go build` linked cached cgo objects stamped `minos 26.0` into a binary stamped 13.0 (`ld: warning: object file ... was built for newer 'macOS' version (26.0) than being linked (13.0)`, about 40 lines per architecture); with `-a` the warnings were gone. So `build.sh macos` builds both architectures with `go build -a` (or with `GOCACHE` pointed at a fresh temporary folder), so no cgo object built for a newer macOS links in. The same holds on CI: `actions/setup-go` restores the build cache by default, so the `macos` release job either builds with `-a` or sets `cache: false` on setup-go. Treat any "built for newer 'macOS' version" line in the build log as a failure.
+
 #### Step 2.1: Bundle files
 
 Create `macres/Info.plist` (XML plist, tabs) with `@VERSION@` placeholders:
@@ -557,7 +559,10 @@ In `/Users/kauredo/code/personal/hallstream/website` (read its `CLAUDE.md` first
 
 ## Maintenance notes
 
-- **macOS second launch**: LaunchServices activates the running app instead of starting a second copy, so the "a second copy opens the first one's panel" behaviour (`main.go` port loop) never runs from Finder. A fix needs an `applicationShouldHandleReopen` hook, which `fyne.io/systray` does not expose (`systray_darwin.m` has no reopen handler).
+- **macOS second launch** (superseded: PR 1 adds the reopen handler to `fyne.io/systray`'s app delegate class at run time, so opening the app again from Finder, or clicking its Dock icon, opens the panel; see `internal/desktop/delegatehook_darwin.go`). The original note: LaunchServices activates the running app instead of starting a second copy, so the "a second copy opens the first one's panel" behaviour (`main.go` port loop) never runs from Finder. A fix needs an `applicationShouldHandleReopen` hook, which `fyne.io/systray` does not expose (`systray_darwin.m` has no reopen handler).
+- **Quit in the Dock and signing out**: the delegate answers `applicationShouldTerminate:` with `NSTerminateLater` and replies once "Sair" has decided (`terminate` in `internal/desktop/tray.go`). Do not go back to `NSTerminateCancel`: macOS then reports the quit as cancelled ("User cancelled", -128, to a quit Apple Event), which also stops a sign-out or restart. The terminate path must not call `systray.Quit()`, which waits on the main thread while AppKit holds it for the reply. After a `fyne.io/systray` upgrade, check that the log has no "Não consegui ligar-me ao Dock" line (the delegate class was renamed or gained its own handler).
+- **Dialogs in front**: AppleScript's `activate` left the quit question behind the active browser on macOS 26. The scripts call `activateIgnoringOtherApps:` through AppleScriptObjC instead. Apple deprecated that method in macOS 14; if a later macOS ignores it, the next step is `NSAlert` inside the app, not System Events (Automation permission, the owner's call as above).
+- **Data folder moves into the bundle's**: someone who ran a plain Mac binary (a scratch `go build`) with `dados/` beside it starts fresh in the `.app`, which uses `~/Library/Application Support/Hallstream/dados`. No migration: there was no earlier Mac release. They can copy the old `dados/` there with the app closed.
 - **Certificate expiry**: Developer ID certificates last five years. When it is renewed, update `MACOS_CERTIFICATE` and `MACOS_CERTIFICATE_PWD` here and in BVA. Already-notarised releases keep working.
 - **Go upgrades** can raise the macOS minimum (Go 1.27 already needs 13). Check https://go.dev/wiki/MinimumRequirements and keep `LSMinimumSystemVersion`, `MACOSX_DEPLOYMENT_TARGET`, READ-ME and the website line in step.
 - **New Windows-only features** must say what they do on macOS and Linux; nil funcs hide them in the panel, as `Shortcut` does.

@@ -20,6 +20,8 @@ jobs:
       - run: google-chrome --version
       - run: go test ./...
       - run: go build -o /dev/null ./cmd/hallstream
+      # The Linux release is a static binary with no cgo.
+      - run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /dev/null ./cmd/hallstream
       - run: GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/hallstream
       # The release ships a 32-bit exe for the old hall PCs.
       - run: GOOS=windows GOARCH=386 go build -o /dev/null ./cmd/hallstream
@@ -36,3 +38,6 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: go build -o /dev/null ./cmd/hallstream
+      # The Mac app is universal and starts on macOS 13.
+      - run: MACOSX_DEPLOYMENT_TARGET=13.0 CGO_ENABLED=1 GOARCH=amd64 go build -o /dev/null ./cmd/hallstream
+      - run: MACOSX_DEPLOYMENT_TARGET=13.0 CGO_ENABLED=1 GOARCH=arm64 go build -o /dev/null ./cmd/hallstream

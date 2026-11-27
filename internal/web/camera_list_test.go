@@ -67,11 +67,12 @@ func TestCameraListTimeoutFollows(t *testing.T) {
 		{"a camera replaced keeps its place", 3, 3, []setupCamera{keep(1), keep(2), {Choice: "device:x", Was: 3}}},
 	} {
 		s := threeCameras(t, c.tcam)
+		s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.ScreenCameras = map[string]int{"nada": c.tcam, "desconto": c.tcam} })
 		if _, err := s.listCameras(c.list); err != nil {
 			t.Fatal(err)
 		}
-		if got := s.Store.Settings().OBS.TimeoutCamera; got != c.want {
-			t.Errorf("%s: timeout_camera %d, want %d", c.name, got, c.want)
+		if o := s.Store.Settings().OBS; o.TimeoutCamera != c.want || o.ScreenCameras["desconto"] != c.want || o.ScreenCameras["nada"] != c.want {
+			t.Errorf("%s: timeout_camera %d, screen_cameras %v, want %d", c.name, o.TimeoutCamera, o.ScreenCameras, c.want)
 		}
 	}
 }

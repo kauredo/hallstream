@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -184,6 +185,79 @@ func TestSettingsTimeoutCamera(t *testing.T) {
 	}
 	if n := st.Settings().OBS.TimeoutCamera; n != 0 {
 		t.Errorf("settings.json without it: %d", n)
+	}
+}
+
+func TestSettingsScreenCameras(t *testing.T) {
+	s := newServer(t)
+	put := func(sc map[string]int, tcam int) store.OBS {
+		t.Helper()
+		set := s.Store.Settings()
+		set.OBS.ScreenCameras, set.OBS.TimeoutCamera = sc, tcam
+		var got store.Settings
+		if code := call(t, s, "PUT", "/api/settings", set, &got); code != 200 {
+			t.Fatalf("put %v: %d", sc, code)
+		}
+		return got.OBS
+	}
+	o := put(map[string]int{"nada": 2, "desconto": 3, "marcador": 1, "intervalo": 2}, 3)
+	if !maps.Equal(o.ScreenCameras, map[string]int{"nada": 2, "desconto": 3}) || o.TimeoutCamera != 3 {
+		t.Errorf("good values: %v timeout %d", o.ScreenCameras, o.TimeoutCamera)
+	}
+	o = put(map[string]int{"nada": 9, "desconto": -1}, 3)
+	if o.ScreenCameras["nada"] != 0 || o.ScreenCameras["desconto"] != 0 || o.TimeoutCamera != 0 {
+		t.Errorf("bad values kept: %v timeout %d", o.ScreenCameras, o.TimeoutCamera)
+	}
+	put(map[string]int{"nada": 1, "desconto": 0}, 0)
+	// A page from before screen_cameras sends timeout_camera alone.
+	if o = put(nil, 4); !maps.Equal(o.ScreenCameras, map[string]int{"nada": 1, "desconto": 4}) || o.TimeoutCamera != 4 {
+		t.Errorf("timeout_camera alone: %v timeout %d", o.ScreenCameras, o.TimeoutCamera)
+	}
+}
+
+// timeout_camera mirrors screen_cameras.desconto, so an older version keeps
+// the time-out camera.
+func TestScreenCamerasMirrorTimeout(t *testing.T) {
+	open := func(js string) *store.Store {
+		t.Helper()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(js), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		st, err := store.Open(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return st
+	}
+	if o := open(`{"obs":{"timeout_camera":2}}`).Settings().OBS; o.ScreenCameras["desconto"] != 2 {
+		t.Errorf("older settings: %v", o.ScreenCameras)
+	}
+	st := open(`{"obs":{"timeout_camera":2,"screen_cameras":{"desconto":3,"nada":1}}}`)
+	if o := st.Settings().OBS; o.TimeoutCamera != 3 || o.ScreenCameras["nada"] != 1 {
+		t.Errorf("the map must win: timeout %d %v", o.TimeoutCamera, o.ScreenCameras)
+	}
+	st.UpdateSettings(func(set *store.Settings) { set.OBS.TimeoutCamera = 4 })
+	if o := st.Settings().OBS; o.ScreenCameras["desconto"] != 4 || o.ScreenCameras["nada"] != 1 {
+		t.Errorf("timeout_camera saved: %v", o.ScreenCameras)
+	}
+	st.UpdateSettings(func(set *store.Settings) { set.OBS.ScreenCameras = map[string]int{"desconto": 1, "nada": 2} })
+	if o := st.Settings().OBS; o.TimeoutCamera != 1 {
+		t.Errorf("screen_cameras saved: timeout %d", o.TimeoutCamera)
+	}
+	b, err := os.ReadFile(filepath.Join(st.Dir, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file struct {
+		OBS struct {
+			TimeoutCamera int            `json:"timeout_camera"`
+			ScreenCameras map[string]int `json:"screen_cameras"`
+		} `json:"obs"`
+	}
+	json.Unmarshal(b, &file)
+	if file.OBS.TimeoutCamera != 1 || file.OBS.ScreenCameras["desconto"] != 1 || file.OBS.ScreenCameras["nada"] != 2 {
+		t.Errorf("file %s", b)
 	}
 }
 

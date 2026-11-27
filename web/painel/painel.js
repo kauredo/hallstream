@@ -2705,11 +2705,16 @@
     return '<h2>' + t('painel.camaras.titulo') + '</h2><p class="hint">' + t('painel.camaras.dica') + '</p>' +
       '<div class="cam-rows">' + rows.map(function (r, i) { return camRowHtml(r, i + 1, 'dCam', rows.length > 1); }).join('') + '</div>' +
       (rows.length < MAX_CAMS ? '<button class="btn quiet small cam-add" type="button" data-act="cam-add">' + t('painel.camaras.adicionar') + '</button>' : '<p class="hint">' + t('painel.camaras.maximo') + '</p>') +
-      (saved.length > 1 ? '<label class="field cam-tcam" id="dObsTcamField"><span>' + t('painel.definicoes.desconto_camara') + '</span><select id="dObsTcam"' + (changed ? ' disabled' : '') + '>' +
-        tcamOptions(saved, o.timeout_camera || 0, changed) + '</select></label><p class="hint cam-tcam-dica">' + (changed ? t('painel.camaras.desconto_guarde') : t('painel.definicoes.desconto_dica')) + '</p>' : '') +
+      (saved.length > 1 ? scamHtml('dObsTcam', t('painel.definicoes.desconto_camara'), changed ? t('painel.camaras.desconto_guarde') : t('painel.definicoes.desconto_dica'), saved, o.timeout_camera || 0, changed) +
+        scamHtml('dObsNcam', t('painel.definicoes.nada_camara'), changed ? t('painel.camaras.nada_guarde') : t('painel.definicoes.nada_dica'), saved, (o.screen_cameras || {}).nada || 0, changed) : '') +
       '<div class="row" style="margin-top:20px;align-items:center"><button class="btn primary" type="button" data-act="cam-save">' + t('painel.camaras.guardar') + '</button>' +
       '<span class="msg" id="camSetupMsg" role="status"></span></div>' +
       '<p class="hint">' + t('painel.camaras.guia') + '</p>';
+  }
+  // A screen's camera: a select of the saved cameras, disabled while the list has changes.
+  function scamHtml(id, label, hint, saved, cur, changed) {
+    return '<label class="field cam-tcam" id="' + id + 'Field"><span>' + label + '</span><select id="' + id + '"' + (changed ? ' disabled' : '') + '>' +
+      tcamOptions(saved, cur, changed) + '</select></label><p class="hint cam-tcam-dica">' + hint + '</p>';
   }
   function readCamRows(root, rows) {
     $all('.cam-row', root).forEach(function (el, i) {
@@ -2718,14 +2723,15 @@
       rows[i].label = el.querySelector('[data-cam-label]').value;
     });
   }
-  // Draws the card again from S.camRows, keeping the time-out camera picked and the focus; a redraw with no focus to give keeps the message.
+  // Draws the card again from S.camRows, keeping the screen cameras picked and the focus; a redraw with no focus to give keeps the message.
   function drawCams(focus) {
     var card = $('#dCams'); if (!card) return;
-    var tc = $('#dObsTcam'), tv = tc && tc.value, a = document.activeElement, said = !focus && $('#camSetupMsg').outerHTML;
+    var tc = $('#dObsTcam'), tv = tc && tc.value, nc = $('#dObsNcam'), nv = nc && nc.value, a = document.activeElement, said = !focus && $('#camSetupMsg').outerHTML;
     if (!focus && a && a.id && card.contains(a)) focus = '#' + a.id;
     card.innerHTML = camCardHtml();
     fillCamLinks();
     if (tv && $('#dObsTcam')) $('#dObsTcam').value = tv;
+    if (nv && $('#dObsNcam')) $('#dObsNcam').value = nv;
     if (said) $('#camSetupMsg').outerHTML = said;
     var f = focus && $(focus); if (f) f.focus();
   }
@@ -2756,7 +2762,10 @@
       password: $('#dObsPass').value, game_scene: $('#dObsGame').value.trim(), timeout_scene: $('#dObsTimeout').value.trim(),
       camera_fit: $('#dObsFit').value
     });
-    if ($('#dObsTcam')) s.obs.timeout_camera = parseInt($('#dObsTcam').value, 10) || 0;
+    if ($('#dObsTcam')) {
+      s.obs.timeout_camera = parseInt($('#dObsTcam').value, 10) || 0;
+      s.obs.screen_cameras = Object.assign({}, s.obs.screen_cameras, { desconto: s.obs.timeout_camera, nada: parseInt($('#dObsNcam').value, 10) || 0 });
+    }
     if ($('#dObsLaunch')) { s.obs.launch = $('#dObsLaunch').checked; s.obs.close_on_exit = $('#dObsClose').checked; }
     s.phone_access = $('#dPhone').checked;
     s.pin = $('#dPin').value.trim();

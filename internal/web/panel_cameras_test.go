@@ -154,6 +154,40 @@ func TestPanelTimeoutCamera(t *testing.T) {
 	}
 }
 
+func TestPanelNadaCamera(t *testing.T) {
+	tab := settingsPanel(t, "&cams=3&tcam=2&ncam=3")
+	if err := until(tab, `document.querySelector("#dObsNcam").value === "3" && document.querySelectorAll("#dObsNcam option").length === 4`+
+		` && document.querySelector("#dObsTcam").value === "2"`); err != nil {
+		t.Fatalf("camera 3 not chosen: %v", err)
+	}
+	if _, err := chromedp.Run(tab, chromedp.Evaluate[bool](`document.querySelector("#dObsNcam").value = "1", true`)); err != nil {
+		t.Fatal(err)
+	}
+	click(t, tab, `[data-act="save-settings"]`)
+	saved := ""
+	for end := time.Now().Add(5 * time.Second); saved != "1,2,2" && time.Now().Before(end); time.Sleep(50 * time.Millisecond) {
+		var err error
+		saved, err = chromedp.Run(tab, chromedp.Evaluate[string](`fetch("/api/settings").then(r => r.json()).then(s => [s.obs.screen_cameras.nada, s.obs.screen_cameras.desconto, s.obs.timeout_camera].join())`, chromedp.EvalAwaitPromise))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if saved != "1,2,2" {
+		t.Errorf("saved nada, desconto, timeout_camera %q", saved)
+	}
+
+	// Rows that differ from the saved list disable it, as the time-out camera.
+	click(t, tab, `[data-act="cam-remove"]`)
+	if err := until(tab, `document.querySelector("#dObsNcam").disabled && document.querySelector("#dObsTcam").disabled`); err != nil {
+		t.Errorf("not disabled while the list changed: %v", err)
+	}
+
+	one := settingsPanel(t, "&cams=1")
+	if shown, err := chromedp.Run(one, chromedp.Evaluate[bool](`!!document.querySelector("#dObsNcamField")`)); err != nil || shown {
+		t.Errorf("one camera shows the Nada camera: %v %v", shown, err)
+	}
+}
+
 func TestPanelCameraHealth(t *testing.T) {
 	tab := cameraPanel(t, "&cams=3&live=1&health=mixed")
 	if err := until(tab, `[...document.querySelectorAll("#cams .cam-saude")].map(e => e.dataset.state).join() === "ok,no_image,frozen"`+

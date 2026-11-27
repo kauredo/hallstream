@@ -869,7 +869,7 @@
   "painel.cabo.a_ler": "Reading the console",
   "painel.cabo.consola": "Console",
   "painel.cabo.dica_bodet": "The protocol output comes out of the RJ45 socket on the Scorepad main keyboard. The Bodet manual connects it to an RJ45-to-RS232 interface (a Moxa NPort), and that interface to the PC.",
-  "painel.cabo.dica_daktronics": "Use the console's RTD output.",
+  "painel.cabo.dica_daktronics": "Connect the J6 “MAIN PORT” on the back of the console with a straight serial cable.",
   "painel.cabo.escolha_porta": "No port",
   "painel.cabo.estado_erro": "The port will not open.",
   "painel.cabo.estado_sem_porta": "Choose the port.",

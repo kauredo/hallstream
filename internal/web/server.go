@@ -2,6 +2,7 @@
 package web
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -63,11 +64,13 @@ type Server struct {
 	OpenFolder func(dir string) error
 	// UpdateURL is where RunUpdates asks for the newest release; "" is GitHub.
 	UpdateURL string
-	// Restart starts the program that an update put in place and closes
-	// this one; nil can't restart.
-	Restart func() error
-	// Updater finds, fetches and swaps the program; nil is internal/update.
-	Updater Updater
+	// Restart starts the program an update put at target and closes this
+	// one; nil can't restart, so the panel only links to new versions.
+	Restart func(target string) error
+	// Install and CanInstall stand in for update.Install and
+	// update.CanInstall in tests; nil uses those.
+	Install    func(context.Context, *http.Client, update.Release, update.Hooks) error
+	CanInstall func() error
 	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
 	// GitHub link in Ajuda.
 	FeedbackURL string
@@ -132,13 +135,7 @@ type Server struct {
 
 	updateNow chan struct{}                  // wakes RunUpdates when the check is switched on
 	newer     atomic.Pointer[update.Release] // a newer release, found by RunUpdates
-	// The update the operator asked for (updates.go).
-	updMu      sync.Mutex
-	updBusy    bool
-	updState   string // "", downloading, installing, restarting, failed
-	updErr     string
-	updOnce    sync.Once
-	updRefusal error // why this copy can't install itself; nil when it can
+	update    updateRun                      // the install the operator asked for
 }
 
 func New(s *Server) *Server {
@@ -518,21 +515,21 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	reply(w, map[string]any{
-		"version":     s.Version,
-		"port":        s.Port,
-		"overlay_url": fmt.Sprintf("http://127.0.0.1:%d/overlay", s.Port),
-		"lan_url":     lan,
-		"box":         s.State.Snapshot().Box,
-		"obs":         s.obsStatus(),
-		"youtube":     s.ytStatus(isLoopback(r.RemoteAddr)),
-		"fpb":         map[string]any{"reachable": reachable, "cached_at": cached},
-		"club_setup":  s.progress(),
-		"langs":       i18n.Languages(),
-		"timezone":    s.zone().String(),
-		"update":      s.updateStatus(isLoopback(r.RemoteAddr)),
-		"update_ask":  s.updateAsk(isLoopback(r.RemoteAddr)),
-		"feedback":    s.FeedbackURL != "",
-		"data_dir":    s.Store.Dir,
+		"version":          s.Version,
+		"port":             s.Port,
+		"overlay_url":      fmt.Sprintf("http://127.0.0.1:%d/overlay", s.Port),
+		"lan_url":          lan,
+		"box":              s.State.Snapshot().Box,
+		"obs":              s.obsStatus(),
+		"youtube":          s.ytStatus(isLoopback(r.RemoteAddr)),
+		"fpb":              map[string]any{"reachable": reachable, "cached_at": cached},
+		"club_setup":       s.progress(),
+		"langs":            i18n.Languages(),
+		"timezone":         s.zone().String(),
+		"update":           s.updateStatus(isLoopback(r.RemoteAddr)),
+		"update_check_ask": s.updateCheckAsk(isLoopback(r.RemoteAddr)),
+		"feedback":         s.FeedbackURL != "",
+		"data_dir":         s.Store.Dir,
 		// The panel offers the desktop shortcut on the PC itself only.
 		"shortcut":  s.Shortcut != nil && isLoopback(r.RemoteAddr),
 		"autostart": s.Autostart != nil && isLoopback(r.RemoteAddr),

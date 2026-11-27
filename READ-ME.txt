@@ -297,10 +297,10 @@ On Windows, Hallstream can only update itself in a folder it can write
 to, such as C:\Hallstream; inside "Program Files" it can't. On a Mac,
 only from the Applications folder.
 
-If the new version won't open, the previous one stays beside it for 10
-minutes with ".old" at the end of its name (Hallstream.exe.old, or
-Hallstream.app.old on a Mac). Close Hallstream, delete the new version
-and take ".old" off the previous one's name.
+The previous version stays beside it with ".old" at the end of its name
+(Hallstream.exe.old, or Hallstream.app.old on a Mac), and is only deleted
+once the new one has been open for 10 minutes. If the new one won't open,
+delete it and take ".old" off the previous one's name.
 
 
 BACKUP AND ANOTHER COMPUTER

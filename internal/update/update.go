@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -66,11 +68,19 @@ func Latest(ctx context.Context, c *http.Client, url, agent string) (Release, er
 	}
 	rel := Release{Version: v, URL: body.Page, Assets: map[string]string{}}
 	for _, a := range body.Assets {
-		if strings.HasPrefix(a.URL, assetPrefix) {
+		if releaseFile(a.URL) {
 			rel.Assets[a.Name] = a.URL
 		}
 	}
 	return rel, nil
+}
+
+// releaseFile reports whether u is a file of this project's releases, with
+// no ".." or other trick in its path.
+func releaseFile(u string) bool {
+	p, err := url.Parse(u)
+	return err == nil && strings.HasPrefix(u, assetPrefix) && p.Scheme == "https" && p.Host == "github.com" &&
+		p.RawQuery == "" && path.Clean(p.Path) == p.Path && strings.HasPrefix(p.Path, "/kauredo/hallstream/releases/download/")
 }
 
 // AssetName is the release file that holds the program for this system, or
@@ -93,10 +103,14 @@ var maxDownload int64 = 300 << 20
 // sumsName is the release file listing every other file's SHA-256.
 const sumsName = "SHA256SUMS"
 
+// maxSums caps SHA256SUMS, a few lines of text.
+const maxSums = 1 << 20
+
 // redirectHost reports whether a download may be sent on to host; GitHub
-// answers with a redirect to its file host. A var so tests can allow theirs.
+// answers with a redirect to its release file host (the newer name first).
+// A var so tests can allow theirs.
 var redirectHost = func(host string) bool {
-	return host == "github.com" || strings.HasSuffix(host, ".githubusercontent.com")
+	return host == "github.com" || host == "release-assets.githubusercontent.com" || host == "objects.githubusercontent.com"
 }
 
 // Download fetches the release file name into dir and checks it against the
@@ -107,14 +121,14 @@ func Download(ctx context.Context, c *http.Client, rel Release, name, dir string
 	if sumsURL == "" || fileURL == "" {
 		return "", i18n.Err("log.atualizacao.sem_ficheiro", "ficheiro", name)
 	}
-	cc := *c
-	cc.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	client := *c
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || req.URL.Scheme != via[0].URL.Scheme || !redirectHost(req.URL.Hostname()) {
 			return fmt.Errorf("GitHub: redirect to %s refused", req.URL.Host)
 		}
 		return nil
 	}
-	sums, err := fetch(ctx, &cc, sumsURL, 1<<20)
+	sums, err := fetch(ctx, &client, sumsURL, maxSums)
 	if err != nil {
 		return "", err
 	}
@@ -123,7 +137,7 @@ func Download(ctx context.Context, c *http.Client, rel Release, name, dir string
 		return "", i18n.Err("log.atualizacao.sem_soma", "ficheiro", name)
 	}
 	path := filepath.Join(dir, name)
-	if err := save(ctx, &cc, fileURL, path, want); err != nil {
+	if err := save(ctx, &client, fileURL, path, want); err != nil {
 		os.Remove(path)
 		return "", err
 	}

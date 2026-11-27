@@ -7,8 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
-	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -16,56 +14,108 @@ import (
 	"github.com/kauredo/hallstream/internal/update"
 )
 
-// fakeUpdater records each step and fails the one named in fail.
-type fakeUpdater struct {
-	mu      sync.Mutex
-	steps   []string
-	fail    string
-	undone  bool
-	refuse  error
-	onSwap  func()
-	swapped bool
+func TestUpdateCheck(t *testing.T) {
+	tag := "v1.1.0"
+	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"` + tag + `","html_url":"https://github.com/kauredo/hallstream/releases/tag/` + tag + `","assets":[` +
+			`{"name":"SHA256SUMS","browser_download_url":"https://github.com/kauredo/hallstream/releases/download/` + tag + `/SHA256SUMS"}]}`))
+	}))
+	defer gh.Close()
+	s := newServer(t)
+	s.Version, s.UpdateURL = "1.0.0", gh.URL
+
+	var st struct {
+		Update *struct{ Version, URL string } `json:"update"`
+	}
+	s.checkUpdate() // the check is off: what it finds stays hidden
+	call(t, s, "GET", "/api/status", nil, &st)
+	if st.Update != nil {
+		t.Fatalf("check off: %+v", st.Update)
+	}
+
+	set := s.Store.Settings()
+	set.UpdateCheck = true
+	call(t, s, "PUT", "/api/settings", set, nil)
+	select {
+	case <-s.updateNow:
+	default:
+		t.Error("switching the check on did not wake RunUpdates")
+	}
+	call(t, s, "GET", "/api/status", nil, &st)
+	if st.Update == nil || st.Update.Version != "1.1.0" {
+		t.Fatalf("newer release: %+v", st.Update)
+	}
+	if rel := s.newer.Load(); rel == nil || rel.Assets["SHA256SUMS"] == "" {
+		t.Errorf("assets not kept: %+v", rel)
+	}
+
+	tag = "v1.0.0"
+	s.checkUpdate()
+	st.Update = nil
+	call(t, s, "GET", "/api/status", nil, &st)
+	if st.Update != nil {
+		t.Errorf("same version: %+v", st.Update)
+	}
 }
 
-func (f *fakeUpdater) step(name string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.steps = append(f.steps, name)
-	if f.fail == name {
-		return errors.New(name + " failed")
+// fakeInstall stands in for update.Install: it runs the hooks as the real
+// one does and fails at the step named in fail ("download", "prepare",
+// "swap", "panic"). undone says whether it would have put the old program
+// back, which the real Install does whenever it returns an error after a swap.
+type fakeInstall struct {
+	fail     string
+	liveAt   string // the step after which OffAir says the stream went live
+	steps    []string
+	swapped  bool
+	restarts []string
+}
+
+func (f *fakeInstall) run(ctx context.Context, c *http.Client, rel update.Release, h update.Hooks) error {
+	step := func(name string) error {
+		f.steps = append(f.steps, name)
+		if f.fail == "panic" && name == "swap" {
+			panic("boom")
+		}
+		if f.fail == name {
+			return errors.New(name + " failed")
+		}
+		return nil
+	}
+	offAir := func(after string) bool { return f.liveAt != after && h.OffAir() }
+	if err := step("download"); err != nil {
+		return err
+	}
+	h.Status("installing")
+	if err := step("prepare"); err != nil {
+		return err
+	}
+	if !offAir("prepare") {
+		return errors.New("live")
+	}
+	if err := step("swap"); err != nil {
+		return err
+	}
+	f.swapped = true
+	if !offAir("swap") {
+		return errors.New("live")
+	}
+	h.Status("restarting")
+	if err := h.Restart("/x/Hallstream"); err != nil {
+		return err
 	}
 	return nil
 }
-func (f *fakeUpdater) Target() (string, error)         { return "/x/Hallstream", f.step("target") }
-func (f *fakeUpdater) Installable(string) error        { f.step("installable"); return f.refuse }
-func (f *fakeUpdater) StageDir(string) (string, error) { return "", f.step("stage") }
-func (f *fakeUpdater) Download(ctx context.Context, c *http.Client, rel update.Release, name, dir string) (string, error) {
-	return "/x/a.zip", f.step("download " + name)
-}
-func (f *fakeUpdater) Prepare(string, string) (string, error) { return "/x/new", f.step("prepare") }
-func (f *fakeUpdater) Swap(string, string) (func() error, error) {
-	if err := f.step("swap"); err != nil {
-		return nil, err
-	}
-	f.mu.Lock()
-	f.swapped = true
-	f.mu.Unlock()
-	if f.onSwap != nil {
-		f.onSwap()
-	}
-	return func() error { f.mu.Lock(); f.undone = true; f.mu.Unlock(); return nil }, nil
-}
 
-// updateServer offers 9.9.9 with a fake updater; restarts counts Restart.
-func updateServer(t *testing.T, f *fakeUpdater) (*Server, *atomic.Int32) {
+// updateServer offers 9.9.9 and installs it with f.
+func updateServer(t *testing.T, f *fakeInstall) *Server {
 	t.Helper()
 	s := newServer(t)
-	var restarts atomic.Int32
-	s.Updater = f
-	s.Restart = func() error { restarts.Add(1); return nil }
+	s.Install = f.run
+	s.CanInstall = func() error { return nil }
+	s.Restart = func(target string) error { f.restarts = append(f.restarts, target); return nil }
 	s.Store.UpdateSettings(func(set *store.Settings) { set.UpdateCheck = true })
 	s.newer.Store(&update.Release{Version: "9.9.9", URL: "https://github.com/kauredo/hallstream/releases/tag/v9.9.9"})
-	return s, &restarts
+	return s
 }
 
 func updateState(t *testing.T, s *Server) map[string]any {
@@ -77,23 +127,30 @@ func updateState(t *testing.T, s *Server) map[string]any {
 	return st.Update
 }
 
-func fromPhone(t *testing.T, s *Server, path string, body any) int {
+// fromPhone sends a request from a phone with the PIN and decodes the answer.
+func fromPhone(t *testing.T, s *Server, method, path string, body, out any) int {
 	t.Helper()
 	lanIP(t)
 	phoneAccess(s)
-	b, _ := json.Marshal(body)
-	req := httptest.NewRequest("POST", path, bytes.NewReader(b))
+	var rd bytes.Buffer
+	if body != nil {
+		json.NewEncoder(&rd).Encode(body)
+	}
+	req := httptest.NewRequest(method, path, &rd)
 	req.RemoteAddr, req.Host = "192.168.1.20:5000", "192.168.1.40:8765"
 	req.Header.Set("X-PIN", "1234")
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	s.ServeHTTP(w, req)
+	if out != nil {
+		json.Unmarshal(w.Body.Bytes(), out)
+	}
 	return w.Code
 }
 
 func TestUpdateInstalls(t *testing.T) {
-	f := &fakeUpdater{}
-	s, restarts := updateServer(t, f)
+	f := &fakeInstall{}
+	s := updateServer(t, f)
 	if u := updateState(t, s); u["install"] != true || u["version"] != "9.9.9" || u["state"] != "" {
 		t.Fatalf("offer %v", u)
 	}
@@ -101,12 +158,8 @@ func TestUpdateInstalls(t *testing.T) {
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, &resp); code != 200 || resp["version"] != "9.9.9" {
 		t.Fatalf("%d %v", code, resp)
 	}
-	if restarts.Load() != 1 || f.undone {
-		t.Errorf("restarts %d, undone %v, steps %v", restarts.Load(), f.undone, f.steps)
-	}
-	want := "download " + update.AssetName(runtime.GOOS, runtime.GOARCH, "9.9.9")
-	if len(f.steps) < 5 || f.steps[len(f.steps)-3] != want {
-		t.Errorf("steps %v", f.steps)
+	if len(f.restarts) != 1 || f.restarts[0] != "/x/Hallstream" {
+		t.Errorf("restarts %v", f.restarts)
 	}
 	if u := updateState(t, s); u["state"] != "restarting" {
 		t.Errorf("state %v", u)
@@ -114,22 +167,26 @@ func TestUpdateInstalls(t *testing.T) {
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusConflict {
 		t.Errorf("a second install: %d", code)
 	}
+	// The install keeps showing while the old copy closes, even with the check off.
+	s.Store.UpdateSettings(func(set *store.Settings) { set.UpdateCheck = false })
+	if u := updateState(t, s); u == nil || u["state"] != "restarting" {
+		t.Errorf("hidden mid-install: %v", u)
+	}
+	if code := call(t, s, "POST", "/api/obs/stream/start", map[string]any{}, nil); code != http.StatusConflict {
+		t.Errorf("stream started during an install: %d", code)
+	}
 }
 
-func TestUpdateFailurePutsTheOldBack(t *testing.T) {
-	for _, step := range []string{"download " + update.AssetName(runtime.GOOS, runtime.GOARCH, "9.9.9"), "prepare", "swap", "restart"} {
-		f := &fakeUpdater{fail: step}
-		s, _ := updateServer(t, f)
+func TestUpdateFailures(t *testing.T) {
+	for _, step := range []string{"download", "prepare", "swap", "restart", "panic"} {
+		f := &fakeInstall{fail: step}
+		s := updateServer(t, f)
 		if step == "restart" {
-			s.Restart = func() error { return errors.New("restart failed") }
+			s.Restart = func(string) error { return errors.New("restart failed") }
 		}
 		call(t, s, "POST", "/api/update", map[string]any{}, nil)
-		u := updateState(t, s)
-		if u["state"] != "failed" || u["error"] == "" {
+		if u := updateState(t, s); u["state"] != "failed" || u["error"] == "" {
 			t.Errorf("%s: %v", step, u)
-		}
-		if f.undone != f.swapped {
-			t.Errorf("%s: swapped %v, undone %v", step, f.swapped, f.undone)
 		}
 		f.fail = ""
 		if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != 200 {
@@ -138,8 +195,8 @@ func TestUpdateFailurePutsTheOldBack(t *testing.T) {
 	}
 }
 
-// A stream that goes live during the download stops the install before the
-// program is touched, or puts it back right after the swap.
+// A stream that goes live during the install stops it, before or after the
+// swap, and nothing restarts.
 func TestUpdateStopsWhenLive(t *testing.T) {
 	var live atomic.Bool
 	host, port := fakeOBS(t, "", func(typ string) (bool, int, any) {
@@ -148,42 +205,63 @@ func TestUpdateStopsWhenLive(t *testing.T) {
 		}
 		return true, 100, nil
 	})
-	f := &fakeUpdater{}
-	s, restarts := updateServer(t, f)
-	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Host, set.OBS.Port, set.OBS.Enabled = host, port, true })
+	for _, at := range []string{"prepare", "swap"} {
+		f := &fakeInstall{liveAt: at}
+		s := updateServer(t, f)
+		s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Host, set.OBS.Port, set.OBS.Enabled = host, port, true })
+		call(t, s, "POST", "/api/update", map[string]any{}, nil)
+		if len(f.restarts) != 0 || f.swapped != (at == "swap") || updateState(t, s)["state"] != "failed" {
+			t.Errorf("live after %s: restarts %v, swapped %v", at, f.restarts, f.swapped)
+		}
+	}
 	live.Store(true)
+	s := updateServer(t, &fakeInstall{})
+	s.Store.UpdateSettings(func(set *store.Settings) { set.OBS.Host, set.OBS.Port, set.OBS.Enabled = host, port, true })
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusConflict {
 		t.Errorf("live: %d", code)
-	}
-	live.Store(false)
-	f.onSwap = func() { live.Store(true) }
-	call(t, s, "POST", "/api/update", map[string]any{}, nil)
-	if restarts.Load() != 0 || !f.undone || updateState(t, s)["state"] != "failed" {
-		t.Errorf("restarts %d, undone %v, steps %v", restarts.Load(), f.undone, f.steps)
 	}
 }
 
 func TestUpdateRefusals(t *testing.T) {
-	s, _ := updateServer(t, &fakeUpdater{refuse: errors.New("read-only folder")})
-	if u := updateState(t, s); u["install"] != false {
-		t.Errorf("install offered: %v", u)
+	s := updateServer(t, &fakeInstall{})
+	var calls int
+	s.CanInstall = func() error { calls++; return errors.New("read-only folder") }
+	for range 3 {
+		if u := updateState(t, s); u["install"] != false {
+			t.Errorf("install offered: %v", u)
+		}
+	}
+	if calls != 1 {
+		t.Errorf("worked out %d times for the status", calls)
 	}
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusConflict {
 		t.Errorf("refused copy: %d", code)
 	}
-	s, _ = updateServer(t, &fakeUpdater{})
+
+	s = updateServer(t, &fakeInstall{})
 	s.newer.Store(nil)
 	if code := call(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusConflict {
 		t.Errorf("nothing newer: %d", code)
 	}
-	s, _ = updateServer(t, &fakeUpdater{})
-	if code := fromPhone(t, s, "/api/update", map[string]any{}); code != http.StatusForbidden {
-		t.Errorf("phone: %d", code)
-	}
-	s, _ = updateServer(t, &fakeUpdater{})
+
+	s = updateServer(t, &fakeInstall{})
 	s.Restart = nil
 	if u := updateState(t, s); u["install"] != false {
 		t.Errorf("no Restart, install offered: %v", u)
+	}
+
+	s = updateServer(t, &fakeInstall{fail: "download"})
+	call(t, s, "POST", "/api/update", map[string]any{}, nil)
+	if code := fromPhone(t, s, "POST", "/api/update", map[string]any{}, nil); code != http.StatusForbidden {
+		t.Errorf("phone: %d", code)
+	}
+	var st struct {
+		Update map[string]any `json:"update"`
+		Ask    bool           `json:"update_check_ask"`
+	}
+	fromPhone(t, s, "GET", "/api/status", nil, &st)
+	if st.Update["install"] != false || st.Update["state"] != "" || st.Update["error"] != "" || st.Ask {
+		t.Errorf("a phone sees %v, ask %v", st.Update, st.Ask)
 	}
 }
 
@@ -191,7 +269,7 @@ func TestUpdateAsk(t *testing.T) {
 	s := newServer(t)
 	ask := func() bool {
 		var st struct {
-			Ask bool `json:"update_ask"`
+			Ask bool `json:"update_check_ask"`
 		}
 		call(t, s, "GET", "/api/status", nil, &st)
 		return st.Ask
@@ -199,7 +277,7 @@ func TestUpdateAsk(t *testing.T) {
 	if !ask() {
 		t.Fatal("a new install isn't asked")
 	}
-	if code := fromPhone(t, s, "/api/update/ask", map[string]bool{"check": true}); code != http.StatusForbidden {
+	if code := fromPhone(t, s, "POST", "/api/update/ask", map[string]bool{"check": true}, nil); code != http.StatusForbidden {
 		t.Errorf("phone: %d", code)
 	}
 	var set store.Settings
@@ -216,7 +294,23 @@ func TestUpdateAsk(t *testing.T) {
 		t.Error("PUT /api/settings reset update_asked")
 	}
 	call(t, s, "POST", "/api/update/ask", map[string]bool{"check": true}, &set)
+	select {
+	case <-s.updateNow:
+	default:
+		t.Error("Sim did not wake RunUpdates")
+	}
+	call(t, s, "POST", "/api/update/ask", map[string]bool{"check": false}, &set)
 	if !set.UpdateCheck {
-		t.Error("Sim didn't turn the check on")
+		t.Error("a later Não turned the check off")
+	}
+	// Someone who turned the check on before this version isn't asked.
+	s2 := newServer(t)
+	s2.Store.UpdateSettings(func(set *store.Settings) { set.UpdateCheck = true })
+	var st struct {
+		Ask bool `json:"update_check_ask"`
+	}
+	call(t, s2, "GET", "/api/status", nil, &st)
+	if st.Ask {
+		t.Error("asked with the check already on")
 	}
 }

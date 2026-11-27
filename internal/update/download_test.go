@@ -140,3 +140,51 @@ func TestDownloadRedirects(t *testing.T) {
 		t.Errorf("redirect: %v", err)
 	}
 }
+
+func TestRedirectHost(t *testing.T) {
+	for host, want := range map[string]bool{
+		"github.com": true, "release-assets.githubusercontent.com": true, "objects.githubusercontent.com": true,
+		"raw.githubusercontent.com": false, "gist.githubusercontent.com": false, "evilgithub.com": false,
+		"githubusercontent.com.evil.example": false,
+	} {
+		if redirectHost(host) != want {
+			t.Errorf("%s: %v", host, !want)
+		}
+	}
+}
+
+func TestReleaseFile(t *testing.T) {
+	for u, want := range map[string]bool{
+		"https://github.com/kauredo/hallstream/releases/download/v1.0.0/Hallstream-1.0.0.zip":        true,
+		"https://github.com/kauredo/hallstream/releases/download/../../../other/repo/releases/x.zip": false,
+		"https://github.com/kauredo/hallstream/releases/download/v1.0.0/x.zip?redirect=evil.example": false,
+		"https://evil.example/kauredo/hallstream/releases/download/v1.0.0/x.zip":                     false,
+	} {
+		if releaseFile(u) != want {
+			t.Errorf("%s: %v", u, !want)
+		}
+	}
+}
+
+func TestSumFor(t *testing.T) {
+	h := strings.Repeat("a", 64)
+	sums := h + "  Hallstream-1.0.0.zip\r\n" + strings.Repeat("b", 64) + " *x-Hallstream-1.0.0.zip\n" + "abc  short.zip\n"
+	if sumFor(sums, "Hallstream-1.0.0.zip") != h || sumFor(sums, "x-Hallstream-1.0.0.zip") != strings.Repeat("b", 64) || sumFor(sums, "short.zip") != "" {
+		t.Error("sumFor")
+	}
+}
+
+func TestDownloadTooManyRedirects(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/loop", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/loop", http.StatusFound) })
+	mux.HandleFunc("/SHA256SUMS", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(strings.Repeat("0", 64) + "  a.zip\n")) })
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	old := redirectHost
+	redirectHost = func(string) bool { return true }
+	t.Cleanup(func() { redirectHost = old })
+	rel := Release{Assets: map[string]string{"SHA256SUMS": srv.URL + "/SHA256SUMS", "a.zip": srv.URL + "/loop"}}
+	if _, err := Download(context.Background(), http.DefaultClient, rel, "a.zip", t.TempDir()); err == nil {
+		t.Error("an endless redirect was followed")
+	}
+}

@@ -3,8 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
-	"os"
-	"runtime"
+	"sync"
 	"time"
 
 	"github.com/kauredo/hallstream/internal/i18n"
@@ -14,6 +13,10 @@ import (
 
 // updateEvery is how often the update check asks GitHub, while it is on.
 const updateEvery = 24 * time.Hour
+
+// keepOldCopy is how long a copy started by an update leaves the program it
+// replaced beside it, so a new version that dies at once can be put back.
+const keepOldCopy = 10 * time.Minute
 
 // RunUpdates asks GitHub for a newer release once a day while
 // settings.update_check is on, and at once when it is switched on. It
@@ -54,89 +57,84 @@ func (s *Server) checkUpdate() {
 }
 
 // newerRelease is the release the panel offers, or nil: none found, or the
-// check is off.
+// check is off. While an install runs it is the release being installed.
 func (s *Server) newerRelease() *update.Release {
+	s.update.mu.Lock()
+	rel := s.update.rel
+	s.update.mu.Unlock()
+	if rel != nil {
+		return rel
+	}
 	if !s.Store.Settings().UpdateCheck {
 		return nil
 	}
 	return s.newer.Load()
 }
 
-// Updater finds, fetches, unpacks and swaps the program; the real one is
-// internal/update, and tests put in one that leaves the test binary alone.
-type Updater interface {
-	Target() (string, error)
-	Installable(target string) error
-	StageDir(target string) (string, error)
-	Download(ctx context.Context, c *http.Client, rel update.Release, name, dir string) (string, error)
-	Prepare(archive, target string) (string, error)
-	Swap(staged, target string) (undo func() error, err error)
+// updateRun is the install the operator asked for.
+type updateRun struct {
+	mu      sync.Mutex
+	rel     *update.Release // being installed; nil when none runs
+	state   string          // "", downloading, installing, restarting, failed
+	err     string
+	once    sync.Once
+	refusal error // why this copy can't install itself, worked out once
 }
 
-type realUpdater struct{}
-
-func (realUpdater) Target() (string, error)                { return update.Target() }
-func (realUpdater) Installable(target string) error        { return update.Installable(target) }
-func (realUpdater) StageDir(target string) (string, error) { return update.StageDir(target) }
-func (realUpdater) Download(ctx context.Context, c *http.Client, rel update.Release, name, dir string) (string, error) {
-	return update.Download(ctx, c, rel, name, dir)
-}
-func (realUpdater) Prepare(archive, target string) (string, error) {
-	return update.Prepare(archive, target)
-}
-func (realUpdater) Swap(staged, target string) (func() error, error) {
-	return update.Swap(staged, target)
-}
-
-func (s *Server) updater() Updater {
-	if s.Updater == nil {
-		return realUpdater{}
+func (s *Server) install() func(context.Context, *http.Client, update.Release, update.Hooks) error {
+	if s.Install != nil {
+		return s.Install
 	}
-	return s.Updater
+	return update.Install
 }
 
-// refusal is why this copy can't install an update itself, worked out once:
-// the folder check and codesign are too slow for every status poll.
-func (s *Server) refusal() error {
-	s.updOnce.Do(func() {
-		if s.Restart == nil || update.AssetName(runtime.GOOS, runtime.GOARCH, "x") == "" {
-			s.updRefusal = i18n.Err("log.atualizacao.sem_programa")
-			return
-		}
-		u := s.updater()
-		t, err := u.Target()
-		if err == nil {
-			err = u.Installable(t)
-		}
-		s.updRefusal = err
-	})
-	return s.updRefusal
+func (s *Server) canInstall() error {
+	if s.Restart == nil {
+		return i18n.Err("log.atualizacao.sem_programa")
+	}
+	if s.CanInstall != nil {
+		return s.CanInstall()
+	}
+	return update.CanInstall()
 }
 
-// updateStatus is "update" in GET /api/status: the newer release, whether
-// this caller can install it from here, and how an install is going.
-func (s *Server) updateStatus(here bool) map[string]any {
+// cachedRefusal is canInstall worked out once, for the status polls: the
+// folder check and codesign are too slow to run every 10 s.
+func (s *Server) cachedRefusal() error {
+	s.update.once.Do(func() { s.update.refusal = s.canInstall() })
+	return s.update.refusal
+}
+
+// updateStatus is "update" in GET /api/status: the newer release and, on
+// the PC, whether it can be installed from here and how an install goes.
+func (s *Server) updateStatus(onPC bool) map[string]any {
 	rel := s.newerRelease()
 	if rel == nil {
 		return nil
 	}
-	s.updMu.Lock()
-	state, msg := s.updState, s.updErr
-	s.updMu.Unlock()
-	return map[string]any{
-		"version": rel.Version,
-		"url":     rel.URL,
-		"install": here && s.refusal() == nil,
-		"state":   state,
-		"error":   msg,
+	out := map[string]any{"version": rel.Version, "url": rel.URL, "install": false, "state": "", "error": ""}
+	if !onPC {
+		return out
 	}
+	s.update.mu.Lock()
+	out["state"], out["error"] = s.update.state, s.update.err
+	s.update.mu.Unlock()
+	out["install"] = s.Restart != nil && s.cachedRefusal() == nil
+	return out
 }
 
-// updateAsk says whether the panel on the PC should ask once whether to
-// check for versions.
-func (s *Server) updateAsk(here bool) bool {
+// updateCheckAsk says whether the panel on the PC should ask once whether
+// to check for versions.
+func (s *Server) updateCheckAsk(onPC bool) bool {
 	set := s.Store.Settings()
-	return here && !set.UpdateAsked && !set.UpdateCheck
+	return onPC && !set.UpdateAsked && !set.UpdateCheck
+}
+
+// installing says whether an install runs; the stream can't start then.
+func (s *Server) installing() bool {
+	s.update.mu.Lock()
+	defer s.update.mu.Unlock()
+	return s.update.rel != nil
 }
 
 // answerUpdateAsk is POST /api/update/ask { "check" }: the PC's answer.
@@ -175,12 +173,19 @@ func (s *Server) startUpdate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusForbidden, i18n.T("api.so_no_pc"))
 		return
 	}
+	s.update.mu.Lock()
+	busy := s.update.rel != nil
+	s.update.mu.Unlock()
+	if busy {
+		fail(w, http.StatusConflict, i18n.T("api.atualizacao.a_decorrer"))
+		return
+	}
 	rel := s.newerRelease()
 	if rel == nil {
 		fail(w, http.StatusConflict, i18n.T("api.atualizacao.nenhuma"))
 		return
 	}
-	if err := s.refusal(); err != nil {
+	if err := s.canInstall(); err != nil {
 		fail(w, http.StatusConflict, err.Error())
 		return
 	}
@@ -188,91 +193,62 @@ func (s *Server) startUpdate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, i18n.T("api.atualizacao.no_ar"))
 		return
 	}
-	s.updMu.Lock()
-	if s.updBusy {
-		s.updMu.Unlock()
+	s.update.mu.Lock()
+	if s.update.rel != nil {
+		s.update.mu.Unlock()
 		fail(w, http.StatusConflict, i18n.T("api.atualizacao.a_decorrer"))
 		return
 	}
-	s.updBusy, s.updState, s.updErr = true, "downloading", ""
-	s.updMu.Unlock()
+	s.update.rel, s.update.state, s.update.err = rel, "downloading", ""
+	s.update.mu.Unlock()
 	s.Log(i18n.T("log.atualizacao.a_transferir", "versao", rel.Version))
-	s.once(i18n.T("log.tarefa.atualizar"), func() { s.install(*rel) })
+	s.once(i18n.T("log.tarefa.atualizar"), func() { s.runInstall(*rel) })
 	reply(w, map[string]any{"ok": true, "version": rel.Version})
 }
 
-func (s *Server) setUpdate(state string) {
-	s.updMu.Lock()
-	s.updState = state
-	s.updMu.Unlock()
+func (s *Server) setUpdateState(state string) {
+	s.update.mu.Lock()
+	s.update.state = state
+	s.update.mu.Unlock()
 }
 
-// install downloads, checks, swaps and restarts. Until the restart has
-// started, any failure, a panic included, puts the old program back.
-func (s *Server) install(rel update.Release) {
-	u := s.updater()
-	var target, stage string
-	var undo func() error
-	started := false
-	var failure error
+// runInstall runs the install and keeps its outcome for the panel. After a
+// started restart the run stays marked, so nothing starts another.
+func (s *Server) runInstall(rel update.Release) {
+	var err error
+	finished := false
 	defer func() {
-		if started {
+		if finished && err == nil {
 			return
 		}
-		if undo != nil {
-			if err := undo(); err != nil {
-				s.Log(i18n.T("log.atualizacao.nao_repus", "err", err))
-			}
+		if !finished {
+			err = i18n.Err("log.atualizacao.interrompida")
 		}
-		if stage != "" {
-			os.RemoveAll(stage)
-		}
-		if failure == nil {
-			failure = i18n.Err("log.atualizacao.interrompida")
-		}
-		s.Log(i18n.T("log.atualizacao.falhou", "err", failure))
-		s.updMu.Lock()
-		s.updBusy, s.updState, s.updErr = false, "failed", failure.Error()
-		s.updMu.Unlock()
+		s.Log(i18n.T("log.atualizacao.falhou", "err", err))
+		s.update.mu.Lock()
+		s.update.rel, s.update.state, s.update.err = nil, "failed", err.Error()
+		s.update.mu.Unlock()
 	}()
-	var err error
-	if target, err = u.Target(); err != nil {
-		failure = err
-		return
-	}
-	if stage, err = u.StageDir(target); err != nil {
-		failure = err
-		return
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	archive, err := u.Download(ctx, http.DefaultClient, rel, update.AssetName(runtime.GOOS, runtime.GOARCH, rel.Version), stage)
-	if err != nil {
-		failure = err
-		return
-	}
-	s.setUpdate("installing")
-	staged, err := u.Prepare(archive, target)
-	if err != nil {
-		failure = err
-		return
-	}
-	if s.Streaming() {
-		failure = i18n.Err("api.atualizacao.no_ar")
-		return
-	}
-	if undo, err = u.Swap(staged, target); err != nil {
-		failure = err
-		return
-	}
-	if s.Streaming() {
-		failure = i18n.Err("api.atualizacao.no_ar")
-		return
-	}
-	s.setUpdate("restarting")
-	if err := s.Restart(); err != nil {
-		failure = err
-		return
-	}
-	started = true
+	err = s.install()(ctx, http.DefaultClient, rel, update.Hooks{
+		OffAir:  func() bool { return !s.Streaming() },
+		Status:  s.setUpdateState,
+		Restart: s.Restart,
+	})
+	finished = true
+}
+
+// CleanUpAfterUpdate removes, keepOldCopy after a restart by an update, the
+// program the update replaced; not while another install runs.
+func (s *Server) CleanUpAfterUpdate() {
+	s.once(i18n.T("log.tarefa.atualizar"), func() {
+		time.Sleep(keepOldCopy)
+		if s.installing() {
+			return
+		}
+		if t, err := update.Target(); err == nil {
+			update.Cleanup(t)
+		}
+	})
 }

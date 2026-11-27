@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -139,6 +141,10 @@ func TestSwap(t *testing.T) {
 // fakeTools answers the macOS tools as a signed DMG would; team is the
 // TeamIdentifier for each app path.
 func fakeTools(t *testing.T, team map[string]string, fail string) *[]string {
+	return fakeToolsVersion(t, team, fail, "1.2.3")
+}
+
+func fakeToolsVersion(t *testing.T, team map[string]string, fail, version string) *[]string {
 	t.Helper()
 	var calls []string
 	old := run
@@ -150,6 +156,9 @@ func fakeTools(t *testing.T, team map[string]string, fail string) *[]string {
 		}
 		if tool == "ditto" {
 			os.MkdirAll(args[1], 0o755)
+		}
+		if tool == "plutil" {
+			return []byte(version + "\n"), nil
 		}
 		if tool == "codesign" && args[0] == "-dv" {
 			id := team[args[len(args)-1]]
@@ -168,23 +177,38 @@ func TestFromDMG(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "Hallstream.app")
 	staged := filepath.Join(stageDir(target), "new-Hallstream.app")
+	dmg := func() error {
+		os.RemoveAll(stageDir(target))
+		os.MkdirAll(stageDir(target), 0o700)
+		return fromDMG("x.dmg", target, staged, "1.2.3")
+	}
 	calls := fakeTools(t, map[string]string{target: "TEAM1", staged: "TEAM1"}, "")
-	if err := fromDMG("x.dmg", target, staged); err != nil {
+	if err := dmg(); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"hdiutil attach", "ditto " + filepath.Join(stageDir(target), "mnt", "Hallstream.app"), "codesign --verify", "codesign -dv", "codesign -dv", "hdiutil detach"}; !slices.Equal(*calls, want) {
+	if want := []string{"hdiutil attach", "ditto " + filepath.Join(stageDir(target), "mnt", "Hallstream.app"), "codesign --verify", "codesign -dv", "codesign -dv", "plutil -extract", "hdiutil detach"}; !slices.Equal(*calls, want) {
 		t.Errorf("calls %q", *calls)
 	}
-	fakeTools(t, map[string]string{target: "TEAM1", staged: "OTHER"}, "")
-	if fromDMG("x.dmg", target, staged) == nil {
-		t.Error("another team's app passed")
+	for name, team := range map[string]map[string]string{
+		"another team":         {target: "TEAM1", staged: "OTHER"},
+		"both unsigned":        {},
+		"unsigned new version": {target: "TEAM1"},
+	} {
+		fakeTools(t, team, "")
+		if dmg() == nil {
+			t.Errorf("%s passed", name)
+		}
+	}
+	fakeToolsVersion(t, map[string]string{target: "TEAM1", staged: "TEAM1"}, "", "1.2.2")
+	if dmg() == nil {
+		t.Error("an older version inside the image passed")
 	}
 	fakeTools(t, map[string]string{target: "TEAM1", staged: "TEAM1"}, "codesign --verify")
-	if err := fromDMG("x.dmg", target, staged); err == nil || !strings.Contains(err.Error(), "refused") {
+	if err := dmg(); err == nil || !strings.Contains(err.Error(), "refused") {
 		t.Errorf("a broken signature: %v", err)
 	}
 	calls = fakeTools(t, nil, "ditto "+filepath.Join(stageDir(target), "mnt", "Hallstream.app"))
-	fromDMG("x.dmg", target, staged)
+	dmg()
 	if (*calls)[len(*calls)-1] != "hdiutil detach" {
 		t.Errorf("the image stayed mounted: %q", *calls)
 	}
@@ -195,4 +219,112 @@ func TestTeam(t *testing.T) {
 	if team("/A.app") != "H5587PYVHV" || team("/B.app") != "" {
 		t.Error(team("/A.app"), team("/B.app"))
 	}
+}
+
+func TestInstallableAllows(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "Hallstream.app")
+	fakeTools(t, map[string]string{target: "TEAM1"}, "")
+	if err := Installable(target); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := os.ReadDir(dir); len(left) != 0 {
+		t.Errorf("left %v", left)
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		fakeTools(t, nil, "")
+		if Installable(target) == nil {
+			t.Error("an unsigned app passed")
+		}
+	case "linux":
+		os.Chmod(dir, 0o777)
+		if Installable(target) == nil {
+			t.Error("a folder anyone can write to passed")
+		}
+	}
+}
+
+func TestZipMember(t *testing.T) {
+	if zipMember("386") != "Hallstream (32-bit).exe" || zipMember("amd64") != "Hallstream.exe" {
+		t.Error(zipMember("386"), zipMember("amd64"))
+	}
+}
+
+func TestWriteTooBig(t *testing.T) {
+	old := maxDownload
+	maxDownload = 4
+	t.Cleanup(func() { maxDownload = old })
+	if write(filepath.Join(t.TempDir(), "x"), strings.NewReader("too long"), 0o755) == nil {
+		t.Error("a member over the cap was cut and kept")
+	}
+}
+
+// installHere points Install at a plain file in a temp folder, with an
+// unpack step that just writes "new".
+func installHere(t *testing.T) (target string, rel Release) {
+	t.Helper()
+	name := AssetFor("1.4.0")
+	if name == "" {
+		t.Skip("no release file for this system")
+	}
+	target = filepath.Join(t.TempDir(), "Hallstream")
+	os.WriteFile(target, []byte("old"), 0o755)
+	fakeTools(t, map[string]string{target: "TEAM1"}, "")
+	oldTarget, oldPrepare := findTarget, prepare
+	findTarget = func() (string, error) { return target, nil }
+	prepare = func(archive, target, version string) (string, error) {
+		staged := filepath.Join(stageDir(target), "new")
+		return staged, os.WriteFile(staged, []byte("new"), 0o755)
+	}
+	t.Cleanup(func() { findTarget, prepare = oldTarget, oldPrepare })
+	_, rel = release(t, map[string]string{name: "archive"}, nil)
+	return target, rel
+}
+
+func TestInstall(t *testing.T) {
+	target, rel := installHere(t)
+	var states []string
+	restarted := ""
+	err := Install(context.Background(), http.DefaultClient, rel, Hooks{
+		OffAir:  func() bool { return true },
+		Status:  func(s string) { states = append(states, s) },
+		Restart: func(t string) error { restarted = t; return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(target); string(b) != "new" || restarted != target || !slices.Equal(states, []string{"installing", "restarting"}) {
+		t.Errorf("%q, restarted %q, states %v", b, restarted, states)
+	}
+	if b, _ := os.ReadFile(target + ".old"); string(b) != "old" {
+		t.Errorf("old copy %q", b)
+	}
+}
+
+// Until the restart has started, a failure puts the old program back and
+// removes the download.
+func TestInstallPutsTheOldBack(t *testing.T) {
+	for name, h := range map[string]Hooks{
+		"restart fails":   {OffAir: func() bool { return true }, Restart: func(string) error { return errors.New("no") }},
+		"live after swap": {OffAir: offAirFor(1), Restart: func(string) error { t.Error("restarted"); return nil }},
+		"live before":     {OffAir: offAirFor(0), Restart: func(string) error { t.Error("restarted"); return nil }},
+	} {
+		target, rel := installHere(t)
+		h.Status = func(string) {}
+		if Install(context.Background(), http.DefaultClient, rel, h) == nil {
+			t.Errorf("%s: no error", name)
+		}
+		if b, _ := os.ReadFile(target); string(b) != "old" {
+			t.Errorf("%s: left %q", name, b)
+		}
+		if _, err := os.Stat(stageDir(target)); err == nil {
+			t.Errorf("%s: download left", name)
+		}
+	}
+}
+
+// offAirFor says off air n times, then live.
+func offAirFor(n int) func() bool {
+	return func() bool { n--; return n >= 0 }
 }

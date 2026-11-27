@@ -107,6 +107,10 @@ func (s *Server) obsRoutes() {
 		if !decode(w, r, &req) {
 			return
 		}
+		if s.installing() {
+			fail(w, http.StatusConflict, i18n.T("api.atualizacao.espere"))
+			return
+		}
 		// Without YouTube, OBS sends to whatever it has: that is no test.
 		if y := s.ytGet(); req.Test && (!y.connected() || y.Expired) {
 			fail(w, http.StatusConflict, errNoTest.Error())

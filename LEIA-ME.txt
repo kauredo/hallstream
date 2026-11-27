@@ -298,10 +298,10 @@ No Windows, o Hallstream só se atualiza sozinho numa pasta onde pode
 escrever, como C:\Hallstream; dentro de "Programas" ("Program Files")
 não pode. No Mac, só a partir da pasta Aplicações.
 
-Se a versão nova não abrir, a anterior fica ao lado durante 10 minutos
-com ".old" no fim do nome (Hallstream.exe.old, ou Hallstream.app.old no
-Mac). Feche o Hallstream, apague a versão nova e tire o ".old" ao nome
-da anterior.
+A versão anterior fica ao lado, com ".old" no fim do nome
+(Hallstream.exe.old, ou Hallstream.app.old no Mac), e só é apagada
+quando a nova já está aberta há 10 minutos. Se a nova não abrir, apague-a
+e tire o ".old" ao nome da anterior.
 
 
 CÓPIA DE SEGURANÇA E OUTRO COMPUTADOR

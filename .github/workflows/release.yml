@@ -1,8 +1,9 @@
 name: Release
 
 # Push a tag like v1.2.0 to publish a release: CI tests, builds both Windows
-# exes and the zip, and a signed and notarised Mac app in a DMG, with build.sh,
-# publishes the release with their checksums, and rebuilds hallstream.com so
+# exes and the zip, a signed and notarised Mac app in a DMG, and a static Linux
+# binary in a tarball, with build.sh, publishes the release with their
+# checksums, and rebuilds hallstream.com so
 # the download button names the new version.
 # A pull request that touches the release machinery, or a manual run, builds
 # the same files as a dry run (the Mac app unsigned) and keeps them as
@@ -287,9 +288,54 @@ jobs:
           fi
           rm -f "${CERT_PATH:-}" "${P8:-}"
 
+  linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: sudo apt-get install -y --no-install-recommends zsh
+
+      - name: Work out the version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            v="${GITHUB_REF_NAME#v}"
+            [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Tag $GITHUB_REF_NAME is not vX.Y.Z"; exit 1; }
+          else
+            v="0.0.0-dev.${GITHUB_SHA::7}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - run: zsh ./build.sh "${{ steps.version.outputs.version }}" linux
+
+      - name: Check the tarball
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tgz="dist/Hallstream-$VERSION-linux-x64.tar.gz"
+          want=$'Hallstream/\nHallstream/CAMARAS.txt\nHallstream/CAMERAS.txt\nHallstream/Hallstream\nHallstream/LEIA-ME.txt\nHallstream/LICENSE.txt\nHallstream/READ-ME.txt\nHallstream/THIRD-PARTY-NOTICES.txt\nHallstream/YouTube/\nHallstream/YouTube/CONNECT-YOUTUBE.txt\nHallstream/YouTube/LIGAR-YOUTUBE.txt'
+          got=$(tar -tzf "$tgz" | LC_ALL=C sort)
+          [[ "$got" == "$want" ]] || { echo "Unexpected tarball contents:"; echo "$got"; exit 1; }
+          # grep -q in a pipe would cut tar off and fail the step under pipefail.
+          long=$(tar -tvzf "$tgz")
+          grep -q '^-rwxr-xr-x .* Hallstream/Hallstream$' <<<"$long"
+          file dist/linux/Hallstream/Hallstream | tee "$RUNNER_TEMP/file.txt"
+          grep -q "statically linked" "$RUNNER_TEMP/file.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/Hallstream-${{ steps.version.outputs.version }}-linux-x64.tar.gz
+          if-no-files-found: error
+
   publish:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [windows, macos]
+    needs: [windows, macos, linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -305,7 +351,7 @@ jobs:
         run: |
           v="${VERSION#v}"
           cd dist
-          sha256sum "Hallstream-$v.zip" "Hallstream-$v-macos.dmg" > SHA256SUMS
+          sha256sum "Hallstream-$v.zip" "Hallstream-$v-macos.dmg" "Hallstream-$v-linux-x64.tar.gz" > SHA256SUMS
           cat SHA256SUMS
           echo "VERSION=$v" >> "$GITHUB_ENV"
 
@@ -318,6 +364,7 @@ jobs:
           files: |
             dist/Hallstream-${{ env.VERSION }}.zip
             dist/Hallstream-${{ env.VERSION }}-macos.dmg
+            dist/Hallstream-${{ env.VERSION }}-linux-x64.tar.gz
             dist/SHA256SUMS
           generate_release_notes: true
           fail_on_unmatched_files: true

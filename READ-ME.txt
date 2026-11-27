@@ -264,10 +264,10 @@ A CONSOLE ON A CABLE (DAKTRONICS OR BODET)
 The program also reads two consoles connected to the PC by a serial
 cable (RS-232), with no Stream Box:
 - Daktronics All Sport 5000, for basketball and volleyball. Connect the
-  console's RTD output to the PC through a USB-to-serial adapter. The
-  cable is not confirmed yet: the RTD output may be a current loop that
-  needs a converter, and Daktronics uses a null-modem cable for direct
-  connections.
+  J6 "MAIN PORT" (25 pins, on the back of the console) to the PC with a
+  straight 9-to-25-pin serial cable and a USB-to-serial adapter. The data
+  comes out as RS-232 on pin 3, with ground on pin 7. Pins 22 and 7 carry
+  the same data as a current loop, which needs a converter.
 - Bodet Scorepad, for basketball and handball. The protocol output comes
   out of the main keyboard's RJ45 socket. Bodet's manual connects it to
   an RJ45-to-RS232 interface (a Moxa NPort), and that interface to the PC.

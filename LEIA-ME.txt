@@ -265,11 +265,11 @@ UMA CONSOLA POR CABO (DAKTRONICS OU BODET)
 
 O programa também lê duas consolas ligadas ao PC por um cabo série
 (RS-232), sem a Stream Box:
-- Daktronics All Sport 5000, em basquetebol e voleibol. Ligue a saída
-  RTD da consola ao PC por um adaptador USB-série. O cabo ainda não está
-  confirmado: a saída RTD pode ser de corrente (current loop) e precisar
-  de um conversor, e a Daktronics usa um cabo null-modem nas ligações
-  diretas.
+- Daktronics All Sport 5000, em basquetebol e voleibol. Ligue a ficha
+  J6 "MAIN PORT" (25 pinos, atrás da consola) ao PC por um cabo série
+  direto de 9 para 25 pinos e um adaptador USB-série. Os dados saem em
+  RS-232 no pino 3, com a terra no pino 7. Os pinos 22 e 7 levam os
+  mesmos dados em current loop, que precisam de um conversor.
 - Bodet Scorepad, em basquetebol e andebol. A saída de protocolo sai pela
   ficha RJ45 do teclado principal. O manual da Bodet liga-a a uma
   interface RJ45-RS232 (uma Moxa NPort), e essa interface ao PC.

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"sync/atomic"
 	"time"
 
 	assets "github.com/kauredo/hallstream/web"
@@ -35,6 +36,7 @@ import (
 	"github.com/kauredo/hallstream/internal/sport"
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
+	"github.com/kauredo/hallstream/internal/update"
 	"github.com/kauredo/hallstream/internal/web"
 )
 
@@ -134,8 +136,12 @@ func main() {
 	demo := flag.Bool("demo", false, i18n.T("app.flag.demo"))
 	noBrowser := flag.Bool("nobrowser", false, i18n.T("app.flag.nobrowser"))
 	replayFile := flag.String("replay", "", i18n.T("app.flag.replay"))
+	restarted := flag.Bool("restarted", false, i18n.T("app.flag.restarted"))
 	flag.Parse()
 
+	if *restarted {
+		waitForOldCopy(web.Ours, 30*time.Second)
+	}
 	// A second double-click opens the panel of the one already running.
 	for p := web.FirstPort; p <= web.LastPort; p++ {
 		if web.Ours(fmt.Sprintf("127.0.0.1:%d", p)) {
@@ -302,6 +308,13 @@ func main() {
 	if !*noBrowser {
 		openBrowser(panel)
 	}
+	// The copy an update replaced stays until this one has run a while.
+	go func() {
+		time.Sleep(10 * time.Minute)
+		if t, err := update.Target(); err == nil {
+			update.Cleanup(t)
+		}
+	}()
 
 	if replay != nil {
 		inputs.Use("console") // whatever the settings say: the recording is the console
@@ -327,6 +340,24 @@ func main() {
 	}
 	icon, _ := assets.FS.ReadFile(iconFile)
 	changed, _ := m.Subscribe()
+	stop := make(chan struct{})
+	var restarting atomic.Bool
+	srv.Restart = func() error {
+		t, err := update.Target()
+		if err != nil {
+			return err
+		}
+		if !restarting.CompareAndSwap(false, true) {
+			return nil
+		}
+		if err := startCopy(t, restartArgs(os.Args[1:])); err != nil {
+			restarting.Store(false)
+			return err
+		}
+		say(i18n.T("log.atualizacao.a_reiniciar"))
+		close(stop)
+		return nil
+	}
 	desktop.Tray{
 		Icon:    icon,
 		Tooltip: "Hallstream",
@@ -335,13 +366,17 @@ func main() {
 		Status:  func() string { return trayStatus(m.Snapshot()) },
 		Changed: changed,
 		Log:     say,
+		Stop:    stop,
 		ConfirmQuit: func() bool {
 			return confirmQuit(srv.Streaming, func() bool { return st.Settings().OBS.CloseOnExit }, desktop.Ask)
 		},
 		Quit: func() {
 			say(i18n.T("log.a_fechar"))
 			srv.Camera.Stop()
-			srv.CloseOBS()
+			// An update keeps OBS, and any stream in it, as they are.
+			if !restarting.Load() {
+				srv.CloseOBS()
+			}
 			if reader != nil {
 				// The Bluetooth stack may not answer; don't let that keep the program open.
 				done := make(chan struct{})

@@ -36,10 +36,13 @@ func Fatal(msg string) {
 // Warn shows a problem the program can carry on with.
 func Warn(msg string) { fmt.Println(msg) }
 
-// Run has no icon here: it waits for Ctrl+C.
+// Run has no icon here: it waits for Ctrl+C or Stop.
 func (t Tray) Run() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
+	select {
+	case <-stop:
+	case <-t.Stop:
+	}
 	t.Quit()
 }

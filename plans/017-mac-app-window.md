@@ -1,6 +1,6 @@
 # 017: The Mac app gets its own window and menus
 
-Status: TODO. Stack in worktree `app-window`, layers below.
+Status: all four layers written, in review as one stack. The v0.1.6 to v0.1.7 update is tried with the owner after the release.
 
 Repo `app/` at `ed2b8cf` (main, v0.1.6). On 2026-11-27 the owner opened v0.1.6 from Applications and found no File/Edit/View/Window/Help menus, ⌘Q doing nothing, and the panel living in a browser tab. They asked for a standalone app, then to ship it all unattended and release it as v0.1.7, so their installed v0.1.6 can update itself to it. Each 🔥 row is a pick the owner can overturn before its PR merges.
 

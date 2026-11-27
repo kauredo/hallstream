@@ -160,14 +160,21 @@ No Mac
 3. Quando o Mac perguntar pelo Bluetooth, carregue em "Permitir". Se
    recusou, vá a Definições do Sistema > Privacidade e segurança >
    Bluetooth e ligue o Hallstream.
-- O Hallstream tem um ícone na barra de menus, em cima à direita, e
-  outro na Dock.
-- Carregue no ícone da barra de menus para ver o menu: "Abrir painel",
-  "Copiar endereço do overlay", o estado da caixa e "Sair".
-- Carregue no ícone da Dock, ou abra o Hallstream outra vez, para abrir
-  o painel.
-- Sair no menu do ícone da Dock faz o mesmo que "Sair" na barra de
-  menus: com a transmissão no ar, o programa pergunta antes de fechar.
+- No Mac o painel abre numa janela do Hallstream, não no browser. O
+  painel continua a abrir no browser do telemóvel e de outros
+  computadores, como antes.
+- Fechar a janela não fecha o Hallstream: o overlay e a transmissão
+  continuam. Carregue no ícone da Dock, ou abra o Hallstream outra vez,
+  para a ver de novo.
+- Para fechar o Hallstream, use Hallstream > Sair do Hallstream (⌘Q),
+  "Sair" no ícone da barra de menus, ou Sair no menu do ícone da Dock.
+  Com a transmissão no ar, o programa pergunta antes de fechar.
+- O Hallstream tem também um ícone na barra de menus, em cima à
+  direita: "Abrir painel", "Copiar endereço do overlay", o estado da
+  caixa e "Sair".
+- Ligações para fora do painel, como a ajuda e o início de sessão do
+  YouTube, abrem no browser. Ver > Abrir o painel no browser abre lá o
+  painel, se preferir.
 - Em vez de "Abrir com o Windows", Definições > Neste computador tem
   "Abrir ao iniciar sessão no Mac".
 - Os dados ficam em ~/Library/Application Support/Hallstream/dados.

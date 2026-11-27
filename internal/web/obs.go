@@ -319,13 +319,16 @@ func checkCameras(list []setupCamera, saved []store.Camera) string {
 // A camera with a new pick to add keeps its source until the setup adds
 // it, so a failed setup leaves the camera it had. Each screen camera (the
 // time-out camera too) follows its camera, and is 0 when it was removed or
-// was no saved camera.
+// was no saved camera. A list that moves or removes a camera forgets the
+// camera the screen switch would put back, an index into the old list.
 func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 	var picks []string
 	var olds []string
+	moved := false
 	set, err := s.Store.UpdateSettings(func(set *store.Settings) {
 		o := &set.OBS
 		old := o.CameraList()
+		moved = len(list) != len(old)
 		picks, olds = make([]string, len(list)), make([]string, len(list))
 		var cams []store.Camera
 		tcam := 0
@@ -358,6 +361,9 @@ func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 			if p.Source != "" && (c.Source != p.Source || picks[i] != "") {
 				olds[i] = p.Source
 			}
+			if r.Was != i+1 {
+				moved = true
+			}
 			if r.Was > 0 && r.Was == o.TimeoutCamera {
 				tcam = i + 1
 			}
@@ -377,6 +383,11 @@ func (s *Server) listCameras(list []setupCamera) (obsws.Want, error) {
 	})
 	if err != nil {
 		return obsws.Want{}, err
+	}
+	if moved {
+		s.liveMu.Lock()
+		s.returnTo = 0
+		s.liveMu.Unlock()
 	}
 	w := s.want(set.OBS, "", "")
 	for i := range w.Cameras {

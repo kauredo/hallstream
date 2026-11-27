@@ -19,6 +19,7 @@ A free tool for amateur clubs that stream their games. Hallstream reads the scor
 - Creates the YouTube live broadcast with a title and thumbnail, and makes it unlisted afterwards.
 - Pulls squads, photos and fixtures from the Portuguese basketball federation (FPB), if you choose to. The FPB import is for Portuguese basketball only.
 - Keeps working offline after the first load. A demo mode plays an invented game with no console.
+- Updates itself from the panel, off air, if you turn on the daily version check: it downloads the new release, checks it against the release's `SHA256SUMS` (and the Developer ID on a Mac), swaps the program and restarts without closing OBS.
 
 ## Get started
 

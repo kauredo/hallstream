@@ -53,7 +53,7 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - The RTMP path writes the server and key into OBS.
 8. **Releases.**
    - Notarised macOS builds. Done: a signed, notarised and stapled `Hallstream.app` in a DMG, and a Linux tarball, next to the Windows zip in every release. Signed Windows builds: declined, since SignPath turned the project down, so the exes stay unsigned.
-   - An opt-in update check. Done: once a day against GitHub Releases, a banner links to the release page.
+   - An opt-in update check. Done: once a day against GitHub Releases, asked once on a new install. The panel offers the new version off air and installs it with one click: download, `SHA256SUMS` check (and the Team ID on a Mac), swap, restart without closing OBS (plan 016).
    - A feedback form that opens a GitHub issue. Done: Ajuda opens a new issue with the version, system, scoring and sport filled in. A build with the feedback worker (`worker/`, adapted from BVA's) also sends a form with no account needed.
 
 ## Phase B: multiple cameras

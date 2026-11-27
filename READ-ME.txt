@@ -281,6 +281,28 @@ It also covers the camera for the Nothing screen, the "Show scoreboard"
 switch and the inset of a second camera.
 
 
+NEW VERSIONS
+
+The first time, the panel asks whether you want to be told about new
+versions. You can also change it in Settings > New versions. With it on,
+Hallstream asks GitHub once a day and sends nothing about the club.
+
+When a new version is out, the panel shows "Hallstream X is available"
+(never while the stream is live). "Update now" downloads the new version,
+checks it arrived whole, puts it in place of this one and restarts
+Hallstream. OBS stays open and your data stays as it is. If anything
+fails, you keep the version you had.
+
+On Windows, Hallstream can only update itself in a folder it can write
+to, such as C:\Hallstream; inside "Program Files" it can't. On a Mac,
+only from the Applications folder.
+
+If the new version won't open, the previous one stays beside it for 10
+minutes with ".old" at the end of its name (Hallstream.exe.old, or
+Hallstream.app.old on a Mac). Close Hallstream, delete the new version
+and take ".old" off the previous one's name.
+
+
 BACKUP AND ANOTHER COMPUTER
 
 In Settings > Backup, "Save backup" downloads a .zip file with the

@@ -246,7 +246,7 @@ func main() {
 		if !restarting.CompareAndSwap(false, true) {
 			return nil
 		}
-		if err := startCopy(target, restartArgs(os.Args[1:])); err != nil {
+		if err := startCopy(target, restartArgs(os.Args[1:], desktop.HasWindow)); err != nil {
 			restarting.Store(false)
 			return err
 		}
@@ -322,8 +322,8 @@ func main() {
 	if port != web.FirstPort {
 		go desktop.Warn(i18n.T("log.porta_ocupada_aviso", "pedida", web.FirstPort, "porta", port, "overlay", overlay))
 	}
-	if !*noBrowser {
-		openBrowser(panel)
+	if openAtStart(*noBrowser, *restarted, desktop.HasWindow) {
+		openPanel(panel)
 	}
 	if *restarted {
 		srv.CleanUpAfterUpdate()
@@ -356,7 +356,7 @@ func main() {
 	desktop.Tray{
 		Icon:    icon,
 		Tooltip: "Hallstream",
-		Panel:   func() { openBrowser(panel) },
+		Panel:   func() { openPanel(panel) },
 		Overlay: overlay,
 		Status:  func() string { return trayStatus(m.Snapshot()) },
 		Changed: changed,
@@ -523,6 +523,14 @@ func openFolder(dir string) error {
 	}
 	go cmd.Wait()
 	return nil
+}
+
+// openPanel shows the panel in the app's own window where there is one, and
+// in the browser everywhere else.
+func openPanel(url string) {
+	if !desktop.ShowPanel(url) {
+		openBrowser(url)
+	}
 }
 
 func openBrowser(url string) {

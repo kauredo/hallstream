@@ -16,8 +16,29 @@ func TestRestartArgs(t *testing.T) {
 		{[]string{"-demo"}, []string{"-demo", "-nobrowser", "-restarted"}},
 		{[]string{"-demo", "--nobrowser", "-restarted=true", "-replay", "x.capture"}, []string{"-demo", "-replay", "x.capture", "-nobrowser", "-restarted"}},
 	} {
-		if got := restartArgs(c.in); !slices.Equal(got, c.want) {
+		if got := restartArgs(c.in, false); !slices.Equal(got, c.want) {
 			t.Errorf("%q: %q", c.in, got)
+		}
+	}
+	// With a window of its own, the new copy opens it: the old one closed with the old copy.
+	if got := restartArgs([]string{"-demo", "-nobrowser"}, true); !slices.Equal(got, []string{"-demo", "-restarted"}) {
+		t.Errorf("window: %q", got)
+	}
+}
+
+func TestOpenAtStart(t *testing.T) {
+	for _, c := range []struct{ noBrowser, restarted, window, want bool }{
+		{false, false, false, true},
+		{false, false, true, true},
+		{true, false, true, false},
+		{true, false, false, false},
+		{true, true, true, true}, // v0.1.6's updater starting the new Mac app
+		{true, true, false, false},
+		{false, true, false, true},
+		{false, true, true, true},
+	} {
+		if got := openAtStart(c.noBrowser, c.restarted, c.window); got != c.want {
+			t.Errorf("%+v: %v", c, got)
 		}
 	}
 }

@@ -50,6 +50,9 @@ func TestPanelPhoneLink(t *testing.T) {
 func TestPanelUnsavedListStays(t *testing.T) {
 	tab := settingsPanel(t, "&cams=1&setupfail=noobs")
 	click(t, tab, `[data-act="cam-add"]`)
+	if err := until(tab, `!!document.querySelector("#dCam2") && !!document.querySelector("#dCamNome2")`); err != nil {
+		t.Fatal(err)
+	}
 	evalJS(t, tab, `(s => (s.value = "vdo", s.dispatchEvent(new Event("change", { bubbles: true })), true))(document.querySelector("#dCam2"))`)
 	evalJS(t, tab, `(i => (i.value = "Nova", true))(document.querySelector("#dCamNome2"))`)
 	click(t, tab, `[data-act="cam-save"]`)

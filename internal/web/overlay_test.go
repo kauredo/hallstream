@@ -32,25 +32,41 @@ const (
 	done     = "overlay test done"
 )
 
+var errChromeSlow = errors.New("Chrome did not start within a minute")
+
 // chrome starts a headless Chrome and returns a tab in it.
 func chrome(t *testing.T) context.Context {
 	t.Helper()
 	// No sandbox: CI runners and containers often cannot give Chrome one, and
 	// the only pages opened here are this program's own.
 	opts := append(chromedp.DefaultExecAllocatorOptions[:], chromedp.NoSandbox, chromedp.WindowSize(1920, 1080))
-	alloc, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	t.Cleanup(cancel)
-	tab, cancel := chromedp.NewContext(alloc)
-	t.Cleanup(cancel)
 	// Starting Chrome has no time limit of its own: a browser that never
 	// answers would hold the whole package until go test's 10-minute alarm.
-	started := make(chan error, 1)
-	go func() { started <- chromedp.Do(tab) }()
+	// A busy CI runner sometimes leaves one launch hanging, so a second gets
+	// its own minute.
+	var tab context.Context
 	var err error
-	select {
-	case err = <-started:
-	case <-time.After(time.Minute):
-		t.Fatal("Chrome did not start within a minute")
+	for try := 1; ; try++ {
+		alloc, stopAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
+		ctx, stopTab := chromedp.NewContext(alloc)
+		started := make(chan error, 1)
+		go func() { started <- chromedp.Do(ctx) }()
+		select {
+		case err = <-started:
+		case <-time.After(time.Minute):
+			err = errChromeSlow
+		}
+		if err != errChromeSlow {
+			t.Cleanup(stopAlloc)
+			t.Cleanup(stopTab)
+			tab = ctx
+			break
+		}
+		stopTab()
+		stopAlloc()
+		if try == 2 {
+			t.Fatal("Chrome did not start within a minute, twice")
+		}
 	}
 	if errors.Is(err, exec.ErrNotFound) {
 		t.Skip("no Chrome on this machine")

@@ -108,8 +108,12 @@ func TestSportSwitchDoesNotConnectTheScorer(t *testing.T) {
 	if err := m.Do(source.Action{Do: "point", Team: "home", N: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if !s.State.Snapshot().Box.Connected {
-		t.Error("a tap did not mark the scorer connected")
+	// Run attaches its callbacks on its own goroutine; a tap before that shows
+	// at Run's next once-a-second refresh.
+	for end := time.Now().Add(3 * time.Second); !s.State.Snapshot().Box.Connected; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(end) {
+			t.Fatal("a tap did not mark the scorer connected")
+		}
 	}
 }
 

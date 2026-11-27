@@ -575,6 +575,7 @@ func TestOverlayTimeoutMarks(t *testing.T) {
 		{"placa", "marcador-descontos-cor", `[["flex",2,2,"rgb(47, 75, 124)"],["flex",2,1,"rgb(180, 65, 12)"]]`},
 		{"placa", "marcador-descontos-claro", `[["flex",2,1,"rgb(47, 75, 124)"],["flex",2,0,"rgb(26, 31, 35)"]]`},
 		{"placa", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
+		{"placa", "marcador-cabo", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`}, // a cable console sends no timeouts
 		{"pavilhao", "marcador-descontos", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},
 		{"pavilhao", "marcador", `[["none",0,0,"rgb(255, 255, 255)"],["none",0,0,"rgb(255, 255, 255)"]]`},
 		{"pavilhao", "marcador-descontos-cor", `[["flex",2,2,"rgb(255, 255, 255)"],["flex",2,1,"rgb(255, 255, 255)"]]`},

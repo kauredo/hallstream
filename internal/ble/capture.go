@@ -61,16 +61,25 @@ type Frame struct {
 // ReadCapture parses a capture file. It rejects a file without the header
 // and any line that is not "<ms> <hex>".
 func ReadCapture(r io.Reader) ([]Frame, error) {
+	_, frames, err := ReadCaptureFile(r)
+	return frames, err
+}
+
+// ReadCaptureFile is ReadCapture with the header's fields too (app, box,
+// sport, start, and link and protocol for a cable recording).
+func ReadCaptureFile(r io.Reader) (map[string]string, []Frame, error) {
 	lr := &io.LimitedReader{R: r, N: DefaultCaptureMax + headerSlack + 1}
 	sc := bufio.NewScanner(lr)
 	sc.Buffer(make([]byte, 0, 4096), 1<<20)
 	var out []Frame
+	head := map[string]string{}
 	for n := 1; sc.Scan(); n++ {
 		line := strings.TrimSpace(sc.Text())
 		if n == 1 {
 			if !strings.HasPrefix(line, CaptureMagic) {
-				return nil, errors.New("not a Hallstream capture: the first line is not the header")
+				return nil, nil, errors.New("not a Hallstream capture: the first line is not the header")
 			}
+			head = headerFields(line[len(CaptureMagic):])
 			continue
 		}
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -79,27 +88,46 @@ func ReadCapture(r io.Reader) ([]Frame, error) {
 		ms, data, ok := strings.Cut(line, " ")
 		at, err := strconv.ParseInt(ms, 10, 64)
 		if !ok || err != nil || at < 0 {
-			return nil, fmt.Errorf("line %d: want \"<ms> <hex>\", got %q", n, line)
+			return nil, nil, fmt.Errorf("line %d: want \"<ms> <hex>\", got %q", n, line)
 		}
 		b, err := hex.DecodeString(strings.TrimSpace(data))
 		if err != nil || len(b) == 0 {
-			return nil, fmt.Errorf("line %d: the frame is not hex", n)
+			return nil, nil, fmt.Errorf("line %d: the frame is not hex", n)
 		}
 		if at > maxCaptureOffset.Milliseconds() {
-			return nil, fmt.Errorf("line %d: offset %d ms is over 7 days", n, at)
+			return nil, nil, fmt.Errorf("line %d: offset %d ms is over 7 days", n, at)
 		}
 		if len(out) >= maxCaptureFrames {
-			return nil, fmt.Errorf("more than %d frames", maxCaptureFrames)
+			return nil, nil, fmt.Errorf("more than %d frames", maxCaptureFrames)
 		}
 		out = append(out, Frame{At: time.Duration(at) * time.Millisecond, Data: b})
 	}
 	if err := sc.Err(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if lr.N <= 0 {
-		return nil, errors.New("the file is bigger than any recording the program makes")
+		return nil, nil, errors.New("the file is bigger than any recording the program makes")
 	}
-	return out, nil
+	return head, out, nil
+}
+
+// headerFields reads the header's key="value" pairs; a pair it cannot
+// read ends the list.
+func headerFields(s string) map[string]string {
+	out := map[string]string{}
+	for {
+		s = strings.TrimLeft(s, " ")
+		key, rest, ok := strings.Cut(s, "=")
+		if !ok || key == "" || strings.Contains(key, " ") {
+			return out
+		}
+		q, err := strconv.QuotedPrefix(rest)
+		if err != nil {
+			return out
+		}
+		out[key], _ = strconv.Unquote(q)
+		s = rest[len(q):]
+	}
 }
 
 // Play sends each frame to emit at its recorded offset. sleep waits for a
@@ -138,7 +166,11 @@ type Recorder struct {
 	Dir   string        // dados/captura
 	App   string        // the program's version, for the header
 	Sport func() string // the club's sport, for the header; may be nil
-	Max   int64         // bytes at which it stops; 0 is DefaultCaptureMax
+	// Link and Protocol name a cable recording in the header (link="serial");
+	// empty for the Bluetooth box.
+	Link     string
+	Protocol func() string
+	Max      int64 // bytes at which it stops; 0 is DefaultCaptureMax
 	// FolderMax is the size of Dir past which Start refuses; 0 is DefaultFolderMax.
 	FolderMax int64
 	Slots     int // frames waiting for the writer; 0 is 4096
@@ -228,8 +260,16 @@ func (r *Recorder) Start(box string, run func(name string, fn func())) (CaptureS
 	if r.Sport != nil {
 		sport = r.Sport()
 	}
-	header := fmt.Sprintf("%s app=%s box=%s sport=%s start=%s\n", CaptureMagic,
+	header := fmt.Sprintf("%s app=%s box=%s sport=%s start=%s", CaptureMagic,
 		strconv.Quote(r.App), strconv.Quote(box), strconv.Quote(sport), strconv.Quote(utc.Format(time.RFC3339)))
+	if r.Link != "" {
+		proto := ""
+		if r.Protocol != nil {
+			proto = r.Protocol()
+		}
+		header += fmt.Sprintf(" link=%s protocol=%s", strconv.Quote(r.Link), strconv.Quote(proto))
+	}
+	header += "\n"
 	s := &session{
 		ch: make(chan []byte, cmpSlots(r.Slots)), quit: make(chan struct{}), done: make(chan struct{}),
 		started: time.Now(), name: name,

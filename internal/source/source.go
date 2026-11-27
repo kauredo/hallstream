@@ -68,6 +68,24 @@ func (w *Switch) Use(name string) {
 			s.Seed(snap.Live)
 		}
 	}
+	w.start(src)
+}
+
+// Restart stops the running source and starts it again, so it reads its
+// settings afresh (the cable's port and protocol).
+func (w *Switch) Restart() {
+	w.use.Lock()
+	defer w.use.Unlock()
+	w.mu.Lock()
+	cur := w.cur
+	w.mu.Unlock()
+	if cur != nil {
+		w.start(cur)
+	}
+}
+
+// start runs src in place of the current source; w.use held.
+func (w *Switch) start(src Source) {
 	w.State.SetInput(src.Name())
 
 	stop := make(chan struct{})

@@ -460,7 +460,7 @@ func TestInputSetting(t *testing.T) {
 	if in := s.Store.Settings().Input; in != "console" {
 		t.Errorf("default %q", in)
 	}
-	for _, c := range []struct{ send, want string }{{"manual", "manual"}, {"manual", "manual"}, {"serial", "console"}, {"", "console"}} {
+	for _, c := range []struct{ send, want string }{{"manual", "manual"}, {"manual", "manual"}, {"serial", "serial"}, {"cable", "console"}, {"", "console"}} {
 		set := s.Store.Settings()
 		set.Input = c.send
 		var got store.Settings
@@ -470,7 +470,7 @@ func TestInputSetting(t *testing.T) {
 		}
 	}
 	// Only a change swaps the source.
-	if strings.Join(used, ",") != "manual,console" {
+	if strings.Join(used, ",") != "manual,serial,console" {
 		t.Errorf("swapped to %v", used)
 	}
 }

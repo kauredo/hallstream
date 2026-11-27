@@ -6,6 +6,7 @@ require (
 	fyne.io/systray v1.12.2
 	github.com/chromedp/chromedp v0.23.1
 	github.com/wailsapp/go-webview2 v1.0.23
+	go.bug.st/serial v1.8.0
 	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.38.0
 	golang.org/x/sys v0.49.0

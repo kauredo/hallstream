@@ -162,6 +162,8 @@ type Settings struct {
 	Lang string `json:"lang"`
 	// Input is where the score comes from: one of Inputs.
 	Input string `json:"input"`
+	// Serial is the cable console, read while Input is "serial".
+	Serial Serial `json:"serial"`
 	// UpdateCheck lets the program ask GitHub once a day for a newer release
 	// (off until the volunteer turns it on). It downloads one only when the
 	// operator asks for it.
@@ -188,8 +190,15 @@ const (
 )
 
 // Inputs are the values of Settings.Input, the default first: the box over
-// Bluetooth, or the score kept by hand on a phone.
-var Inputs = []string{"console", "manual"}
+// Bluetooth, the score kept by hand on a phone, or a console on a serial cable.
+var Inputs = []string{"console", "manual", "serial"}
+
+// Serial is the console on a serial cable: the port it is on and its
+// protocol, one of cable.Names.
+type Serial struct {
+	Port     string `json:"port"`
+	Protocol string `json:"protocol"`
+}
 
 // Club is the club's profile: what the overlay shows for the home side and
 // the colours it is drawn in.
@@ -324,6 +333,7 @@ func DefaultSettings() Settings {
 		Credit: true,
 		Lang:   "pt",
 		Input:  Inputs[0],
+		Serial: Serial{Protocol: "daktronics"},
 	}
 }
 

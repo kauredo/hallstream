@@ -82,6 +82,9 @@ func TestTrayStatus(t *testing.T) {
 		{func(s *state.State) { s.Input, s.Box.Scan.Bluetooth = "manual", "off" }, "Marcação manual: à espera do telemóvel"},
 		{func(s *state.State) { s.Input, s.Box.Connected = "manual", true }, "Marcação manual: ligada"},
 		{func(s *state.State) { s.Input, s.Demo = "manual", true }, "Modo demonstração"},
+		{func(s *state.State) { s.Input = "serial" }, "Consola por cabo: à espera de dados"},
+		{func(s *state.State) { s.Input, s.Box.Connected = "serial", true }, "Consola por cabo: a ler"},
+		{func(s *state.State) { s.Input, s.Demo = "serial", true }, "Modo demonstração"},
 	}
 	for _, c := range cases {
 		c.set(&s)

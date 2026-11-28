@@ -48,12 +48,11 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - Add `manual`: typed squads, CSV import (`number,name,photo`) and typed fixtures.
    - Only offer FPB for Portuguese basketball clubs.
 6. **First-run wizard.** Done: language, club (with sport and country), scoring, OBS, YouTube, the channel and a rehearsal; the destination step picks YouTube or RTMP. The steps are language, club, sport, input, OBS, streaming destination and a rehearsal. Every step can be skipped and resumed.
-7. **YouTube and RTMP.** RTMP done: Definições and the setup pick YouTube or a custom server and key, written into OBS.
-   - Ship the project OAuth client, with "use your own" as a fallback.
-   - The RTMP path writes the server and key into OBS.
+7. **YouTube and RTMP.** Partly done: Definições and the setup pick YouTube or a custom server and key, and the RTMP path writes both into OBS. YouTube works today only with the club's own Google client (`docs/youtube/SETUP.md`).
+   - Not built: a project OAuth client that ships with the app, with "use your own" kept as the fallback. It needs Google's verification for the `youtube` scope first.
 8. **Releases.**
    - Notarised macOS builds. Done: a signed, notarised and stapled `Hallstream.app` in a DMG, and a Linux tarball, next to the Windows zip in every release. Signed Windows builds: declined, since SignPath turned the project down, so the exes stay unsigned.
-   - A desktop window. Done on macOS: the panel opens in the app's own window with a real menu bar (plan 017). Windows and Linux open the browser; a WebView2 window on Windows waits for a Windows PC to test it.
+   - A desktop window. Done on macOS and Windows. On macOS the panel opens in the app's own window with a real menu bar (plan 017). On Windows it opens in a WebView2 window, or an Edge app window where WebView2 is missing (plan 018). Linux opens the browser.
    - An opt-in update check. Done: once a day against GitHub Releases, asked once on a new install. The panel offers the new version off air and installs it with one click: download, `SHA256SUMS` check (and the Team ID on a Mac), swap, restart without closing OBS (plan 016).
    - A feedback form that opens a GitHub issue. Done: Ajuda opens a new issue with the version, system, scoring and sport filled in. A build with the feedback worker (`worker/`, adapted from BVA's) also sends a form with no account needed.
 
@@ -77,14 +76,14 @@ Later:
 
 ## Phase C: sport profiles
 
-1. Add `internal/sport`. Basketball moves into it unchanged, and the existing tests prove it.
+1. Add `internal/sport`. Done (plan 002): basketball moved into it unchanged, and the existing tests prove it.
 2. Sports and their rules:
    - Futsal: the clock counts down from 20:00, 5 accumulated fouls. Done: scored from the phone; console untested.
    - Handball: the clock counts up, 2×30, 2-minute suspensions. Done: scored from the phone, with suspensions; console untested.
    - Volleyball: sets to 25 (15 in the last), the serving side. Done from the phone scorer. The console decodes volleyball frames but is untested until a recorded game passes.
    - Soccer: the clock counts up, 2×45 plus stoppage time, cards and substitutions per player. Done: scored from the phone only, no extra time or shoot-out; the game ends on "Fim do jogo".
 3. The Stramatel decoder already reads the handball, volleyball and hockey codes (`internal/ble/decode.go`). A sport is only listed as supported after it has been tested on a recorded game.
-4. Overlay fixtures go in `web/overlay/fixtures/<sport>/` for each sport, and the Chrome test loads them all.
+4. Overlay fixtures go in `web/overlay/fixtures/<sport>/` for each sport, and the Chrome test loads them all. Done for futsal, handball, volleyball and soccer; basketball's fixtures stay at the top of `fixtures/`.
 
 ## Phase D: more consoles
 

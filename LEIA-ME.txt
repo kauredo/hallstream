@@ -62,10 +62,11 @@ PRIMEIRA VEZ (EM CASA)
    canal do YouTube e um ensaio. Pode parar
    a meio, que o painel lembra-se de onde ficou. Também está em Definições >
    Configuração inicial.
-   - Para o passo YouTube, traga o ID e o segredo do cliente OAuth, feitos
-     antes com o guia YouTube\LIGAR-YOUTUBE.txt (ver "DIRETOS NO
-     YOUTUBE"). Sem eles, carregue em "Saltar por agora" e ligue a conta
-     do YouTube no próprio OBS, em Definições > Transmissão.
+   - No passo YouTube, se só aparecer o botão "Ligar ao YouTube", basta
+     carregar nele. Se o passo pedir o ID e o segredo do cliente OAuth,
+     traga-os feitos antes com o guia YouTube\LIGAR-YOUTUBE.txt (ver
+     "DIRETOS NO YOUTUBE"). Sem eles, carregue em "Saltar por agora" e
+     ligue a conta do YouTube no próprio OBS, em Definições > Transmissão.
    - Para o PC abrir tudo sozinho, ligue "Abrir com o Windows" em
      Definições > Neste computador.
    - Câmara nova? Escolha-a em Definições > Câmaras e carregue em
@@ -405,7 +406,10 @@ DIRETOS NO YOUTUBE
 
 Com acesso ao canal do clube, o Hallstream cria sozinho o direto público
 de cada jogo, com o título e a miniatura, e no fim torna o vídeo não
-listado. O guia YouTube\LIGAR-YOUTUBE.txt tem duas partes.
+listado. Quando esta versão traz o cliente Google do Hallstream, basta
+carregar em "Ligar ao YouTube" e entrar com a conta que gere o canal do
+clube. Sem ele, ou com um cliente próprio, o guia
+YouTube\LIGAR-YOUTUBE.txt tem duas partes.
 Na primeira, em qualquer computador e com qualquer conta Google,
 cria-se o cliente OAuth na Google Cloud, com a app em "In production".
 Em "Testing", o login caduca todas as semanas.

@@ -35,6 +35,11 @@ env:
   HALLSTREAM_UPLOAD_TOKEN: ""
   # The feedback worker (worker/README.md); empty leaves only the GitHub link.
   HALLSTREAM_FEEDBACK_URL: ${{ vars.HALLSTREAM_FEEDBACK_URL }}
+  # Hallstream's own YouTube client, only once Google has verified it: until
+  # then it lets in only its test users, so the variable stays off and every
+  # club uses its own client, as before.
+  HALLSTREAM_YOUTUBE_CLIENT_ID: ${{ vars.HALLSTREAM_YOUTUBE_BUILTIN == 'on' && secrets.HALLSTREAM_YOUTUBE_CLIENT_ID || '' }}
+  HALLSTREAM_YOUTUBE_CLIENT_SECRET: ${{ vars.HALLSTREAM_YOUTUBE_BUILTIN == 'on' && secrets.HALLSTREAM_YOUTUBE_CLIENT_SECRET || '' }}
 
 jobs:
   windows:

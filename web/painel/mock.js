@@ -368,12 +368,15 @@
       step('fit', 'Câmara ajustada ao ecrã', 'ok', 'A câmara ocupa o ecrã inteiro.')] };
   }
 
-  // YouTube: ?yt=off (default, not set up), on, expired, ended (the unlisted card), endfail (privacy change failed).
+  // YouTube: ?yt=off (default, not set up), builtin (not set up, the build has Hallstream's client),
+  // on, expired, ended (the unlisted card), endfail (privacy change failed).
   var ytMode = (/[?&]yt=([a-z]+)/.exec(location.search) || [])[1] || 'off';
+  var ytOn = ytMode !== 'off' && ytMode !== 'builtin';
   var avatar = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88"><rect width="88" height="88" fill="#BD1522"/><text x="44" y="56" font-family="Arial" font-size="30" font-weight="700" fill="#fff" text-anchor="middle">CAS</text></svg>');
-  var yt = { setup: onPC, configured: ytMode !== 'off', has_secret: ytMode !== 'off', client_id: ytMode !== 'off' ? '123456789012-abcdefg.apps.googleusercontent.com' : '',
-    connected: ytMode !== 'off', expired: ytMode === 'expired', connecting: false, error: '', stream_ready: ytMode !== 'off',
-    channel: ytMode !== 'off' ? { id: 'UC1', title: 'Clube Exemplo · Basquetebol', thumbnail: avatar } : null };
+  var yt = { setup: onPC, configured: ytMode !== 'off', has_secret: ytOn, client_id: ytOn ? '123456789012-abcdefg.apps.googleusercontent.com' : '',
+    builtin: ytMode === 'builtin', use: ytMode === 'builtin' ? 'builtin' : 'own', client: ytOn ? 'own' : '',
+    connected: ytOn, expired: ytMode === 'expired', connecting: false, error: '', stream_ready: ytOn,
+    channel: ytOn ? { id: 'UC1', title: 'Clube Exemplo · Basquetebol', thumbnail: avatar } : null };
   function rec(id, title, escalao, date, result, privacy, external) {
     return { broadcast_id: id, video_id: id, title: title, escalao: escalao, date: date, result: result, score: '', privacy: privacy,
       link: 'https://youtu.be/' + id, external: !!external, thumbnail_set: true, privacy_error: '' };
@@ -626,13 +629,16 @@
       return reply(200, { known: true, stream: streamNow(), youtube: ytSummary() });
     }
     if (p === '/api/youtube') return reply(200, yt);
-    if (p === '/api/youtube/client') { yt.client_id = b.client_id; yt.has_secret = yt.has_secret || !!b.client_secret; yt.configured = !!(yt.client_id && yt.has_secret); return reply(200, yt); }
+    if (p === '/api/youtube/client') {
+      if (b.use === 'builtin') { yt.use = 'builtin'; yt.configured = yt.builtin; return reply(200, yt); }
+      yt.use = 'own'; yt.client_id = b.client_id; yt.has_secret = yt.has_secret || !!b.client_secret; yt.configured = !!(yt.client_id && yt.has_secret); return reply(200, yt);
+    }
     if (p === '/api/youtube/connect') {
       yt.connecting = true;
-      setTimeout(function () { Object.assign(yt, { connecting: false, connected: true, expired: false, stream_ready: true, channel: { id: 'UC1', title: 'Clube Exemplo · Basquetebol', thumbnail: avatar } }); }, 1500);
+      setTimeout(function () { Object.assign(yt, { connecting: false, connected: true, expired: false, stream_ready: true, client: yt.use, channel: { id: 'UC1', title: 'Clube Exemplo · Basquetebol', thumbnail: avatar } }); }, 1500);
       return reply(200, { auth_url: 'about:blank' });
     }
-    if (p === '/api/youtube/disconnect') { Object.assign(yt, { connected: false, expired: false, channel: null, stream_ready: false }); return reply(200, yt); }
+    if (p === '/api/youtube/disconnect') { Object.assign(yt, { connected: false, expired: false, client: '', channel: null, stream_ready: false }); return reply(200, yt); }
     if (p === '/api/youtube/thumbnail') {
       if (/[?&]thumb=fail\b/.test(location.search)) return err(502, 'O YouTube não aceitou a miniatura, porque o canal ainda não está verificado em youtube.com/verify. O direto continua com a imagem que o YouTube escolher.');
       return reply(200, { ok: true });

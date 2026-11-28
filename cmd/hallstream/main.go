@@ -38,6 +38,7 @@ import (
 	"github.com/kauredo/hallstream/internal/state"
 	"github.com/kauredo/hallstream/internal/store"
 	"github.com/kauredo/hallstream/internal/web"
+	"github.com/kauredo/hallstream/internal/youtube"
 )
 
 // version is set at build time: -ldflags "-X main.version=1.0.0".
@@ -50,6 +51,11 @@ var uploadToken = ""
 // feedbackURL is the feedback worker's address (worker/README.md), set at
 // build time; "" leaves only the GitHub link in Ajuda.
 var feedbackURL = ""
+
+// youtubeClientID and youtubeClientSecret are Hallstream's own Desktop
+// OAuth client, set by build.sh from HALLSTREAM_YOUTUBE_CLIENT_ID and
+// HALLSTREAM_YOUTUBE_CLIENT_SECRET. Empty leaves only the club's own client.
+var youtubeClientID, youtubeClientSecret = "", ""
 
 // logOut gets every message: dados/marcador.log, and the console when there
 // is one.
@@ -290,15 +296,16 @@ func main() {
 		Autostart:  desktop.Autostart,
 		OBSApp:     obsapp.System(),
 
-		UploadToken:  uploadToken,
-		FeedbackURL:  feedbackURL,
-		Timeline:     tl,
-		UseInput:     inputs.Use,
-		Manual:       manual,
-		Serial:       cabled,
-		SerialPorts:  serialPorts,
-		RestartInput: inputs.Restart,
-		Restart:      restart,
+		UploadToken:    uploadToken,
+		FeedbackURL:    feedbackURL,
+		YouTubeBuiltIn: youtube.Credentials{ClientID: youtubeClientID, ClientSecret: youtubeClientSecret},
+		Timeline:       tl,
+		UseInput:       inputs.Use,
+		Manual:         manual,
+		Serial:         cabled,
+		SerialPorts:    serialPorts,
+		RestartInput:   inputs.Restart,
+		Restart:        restart,
 	})
 	srv.SyncGame()
 	srv.SyncPromo()

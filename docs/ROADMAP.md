@@ -48,8 +48,8 @@ The order of the phases below is a suggestion. Each phase ships on its own.
    - Add `manual`: typed squads, CSV import (`number,name,photo`) and typed fixtures.
    - Only offer FPB for Portuguese basketball clubs.
 6. **First-run wizard.** Done: language, club (with sport and country), scoring, OBS, YouTube, the channel and a rehearsal; the destination step picks YouTube or RTMP. The steps are language, club, sport, input, OBS, streaming destination and a rehearsal. Every step can be skipped and resumed.
-7. **YouTube and RTMP.** Partly done: Definições and the setup pick YouTube or a custom server and key, and the RTMP path writes both into OBS. YouTube works today only with the club's own Google client (`docs/youtube/SETUP.md`).
-   - Not built: a project OAuth client that ships with the app, with "use your own" kept as the fallback. It needs Google's verification for the `youtube` scope first.
+7. **YouTube and RTMP.** Built: Definições and the setup pick YouTube or a custom server and key, and the RTMP path writes both into OBS.
+   - The project OAuth client (plan 021) is built in at release time, with the club's own client kept as the fallback (`docs/youtube/SETUP.md`). Not shipped yet: releases carry it only once Google has verified it for the `youtube` scope and the repo variable `HALLSTREAM_YOUTUBE_BUILTIN` is `on`. Until then every club uses its own client.
 8. **Releases.**
    - Notarised macOS builds. Done: a signed, notarised and stapled `Hallstream.app` in a DMG, and a Linux tarball, next to the Windows zip in every release. Signed Windows builds: declined, since SignPath turned the project down, so the exes stay unsigned.
    - A desktop window. Done on macOS and Windows. On macOS the panel opens in the app's own window with a real menu bar (plan 017). On Windows it opens in a WebView2 window, or an Edge app window where WebView2 is missing (plan 018). Linux opens the browser.

@@ -1,6 +1,22 @@
 # Connect Hallstream to YouTube
 
-You only do this once, in two parts:
+You only do this once, on the club PC.
+
+## When the panel shows only the Connect to YouTube button
+
+This version of Hallstream carries its own Google client, so there is nothing to create:
+
+1. In the panel, open **First-time setup** (or **Settings > YouTube**) and click **Connect to YouTube**. Google's page opens.
+2. Sign in with the account that manages the club's channel (see "Which account to use", below). If Google asks which channel to use, choose the club's channel.
+3. Click **Continue** to give access to the channel. The page says "Connected to YouTube". Close it and go back to the panel.
+
+Then carry on at "On the YouTube channel", below.
+
+Every club on this client shares the same daily YouTube quota. If YouTube ever refuses requests because the quota has run out, or the club wants its own Google Cloud project, click **Disconnect**, then **Use your own Google client**, and follow parts 1 and 2.
+
+## With your own Google client
+
+When the panel asks for the **Client ID** and the **Client secret**, it takes two parts:
 
 - **Part 1, on any computer**: create the OAuth client in Google Cloud. It works with any Google account, including your own. At the end you have an ID and a secret, which you take to the club PC (on a USB stick, for example).
 - **Part 2, on the club PC**: in the Hallstream panel, under **First-time setup**, paste the ID and the secret and sign in with the account that manages the club's channel.
@@ -9,16 +25,16 @@ Once YouTube is connected, Hallstream creates the live stream for each game with
 
 The Google Cloud buttons are written here as they appear with the console in English. If the console is in another language, the names change but the steps are the same.
 
-## Part 1. Google Cloud (any computer, any Google account)
+### Part 1. Google Cloud (any computer, any Google account)
 
-### A. Create the project
+#### A. Create the project
 
 1. Open https://console.cloud.google.com and sign in with your Google account.
 2. At the top, click the project selector and then **New project**.
 3. In **Project name**, type `Hallstream`. Click **Create** and wait until the project is selected at the top.
 4. Open https://console.cloud.google.com/apis/library/youtube.googleapis.com and click **Enable**.
 
-### B. Consent screen (the step that stops the sign-in from expiring)
+#### B. Consent screen (the step that stops the sign-in from expiring)
 
 5. Open https://console.cloud.google.com/auth/overview and click **Get started**.
 6. Under **App Information**, type `Hallstream` as the name and choose your email under **User support email**. Click **Next**.
@@ -35,18 +51,18 @@ While the app is in **Testing**, Google lets the sign-in last only 7 days, and H
 
 The app does not need to be verified by Google. It is only for the club (fewer than 100 accounts), and Google lets you in after a warning. Do not add anything under **Data Access**. Hallstream asks for the YouTube permission by itself when it connects.
 
-### C. Create the OAuth client
+#### C. Create the OAuth client
 
 11. Open **Clients** (https://console.cloud.google.com/auth/clients) and click **Create client**.
 12. Under **Application type**, choose **Desktop app**. Under **Name**, type `Hallstream`. Click **Create**.
 13. The **Client ID** (it ends in `.apps.googleusercontent.com`) and the **Client secret** appear. Click **Download JSON**, or copy both into a text file. Google may not show the secret again after you close this window.
 14. Put that file on a USB stick and take it to the club PC. Do not send the ID or the secret by email or WhatsApp. Do not leave it in Downloads or in a synced folder (OneDrive, Google Drive). After connecting, delete the file from the stick.
 
-### D. Give the project to the club too (optional)
+#### D. Give the project to the club too (optional)
 
 So that the club does not depend on your account, add the club's account as an owner of the project: at https://console.cloud.google.com/iam-admin/iam, click **Grant access**, type the club account's email, choose the **Owner** role and click **Save**.
 
-## Part 2. On the club PC
+### Part 2. On the club PC
 
 15. Open the Hallstream panel on the club PC (not on a phone). Under **Screens**, click **Start** on the notice "First-time setup is missing", or go to **Settings > First-time setup**.
 16. At the **YouTube** step, paste the **Client ID** and the **Client secret**. Click **Save**.
@@ -56,11 +72,11 @@ So that the club does not depend on your account, add the club's account as an o
 20. Click **Continue** to give access to the channel. The page says "Connected to YouTube". Close it and go back to the panel.
 21. The step shows the channel's name and picture. Hallstream creates the "Hallstream" stream on YouTube and sets OBS to send to it.
 
-### Which account to use in step 18
+## Which account to use
 
 It must be the Google account that owns the channel, or an account that owns or manages the channel's Brand Account. An invitation under **Permissions** in YouTube Studio (Manager, Editor and the others) is not enough. YouTube says those accounts "can't manage via YouTube APIs" (https://support.google.com/youtube/answer/9367690). The account from part 1 does not have to be the same one.
 
-### On the YouTube channel (the "YouTube channel" step)
+## On the YouTube channel (the "YouTube channel" step)
 
 22. The channel must have live streaming turned on: https://www.youtube.com/features. The first time, YouTube can take up to 24 hours to turn it on.
 23. For each game's thumbnail to appear, the channel must be verified by phone: https://www.youtube.com/verify. Without that, the live stream still starts, with an image chosen by YouTube, and the panel warns you.

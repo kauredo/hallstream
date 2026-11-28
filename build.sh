@@ -27,6 +27,11 @@ texts() {
 	/bin/cp -f docs/cameras/GUIDE.en.md $1/CAMERAS.txt
 }
 
+# HALLSTREAM_YOUTUBE_CLIENT_ID and HALLSTREAM_YOUTUBE_CLIENT_SECRET build in
+# Hallstream's own Desktop OAuth client (anyone can read it from the binary,
+# as Google expects of installed apps). Without them, clubs use their own.
+ytflags="-X main.youtubeClientID=$HALLSTREAM_YOUTUBE_CLIENT_ID -X main.youtubeClientSecret=$HALLSTREAM_YOUTUBE_CLIENT_SECRET"
+
 if [[ $target == windows ]]; then
 
 # Icon, version and manifest go in rsrc_windows_*.syso, which go build picks
@@ -45,7 +50,7 @@ winres winres/winres-386.json 386
 # the server, build with the same value, and hand over the new zip. Until the
 # club swaps the exe its uploads get 401 and stay queued in dados/envios/ for
 # up to 60 days, and the new exe sends them.
-flags="-s -w -H windowsgui -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
+flags="-s -w -H windowsgui -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL $ytflags"
 GOOS=windows GOARCH=amd64 go build -ldflags $flags -o "dist/Hallstream.exe" ./cmd/hallstream
 GOOS=windows GOARCH=386 go build -ldflags $flags -o "dist/Hallstream (32-bit).exe" ./cmd/hallstream
 rm -f cmd/hallstream/rsrc_windows_*.syso
@@ -62,7 +67,7 @@ mkdir -p $app/Contents/MacOS $app/Contents/Resources
 # Go's build cache ignores MACOSX_DEPLOYMENT_TARGET, so -a keeps cgo objects
 # built for a newer macOS out of the binary, and the linker's warning fails it.
 export MACOSX_DEPLOYMENT_TARGET=13.0 CGO_ENABLED=1
-flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
+flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL $ytflags"
 tmp=$(mktemp -d)
 for arch in amd64 arm64; do
 	GOARCH=$arch go build -a -ldflags $flags -o $tmp/hallstream-$arch ./cmd/hallstream 2>$tmp/build.log || { cat $tmp/build.log >&2; exit 1 }
@@ -110,7 +115,7 @@ fi
 elif [[ $target == linux ]]; then
 rm -rf dist/linux
 mkdir -p dist/linux/Hallstream
-flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL"
+flags="-s -w -X main.version=$version -X main.uploadToken=$HALLSTREAM_UPLOAD_TOKEN -X main.feedbackURL=$HALLSTREAM_FEEDBACK_URL $ytflags"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags $flags -o dist/linux/Hallstream/Hallstream ./cmd/hallstream
 texts dist/linux/Hallstream linux
 # BSD tar (a Mac) has no --owner or --group.

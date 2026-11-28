@@ -61,9 +61,10 @@ FIRST TIME (AT HOME)
    scoring (the console or a phone), OBS ("Set up OBS"), YouTube,
    YouTube channel and a rehearsal. You can stop halfway, as the panel
    remembers where you were. It is also in Settings > First-time setup.
-   - For the YouTube step, bring the OAuth client ID and secret, made
-     beforehand with the guide YouTube\CONNECT-YOUTUBE.txt (see "LIVE
-     STREAMS ON YOUTUBE"). Without them, press "Skip for now" and
+   - At the YouTube step, if only the "Connect to YouTube" button shows,
+     just press it. If the step asks for the OAuth client ID and secret,
+     bring them, made beforehand with the guide YouTube\CONNECT-YOUTUBE.txt
+     (see "LIVE STREAMS ON YOUTUBE"). Without them, press "Skip for now" and
      connect the YouTube account in OBS itself, in Settings > Stream.
    - For the PC to open everything by itself, turn on "Open with
      Windows" in Settings > On this computer.
@@ -405,8 +406,10 @@ LIVE STREAMS ON YOUTUBE
 
 With access to the club's channel, Hallstream creates the public live
 stream for each game by itself, with the title and the thumbnail, and at
-the end makes the video unlisted. The guide YouTube\CONNECT-YOUTUBE.txt
-has two parts.
+the end makes the video unlisted. If the panel shows only the "Connect
+to YouTube" button, just press it and sign in with the account that
+manages the club's channel. If it asks for the ID and secret of an OAuth
+client, the guide YouTube\CONNECT-YOUTUBE.txt has two parts.
 In the first, on any computer and with any Google account, you create
 the OAuth client in Google Cloud, with the app set to "In production".
 In "Testing", the login expires every week.

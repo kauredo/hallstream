@@ -26,6 +26,7 @@ Started 2026-11-25. Run them in the order below (Phase C first, then Phase B, ow
 | 018 | The Windows app gets its own window: the panel in a WebView2 window, the Edge app window as the fallback, links and the second double-click handled | P1 | M | 017 | DONE: merged #83 to #86 (a2c8754), released in v0.1.8 |
 | 019 | The 32-bit Windows exe stops crashing on Bluetooth: winrt-go's delegate callbacks and 64-bit arguments fixed for stdcall | P1 | S | 018 | DONE: merged #88 (0600f30), released in v0.1.8 |
 | 020 | Consoles on a serial cable: Daktronics All Sport 5000 (basketball, volleyball) and Bodet Scorepad (basketball, handball), recorded and replayed like the box, and the website's console table | P2 | L | none | DONE: merged #90 to #93 (2f68895), released in v0.1.9; website kauredo/hallstream-website#25 |
+| 021 | A built-in YouTube client: one Ligar ao YouTube button, with the club's own Google client kept as the fallback; releases carry it only once Google verifies it | P1 | M | none | IN REVIEW: #97. Releases build it in only once `HALLSTREAM_YOUTUBE_BUILTIN` is on, after Google's verification |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

@@ -41,8 +41,9 @@ type fakeYT struct {
 	updated     map[string]any // the last videos.update body
 	bound       map[string]string
 	next        int
-	longUploads string // channels.list status.longUploadsStatus
-	liveOff     bool   // liveBroadcasts.list answers liveStreamingNotEnabled
+	longUploads string   // channels.list status.longUploadsStatus
+	liveOff     bool     // liveBroadcasts.list answers liveStreamingNotEnabled
+	refreshedBy []string // the client_id of each token request
 }
 
 func (f *fakeYT) count(key string) int {
@@ -69,6 +70,8 @@ func (f *fakeYT) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		send(map[string]any{"error": map[string]any{"code": code, "message": reason, "errors": []any{map[string]any{"reason": reason}}}})
 	}
 	if path == "/token" {
+		r.ParseForm()
+		f.refreshedBy = append(f.refreshedBy, r.PostForm.Get("client_id"))
 		if f.refreshFail {
 			w.WriteHeader(400)
 			send(map[string]string{"error": "invalid_grant"})
@@ -605,6 +608,187 @@ func TestYouTubeClientAndDisconnect(t *testing.T) {
 	b, _ := os.ReadFile(filepath.Join(s.Store.Dir, ytFile))
 	if strings.Contains(string(b), "r1") {
 		t.Error("token left in youtube.json")
+	}
+}
+
+var hallstreamClient = youtube.Credentials{ClientID: "hallstream.apps.googleusercontent.com", ClientSecret: "segredo-hallstream"}
+
+// refreshedBy makes the saved login refresh, after any background work, and
+// says which client asked; "" when the requests didn't all come from one.
+func refreshedBy(t *testing.T, s *Server, f *fakeYT) string {
+	t.Helper()
+	s.bg.Wait()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := s.ytClient().Channel(ctx); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.refreshedBy) == 0 {
+		t.Fatal("no refresh")
+	}
+	for _, id := range f.refreshedBy {
+		if id != f.refreshedBy[0] {
+			return ""
+		}
+	}
+	return f.refreshedBy[0]
+}
+
+// expiredLogin saves a login whose access token has run out, from client.
+func expiredLogin(s *Server, client, use string) {
+	connect(s)
+	s.ytMu.Lock()
+	s.yt.Client, s.yt.Use = client, use
+	s.ytWrite()
+	s.ytMu.Unlock()
+}
+
+func TestYouTubeBuiltInClient(t *testing.T) {
+	f := newFakeYT(t)
+	s := newServer(t)
+	s.YouTubeBuiltIn = hallstreamClient
+	var st map[string]any
+	code := call(t, s, "GET", "/api/youtube", nil, &st)
+	if code != 200 || st["builtin"] != true || st["use"] != ytBuiltIn || st["configured"] != true || st["client"] != "" {
+		t.Fatalf("%d %v", code, st)
+	}
+	if b, _ := json.Marshal(st); strings.Contains(string(b), "segredo-hallstream") || strings.Contains(string(b), "hallstream.apps") {
+		t.Errorf("the built-in client in the status: %s", b)
+	}
+	var c map[string]string
+	if code := call(t, s, "POST", "/api/youtube/connect", map[string]any{}, &c); code != 200 || !strings.Contains(c["auth_url"], "client_id=hallstream.apps.googleusercontent.com") {
+		t.Fatalf("%d %v", code, c)
+	}
+
+	// Google sends the browser back: the login is the built-in client's.
+	s.ytMu.Lock()
+	l := s.ytLogin
+	s.ytMu.Unlock()
+	s.ytLoggedIn(l, &oauth2.Token{AccessToken: "old", RefreshToken: "r2", TokenType: "Bearer", Expiry: time.Now().Add(-time.Minute)}, nil)
+	if y := s.ytGet(); y.Client != ytBuiltIn || y.Use != ytBuiltIn {
+		t.Fatalf("saved %q use %q", y.Client, y.Use)
+	}
+	if id := refreshedBy(t, s, f); id != hallstreamClient.ClientID {
+		t.Errorf("refreshed by %q", id)
+	}
+
+	// The club's own client can't take over a login it didn't make.
+	if code := call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "own", "client_id": "id.apps.googleusercontent.com", "client_secret": "segredo"}, &st); code != 409 {
+		t.Errorf("own client while connected: %d", code)
+	}
+	if code := call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "builtin"}, &st); code != 200 {
+		t.Errorf("same client while connected: %d", code)
+	}
+	if code := call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "other"}, &st); code != 400 {
+		t.Errorf("unknown client: %d", code)
+	}
+
+	// After Desligar the club can switch to its own client and log in with it.
+	call(t, s, "POST", "/api/youtube/disconnect", map[string]any{}, &st)
+	if s.ytGet().Client != "" {
+		t.Errorf("Desligar kept the login's client %q", s.ytGet().Client)
+	}
+	call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "own", "client_id": "id.apps.googleusercontent.com", "client_secret": "segredo"}, &st)
+	if st["use"] != ytOwn || st["configured"] != true || st["client_id"] != "id.apps.googleusercontent.com" {
+		t.Fatalf("%v", st)
+	}
+	if code := call(t, s, "POST", "/api/youtube/connect", map[string]any{}, &c); code != 200 || !strings.Contains(c["auth_url"], "client_id=id.apps.googleusercontent.com") {
+		t.Fatalf("%d %v", code, c)
+	}
+	s.bg.Wait()
+	f.set(func(f *fakeYT) { f.refreshedBy = nil })
+	s.ytMu.Lock()
+	l = s.ytLogin
+	s.ytMu.Unlock()
+	s.ytLoggedIn(l, &oauth2.Token{AccessToken: "old", RefreshToken: "r3", TokenType: "Bearer", Expiry: time.Now().Add(-time.Minute)}, nil)
+	if y := s.ytGet(); y.Client != ytOwn {
+		t.Fatalf("the club's login saved as %q", y.Client)
+	}
+	if id := refreshedBy(t, s, f); id != "id.apps.googleusercontent.com" {
+		t.Errorf("the club's login refreshed by %q", id)
+	}
+	call(t, s, "POST", "/api/youtube/disconnect", map[string]any{}, &st)
+	call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "builtin"}, &st)
+	if st["use"] != ytBuiltIn || s.ytGet().ClientID != "id.apps.googleusercontent.com" {
+		t.Errorf("back to the built-in client: %v, kept %q", st, s.ytGet().ClientID)
+	}
+}
+
+// A youtube.json from 0.1.9 has the club's own client and no use or client:
+// it keeps refreshing with that client on a build that carries the built-in one.
+func TestYouTubeOldLoginKeepsOwnClient(t *testing.T) {
+	f := newFakeYT(t)
+	s := newServer(t)
+	s.YouTubeBuiltIn = hallstreamClient
+	connect(s)
+	var st map[string]any
+	call(t, s, "GET", "/api/youtube", nil, &st)
+	if st["use"] != ytOwn || st["client"] != ytOwn || st["expired"] != false {
+		t.Fatalf("%v", st)
+	}
+	if id := refreshedBy(t, s, f); id != "id.apps.googleusercontent.com" {
+		t.Errorf("refreshed by %q", id)
+	}
+	// Switching that club to the built-in client needs a new login first.
+	if code := call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "builtin"}, &st); code != 409 || s.ytGet().Use != "" {
+		t.Errorf("built-in client while connected with the club's: %d, use %q", code, s.ytGet().Use)
+	}
+}
+
+// A refresh follows the client the login came from, not the one picked for
+// the next login.
+func TestYouTubeRefreshUsesTheLoginsClient(t *testing.T) {
+	for _, c := range []struct{ client, use, want string }{
+		{ytOwn, ytBuiltIn, "id.apps.googleusercontent.com"},
+		{ytBuiltIn, ytOwn, hallstreamClient.ClientID},
+	} {
+		f := newFakeYT(t)
+		s := newServer(t)
+		s.YouTubeBuiltIn = hallstreamClient
+		expiredLogin(s, c.client, c.use)
+		if id := refreshedBy(t, s, f); id != c.want {
+			t.Errorf("login from %s, next login %s: refreshed by %q", c.client, c.use, id)
+		}
+	}
+}
+
+func TestYouTubeNoBuiltInClient(t *testing.T) {
+	newFakeYT(t)
+	s := newServer(t)
+	var st map[string]any
+	call(t, s, "GET", "/api/youtube", nil, &st)
+	if st["builtin"] != false || st["use"] != ytOwn || st["configured"] != false {
+		t.Fatalf("%v", st)
+	}
+	if code := call(t, s, "PUT", "/api/youtube/client", map[string]string{"use": "builtin"}, &st); code != 400 {
+		t.Errorf("built-in client on a build without one: %d", code)
+	}
+}
+
+// A login the built-in client made, read by a build without it, counts as
+// expired and never reaches Google, but stays usable for the release build.
+func TestYouTubeOrphanLogin(t *testing.T) {
+	s, f, o := ytSetup(t)
+	expiredLogin(s, ytBuiltIn, ytBuiltIn)
+	var st map[string]any
+	call(t, s, "GET", "/api/youtube", nil, &st)
+	if st["expired"] != true || st["client"] != ytBuiltIn || st["use"] != ytOwn {
+		t.Errorf("%v", st)
+	}
+	var r streamReply
+	if code := call(t, s, "POST", "/api/obs/stream/start", map[string]any{}, &r); code != 409 || o.starts != 0 {
+		t.Errorf("start: %d %+v, OBS starts %d", code, r, o.starts)
+	}
+	if n := f.count("POST /token"); n != 0 {
+		t.Errorf("asked Google for a token %d times with no client", n)
+	}
+	// The background work (finishing a stream, say) still calls Google; its
+	// refusal mustn't be saved either.
+	s.ytFailed(youtube.ErrReconnect)
+	if s.ytGet().Expired {
+		t.Error("saved the login as expired")
 	}
 }
 

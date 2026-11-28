@@ -85,6 +85,9 @@ type Server struct {
 	// FeedbackURL is the feedback worker's POST /feedback; "" leaves only the
 	// GitHub link in Ajuda.
 	FeedbackURL string
+	// YouTubeBuiltIn is Hallstream's own OAuth client; empty when the build
+	// carries none, which leaves only the club's own client.
+	YouTubeBuiltIn youtube.Credentials
 
 	mux        *http.ServeMux
 	failMu     sync.Mutex
@@ -129,6 +132,7 @@ type Server struct {
 	yt          ytSaved
 	ytRecs      []ytRecord
 	ytLogin     *youtube.Login // a sign-in waiting for the browser
+	ytLoginWith string         // the client ytLogin uses, ytBuiltIn or ytOwn
 	ytErr       string
 	ytEnded     string          // the broadcast of the post-stream card
 	ytBusy      map[string]bool // broadcasts being finished

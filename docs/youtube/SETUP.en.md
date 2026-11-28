@@ -12,7 +12,7 @@ This version of Hallstream carries its own Google client, so there is nothing to
 
 Then carry on at "On the YouTube channel", below.
 
-Every club on this client shares the same daily YouTube quota. If YouTube ever refuses requests because the quota has run out, or the club wants its own Google Cloud project, click **Disconnect**, then **Use your own Google client**, and follow parts 1 and 2.
+Every club on this client shares the same daily YouTube quota. If YouTube ever refuses requests because the quota has run out, or the club wants its own Google Cloud project, click **Disconnect**, then **Use your own OAuth client (advanced)**, and follow parts 1 and 2.
 
 ## With your own Google client
 

@@ -12,7 +12,7 @@ Esta versão do Hallstream traz o seu próprio cliente Google, e não precisa de
 
 Depois siga em "No canal do YouTube", mais abaixo.
 
-Todos os clubes com este cliente partilham a mesma quota diária do YouTube. Se um dia o YouTube recusar pedidos por falta de quota, ou se o clube quiser o seu próprio projeto na Google Cloud, carregue em **Desligar**, depois em **Usar um cliente Google próprio**, e siga as partes 1 e 2.
+Todos os clubes com este cliente partilham a mesma quota diária do YouTube. Se um dia o YouTube recusar pedidos por falta de quota, ou se o clube quiser o seu próprio projeto na Google Cloud, carregue em **Desligar**, depois em **Usar um cliente OAuth próprio (avançado)**, e siga as partes 1 e 2.
 
 ## Com um cliente Google próprio
 

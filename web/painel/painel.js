@@ -2544,14 +2544,15 @@
     }
     if (!y.setup) return html + '<p class="hint">' + t('painel.yt.ainda_nao') + '</p>';
     if (!ytOwnShown()) {
-      html += (bare ? '' : '<p class="hint">' + t('painel.yt.builtin_dica') + '</p>') +
+      // Which account to use comes before the button: it decides whether the login works.
+      html += '<p>' + t('painel.wz.yt_builtin') + '</p>' +
+        '<p class="hint" style="margin-top:8px">' + t('painel.wz.yt_conta') + '</p>' +
         '<div class="row" style="margin-top:12px;align-items:center">' +
         '<button class="btn primary" type="button" data-act="yt-connect"' + (y.connecting ? ' disabled' : '') + '>' + t('painel.definicoes.ligar_yt') + '</button>' +
-        '<button class="btn quiet" type="button" data-act="yt-own">' + t('painel.yt.usar_proprio') + '</button>' +
         '<span class="msg" id="ytMsg" role="status"></span></div>';
     } else {
-      html += (bare ? '' : '<p class="hint">' + t('painel.yt.cole') + '</p>') +
-        (y.builtin ? '<p class="hint">' + t('painel.yt.proprio_dica') + '</p>' : '') +
+      html += (y.builtin ? '<p class="hint">' + t('painel.yt.proprio_dica') + '</p>' : '') +
+        (bare ? '' : '<p class="hint">' + t('painel.yt.cole') + '</p>') +
         '<div class="cols" style="margin-top:12px">' +
         '<label class="field"><span>' + t('painel.yt.id') + '</span><input id="ytId" autocomplete="off" spellcheck="false" value="' + esc(y.client_id || '') + '" placeholder="…apps.googleusercontent.com"></label>' +
         '<label class="field"><span>' + t('painel.yt.segredo') + '</span><input type="password" id="ytSecret" autocomplete="off" value="" placeholder="' + (y.has_secret ? t('painel.yt.segredo_guardado') : '') + '"></label>' +
@@ -2563,6 +2564,11 @@
     }
     if (y.connecting) html += '<p class="hint" style="margin-top:8px">' + t('painel.yt.a_espera') + '</p>';
     else if (y.error) html += '<p class="msg err" style="margin-top:8px">' + esc(y.error) + '</p>';
+    if (!ytOwnShown()) {
+      html += '<div class="row" style="margin-top:12px"><button class="btn quiet" type="button" data-act="yt-own">' + t('painel.yt.usar_proprio') + '</button></div>';
+    } else if (!bare) {
+      html += '<p class="hint" style="margin-top:12px">' + t('painel.wz.yt_conta') + '</p>'; // the wizard says it below the box
+    }
     return html;
   }
   // The club's own client fields show on a build without the built-in client,
@@ -3391,13 +3397,14 @@
       html = destHtml();
     } else if (id === 'youtube') {
       var own = ytOwnShown();
-      html = destHtml() + '<div class="wz-how">' + (own ? '<p>' + t('painel.wz.yt_precisa') + '</p>' +
+      // With the built-in client the box carries its own one-line instruction.
+      html = destHtml() + (own ? '<div class="wz-how"><p>' + t('painel.wz.yt_precisa') + '</p>' +
         '<ol class="steps"><li>' + t('painel.wz.yt_passo1') + '</li>' +
         '<li>' + t('painel.wz.yt_passo2') + '</li>' +
-        '<li>' + t('painel.wz.yt_passo3') + '</li></ol>' : '<p>' + t('painel.wz.yt_builtin') + '</p>') + '</div>' +
+        '<li>' + t('painel.wz.yt_passo3') + '</li></ol></div>' : '') +
         '<div class="wz-sub" id="ytSetup" data-bare="1">' + ytSetupHtml(true) + '</div>' +
-        '<div class="wz-how"><p class="hint">' + t('painel.wz.yt_conta') + '</p>' +
-        (own ? '<p class="hint">' + t('painel.wz.yt_sem_id') + '</p>' : '') + '</div>';
+        (own ? '<div class="wz-how"><p class="hint">' + t('painel.wz.yt_conta') + '</p>' +
+          '<p class="hint">' + t('painel.wz.yt_sem_id') + '</p></div>' : '');
     } else if (id === 'canal') {
       var l = canalItem('diretos'), v = canalItem('verificado'), c = S.chk || {}, yc = (S.yt || {}).connected;
       var said = function (tx) { return '<p class="wz-said">' + tx + '</p>'; };

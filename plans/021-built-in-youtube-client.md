@@ -1,6 +1,6 @@
 # 021: A built-in YouTube client, with the club's own client as the fallback
 
-Status: in review, one PR.
+Status: in review as kauredo/hallstream#97. Shipping to clubs waits on Google verifying the client and the repo variable `HALLSTREAM_YOUTUBE_BUILTIN` going on.
 
 Repo `app/` at `f678022` (main, v0.1.9). ROADMAP Phase A item 7: "a project OAuth client that ships with the app, with 'use your own' kept as the fallback".
 The owner asked on 2026-11-28 to build it straight away, while they create the Google Cloud project and the Desktop client. The client goes to Google for verification once a build carries it, since the verification needs a demo video of the login.

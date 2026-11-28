@@ -115,6 +115,7 @@
   "api.so_no_pc": "Isto só se muda no próprio computador.",
   "api.tipo_invalido": "Pedido recusado: tipo de conteúdo inválido.",
   "api.yt.cliente_desconhecido": "Não conheço esse cliente. Escolha o do Hallstream ou um cliente Google próprio.",
+  "api.yt.cliente_mudou": "O cliente mudou entretanto. Carregue outra vez em Ligar ao YouTube.",
   "api.yt.desligue_primeiro": "Carregue primeiro em Desligar, e depois mude o cliente.",
   "api.yt.falta_cliente": "Cole primeiro o ID e o segredo do cliente OAuth e carregue em Guardar.",
   "api.yt.falta_imagem": "Falta a imagem.",

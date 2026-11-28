@@ -115,6 +115,7 @@
   "api.so_no_pc": "This can only be changed on the computer itself.",
   "api.tipo_invalido": "Request refused: invalid content type.",
   "api.yt.cliente_desconhecido": "I don't know that client. Pick Hallstream's or your own Google client.",
+  "api.yt.cliente_mudou": "The client changed in the meantime. Click Connect to YouTube again.",
   "api.yt.desligue_primeiro": "Press Disconnect first, then change the client.",
   "api.yt.falta_cliente": "Paste the OAuth client ID and secret first, then press Save.",
   "api.yt.falta_imagem": "The image is missing.",

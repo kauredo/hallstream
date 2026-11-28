@@ -2544,7 +2544,6 @@
     }
     if (!y.setup) return html + '<p class="hint">' + t('painel.yt.ainda_nao') + '</p>';
     if (!ytOwnShown()) {
-      // The build's own client: one button, and the club's client one click away.
       html += (bare ? '' : '<p class="hint">' + t('painel.yt.builtin_dica') + '</p>') +
         '<div class="row" style="margin-top:12px;align-items:center">' +
         '<button class="btn primary" type="button" data-act="yt-connect"' + (y.connecting ? ' disabled' : '') + '>' + t('painel.definicoes.ligar_yt') + '</button>' +

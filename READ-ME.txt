@@ -406,10 +406,10 @@ LIVE STREAMS ON YOUTUBE
 
 With access to the club's channel, Hallstream creates the public live
 stream for each game by itself, with the title and the thumbnail, and at
-the end makes the video unlisted. When this version carries Hallstream's
-own Google client, you just press "Connect to YouTube" and sign in with
-the account that manages the club's channel. Without it, or with your
-own client, the guide YouTube\CONNECT-YOUTUBE.txt has two parts.
+the end makes the video unlisted. If the panel shows only the "Connect
+to YouTube" button, just press it and sign in with the account that
+manages the club's channel. If it asks for the ID and secret of an OAuth
+client, the guide YouTube\CONNECT-YOUTUBE.txt has two parts.
 In the first, on any computer and with any Google account, you create
 the OAuth client in Google Cloud, with the app set to "In production".
 In "Testing", the login expires every week.

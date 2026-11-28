@@ -406,10 +406,10 @@ DIRETOS NO YOUTUBE
 
 Com acesso ao canal do clube, o Hallstream cria sozinho o direto público
 de cada jogo, com o título e a miniatura, e no fim torna o vídeo não
-listado. Quando esta versão traz o cliente Google do Hallstream, basta
-carregar em "Ligar ao YouTube" e entrar com a conta que gere o canal do
-clube. Sem ele, ou com um cliente próprio, o guia
-YouTube\LIGAR-YOUTUBE.txt tem duas partes.
+listado. Se o painel mostrar só o botão "Ligar ao YouTube", basta
+carregar nele e entrar com a conta que gere o canal do clube. Se pedir
+o ID e o segredo de um cliente OAuth, o guia YouTube\LIGAR-YOUTUBE.txt
+tem duas partes.
 Na primeira, em qualquer computador e com qualquer conta Google,
 cria-se o cliente OAuth na Google Cloud, com a app em "In production".
 Em "Testing", o login caduca todas as semanas.

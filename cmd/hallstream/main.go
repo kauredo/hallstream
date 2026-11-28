@@ -55,7 +55,8 @@ var feedbackURL = ""
 // youtubeClientID and youtubeClientSecret are Hallstream's own Desktop
 // OAuth client, set by build.sh from HALLSTREAM_YOUTUBE_CLIENT_ID and
 // HALLSTREAM_YOUTUBE_CLIENT_SECRET. Empty leaves only the club's own client.
-var youtubeClientID, youtubeClientSecret = "", ""
+var youtubeClientID = ""
+var youtubeClientSecret = ""
 
 // logOut gets every message: dados/marcador.log, and the console when there
 // is one.

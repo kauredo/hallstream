@@ -33,10 +33,11 @@ type ytSaved struct {
 	// built-in one is in use.
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
-	// Use is the client the next login takes; "" picks one (ytUse). Client is
-	// the one the saved token came from, and every refresh uses it: a refresh
-	// token works only with its own client. "" with a token is ytOwn (0.1.9).
-	Use     string           `json:"use,omitempty"`
+	// Use is the client the next login takes, ytBuiltIn or ytOwn; "" lets
+	// ytUse pick.
+	Use string `json:"use,omitempty"`
+	// Client is the one the saved token came from. Every refresh uses it,
+	// since a refresh token works only with the client that made it.
 	Client  string           `json:"client,omitempty"`
 	Token   *oauth2.Token    `json:"token"`
 	Channel *youtube.Channel `json:"channel"`
@@ -55,7 +56,8 @@ func (y ytSaved) own() youtube.Credentials {
 }
 func (y ytSaved) connected() bool { return y.Token != nil && y.Token.RefreshToken != "" }
 
-// tokenClient is the client the saved login belongs to.
+// tokenClient is the client the saved login belongs to; files written
+// before the built-in client existed have only the club's own.
 func (y ytSaved) tokenClient() string {
 	if y.Client == ytBuiltIn {
 		return ytBuiltIn
@@ -70,10 +72,17 @@ func (s *Server) ytHasBuiltIn() bool { return complete(s.YouTubeBuiltIn) }
 // ytUse is the client the next login takes: the one picked, else the club's
 // own when it saved one, else the built-in one when this build has it.
 func (s *Server) ytUse(y ytSaved) string {
-	if y.Use == ytBuiltIn && s.ytHasBuiltIn() || y.Use == "" && y.ClientID == "" && s.ytHasBuiltIn() {
-		return ytBuiltIn
+	if !s.ytHasBuiltIn() {
+		return ytOwn
 	}
-	return ytOwn
+	switch y.Use {
+	case ytBuiltIn, ytOwn:
+		return y.Use
+	}
+	if y.ClientID != "" {
+		return ytOwn
+	}
+	return ytBuiltIn
 }
 
 func (s *Server) ytCreds(client string, y ytSaved) youtube.Credentials {
@@ -83,11 +92,16 @@ func (s *Server) ytCreds(client string, y ytSaved) youtube.Credentials {
 	return y.own()
 }
 
-// ytOrphan: the saved login came from a built-in client this build lacks
-// (a release's dados/ under go run), so it can't be refreshed.
+// ytOrphan reports a saved login from a built-in client this build lacks,
+// which can't be refreshed. Only a developer build reading a release's
+// dados/ meets it.
 func (s *Server) ytOrphan(y ytSaved) bool {
 	return y.connected() && y.tokenClient() == ytBuiltIn && !s.ytHasBuiltIn()
 }
+
+// ytExpired: only a new login helps. An orphan counts without being saved
+// as expired, so the release build that made the login still uses it.
+func (s *Server) ytExpired(y ytSaved) bool { return y.Expired || s.ytOrphan(y) }
 
 // ytRecord is one stream in dados/transmissoes.json.
 type ytRecord struct {
@@ -208,7 +222,7 @@ func (s *Server) ytStatus(here bool) map[string]any {
 	m := map[string]any{
 		"setup": here, "configured": complete(s.ytCreds(use, y)), "has_secret": y.ClientSecret != "",
 		"builtin": s.ytHasBuiltIn(), "use": use, "client": client,
-		"connected": y.connected(), "expired": y.Expired || s.ytOrphan(y), "channel": y.Channel, "stream_ready": y.Stream != nil,
+		"connected": y.connected(), "expired": s.ytExpired(y), "channel": y.Channel, "stream_ready": y.Stream != nil,
 		"connecting": s.ytLogin != nil, "error": s.ytErr, "client_id": "",
 	}
 	if here {
@@ -305,6 +319,14 @@ func (s *Server) ytConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.ytMu.Lock()
+	// The client changed while the listener opened: this login would save a
+	// token under the wrong one.
+	if s.ytUse(s.yt) != use || s.ytCreds(use, s.yt) != creds {
+		s.ytMu.Unlock()
+		l.Cancel()
+		fail(w, http.StatusConflict, i18n.T("api.yt.cliente_mudou"))
+		return
+	}
 	s.ytLogin, s.ytLoginWith, s.ytErr = l, use, ""
 	s.ytMu.Unlock()
 	reply(w, map[string]string{"auth_url": l.URL})
@@ -395,7 +417,7 @@ func (s *Server) ytClient() *youtube.Client {
 // ytFailed notes an error; a refused login marks the connection expired.
 func (s *Server) ytFailed(err error) error {
 	s.ytMu.Lock()
-	if errors.Is(err, youtube.ErrReconnect) && !s.yt.Expired {
+	if errors.Is(err, youtube.ErrReconnect) && !s.yt.Expired && !s.ytOrphan(s.yt) {
 		s.yt.Expired = true
 		s.ytWrite()
 	}
@@ -491,7 +513,7 @@ func (s *Server) ytGoLive(ctx context.Context, test bool) error {
 		}
 		return nil
 	}
-	if y.Expired {
+	if s.ytExpired(y) {
 		return youtube.ErrReconnect
 	}
 	st, _, err := s.ytPrepare(ctx)
@@ -814,7 +836,7 @@ func (s *Server) ytSummary() map[string]any {
 	if !s.yt.connected() && s.ytEnded == "" {
 		return nil
 	}
-	m := map[string]any{"connected": s.yt.connected(), "expired": s.yt.Expired, "live": nil, "ended": nil,
+	m := map[string]any{"connected": s.yt.connected(), "expired": s.ytExpired(s.yt), "live": nil, "ended": nil,
 		"waiting": s.ytBusy[s.ytEnded], "error": s.ytErr}
 	for _, r := range s.ytRecs {
 		if r.OnAir {
@@ -954,7 +976,7 @@ func (s *Server) ytHistory(w http.ResponseWriter, r *http.Request) {
 	s.ytMu.Lock()
 	stale := time.Since(s.ytRemoteAt) > ytRemoteTTL || q.Get("refresh") == "1" && time.Since(s.ytRemoteAt) > time.Minute
 	s.ytMu.Unlock()
-	if stale && s.ytConnected() && !s.ytGet().Expired {
+	if stale && s.ytConnected() && !s.ytExpired(s.ytGet()) {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		list, err := s.ytClient().Completed(ctx, 100)
 		cancel()

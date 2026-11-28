@@ -112,7 +112,7 @@ func (s *Server) obsRoutes() {
 			return
 		}
 		// Without YouTube, OBS sends to whatever it has: that is no test.
-		if y := s.ytGet(); req.Test && (!y.connected() || y.Expired) {
+		if y := s.ytGet(); req.Test && (!y.connected() || s.ytExpired(y)) {
 			fail(w, http.StatusConflict, errNoTest.Error())
 			return
 		}
